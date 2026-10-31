@@ -133,3 +133,17 @@ test("on a phone the cover sits at the top of an album's header, beside the titl
   // Top-aligned: the cover starts level with the first line of the text block, give or take a few pixels.
   expect(Math.abs((cover?.y ?? 0) - (badge?.y ?? 0))).toBeLessThan(8);
 });
+
+test("on a phone settings is a tab strip above the content, not a sidebar that squeezes it", async ({ signedIn: page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/settings/playback");
+  const dialog = page.getByRole("dialog", { name: "settings" });
+  const tabs = await dialog.getByRole("tablist").boundingBox();
+  const hint = await dialog.locator("p").filter({ hasText: "the next song starts before this one ends" }).boundingBox();
+  expect(tabs).not.toBeNull();
+  expect(hint).not.toBeNull();
+  expect(hint?.width ?? 0).toBeGreaterThan(220);
+  expect((hint?.y ?? 0) > (tabs?.y ?? 0) + (tabs?.height ?? 0) - 1).toBe(true);
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+  expect(wide).toBe(false);
+});

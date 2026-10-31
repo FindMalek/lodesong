@@ -71,6 +71,7 @@ export function ThemeBuilder() {
         <ToggleGroup
           variant="outline"
           size="sm"
+          className="max-w-full flex-wrap"
           aria-label="presets"
           value={[PRESETS.find((preset) => encodeLook(preset.look) === encodeLook(look))?.name ?? ""]}
           onValueChange={(next: string[]) => {
