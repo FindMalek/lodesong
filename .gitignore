@@ -10,3 +10,8 @@ data
 next-env.d.ts
 .source
 apps/web/content/docs
+
+# the Xcode project is generated from apps/ios/project.yml
+apps/ios/*.xcodeproj
+apps/ios/Info.plist
+apps/ios/build
