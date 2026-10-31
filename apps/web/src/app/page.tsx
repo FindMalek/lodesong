@@ -243,7 +243,7 @@ export default async function Home() {
             <Cell
               icon={SparklesIcon}
               title="made for you"
-              text="daily mixes, discover weekly, a daylist that changes through the day, release radar. made from what you play, saved as navidrome playlists so your phone has them too."
+              text="daily mixes, discover weekly, a daylist that changes through the day, release radar. made from what you play, saved as navidrome playlists so your phone has them too. it also follows the artists you play and shows their new releases, and lyterion can fetch them."
               className="lg:col-span-2"
             >
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -306,7 +306,8 @@ export default async function Home() {
               </div>
               <p className="max-w-lg text-muted-foreground text-sm">
                 the song lives in the notch, with bars that move with the beat. hover for the controls, click for lyrics and the queue.
-                updates itself and tells you what changed since the version you last opened.
+                updates itself and tells you what changed since the version you last opened. on a managed mac, a pkg installs it through
+                fleet.
               </p>
               <div className="mt-auto grid items-center gap-4 sm:grid-cols-2">
                 <Island />
@@ -320,9 +321,14 @@ export default async function Home() {
                   />
                 </div>
               </div>
-              <a href={MAC_APP} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}>
-                download for mac
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <a href={MAC_APP} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}>
+                  download for mac
+                </a>
+                <a href="/docs/macos/fleet" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "self-start")}>
+                  deploy with fleet
+                </a>
+              </div>
             </div>
             <div className="reveal flex flex-col gap-4 bg-background p-6">
               <div className="flex items-center gap-2">
