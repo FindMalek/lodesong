@@ -67,8 +67,14 @@ async function firstArtist(page: Page): Promise<string | null> {
   return artist?.split(" ")[0] ?? null;
 }
 
-async function shootPhone(): Promise<void> {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+async function shootPhone(theme: "dark" | "light"): Promise<void> {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    isMobile: true,
+    hasTouch: true,
+    colorScheme: theme,
+  });
   await context.addInitScript(() => {
     localStorage.setItem("keep-player:onboarded", "screenshots");
     localStorage.setItem("keep-player:tips", JSON.stringify({ off: true, welcomed: true }));
@@ -86,8 +92,9 @@ async function shootPhone(): Promise<void> {
   const keepMine = page.getByRole("button", { name: "keep mine" });
   if (await keepMine.isVisible()) await keepMine.click();
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: "docs/phone.png" });
-  console.log("docs/phone.png");
+  const file = `docs/phone${theme === "light" ? "-light" : ""}.png`;
+  await page.screenshot({ path: file });
+  console.log(file);
   await context.close();
 }
 
@@ -97,5 +104,7 @@ await shoot("dark");
 await settle();
 await shoot("light");
 await settle();
-await shootPhone();
+await shootPhone("dark");
+await settle();
+await shootPhone("light");
 await browser.close();
