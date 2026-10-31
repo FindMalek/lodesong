@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.10.0](https://github.com/FindMalek/lodesong/compare/v1.9.1...v1.10.0) (2026-10-31)
+
+
+### Features
+
+* **api:** audiomuse features ([#389](https://github.com/FindMalek/lodesong/issues/389)) ([23a4244](https://github.com/FindMalek/lodesong/commit/23a424409d6e1336c82a40ed5eb7b1785fe318a0))
+* **ios:** a native iPhone shell, installable with a free Apple ID ([#404](https://github.com/FindMalek/lodesong/issues/404)) ([f51d2c7](https://github.com/FindMalek/lodesong/commit/f51d2c700e7f644ccba0f1f99378c1f358ab49f8))
+* **macos:** fleet pkg ([#388](https://github.com/FindMalek/lodesong/issues/388)) ([d52e6bd](https://github.com/FindMalek/lodesong/commit/d52e6bd198abb17136de9f77f1c7303de7ac428d))
+* **releases:** follow artists, new releases ([#398](https://github.com/FindMalek/lodesong/issues/398)) ([7e27cea](https://github.com/FindMalek/lodesong/commit/7e27cea24d15dabdc44709f966e2d5133c4101be))
+* **theme:** custom looks with preview ([#390](https://github.com/FindMalek/lodesong/issues/390)) ([c863d19](https://github.com/FindMalek/lodesong/commit/c863d19bc43fb40e0e64820ce0fba95c92869ea6))
+* **web:** a new landing hero, fresh screenshots ([#405](https://github.com/FindMalek/lodesong/issues/405)) ([318776f](https://github.com/FindMalek/lodesong/commit/318776ff20e85dad36555b5f72c18c5f894f9ad9))
+* **web:** landing refresh ([#399](https://github.com/FindMalek/lodesong/issues/399)) ([8faf8dc](https://github.com/FindMalek/lodesong/commit/8faf8dc260660811a0da0f819a8f417ac25b428c))
+
+
+### Bug Fixes
+
+* **detail:** the sticky bar no longer shows over the header after a panel opens ([#402](https://github.com/FindMalek/lodesong/issues/402)) ([0972e4a](https://github.com/FindMalek/lodesong/commit/0972e4a871cfedeb6bd9411225db7ca560f26e7d))
+* **qa:** console errors, a 404 on every import visit, stale docs, literal backticks ([#409](https://github.com/FindMalek/lodesong/issues/409)) ([40417d9](https://github.com/FindMalek/lodesong/commit/40417d96142a577234361ca088ff748228d5f92b))
+* **settings:** a tab strip and stacked rows on a phone ([#407](https://github.com/FindMalek/lodesong/issues/407)) ([91d5e6c](https://github.com/FindMalek/lodesong/commit/91d5e6c72d8ae66f809383ea38374b6e75c09257))
+
 ## [1.9.1](https://github.com/FindMalek/lodesong/compare/v1.9.0...v1.9.1) (2026-10-28)
 
 
