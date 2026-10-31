@@ -21,7 +21,7 @@ import {
   LogOutIcon,
   MonitorSmartphoneIcon,
 } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useState } from "react";
+import { lazy, type ReactNode, Suspense, useState, useSyncExternalStore } from "react";
 import { LibraryRules } from "@/components/library-rules";
 import { Link } from "@/components/link";
 import { OutputDevice } from "@/components/output-device";
@@ -43,13 +43,28 @@ const StorageDialog = lazy(() => import("@/components/storage-dialog").then((mod
 const IndexDialog = lazy(() => import("@/components/index-dialog").then((module) => ({ default: module.IndexDialog })));
 const SessionsDialog = lazy(() => import("@/components/sessions-dialog").then((module) => ({ default: module.SessionsDialog })));
 
+const NARROW = "(max-width: 639px)";
+
+/** Under the `sm` breakpoint the dialog is a tab strip over the content, because a sidebar leaves the labels no room. */
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = matchMedia(NARROW);
+      query.addEventListener("change", notify);
+      return () => query.removeEventListener("change", notify);
+    },
+    () => matchMedia(NARROW).matches,
+    () => false,
+  );
+}
+
 const SECTIONS = ["playback", "appearance", "library", "sync", "storage", "lyrics", "shortcuts", "account", "about"] as const;
 type Section = (typeof SECTIONS)[number];
 
 /** One setting: what it is and why you'd change it on the left, the control on the right. */
 function Row({ label, hint, children, id }: { label: string; hint?: ReactNode; children: ReactNode; id?: string }) {
   return (
-    <div className="flex items-center justify-between gap-6 border-b py-3 last:border-b-0">
+    <div className="flex flex-col items-start gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="flex min-w-0 flex-col gap-0.5">
         <label htmlFor={id} className="text-sm">
           {label}
@@ -347,12 +362,13 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
   const eqOn = useSetting("eqOn");
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [indexOpen, setIndexOpen] = useState(false);
+  const narrow = useNarrow();
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex h-[min(640px,85vh)] gap-0 p-0 sm:max-w-3xl">
         <Tabs
-          orientation="vertical"
+          orientation={narrow ? "horizontal" : "vertical"}
           value={tab}
           onValueChange={(value) => {
             setTab(value as Section);
@@ -360,12 +376,15 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
           }}
           className="min-h-0 w-full gap-0"
         >
-          <nav className="flex w-40 shrink-0 flex-col gap-3 border-r p-3 max-sm:w-32">
+          <nav className={narrow ? "flex shrink-0 flex-col gap-2 border-b p-3" : "flex w-40 shrink-0 flex-col gap-3 border-r p-3"}>
             <DialogTitle className="px-2 font-mono text-sm">settings</DialogTitle>
             <DialogDescription className="sr-only">preferences for playback, look, library, sync and your account</DialogDescription>
-            <TabsList variant="line" className="w-full items-stretch font-mono">
+            <TabsList
+              variant="line"
+              className={narrow ? "w-full justify-start overflow-x-auto font-mono" : "w-full items-stretch font-mono"}
+            >
               {SECTIONS.map((section) => (
-                <TabsTrigger key={section} value={section}>
+                <TabsTrigger key={section} value={section} className={narrow ? "flex-none" : undefined}>
                   {section}
                 </TabsTrigger>
               ))}
