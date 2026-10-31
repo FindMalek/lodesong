@@ -122,18 +122,23 @@ function Hero({
 /** Height of the sticky bar; the virtual lists already leave this much room when they jump to a row. */
 const BAR = 44;
 
-/** True once `element` has scrolled up under the sticky bar. */
+/** True once `element` has scrolled up under the sticky bar; measured, because an observer went stale when a panel moved the page. */
 function useScrolledPast(element: HTMLElement | null): boolean {
   const [past, setPast] = useState(false);
   useEffect(() => {
     if (!element) return;
     const root = element.closest<HTMLElement>("[data-page-scroll]");
-    const observer = new IntersectionObserver(
-      ([entry]) => setPast(Boolean(entry && !entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0) + BAR)),
-      { root, rootMargin: `-${BAR}px 0px 0px 0px` },
-    );
-    observer.observe(element);
-    return () => observer.disconnect();
+    if (!root) return;
+    const measure = () => setPast(element.getBoundingClientRect().bottom <= root.getBoundingClientRect().top + BAR);
+    measure();
+    root.addEventListener("scroll", measure, { passive: true });
+    const resize = new ResizeObserver(measure);
+    resize.observe(root);
+    resize.observe(element);
+    return () => {
+      root.removeEventListener("scroll", measure);
+      resize.disconnect();
+    };
   }, [element]);
   return past;
 }
