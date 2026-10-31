@@ -1,5 +1,8 @@
 # Mobile app
 
+> **Update:** an iPhone app exists now (`apps/ios`, [docs/ios.md](../ios.md)): a native shell around the page, installable
+> with a free Apple ID. Android and the native Now Playing layer are still open.
+
 Notes for [#319](https://github.com/FindMalek/lodesong/issues/319). Not planned yet; this keeps the options written down
 for when the desktop apps ([#309](https://github.com/FindMalek/lodesong/issues/309)) have settled.
 

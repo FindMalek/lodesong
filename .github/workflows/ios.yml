@@ -1,0 +1,57 @@
+# Compiles the iPhone app on a macOS runner and builds an unsigned IPA: the file you sideload with a free Apple ID
+# (docs/ios.md). On a published release the IPA is attached to it. Runs only when the app or its workflow changes.
+name: iOS
+
+on:
+  pull_request:
+    paths: [apps/ios/**, .github/workflows/ios.yml]
+  push:
+    branches: [main]
+    paths: [apps/ios/**, .github/workflows/ios.yml]
+  release:
+    types: [published]
+  workflow_dispatch:
+  # ci.yml calls this after it creates a release (a release made with the default token starts no workflow of its own).
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Project from project.yml
+        run: |
+          brew install xcodegen
+          cd apps/ios && xcodegen generate
+      - name: Compile for the simulator
+        run: |
+          xcodebuild -project apps/ios/Lodesong.xcodeproj -scheme Lodesong -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Unsigned IPA for a device
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          xcodebuild -project apps/ios/Lodesong.xcodeproj -scheme Lodesong -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath apps/ios/build \
+            MARKETING_VERSION="$VERSION" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          cd apps/ios/build/Build/Products/Release-iphoneos
+          mkdir Payload && cp -R lodesong.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/lodesong-ios.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lodesong-ios
+          path: lodesong-ios.ipa
+      - name: Attach to the release
+        if: github.event_name == 'release' || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: gh release upload "$TAG" lodesong-ios.ipa --clobber

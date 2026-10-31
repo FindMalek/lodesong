@@ -11,3 +11,8 @@ next-env.d.ts
 .source
 apps/web/content/docs
 apps/web/AGENTS.md
+
+# the Xcode project is generated from apps/ios/project.yml
+apps/ios/*.xcodeproj
+apps/ios/Info.plist
+apps/ios/build
