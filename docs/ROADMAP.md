@@ -4,10 +4,69 @@ The plan for making lodesong the best self-hosted music player. Every item is a 
 sub-issues. Run [`scripts/setup-project.sh`](../scripts/setup-project.sh) once to put them all on a GitHub Project
 board with a `Phase` and `Priority` field.
 
-**Where it stands:** the [1.0 milestone](https://github.com/FindMalek/lodesong/milestone/1) is done (mixes, uploads,
-Lyterion, previews). [2.0](https://github.com/FindMalek/lodesong/milestone/2) is under way: one session across
-devices, now playing in the terminal, the recap reel and prompt playlists are in; a macOS app, AudioMuse and more are
-next.
+**Where it stands (31 Oct 2026):** the web player, the Mac app, the iPhone shell (compiles in CI, waiting for a device
+test), previews, the demo library, the landing page and the API are in. This page lists what is left, after a full pass
+that ran every route on a real Navidrome at desktop and phone sizes and measured the bundles.
+
+## What is left
+
+Priorities: **P0** blocks people or hides a bug class, **P1** the next thing worth doing, **P2** good and not urgent,
+**P3** ideas. Sizes: S under a day, M a few days, L a week or more. Every row is a GitHub issue or says why it isn't.
+
+### Phones and apps
+
+| | what | pri | size |
+|---|---|---|---|
+| [#410](https://github.com/FindMalek/lodesong/issues/410) | run the iPhone checklist on a real device (silent switch, lock screen, AirPods, interruptions) and fix what it finds | P0 | M |
+| [#412](https://github.com/FindMalek/lodesong/issues/412) | e2e on WebKit and an iPhone viewport: Safari, the Mac app and the iPhone shell run WebKit and nothing tests it | P0 | M |
+| [#411](https://github.com/FindMalek/lodesong/issues/411) | Android app: Kotlin shell with a foreground media service, APK on every release | P1 | L |
+| [#413](https://github.com/FindMalek/lodesong/issues/413) | an AltStore / SideStore source, so the iPhone app updates itself instead of expiring after 7 days | P1 | S |
+| [#415](https://github.com/FindMalek/lodesong/issues/415) | phone polish: collapse the albums filters, the lyrics-coverage and doctor tables, the A-Z strip | P1 | S |
+| [#319](https://github.com/FindMalek/lodesong/issues/319) | native Now Playing and remote commands in the iPhone shell, only if WebKit's lock screen proves flaky | P2 | M |
+| [#309](https://github.com/FindMalek/lodesong/issues/309) | Linux and Windows desktop apps (Tauri) | P2 | L |
+| | offline downloads inside the shells (iOS evicts web storage; native files don't) | P2 | L |
+| | Widgets, CarPlay and Android Auto: need native code and, on iOS, a paid developer account | P3 | L |
+
+### The player
+
+| | what | pri | size |
+|---|---|---|---|
+| [#414](https://github.com/FindMalek/lodesong/issues/414) | stats: finish the redesign and replace recharts (111 KB gzip for one bar chart) | P1 | M |
+| [#420](https://github.com/FindMalek/lodesong/issues/420) | scrobbling state in settings (Last.fm, ListenBrainz) and the i18n groundwork | P2 | M |
+| | settings search: a filter box in the dialog now that it has nine tabs | P2 | S |
+| | a "what's new" in the web app, as the Mac app has | P2 | S |
+| | gapless and crossfade verified per format (flac, opus, mp3 with and without gapless tags) with an automated listening test | P2 | M |
+| | drag a playlist track to reorder on touch screens | P2 | M |
+| [#183](https://github.com/FindMalek/lodesong/issues/183) | import music with AI-filled metadata | P3 | L |
+
+### Quality, speed and trust
+
+| | what | pri | size |
+|---|---|---|---|
+| [#417](https://github.com/FindMalek/lodesong/issues/417) | performance budgets in CI: mobile Lighthouse, interaction traces, the first-screen JS trend (160.2 of 161 KB) | P1 | M |
+| [#418](https://github.com/FindMalek/lodesong/issues/418) | a screen-reader pass (VoiceOver, NVDA) and the fixes it finds | P1 | M |
+| [#419](https://github.com/FindMalek/lodesong/issues/419) | security: CodeQL, dependency audit, a CSP report endpoint, token scopes | P1 | M |
+| | visual regression for the key pages in dark, light and phone, so a layout bug like a one-word-per-line dialog fails CI | P2 | M |
+| | client error reports, opt in, into the server's log | P3 | S |
+
+### The site, the brand and the community
+
+| | what | pri | size |
+|---|---|---|---|
+| [#416](https://github.com/FindMalek/lodesong/issues/416) | a permanent, read-only, nightly-reset live demo, linked from the hero and the README | P1 | M |
+| | the promo video (`apps/video`) on the landing page, with captions | P2 | S |
+| | comparison and "migrate from Spotify" pages for search, with real screenshots | P2 | M |
+| | a docs version switcher and a "last updated" per page | P3 | S |
+| [#320](https://github.com/FindMalek/lodesong/issues/320) | a hosted lodesong against your own Navidrome | P3 | L |
+
+### Housekeeping that bit this time
+
+- Install the Claude GitHub App on the renamed repository (the repo moved from `keep-player` to `lodesong`; the app's
+  events stopped reaching sessions that still use the old name).
+- `docs/` was written before the rebrand in places: the QA pass found the old CSRF header name in
+  `docs/security.md` (fixed). A link and name check on the docs, run in CI, would catch the rest.
+- Local development: the dev bundler's inline script trips the CSP in the console (production is clean), which hides
+  real errors. Give the dev server a matching hash.
 
 ## Principles
 
