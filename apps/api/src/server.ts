@@ -16,6 +16,7 @@ import { LrcWriter } from "./lrc-writer";
 import { LyricsService } from "./lyrics";
 import { pwaRoutes } from "./pwa";
 import { LoginLimiter } from "./rate-limit";
+import { lyterionHandOff, MusicBrainz, ReleaseWatch } from "./releases";
 import { IndexSync } from "./search-index";
 import { SessionStore } from "./sessions";
 import { MAX_UPLOAD_BYTES } from "./upload";
@@ -65,6 +66,13 @@ const backfills = new Map(
     : [],
 );
 for (const backfill of backfills.values()) backfill.start();
+const releases = config.musicbrainzUrl
+  ? new ReleaseWatch(library, new MusicBrainz(config.musicbrainzUrl), {
+      autoGet: config.releasesAutoGet,
+      handOff: config.lyterion ? lyterionHandOff(config.lyterion) : null,
+    })
+  : null;
+releases?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
 const api = createApi({
   upstreams: config.upstreams,
@@ -81,6 +89,7 @@ const api = createApi({
   lrc,
   uploadDir: config.uploadDir,
   lyterion: config.lyterion,
+  releases,
   devices: config.oneSession ? new DeviceHub() : null,
   groq: config.groq,
   audiomuseUrl: config.audiomuseUrl,

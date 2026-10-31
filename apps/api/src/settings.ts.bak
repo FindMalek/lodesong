@@ -1,0 +1,299 @@
+// Parsed and checked at boot; also the source of `docs/configuration.md` (`bun scripts/config-docs.ts`).
+
+/** Only ever from config, never from a request. */
+export interface Upstream {
+  id: string;
+  url: string;
+}
+
+interface Setting {
+  name: string;
+  /** Shown in the docs; also the value used when the variable is unset. */
+  fallback: string;
+  description: string;
+}
+
+const SETTINGS = [
+  {
+    name: "NAVIDROME_URL",
+    fallback: "http://navidrome:4533",
+    description: "Your Navidrome (or any OpenSubsonic server), as this container reaches it. Usually the internal Docker address.",
+  },
+  {
+    name: "NAVIDROME_SERVERS",
+    fallback: "",
+    description:
+      "Several servers to choose from at sign-in, as `id=url` pairs separated by commas (`home=http://navidrome:4533,friend=https://music.example.com`). Replaces `NAVIDROME_URL`. The browser can only ever pick from this list.",
+  },
+  { name: "PORT", fallback: "8080", description: "Port the server listens on." },
+  {
+    name: "DATA_DIR",
+    fallback: "./data",
+    description:
+      "Where sessions, the search and lyrics index, history and the cover cache live. Mount a volume here (`/data` in the image).",
+  },
+  {
+    name: "SESSION_SECRET",
+    fallback: "",
+    description: "Encrypts stored Navidrome credentials. Unset: a random one is generated once and kept in `DATA_DIR`.",
+  },
+  { name: "SESSION_IDLE_DAYS", fallback: "30", description: "A browser that isn't used for this long is signed out." },
+  { name: "COVER_CACHE_MB", fallback: "1024", description: "Disk for resized covers; least recently used are deleted first." },
+  {
+    name: "LRCLIB_URL",
+    fallback: "https://lrclib.net",
+    description: "Where lyrics Navidrome doesn't have are looked up. Empty turns LRCLIB off.",
+  },
+  {
+    name: "LYRICS_BACKFILL",
+    fallback: "on",
+    description: "`on`: walk the library in the background (about one song a second) to fetch lyrics nobody opened yet. `off` to disable.",
+  },
+  {
+    name: "LYRICS_WRITE_LRC",
+    fallback: "off",
+    description:
+      '`on`: lyrics found on LRCLIB are also saved as `<track>.lrc` next to the audio file, so other clients get them. Needs `MUSIC_DIR` and Navidrome\'s "Report Real Path". Never overwrites; undo from the lyrics page.',
+  },
+  {
+    name: "LYTERION_URL",
+    fallback: "",
+    description:
+      "Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead.",
+  },
+  {
+    name: "LYTERION_TOKEN",
+    fallback: "",
+    description: "The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`.",
+  },
+  {
+    name: "MUSICBRAINZ_URL",
+    fallback: "https://musicbrainz.org",
+    description:
+      "Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off.",
+  },
+  {
+    name: "RELEASES_AUTO_GET",
+    fallback: "off",
+    description:
+      "`on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over.",
+  },
+  {
+    name: "GROQ_API_KEY",
+    fallback: "",
+    description:
+      'Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Kept server-side. Empty: off.',
+  },
+  { name: "GROQ_MODEL", fallback: "openai/gpt-oss-120b", description: "The Groq model for playlists from a prompt." },
+  { name: "GROQ_URL", fallback: "https://api.groq.com/openai/v1", description: "Groq's API, or any OpenAI-compatible one." },
+  {
+    name: "AUDIOMUSE_URL",
+    fallback: "",
+    description:
+      "AudioMuse-AI, as this container reaches it: song features (tempo, key, energy, mood) are copied into the index for `bpm:` / `energy:` / `mood:` search filters, smart shuffle and sonic neighbours. Empty: off, everything else works as is.",
+  },
+  {
+    name: "FEEDBACK_GITHUB_TOKEN",
+    fallback: "",
+    description:
+      'A GitHub token that may open issues and write contents on `FEEDBACK_REPO`: turns on "send feedback" in the user menu, filed as an issue (screenshots go to a `feedback` branch). Empty: off.',
+  },
+  { name: "FEEDBACK_REPO", fallback: "", description: "Where feedback goes, as `owner/repo`. Needed with `FEEDBACK_GITHUB_TOKEN`." },
+  {
+    name: "ONE_SESSION",
+    fallback: "on",
+    description:
+      "`on`: all of an account's open players share one playback session, like Spotify Connect: one plays, the others are remotes, and the device picker moves playback. `off`: every tab plays on its own.",
+  },
+  {
+    name: "UPLOAD_DIR",
+    fallback: "",
+    description:
+      "Where music uploaded from the player lands (admins only), mounted writable. An import inbox (beets, Lyterion) or Navidrome's music folder. Empty turns uploads off.",
+  },
+  {
+    name: "MUSIC_DIR",
+    fallback: "",
+    description: "Navidrome's music folder mounted writable here, for `LYRICS_WRITE_LRC`. Unused otherwise.",
+  },
+  {
+    name: "INDEX_USER",
+    fallback: "",
+    description: "Navidrome account for background jobs (search index, lyrics backfill). Unset: the admin who signed in most recently.",
+  },
+  { name: "INDEX_PASSWORD", fallback: "", description: "Password for `INDEX_USER`." },
+  {
+    name: "DEMO_SEED",
+    fallback: "off",
+    description:
+      "`on`: fill `INDEX_USER`'s history with months of generated listening, once (for demos and previews, see docs/previews.md). Needs `INDEX_USER`.",
+  },
+  {
+    name: "REDIS_URL",
+    fallback: "",
+    description:
+      "`redis://…`: keep computed answers (made for you) in Redis, shared by several instances. Unset: in memory, which is all one instance needs.",
+  },
+  {
+    name: "TRUST_PROXY",
+    fallback: "false",
+    description: "`true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits).",
+  },
+  {
+    name: "UPDATE_CHECK",
+    fallback: "off",
+    description:
+      "`on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`), new releases (`MUSICBRAINZ_URL`) and Groq when `GROQ_API_KEY` is set.",
+  },
+] as const satisfies readonly Setting[];
+
+type Env = Record<string, string | undefined>;
+
+export interface Config {
+  port: number;
+  dataDir: string;
+  upstreams: Upstream[];
+  /** Null when unset: the caller generates and keeps one. */
+  sessionSecret: string | null;
+  sessionIdleDays: number;
+  coverCacheMb: number;
+  lrclibUrl: string;
+  lyricsBackfill: boolean;
+  oneSession: boolean;
+  feedback: { token: string; repo: string } | null;
+  groq: { key: string; model: string; url: string } | null;
+  lrcDir: string | null;
+  uploadDir: string | null;
+  lyterion: { url: string; token: string } | null;
+<<<<<<< HEAD
+  musicbrainzUrl: string;
+  releasesAutoGet: boolean;
+=======
+  audiomuseUrl: string | null;
+>>>>>>> origin/main
+  indexUser: string | undefined;
+  indexPassword: string | undefined;
+  demoSeed: boolean;
+  redisUrl?: string;
+  trustProxy: boolean;
+  updateCheck: boolean;
+}
+
+const fallback = (name: (typeof SETTINGS)[number]["name"]) => SETTINGS.find((setting) => setting.name === name)?.fallback ?? "";
+const isUrl = (value: string) => /^https?:\/\/[^\s/]+/.test(value);
+
+export function readConfig(env: Env): { config: Config; errors: string[] } {
+  const errors: string[] = [];
+  const get = (name: (typeof SETTINGS)[number]["name"]) => (env[name] ?? fallback(name)).trim();
+  const number = (name: (typeof SETTINGS)[number]["name"], min: number, max = Number.MAX_SAFE_INTEGER) => {
+    const value = Number(get(name));
+    if (!Number.isInteger(value) || value < min || value > max)
+      errors.push(`${name} must be a whole number from ${min} to ${max}, got "${get(name)}"`);
+    return value;
+  };
+  const flag = (name: (typeof SETTINGS)[number]["name"], on: string[], off: string[]) => {
+    const value = get(name).toLowerCase();
+    if (![...on, ...off].includes(value)) errors.push(`${name} must be one of ${[...on, ...off].join(", ")}, got "${get(name)}"`);
+    return on.includes(value);
+  };
+
+  const upstreams: Upstream[] = [];
+  const servers = get("NAVIDROME_SERVERS");
+  if (servers) {
+    for (const entry of servers
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)) {
+      const at = entry.indexOf("=");
+      const id = at > 0 ? entry.slice(0, at).trim() : "";
+      const url = entry
+        .slice(at + 1)
+        .trim()
+        .replace(/\/+$/, "");
+      if (!/^[\w-]+$/.test(id) || !isUrl(url)) errors.push(`NAVIDROME_SERVERS: "${entry}" isn't id=http(s)://host`);
+      else if (upstreams.some((upstream) => upstream.id === id)) errors.push(`NAVIDROME_SERVERS: "${id}" is listed twice`);
+      else upstreams.push({ id, url });
+    }
+  } else {
+    const url = get("NAVIDROME_URL").replace(/\/+$/, "");
+    if (!isUrl(url)) errors.push(`NAVIDROME_URL must be http(s)://host[:port], got "${url}"`);
+    upstreams.push({ id: "default", url });
+  }
+
+  const lrclibUrl = get("LRCLIB_URL").replace(/\/+$/, "");
+  if (lrclibUrl && !isUrl(lrclibUrl)) errors.push(`LRCLIB_URL must be http(s)://host or empty, got "${lrclibUrl}"`);
+  const writeLrc = flag("LYRICS_WRITE_LRC", ["on"], ["off"]);
+  const musicDir = get("MUSIC_DIR").replace(/(.)\/+$/, "$1");
+  if (writeLrc && !musicDir.startsWith("/")) errors.push(`LYRICS_WRITE_LRC=on needs MUSIC_DIR, an absolute path, got "${musicDir}"`);
+  const uploadDir = get("UPLOAD_DIR").replace(/(.)\/+$/, "$1");
+  if (uploadDir && !uploadDir.startsWith("/")) errors.push(`UPLOAD_DIR must be an absolute path or empty, got "${uploadDir}"`);
+  const musicbrainzUrl = get("MUSICBRAINZ_URL").replace(/\/+$/, "");
+  if (musicbrainzUrl && !isUrl(musicbrainzUrl)) errors.push(`MUSICBRAINZ_URL must be http(s)://host or empty, got "${musicbrainzUrl}"`);
+  const lyterionUrl = get("LYTERION_URL").replace(/\/+$/, "");
+  const lyterionToken = get("LYTERION_TOKEN");
+  if (lyterionUrl && !isUrl(lyterionUrl)) errors.push(`LYTERION_URL must be http(s)://host or empty, got "${lyterionUrl}"`);
+  const audiomuseUrl = get("AUDIOMUSE_URL").replace(/\/+$/, "");
+  if (audiomuseUrl && !isUrl(audiomuseUrl)) errors.push(`AUDIOMUSE_URL must be http(s)://host or empty, got "${audiomuseUrl}"`);
+  if (!!lyterionUrl !== !!lyterionToken) errors.push("LYTERION_URL and LYTERION_TOKEN go together: set both or neither");
+  if (!!get("FEEDBACK_GITHUB_TOKEN") !== !!get("FEEDBACK_REPO"))
+    errors.push("FEEDBACK_GITHUB_TOKEN and FEEDBACK_REPO go together: set both or neither");
+  if (get("FEEDBACK_REPO") && !/^[\w.-]+\/[\w.-]+$/.test(get("FEEDBACK_REPO")))
+    errors.push(`FEEDBACK_REPO must be owner/repo, got "${get("FEEDBACK_REPO")}"`);
+  const indexUser = get("INDEX_USER") || undefined;
+  const indexPassword = get("INDEX_PASSWORD") || undefined;
+  if (!!indexUser !== !!indexPassword) errors.push("INDEX_USER and INDEX_PASSWORD go together: set both or neither");
+
+  const demoSeed = flag("DEMO_SEED", ["on"], ["off"]);
+  if (demoSeed && !indexUser) errors.push("DEMO_SEED=on needs INDEX_USER and INDEX_PASSWORD: the history is seeded for that account");
+
+  const config: Config = {
+    port: number("PORT", 1, 65_535),
+    dataDir: get("DATA_DIR"),
+    upstreams,
+    sessionSecret: get("SESSION_SECRET") || null,
+    sessionIdleDays: number("SESSION_IDLE_DAYS", 1, 3650),
+    coverCacheMb: number("COVER_CACHE_MB", 16),
+    lrclibUrl,
+    lyricsBackfill: flag("LYRICS_BACKFILL", ["on"], ["off"]),
+    oneSession: flag("ONE_SESSION", ["on"], ["off"]),
+    feedback:
+      get("FEEDBACK_GITHUB_TOKEN") && get("FEEDBACK_REPO") ? { token: get("FEEDBACK_GITHUB_TOKEN"), repo: get("FEEDBACK_REPO") } : null,
+    groq: get("GROQ_API_KEY") ? { key: get("GROQ_API_KEY"), model: get("GROQ_MODEL"), url: get("GROQ_URL").replace(/\/+$/, "") } : null,
+    lrcDir: writeLrc ? musicDir : null,
+    uploadDir: uploadDir || null,
+    lyterion: lyterionUrl && lyterionToken ? { url: lyterionUrl, token: lyterionToken } : null,
+<<<<<<< HEAD
+    musicbrainzUrl,
+    releasesAutoGet: flag("RELEASES_AUTO_GET", ["on"], ["off"]),
+=======
+    audiomuseUrl: audiomuseUrl || null,
+>>>>>>> origin/main
+    indexUser,
+    indexPassword,
+    demoSeed,
+    redisUrl: get("REDIS_URL") || undefined,
+    trustProxy: flag("TRUST_PROXY", ["1", "true", "yes", "on"], ["0", "false", "no", "off", ""]),
+    updateCheck: flag("UPDATE_CHECK", ["on"], ["off"]),
+  };
+  return { config, errors };
+}
+
+export function configDocs(): string {
+  const cell = (text: string) => text.replaceAll("|", "\\|");
+  const rows = SETTINGS.map(
+    (setting) => `| \`${setting.name}\` | ${setting.fallback ? `\`${cell(setting.fallback)}\`` : "—"} | ${cell(setting.description)} |`,
+  );
+  return [
+    "# Configuration",
+    "",
+    "Everything is an environment variable. Only `NAVIDROME_URL` usually needs setting. A bad value stops the server at",
+    "boot with a message naming the variable.",
+    "",
+    "<!-- generated by `bun scripts/config-docs.ts` from apps/api/src/settings.ts; don't edit by hand -->",
+    "",
+    "| variable | default | what |",
+    "|---|---|---|",
+    ...rows,
+    "",
+  ].join("\n");
+}

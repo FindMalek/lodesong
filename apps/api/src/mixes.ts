@@ -173,10 +173,12 @@ function daily(l: Listening, account: string, day: number): Mix[] {
   return mixes;
 }
 
-function discover(l: Listening, account: string, friday: number): Mix | null {
+function discover(l: Listening, account: string, friday: number, boosted: Set<string>): Mix | null {
   const random = seeded(`${account}:discover:${friday}`);
   const unplayed = (artist: string) => (l.byArtist.get(artist) ?? []).filter((song) => !l.playedKeys.has(keyOf(song)));
-  const liked = [...l.counts.entries()].sort((a, b) => b[1] - a[1]).map(([artist]) => artist);
+  const liked = [...l.counts.entries()]
+    .sort((a, b) => Number(boosted.has(b[0])) - Number(boosted.has(a[0])) || b[1] - a[1])
+    .map(([artist]) => artist);
   const known: Song[] = [];
   // Round-robin over your artists, best first, so one big discography doesn't take every slot.
   const queues = liked.map((artist) => shuffle(unplayed(artist), random)).filter((queue) => queue.length);
@@ -266,12 +268,13 @@ export function madeForYou(
   account: string,
   { day, hour, tzMinutes }: { day: number; hour: number; tzMinutes: number },
   now = Date.now(),
+  boosted: Set<string> = new Set(),
 ): Mix[] {
   const l = listening(db, server, account, now);
   if (!l) return [];
   return [
     ...daily(l, account, day),
-    discover(l, account, lastFriday(day)),
+    discover(l, account, lastFriday(day), boosted),
     releaseRadar(l, now),
     onThisDay(db, l, account, now),
     daylist(l, account, day, slotOf(hour), tzMinutes),

@@ -9,6 +9,7 @@ folder. lodesong plays what it places and talks to it in three places.
 | **import** (settings → library → import from spotify) | every Spotify playlist with how much of it is in your library, a progress bar each, and the songs still missing |
 | **library doctor** | **fix** on a problem (a low-quality file, a fake FLAC) and **fix all shown** hand the songs to Lyterion's `⇪ Upgrade` playlist; it looks for a better copy and replaces the file |
 | **add a song** | ⌘K, then paste a YouTube, SoundCloud or Deezer link, or type a song name (admins only). lodesong shows what it understood, Lyterion finds a good copy across its sources, checks and places it, and you can play it when it lands |
+| **new releases** | **get it** on a release in "new from artists you follow" (admins) hands that album, EP or single to Lyterion the way add a song does; `RELEASES_AUTO_GET=on` does it for every new one (at most ten a week). See [new releases](#new-releases) |
 | **playlists** | Lyterion pushes its playlists into Navidrome as normal playlists, so you can edit them in lodesong (and every Subsonic app) |
 
 ## Setting them up together
@@ -40,7 +41,14 @@ page takes a Spotify export file instead ([spotify import](spotify-import.md)).
 lodesong's uploads ([self-hosting](self-hosting.md#uploads)) can land in an inbox Lyterion or beets imports from:
 set `UPLOAD_DIR` to that folder, mounted writable.
 
+## New releases
+
+[Mixes](mixes.md#new-from-artists-you-follow) lists new releases by artists you follow. They are handed over as the
+text `Artist - Release title` through the same call as add a song, so Lyterion finds, checks, tags and places the
+files and Navidrome picks them up on its next scan. Nothing is handed over unless you press **get it** or set
+`RELEASES_AUTO_GET=on`.
+
 ## What goes where
 
-lodesong never downloads anything and never writes into the music folder itself (uploads only land in `UPLOAD_DIR`).
+lodesong never downloads anything itself and never writes into the music folder itself (uploads only land in `UPLOAD_DIR`).
 Where songs come from is Lyterion's business and is configured there.

@@ -22,6 +22,7 @@ import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-cove
 import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
 import type { LoginLimiter } from "./rate-limit";
+import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
 import { createRpc, accountOf as dataAccount } from "./rpc";
 import { search } from "./search";
@@ -140,6 +141,7 @@ export interface ApiOptions {
   lrc?: { count(server: string): number; undoAll(server: string): { removed: number; kept: number } } | null;
   uploadDir?: string | null;
   lyterion?: { url: string; token: string } | null;
+  releases?: ReleaseWatch | null;
   rooms?: ListenRooms;
   devices?: DeviceHub | null;
   feedback?: FeedbackTarget | null;
@@ -186,6 +188,7 @@ export function createApi({
   rooms = new ListenRooms(),
   uploadDir = null,
   lyterion = null,
+  releases = null,
   devices = null,
   groq = null,
   audiomuseUrl = null,
@@ -208,7 +211,7 @@ export function createApi({
     return folders;
   }
 
-  const rpcHandler = createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache, lyrics });
+  const rpcHandler = createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache, lyrics, releases });
 
   const secured = (response: Response) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);

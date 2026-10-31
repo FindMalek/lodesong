@@ -1,4 +1,5 @@
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
+import { followSchema, newReleaseSchema } from "@lodesong/shared/releases";
 import { listeningStatsSchema } from "@lodesong/shared/stats";
 import { oc } from "@orpc/contract";
 import { z } from "zod";
@@ -89,6 +90,45 @@ export const contract = {
       }),
     )
     .output(z.object({ day: z.number(), mixes: z.array(mixSchema) })),
+
+  follows: {
+    list: oc
+      .route({
+        method: "GET",
+        path: "/follows",
+        summary: "Artists you follow",
+        description: "The artists you play most are followed for you; follow, pin or unfollow any artist by name.",
+        tags: ["Releases"],
+      })
+      .output(z.object({ artists: z.array(followSchema) })),
+    set: oc
+      .route({ method: "PUT", path: "/follows", summary: "Follow, pin or unfollow an artist", tags: ["Releases"] })
+      .input(z.object({ name: z.string().trim().min(1).max(200), status: z.enum(["followed", "pinned", "unfollowed"]) }))
+      .output(z.object({ artists: z.array(followSchema) })),
+  },
+
+  releases: {
+    list: oc
+      .route({
+        method: "GET",
+        path: "/releases",
+        summary: "New releases by artists you follow",
+        description:
+          "Albums, EPs and singles from the last 90 days that aren't in your library, from MusicBrainz, checked weekly. Empty when `MUSICBRAINZ_URL` is empty.",
+        tags: ["Releases"],
+      })
+      .output(z.object({ releases: z.array(newReleaseSchema), watching: z.boolean().describe("The weekly check is on") })),
+    get: oc
+      .route({
+        method: "POST",
+        path: "/releases/{id}/get",
+        summary: "Hand a release to Lyterion",
+        description: "Admins only, with Lyterion set up. Lyterion fetches, tags and places it; Navidrome picks it up on its next scan.",
+        tags: ["Releases"],
+      })
+      .input(z.object({ id: z.string().min(1) }))
+      .output(ok),
+  },
 
   artists: {
     appearsOn: oc

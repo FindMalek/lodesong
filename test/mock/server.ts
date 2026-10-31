@@ -558,6 +558,20 @@ const server = Bun.serve({
       };
       return Response.json(step === "preview" ? meta : { recordingId: "wish-e2e", meta });
     }
+    if (url.pathname === "/musicbrainz/ws/2/artist") {
+      const name = /artist:"(.*)"/.exec(url.searchParams.get("query") ?? "")?.[1] ?? "";
+      return Response.json({ artists: [{ id: `mb-${name.toLowerCase().replace(/\W+/g, "-")}`, name, score: 100 }] });
+    }
+    if (url.pathname === "/musicbrainz/ws/2/release-group") {
+      const date = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+      return Response.json({
+        "release-group-count": 2,
+        "release-groups": [
+          { id: "rg-fresh-hours", title: "Fresh Hours", "primary-type": "Album", "secondary-types": [], "first-release-date": date },
+          { id: "rg-live", title: "Live In Nowhere", "primary-type": "Album", "secondary-types": ["Live"], "first-release-date": date },
+        ],
+      });
+    }
     if (url.pathname.startsWith("/mock/")) return control(url, request);
     const match = /^\/rest\/(\w+?)(?:\.view)?$/.exec(url.pathname);
     if (!match?.[1]) return new Response("not found", { status: 404 });
