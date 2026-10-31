@@ -39,8 +39,6 @@ async function shoot(theme: "dark" | "light"): Promise<void> {
   await page.locator("a[href^='/album/']").first().click();
   await page.getByRole("button", { name: "play", exact: true }).first().click();
   await page.keyboard.press("y");
-  // Playing scrolls the album a little; the shot is of the page from its top.
-  await page.evaluate(() => document.querySelector("[data-page-scroll]")?.scrollTo(0, 0));
   await save("album-lyrics");
 
   await page.keyboard.press("y");
