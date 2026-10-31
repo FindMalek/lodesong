@@ -696,7 +696,7 @@ export function createApi({
   async function lyterionSummary(request: Request): Promise<Response> {
     if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
     if (!browserSession(request)) return json({ error: "signed out" }, 401);
-    if (!lyterion) return json({ error: "lyterion isn't set up" }, 404);
+    if (!lyterion) return new Response(null, { status: 204 });
     const response = await fetch(`${lyterion.url}/api/rpc/api-reference/player/summary`, {
       headers: { "x-lyterion-token": lyterion.token },
       signal: AbortSignal.timeout(20_000),
