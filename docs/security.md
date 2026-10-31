@@ -27,7 +27,7 @@ the user menu (sessions). Rotating `SESSION_SECRET` signs everyone out.
 - **No client credentials.** `u`, `p`, `t`, `s`, `apiKey`, `c` and `v` are stripped from every request and set by the
   server.
 - **CSRF.** Every call except media (`stream`, `download`, `getCoverArt`, `getAvatar`, which are read-only and loaded by
-  `<img>`/`<audio>`) must carry `x-keep-player: 1`. Another site can't send that header without a CORS preflight, which
+  `<img>`/`<audio>`) must carry `x-lodesong: 1`. Another site can't send that header without a CORS preflight, which
   the server never allows.
 - **Login backoff.** After three failures, each failed attempt doubles the wait (1 s, 2 s, 4 s … 15 min), per client IP
   and per username. Set `TRUST_PROXY=1` behind a reverse proxy so the real client IP is used.

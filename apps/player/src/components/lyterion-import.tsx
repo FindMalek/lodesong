@@ -16,7 +16,7 @@ export function LyterionImport() {
     queryKey: ["lyterion"],
     queryFn: async (): Promise<Summary | null> => {
       const response = await fetch("/api/lyterion", { headers: HEADERS });
-      return response.ok ? ((await response.json()) as Summary) : null;
+      return response.status === 200 ? ((await response.json()) as Summary) : null;
     },
   });
   const [open, setOpen] = useState<string | null>(null);

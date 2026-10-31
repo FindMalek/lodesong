@@ -170,7 +170,7 @@ export function runChecks(songs: DoctorSong[], albums: DoctorAlbum[]): DoctorRep
     make(
       "duplicates",
       "likely duplicates",
-      "the same artist and title within 2 s of each other: keep one (`beet duplicates`)",
+      "the same artist and title within 2 s of each other: keep one, beet's duplicates command finds the rest",
       songs.length,
       duplicates(songs),
     ),
