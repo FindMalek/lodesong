@@ -200,8 +200,8 @@ Setting them up together: [lyterion](docs/lyterion.md).
 ## FAQ
 
 **Does it work on a phone?** Yes: the layout follows the window down to 320 px, and it installs as an app from the
-browser's menu. For a native feel use a Subsonic app too (Arpeggi, Substreamer, Symfonium…); the queue hands off between
-them.
+browser's menu. There is also an [iPhone app](docs/ios.md) you can sideload with a free Apple ID (music keeps playing
+with the screen locked). A Subsonic app (Arpeggi, Substreamer, Symfonium…) works too; the queue hands off between them.
 
 **Can I try it without my own music?** Yes: `bun run demo:library ./demo-music` generates a library and
 [`compose.demo.yaml`](compose.demo.yaml) serves it from a Navidrome. See [demo library](docs/demo-library.md).
