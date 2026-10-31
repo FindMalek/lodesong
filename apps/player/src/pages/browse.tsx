@@ -7,7 +7,7 @@ import { Toggle } from "@lodesong/ui/components/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { HeartIcon, PlayIcon, ShuffleIcon } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { JumpBackIn } from "@/components/jump-back-in";
 import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, PageHeader, Section, TrackList } from "@/components/library";
@@ -23,6 +23,8 @@ import { queries, queryClient } from "@/lib/queries";
 import type { Album, Artist, Song } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useColumns, usePageVirtualizer } from "@/lib/virtual";
+
+const NewReleases = lazy(() => import("@/components/new-releases"));
 
 /** Shelves fetch this many, and show as many full rows as fit: two, or one on screens wide enough for a dozen. */
 const SHELF_SIZE = 24;
@@ -127,6 +129,9 @@ export function HomePage() {
               </Button>
             }
           />
+          <Suspense fallback={null}>
+            <NewReleases />
+          </Suspense>
         </>
       )}
     </>

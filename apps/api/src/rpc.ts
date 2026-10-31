@@ -16,6 +16,7 @@ import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
+import { artistsWithReleases, listFollows, newReleases, type ReleaseWatch, releasesVersion, setFollow, syncAutoFollows } from "./releases";
 import type { Session } from "./sessions";
 import { forgottenFavourites, listeningStats } from "./stats";
 import { weeklyPlaylists } from "./weekly-playlists";
@@ -31,6 +32,7 @@ export interface RpcDeps {
   foldersFor(session: Session, upstream: Upstream): Promise<string[]>;
   cache?: Cache;
   lyrics: LyricsService;
+  releases?: ReleaseWatch | null;
 }
 
 type Context = { session: Session | null; client: string };
@@ -54,7 +56,17 @@ const hiddenIn = (db: Database, account: string, playlist: string): string[] =>
     .all(account, playlist)
     .map((row) => row.song_id);
 
-export function createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache = memoryCache(), lyrics }: RpcDeps) {
+export function createRpc({
+  library,
+  updates,
+  groq,
+  fetcher,
+  upstreamFor,
+  foldersFor,
+  cache = memoryCache(),
+  lyrics,
+  releases = null,
+}: RpcDeps) {
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED", { message: "signed out" });
@@ -78,10 +90,17 @@ export function createRpc({ library, updates, groq, fetcher, upstreamFor, folder
       const { session } = context;
       const account = accountOf(session);
       // ~30 ms with 10k songs, and the same answer until the slot, a play, the index or a "never" pref changes.
-      const key = `mixes:${account}:${input.day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}`;
+      const key = `mixes:${account}:${input.day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
       const cached = await cache.get<{ day: number; mixes: Awaited<ReturnType<typeof madeForYou>> }>(key);
       if (cached) return cached;
-      const made = madeForYou(library, session.server, account, { day: input.day, hour: input.hour, tzMinutes: input.tz });
+      const made = madeForYou(
+        library,
+        session.server,
+        account,
+        { day: input.day, hour: input.hour, tzMinutes: input.tz },
+        Date.now(),
+        artistsWithReleases(library, account, Date.now()),
+      );
       const heard = groq ? listening(library, session.server, account, Date.now()) : null;
       const moods = await moodMixes(library, groq, account, input.day, heard, fetcher);
       const weekly = await weeklyPlaylists(library, groq, account, input.day, heard, fetcher);
@@ -92,6 +111,33 @@ export function createRpc({ library, updates, groq, fetcher, upstreamFor, folder
       if (result.mixes.length) await cache.set(key, result, groqMissed ? GROQ_MISS_TTL_MS : MIXES_TTL_MS);
       return result;
     }),
+    follows: {
+      list: signedIn.follows.list.handler(({ context }) => {
+        syncAutoFollows(library, context.account, Date.now());
+        return { artists: listFollows(library, context.account) };
+      }),
+      set: signedIn.follows.set.handler(({ context, input }) => {
+        setFollow(library, context.account, input.name, input.status);
+        if (input.status !== "unfollowed") releases?.refresh(input.name);
+        return { artists: listFollows(library, context.account) };
+      }),
+    },
+    releases: {
+      list: signedIn.releases.list.handler(({ context }) => {
+        syncAutoFollows(library, context.account, Date.now());
+        const canGet = context.session.admin && releases?.canGet === true;
+        return {
+          releases: newReleases(library, context.account, Date.now()).map((release) => ({ ...release, canGet })),
+          watching: releases !== null,
+        };
+      }),
+      get: signedIn.releases.get.handler(async ({ context, input }) => {
+        if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
+        if (!releases?.canGet) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
+        if (!(await releases.get(input.id))) throw new ORPCError("BAD_GATEWAY", { message: "lyterion couldn't take it, try again" });
+        return OK;
+      }),
+    },
     artists: {
       appearsOn: signedIn.artists.appearsOn.handler(async ({ context, input }) => {
         const upstream = upstreamFor(context.session.server);

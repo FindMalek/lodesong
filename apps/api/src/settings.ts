@@ -67,6 +67,18 @@ const SETTINGS = [
     description: "The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`.",
   },
   {
+    name: "MUSICBRAINZ_URL",
+    fallback: "https://musicbrainz.org",
+    description:
+      "Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off.",
+  },
+  {
+    name: "RELEASES_AUTO_GET",
+    fallback: "off",
+    description:
+      "`on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over.",
+  },
+  {
     name: "GROQ_API_KEY",
     fallback: "",
     description:
@@ -125,7 +137,7 @@ const SETTINGS = [
     name: "UPDATE_CHECK",
     fallback: "off",
     description:
-      "`on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`) and Groq when `GROQ_API_KEY` is set.",
+      "`on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`), new releases (`MUSICBRAINZ_URL`) and Groq when `GROQ_API_KEY` is set.",
   },
 ] as const satisfies readonly Setting[];
 
@@ -147,6 +159,8 @@ export interface Config {
   lrcDir: string | null;
   uploadDir: string | null;
   lyterion: { url: string; token: string } | null;
+  musicbrainzUrl: string;
+  releasesAutoGet: boolean;
   indexUser: string | undefined;
   indexPassword: string | undefined;
   demoSeed: boolean;
@@ -203,6 +217,8 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
   if (writeLrc && !musicDir.startsWith("/")) errors.push(`LYRICS_WRITE_LRC=on needs MUSIC_DIR, an absolute path, got "${musicDir}"`);
   const uploadDir = get("UPLOAD_DIR").replace(/(.)\/+$/, "$1");
   if (uploadDir && !uploadDir.startsWith("/")) errors.push(`UPLOAD_DIR must be an absolute path or empty, got "${uploadDir}"`);
+  const musicbrainzUrl = get("MUSICBRAINZ_URL").replace(/\/+$/, "");
+  if (musicbrainzUrl && !isUrl(musicbrainzUrl)) errors.push(`MUSICBRAINZ_URL must be http(s)://host or empty, got "${musicbrainzUrl}"`);
   const lyterionUrl = get("LYTERION_URL").replace(/\/+$/, "");
   const lyterionToken = get("LYTERION_TOKEN");
   if (lyterionUrl && !isUrl(lyterionUrl)) errors.push(`LYTERION_URL must be http(s)://host or empty, got "${lyterionUrl}"`);
@@ -234,6 +250,8 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     lrcDir: writeLrc ? musicDir : null,
     uploadDir: uploadDir || null,
     lyterion: lyterionUrl && lyterionToken ? { url: lyterionUrl, token: lyterionToken } : null,
+    musicbrainzUrl,
+    releasesAutoGet: flag("RELEASES_AUTO_GET", ["on"], ["off"]),
     indexUser,
     indexPassword,
     demoSeed,

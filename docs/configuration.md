@@ -19,6 +19,8 @@ boot with a message naming the variable.
 | `LYRICS_WRITE_LRC` | `off` | `on`: lyrics found on LRCLIB are also saved as `<track>.lrc` next to the audio file, so other clients get them. Needs `MUSIC_DIR` and Navidrome's "Report Real Path". Never overwrites; undo from the lyrics page. |
 | `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead. |
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
+| `MUSICBRAINZ_URL` | `https://musicbrainz.org` | Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off. |
+| `RELEASES_AUTO_GET` | `off` | `on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over. |
 | `GROQ_API_KEY` | — | Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Kept server-side. Empty: off. |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | The Groq model for playlists from a prompt. |
 | `GROQ_URL` | `https://api.groq.com/openai/v1` | Groq's API, or any OpenAI-compatible one. |
@@ -32,4 +34,4 @@ boot with a message naming the variable.
 | `DEMO_SEED` | `off` | `on`: fill `INDEX_USER`'s history with months of generated listening, once (for demos and previews, see docs/previews.md). Needs `INDEX_USER`. |
 | `REDIS_URL` | — | `redis://…`: keep computed answers (made for you) in Redis, shared by several instances. Unset: in memory, which is all one instance needs. |
 | `TRUST_PROXY` | `false` | `true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits). |
-| `UPDATE_CHECK` | `off` | `on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`) and Groq when `GROQ_API_KEY` is set. |
+| `UPDATE_CHECK` | `off` | `on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`), new releases (`MUSICBRAINZ_URL`) and Groq when `GROQ_API_KEY` is set. |

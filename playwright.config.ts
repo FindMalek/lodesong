@@ -40,6 +40,7 @@ export default defineConfig({
         GROQ_URL: `http://127.0.0.1:${MOCK}/groq`,
         LYTERION_URL: `http://127.0.0.1:${MOCK}/lyterion`,
         LYTERION_TOKEN: "e2e-lyterion-token-0123456789",
+        MUSICBRAINZ_URL: `http://127.0.0.1:${MOCK}/musicbrainz`,
         LRCLIB_URL: `http://127.0.0.1:${MOCK}/lrclib`,
         LYRICS_BACKFILL: "off",
       },
