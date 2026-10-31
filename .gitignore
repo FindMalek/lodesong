@@ -10,3 +10,4 @@ data
 next-env.d.ts
 .source
 apps/web/content/docs
+apps/web/AGENTS.md

@@ -36,7 +36,7 @@ const JSON_LD = {
   "@type": "SoftwareApplication",
   name: "lodesong",
   applicationCategory: "MultimediaApplication",
-  operatingSystem: "Web, macOS",
+  operatingSystem: "Web, macOS, iOS (PWA)",
   description:
     "A self-hosted music player for Navidrome: made-for-you mixes, synced lyrics, one session across your devices and the song in your Mac's notch.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -153,6 +153,19 @@ function Shot({ name, alt, className, priority }: { name: string; alt: string; c
   );
 }
 
+/** The phone screenshot in the page's theme: `phone.png` in dark mode, `phone-light.png` in light mode. */
+function Phone({ alt, priority }: { alt: string; priority?: boolean }) {
+  const image = (src: string, visibility: string) => (
+    <Image src={src} alt={alt} width={1170} height={2532} priority={priority} sizes="208px" className={cn("h-auto w-full", visibility)} />
+  );
+  return (
+    <>
+      {image("/shots/phone-light.png", "dark:hidden")}
+      {image("/shots/phone.png", "hidden dark:block")}
+    </>
+  );
+}
+
 function Mark({ on }: { on: boolean }) {
   return on ? (
     <CheckIcon aria-label="yes" className="mx-auto size-4" />
@@ -174,33 +187,51 @@ export default async function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <SiteHeader />
       <main>
-        <section className="mx-auto max-w-6xl px-4 pt-16 pb-16 sm:px-6 sm:pt-24">
-          <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
-            <div>
-              <p className="hero-in font-mono text-muted-foreground text-xs">a player for navidrome · open source</p>
-              <h1 className="hero-in mt-4 font-medium text-5xl leading-[1.02] tracking-tight [animation-delay:80ms] sm:text-7xl">
+        <section className="hero-glow relative overflow-hidden border-b">
+          <div className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 sm:pt-24">
+            <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+              <p className="hero-in inline-flex items-center gap-2 border px-3 py-1 font-mono text-muted-foreground text-xs">
+                <span aria-hidden className="size-1.5 bg-foreground" />
+                for navidrome · open source
+              </p>
+              <h1 className="hero-in mt-6 font-medium text-5xl leading-[1.02] tracking-tight [animation-delay:80ms] sm:text-7xl">
                 a real music app
                 <br />
-                <span className="text-muted-foreground">for the music</span>
-                <br />
-                you own.
+                <span className="text-muted-foreground">for the music you own.</span>
               </h1>
-              <p className="hero-in mt-8 max-w-xl text-lg text-muted-foreground [animation-delay:160ms]">
-                mixes made from what you play, synced lyrics, one session across your devices and the song in your mac's notch. your files,
-                your server, no tracking.
+              <p className="hero-in mt-6 max-w-xl text-lg text-muted-foreground [animation-delay:160ms]">
+                mixes made from what you play, synced lyrics and one session across all your devices. your files, your server, no tracking.
               </p>
-              <div className="hero-in mt-10 flex flex-wrap gap-3 [animation-delay:240ms]">
+              <div className="hero-in mt-9 flex flex-wrap justify-center gap-3 [animation-delay:240ms]">
                 <a href={SELF_HOSTING} className={buttonVariants({ size: "lg" })}>
                   self-host it
                 </a>
                 {github}
               </div>
+              <ul className="hero-in mt-8 flex flex-wrap justify-center gap-x-5 gap-y-1 font-mono text-muted-foreground text-xs [animation-delay:320ms]">
+                {["one container", "web, mac and phone", "mit licensed", "no tracking"].map((item) => (
+                  <li key={item} className="flex items-center gap-1.5">
+                    <CheckIcon aria-hidden className="size-3" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="hero-in [animation-delay:200ms]">
-              <Island />
+
+            <div className="hero-in relative mx-auto mt-14 max-w-5xl [animation-delay:380ms] sm:mt-16">
+              <div className="hero-window overflow-hidden border bg-card shadow-float">
+                <div aria-hidden className="flex h-7 items-center gap-1.5 border-b px-3">
+                  <span className="size-2 border" />
+                  <span className="size-2 border" />
+                  <span className="size-2 border" />
+                </div>
+                <Shot name="album-lyrics" alt="an album in lodesong with its synced lyrics open beside it" className="border-0" priority />
+              </div>
+              <div className="absolute -right-6 -bottom-12 hidden w-44 border bg-card shadow-float lg:block xl:-right-12 xl:w-52">
+                <Phone alt="lodesong on a phone, a song playing" priority />
+              </div>
             </div>
           </div>
-          <Shot name="album-lyrics" alt="an album in lodesong with its synced lyrics open beside it" className="reveal mt-16" priority />
         </section>
 
         <Section
@@ -277,14 +308,17 @@ export default async function Home() {
                 the song lives in the notch, with bars that move with the beat. hover for the controls, click for lyrics and the queue.
                 updates itself and tells you what changed since the version you last opened.
               </p>
-              <div className="mt-auto overflow-hidden border bg-card">
-                <Image
-                  src="/shots/macos-open.png"
-                  alt="the notch island open, with the song, controls and lyrics"
-                  width={1280}
-                  height={520}
-                  className="h-auto w-full"
-                />
+              <div className="mt-auto grid items-center gap-4 sm:grid-cols-2">
+                <Island />
+                <div className="overflow-hidden border bg-card">
+                  <Image
+                    src="/shots/macos-open.png"
+                    alt="the notch island open, with the song, controls and lyrics"
+                    width={1280}
+                    height={520}
+                    className="h-auto w-full"
+                  />
+                </div>
               </div>
               <a href={MAC_APP} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}>
                 download for mac
@@ -406,9 +440,9 @@ export default async function Home() {
           <div className="reveal mt-8 flex gap-4 border border-dashed p-6">
             <SmartphoneIcon className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
             <p className="text-muted-foreground text-sm">
-              <span className="font-medium text-foreground">no phone app, on purpose.</span> lodesong is made for desktop browsers and the
-              mac. on your phone, use any subsonic app (arpeggi, symfonium, substreamer) against the same navidrome: your queue hands off
-              both ways, and mixes show up as playlists there.
+              <span className="font-medium text-foreground">on your phone,</span> open lodesong in the browser and add it to the home
+              screen: it installs like an app, with the layout made for a phone. any subsonic app (arpeggi, symfonium, substreamer) works
+              against the same navidrome too, and your queue hands off both ways. a native iphone app is in the works.
             </p>
           </div>
         </Section>

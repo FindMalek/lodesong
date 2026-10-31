@@ -76,6 +76,23 @@
     animation-range: entry 0% entry 35%;
   }
 }
+/* The hero's backdrop: a dot grid that fades out from the top, drawn in the theme's own foreground. */
+.hero-glow {
+  isolation: isolate;
+}
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(color-mix(in oklab, var(--foreground) 14%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+}
+/* The window fades into the page at its bottom edge, so the app reads as continuing below the fold. */
+.hero-window {
+  mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+}
 @media (prefers-reduced-motion: reduce) {
   .hero-in,
   .reveal,
