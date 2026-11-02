@@ -15,3 +15,22 @@ test("an admin uploads a song and it lands in the upload folder; anything that i
   expect(existsSync(saved)).toBe(true);
   expect(readFileSync(saved, "utf8")).toBe("ID3 not really a song");
 });
+
+test("ai suggests missing tags, only what is ticked is saved, and the song file stays untouched", async ({ page, signedIn }) => {
+  const stamp = Date.now();
+  const frame = Buffer.concat([Buffer.from("TIT2"), Buffer.from([0, 0, 0, 11, 0, 0, 3]), Buffer.from("dl_song_01")]);
+  const song = Buffer.concat([Buffer.from("ID3"), Buffer.from([3, 0, 0, 0, 0, 0, frame.length]), frame]);
+  await signedIn.goto("/upload");
+  await page.getByLabel("pick files").setInputFiles([{ name: `tagless-${stamp}.mp3`, mimeType: "audio/mpeg", buffer: song }]);
+  await page.getByRole("button", { name: "fill missing tags with ai" }).click();
+  await expect(page.getByLabel("artist", { exact: true })).toHaveValue("Big Roshi");
+  await expect(page.getByLabel("use title")).not.toBeChecked();
+  await expect(page.getByLabel("use artist")).toBeChecked();
+  await page.getByRole("button", { name: "save accepted" }).click();
+  await expect(page.getByText(`saved to tagless-${stamp}.mp3.lodesong.json`)).toBeVisible();
+  const file = `test-results/uploads/tagless-${stamp}.mp3`;
+  expect(readFileSync(file).equals(song)).toBe(true);
+  const sidecar = JSON.parse(readFileSync(`${file}.lodesong.json`, "utf8")) as { original: object; accepted: object };
+  expect(sidecar.accepted).toEqual({ artist: "Big Roshi", album: "Nights" });
+  expect(sidecar.original).toEqual({ title: "dl_song_01" });
+});

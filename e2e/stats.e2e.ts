@@ -33,7 +33,11 @@ test("stats show what you played, forgotten favourites make a playlist, and the 
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.getByRole("link", { name: tag })).toBeVisible();
   await expect(page.getByRole("img", { name: /listening clock/ })).toBeVisible();
-  await expect(page.locator("[data-slot=chart]")).toBeVisible();
+  const chart = page.getByRole("slider", { name: "minutes per day" });
+  await expect(chart).toBeVisible();
+  await chart.focus();
+  await page.keyboard.press("End");
+  await expect(chart).toHaveAttribute("aria-valuetext", /: \d[\d,]* minutes?$/);
   // The figures sit in equal tiles, each saying what it counts, and the clock has a legend.
   const tiles = page.locator("dl > div");
   await expect(tiles).toHaveCount(6);
@@ -42,7 +46,7 @@ test("stats show what you played, forgotten favourites make a playlist, and the 
   await expect(page.getByText(/first heard here/)).toBeVisible();
   await expect(page.getByText(/^less/)).toBeVisible();
 
-  await page.getByRole("group", { name: "range" }).getByRole("button", { name: "year" }).click();
+  await page.getByRole("tablist", { name: "range" }).getByRole("tab", { name: "year" }).click();
   await expect(page.getByRole("link", { name: tag })).toBeVisible();
 
   const forgotten = page

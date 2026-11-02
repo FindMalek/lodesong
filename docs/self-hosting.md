@@ -137,6 +137,13 @@ UPLOAD_HOST_DIR=/home/you/music-inbox
 
 Uncomment the `/inbox` volume line in `compose.yaml`.
 
+With `GROQ_API_KEY` set too, each uploaded song gets **fill missing tags with ai**. lodesong reads the file's tags, and
+Groq gets those tags plus the folder and file name it came in with (never the audio) and proposes title, artist, album,
+year, genre and track number where one is missing or clearly garbled. You review it: missing ones start ticked,
+changes to a tag the file already has start unticked, and every value is editable. **save accepted** writes the ticked
+values to `<song>.lodesong.json` next to the song. It does not rewrite the tags inside the audio file (lodesong has no
+tag writer), and beets and Lyterion don't read that file on their own, so it is a record to apply or script from.
+
 ### Playlists from a prompt
 
 ```sh

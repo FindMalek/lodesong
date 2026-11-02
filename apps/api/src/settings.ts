@@ -82,9 +82,9 @@ const SETTINGS = [
     name: "GROQ_API_KEY",
     fallback: "",
     description:
-      'Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Kept server-side. Empty: off.',
+      'Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Also fills missing or garbled tags of uploads for review (needs `UPLOAD_DIR`). Kept server-side. Empty: off.',
   },
-  { name: "GROQ_MODEL", fallback: "openai/gpt-oss-120b", description: "The Groq model for playlists from a prompt." },
+  { name: "GROQ_MODEL", fallback: "openai/gpt-oss-120b", description: "The Groq model for playlists from a prompt and for upload tags." },
   { name: "GROQ_URL", fallback: "https://api.groq.com/openai/v1", description: "Groq's API, or any OpenAI-compatible one." },
   {
     name: "AUDIOMUSE_URL",
