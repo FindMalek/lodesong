@@ -4,9 +4,19 @@ test("jump back in lists the album you just played from, newest first", async ({
   await signedIn.goto("/album/al-3");
   const name = (await page.getByRole("heading", { level: 1 }).textContent())?.trim() ?? "";
   await page.getByRole("button", { name: "play", exact: true }).first().click();
-  await page.getByRole("navigation", { name: "sidebar" }).getByRole("link", { name: "home" }).click();
+  await page.getByRole("toolbar", { name: "app bar" }).getByRole("link", { name: "home" }).click();
   const tile = page.getByRole("list", { name: "jump back in" }).getByRole("link").first();
   await expect(tile).toContainText(name);
   // Still playing: the tile says so.
   await expect(tile.getByRole("img", { name: "playing" })).toBeVisible();
+});
+
+test("see all on a home row opens songs already sorted", async ({ page, signedIn }) => {
+  await signedIn.goto("/");
+  await page.getByRole("link", { name: "see all, plays" }).click();
+  await expect(page).toHaveURL(/\/songs$/);
+  await expect(page.getByRole("group", { name: "sort" }).getByRole("button", { name: "most played" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });

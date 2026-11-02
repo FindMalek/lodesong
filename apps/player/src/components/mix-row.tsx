@@ -1,3 +1,4 @@
+import { Alert, AlertAction, AlertTitle } from "@lodesong/ui/components/alert";
 import { Button } from "@lodesong/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { PlayIcon } from "lucide-react";
@@ -64,7 +65,7 @@ async function saveAsPlaylists(stamp: string, mixes: Mix[]): Promise<Playlist[]>
 
 export function MixRow() {
   const { day, hour, tz, slot } = now();
-  const { data } = useQuery(
+  const mixes = useQuery(
     rpc.mixes.queryOptions({
       input: { day, hour, tz },
       staleTime: (query) => (query.state.data?.mixes.length ? 60 * 60_000 : 0),
@@ -72,6 +73,7 @@ export function MixRow() {
       select: (result) => result.mixes as Mix[],
     }),
   );
+  const { data } = mixes;
   const playlists = useQuery({ ...queries.playlists(), refetchOnMount: false }).data;
   useEffect(() => {
     // New playlists go straight into the cached list: a refetch could undo a delete still waiting out its undo.
@@ -81,6 +83,20 @@ export function MixRow() {
         queryClient.setQueryData(queries.playlists().queryKey, (current?: Playlist[]) => (current ? [...current, ...created] : current));
     });
   }, [data, day, slot]);
+  if (mixes.isPending) return null;
+  if (mixes.isError && !data)
+    return (
+      <Section title="made for you">
+        <Alert variant="destructive">
+          <AlertTitle className="font-mono">couldn't load made for you</AlertTitle>
+          <AlertAction>
+            <Button size="xs" variant="outline" onClick={() => void mixes.refetch()}>
+              retry
+            </Button>
+          </AlertAction>
+        </Alert>
+      </Section>
+    );
   if (!data?.length) return null;
   return (
     <Section title="made for you">

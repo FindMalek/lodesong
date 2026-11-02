@@ -1,8 +1,9 @@
 import { Button } from "@lodesong/ui/components/button";
 import { Kbd } from "@lodesong/ui/components/kbd";
-import { ArrowLeftIcon, ArrowRightIcon, SearchIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, HouseIcon, SearchIcon } from "lucide-react";
 import { lazy, Suspense, useState, useSyncExternalStore } from "react";
 import { useUser } from "@/lib/subsonic";
+import { Link } from "./link";
 
 // The menu (Base UI menu + positioning) loads after first paint; the same button stands in until then.
 const UserMenu = lazy(() => import("./user-menu").then((module) => ({ default: module.UserMenu })));
@@ -77,7 +78,10 @@ export function TopBar({ onSearch, onShortcuts }: { onSearch: () => void; onShor
       >
         <ArrowRightIcon />
       </Button>
-      <div className="flex flex-1 justify-center px-2">
+      <div className="flex flex-1 items-center justify-center gap-1 px-2">
+        <Button variant="ghost" size="icon-sm" aria-label="home" title="home" render={<Link href="/" />}>
+          <HouseIcon />
+        </Button>
         <Button
           variant="outline"
           size="sm"

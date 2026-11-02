@@ -10,7 +10,7 @@ export interface RecentSource {
 }
 
 const KEY = "keep-player:recent-sources";
-const KEEP = 8;
+export const KEEP = 8;
 
 function read(): RecentSource[] {
   try {
