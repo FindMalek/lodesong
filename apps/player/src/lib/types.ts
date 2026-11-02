@@ -29,6 +29,7 @@ export interface Song {
   size?: number;
   starred?: string;
   created?: string;
+  played?: string;
   userRating?: number;
   playCount?: number;
   replayGain?: ReplayGain;

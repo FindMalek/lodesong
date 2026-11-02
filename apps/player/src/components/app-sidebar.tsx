@@ -9,7 +9,6 @@ import {
   FolderIcon,
   HeartIcon,
   HistoryIcon,
-  HouseIcon,
   ListMusicIcon,
   MusicIcon,
   PlusIcon,
@@ -50,7 +49,6 @@ const ElsewhereBadge = lazy(() => import("./elsewhere-badge").then((module) => (
 const PointMenu = lazy(() => import("./item-menu").then((module) => ({ default: module.PointMenu })));
 
 const LIBRARY = [
-  ["/", "home", HouseIcon],
   ["/albums", "albums", Disc3Icon],
   ["/artists", "artists", UsersIcon],
   ["/songs", "songs", MusicIcon],
@@ -179,7 +177,7 @@ export function AppSidebar({ path }: { path: string }) {
                   <SidebarMenuButton
                     size="sm"
                     className="font-mono text-muted-foreground"
-                    isActive={href === "/" ? path === "/" : path.startsWith(href)}
+                    isActive={path.startsWith(href)}
                     tooltip={label}
                     render={<Link href={href} />}
                   >

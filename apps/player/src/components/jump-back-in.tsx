@@ -1,14 +1,26 @@
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Cover } from "@/components/cover";
 import { Equalizer } from "@/components/equalizer";
 import { Section } from "@/components/library";
 import { Link } from "@/components/link";
 import { usePlayer } from "@/lib/player";
-import { useRecentSources } from "@/lib/recent-sources";
+import { queries } from "@/lib/queries";
+import { KEEP, type RecentSource, useRecentSources } from "@/lib/recent-sources";
 import { cn } from "@/lib/utils";
 
 /** Spotify's "jump back in": the albums, playlists and artists you last played from, two lines of compact tiles. */
 export function JumpBackIn() {
-  const recent = useRecentSources();
+  const local = useRecentSources();
+  // This browser's list is lost with its storage and empty on a new device: the server's recent albums fill the gaps.
+  const albums = useQuery(queries.albumList("recent", KEEP)).data;
+  const recent = useMemo(() => {
+    const seen = new Set(local.map((source) => source.href));
+    const server = (albums ?? [])
+      .map((album): RecentSource => ({ kind: "album", name: album.name, href: `/album/${album.id}`, coverArt: album.coverArt }))
+      .filter((source) => !seen.has(source.href));
+    return [...local, ...server].slice(0, KEEP);
+  }, [local, albums]);
   // The one playing right now says so, like the sidebar does.
   const playingHref = usePlayer((state) => state.queue.context.source?.href);
   const playing = usePlayer((state) => state.playing);

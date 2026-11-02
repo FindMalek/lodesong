@@ -1,4 +1,6 @@
+import { Alert, AlertAction, AlertTitle } from "@lodesong/ui/components/alert";
 import { Button } from "@lodesong/ui/components/button";
+import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { PlayIcon } from "lucide-react";
 import { useEffect } from "react";
@@ -64,7 +66,7 @@ async function saveAsPlaylists(stamp: string, mixes: Mix[]): Promise<Playlist[]>
 
 export function MixRow() {
   const { day, hour, tz, slot } = now();
-  const { data } = useQuery(
+  const mixes = useQuery(
     rpc.mixes.queryOptions({
       input: { day, hour, tz },
       staleTime: (query) => (query.state.data?.mixes.length ? 60 * 60_000 : 0),
@@ -72,6 +74,7 @@ export function MixRow() {
       select: (result) => result.mixes as Mix[],
     }),
   );
+  const { data } = mixes;
   const playlists = useQuery({ ...queries.playlists(), refetchOnMount: false }).data;
   useEffect(() => {
     // New playlists go straight into the cached list: a refetch could undo a delete still waiting out its undo.
@@ -81,6 +84,32 @@ export function MixRow() {
         queryClient.setQueryData(queries.playlists().queryKey, (current?: Playlist[]) => (current ? [...current, ...created] : current));
     });
   }, [data, day, slot]);
+  // Never vanish while loading or after a failure: a skeleton holds the place, a failure says so and can retry.
+  if (mixes.isPending)
+    return (
+      <Section title="made for you">
+        <ul aria-label="made for you" aria-busy className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+          {["a", "b", "c", "d", "e", "f"].map((key) => (
+            <li key={key}>
+              <Skeleton className="aspect-square w-full" />
+            </li>
+          ))}
+        </ul>
+      </Section>
+    );
+  if (mixes.isError && !data)
+    return (
+      <Section title="made for you">
+        <Alert variant="destructive">
+          <AlertTitle className="font-mono">couldn't load made for you</AlertTitle>
+          <AlertAction>
+            <Button size="xs" variant="outline" onClick={() => void mixes.refetch()}>
+              retry
+            </Button>
+          </AlertAction>
+        </Alert>
+      </Section>
+    );
   if (!data?.length) return null;
   return (
     <Section title="made for you">
