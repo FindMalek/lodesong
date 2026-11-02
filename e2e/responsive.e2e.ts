@@ -147,3 +147,76 @@ test("on a phone settings is a tab strip above the content, not a sidebar that s
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
   expect(wide).toBe(false);
 });
+
+for (const width of [320, 390])
+  test(`at ${width}px the albums filters sit behind a button`, async ({ signedIn: page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.goto("/albums");
+    const filters = page.getByRole("button", { name: "filters", exact: true });
+    await expect(filters).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "genre" })).toBeHidden();
+    await filters.click();
+    await expect(page.getByRole("combobox", { name: "genre" })).toBeVisible();
+    await page.getByRole("button", { name: "unplayed" }).click();
+    await expect(page.getByRole("button", { name: "filters · 1" })).toBeVisible();
+  });
+
+for (const width of [320, 390])
+  test(`at ${width}px the A-Z strip is one scrollable row and the lyrics and doctor tables show every column`, async ({
+    signedIn: page,
+  }) => {
+    await page.setViewportSize({ width, height: 700 });
+    const albums = Array.from({ length: 3 }, (_, index) => ({
+      id: `al-${index}`,
+      name: `An album with quite a long name ${index}`,
+      artist: "An artist with a long name too",
+      total: 12,
+      synced: 2,
+      plain: 1,
+      missing: 9,
+    }));
+    await page.route("**/api/lyrics/coverage", (route) =>
+      route.fulfill({ json: { total: 100, synced: 20, plain: 10, instrumental: 5, missing: 60, unchecked: 5, albums } }),
+    );
+    await page.route("**/api/doctor", (route) =>
+      route.fulfill({
+        json: {
+          health: 80,
+          checks: [
+            {
+              id: "duplicates",
+              title: "possible duplicates",
+              hint: "the same song twice",
+              count: 2,
+              of: 100,
+              findings: [
+                { label: "An artist with a long name – A song with a long title", detail: "al-1 · 3:45 · FLAC", songId: "so-1" },
+                { label: "Another artist – Another song", detail: "al-2 · 4:01 · MP3", songId: "so-2" },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    await page.goto("/artists");
+    const strip = page.getByRole("navigation", { name: "jump to letter" });
+    await expect(strip).toBeVisible();
+    const row = await strip.evaluate((nav) => ({
+      scrolls: nav.scrollWidth > nav.clientWidth,
+      tops: new Set([...nav.querySelectorAll("button")].map((button) => Math.round(button.getBoundingClientRect().top))).size,
+    }));
+    expect(row.scrolls).toBe(true);
+    expect(row.tops).toBe(1);
+
+    for (const path of ["/lyrics", "/doctor"]) {
+      await page.goto(path);
+      const table = page.locator("[data-slot=table-container]").first();
+      await expect(table).toBeVisible();
+      const fits = await table.evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+      expect(fits, `${path}: the table scrolls sideways`).toBe(true);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+      expect(wide, `${path}: the page scrolls sideways`).toBe(false);
+      if (path === "/lyrics") await expect(page.getByRole("columnheader", { name: "synced" })).toBeInViewport();
+    }
+  });
