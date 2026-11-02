@@ -534,6 +534,16 @@ const server = Bun.serve({
             ],
           })
         : new Response("unauthorized", { status: 401 });
+    if (url.pathname === "/lyterion/api/rpc/api-reference/player/followed-artists")
+      return request.headers.get("x-lyterion-token") === "e2e-lyterion-token-0123456789"
+        ? Response.json({
+            artists: [
+              { id: "sp1", name: "Night Owls", genres: [], image: null },
+              { id: "sp2", name: "Glass Harbor", genres: ["indie"], image: null },
+            ],
+            syncedAt: "2026-11-01T04:00:00.000Z",
+          })
+        : new Response("unauthorized", { status: 401 });
     // Lyterion's wishlist (add a song from a link or a name): preview, add, then a status that moves along per call.
     if (url.pathname.startsWith("/lyterion/api/rpc/api-reference/player/wishlist")) {
       if (request.headers.get("x-lyterion-token") !== "e2e-lyterion-token-0123456789") return new Response("unauthorized", { status: 401 });

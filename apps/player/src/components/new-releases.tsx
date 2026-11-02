@@ -7,6 +7,7 @@ import { ExternalLinkIcon, PinIcon, UsersIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Section } from "@/components/library";
 import { NewReleasesSkeleton } from "@/components/skeletons";
+import SyncFollows from "@/components/sync-follows";
 import { rpc } from "@/lib/rpc";
 
 function when(date: string): string {
@@ -56,6 +57,7 @@ function Following({ onOpenChange }: { onOpenChange: (open: boolean) => void }) 
             follow
           </Button>
         </form>
+        <SyncFollows />
         <ul aria-label="followed artists" className="flex max-h-72 flex-col overflow-y-auto">
           {follows.data?.artists.map((artist) => (
             <li key={artist.name} className="flex items-center gap-2 py-1">

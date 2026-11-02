@@ -10,6 +10,7 @@ import { config } from "./config";
 import { CoverCache } from "./covers";
 import { openLibraryDb } from "./db";
 import { DeviceHub } from "./devices";
+import { FollowSync } from "./follow-sync";
 import { font } from "./fonts";
 import { HealthCheck, UpdateCheck, VERSION } from "./health";
 import { LrcWriter } from "./lrc-writer";
@@ -73,6 +74,8 @@ const releases = config.musicbrainzUrl
     })
   : null;
 releases?.start();
+const followSync = config.lyterion ? new FollowSync(library, config.lyterion, () => sessions.adminAccounts()) : null;
+followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
 const api = createApi({
   upstreams: config.upstreams,
@@ -90,6 +93,7 @@ const api = createApi({
   uploadDir: config.uploadDir,
   lyterion: config.lyterion,
   releases,
+  followSync,
   devices: config.oneSession ? new DeviceHub() : null,
   groq: config.groq,
   audiomuseUrl: config.audiomuseUrl,

@@ -59,7 +59,7 @@ const SETTINGS = [
     name: "LYTERION_URL",
     fallback: "",
     description:
-      "Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead.",
+      "Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced.",
   },
   {
     name: "LYTERION_TOKEN",

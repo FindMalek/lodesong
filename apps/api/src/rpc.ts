@@ -8,6 +8,7 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { appearsOn } from "./appears-on";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
+import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
 import type { LyricsService } from "./lyrics";
@@ -33,6 +34,7 @@ export interface RpcDeps {
   cache?: Cache;
   lyrics: LyricsService;
   releases?: ReleaseWatch | null;
+  followSync?: FollowSync | null;
 }
 
 type Context = { session: Session | null; client: string };
@@ -66,6 +68,7 @@ export function createRpc({
   cache = memoryCache(),
   lyrics,
   releases = null,
+  followSync = null,
 }: RpcDeps) {
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
@@ -120,6 +123,13 @@ export function createRpc({
         setFollow(library, context.account, input.name, input.status);
         if (input.status !== "unfollowed") releases?.refresh(input.name);
         return { artists: listFollows(library, context.account) };
+      }),
+      sync: signedIn.follows.sync.handler(async ({ context }) => {
+        if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
+        if (!followSync) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
+        const result = await followSync.sync(context.account);
+        if (!result) throw new ORPCError("BAD_GATEWAY", { message: "lyterion didn't answer" });
+        return { ...result, artists: listFollows(library, context.account) };
       }),
     },
     releases: {

@@ -17,7 +17,7 @@ boot with a message naming the variable.
 | `LRCLIB_URL` | `https://lrclib.net` | Where lyrics Navidrome doesn't have are looked up. Empty turns LRCLIB off. |
 | `LYRICS_BACKFILL` | `on` | `on`: walk the library in the background (about one song a second) to fetch lyrics nobody opened yet. `off` to disable. |
 | `LYRICS_WRITE_LRC` | `off` | `on`: lyrics found on LRCLIB are also saved as `<track>.lrc` next to the audio file, so other clients get them. Needs `MUSIC_DIR` and Navidrome's "Report Real Path". Never overwrites; undo from the lyrics page. |
-| `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead. |
+| `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced. |
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org` | Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off. |
 | `RELEASES_AUTO_GET` | `off` | `on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over. |
