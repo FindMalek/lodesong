@@ -6,6 +6,7 @@ import {
   isRecent,
   listFollows,
   MusicBrainz,
+  markSeen,
   matchArtist,
   newReleases,
   ReleaseWatch,
@@ -92,4 +93,15 @@ test("a check resolves the artist once, stores only new release groups and lists
   expect(seen.filter((url) => url.includes("/artist?"))).toHaveLength(1);
   expect(seen.filter((url) => url.includes("/release-group?"))).toHaveLength(1);
   expect(newReleases(db, "s:u", NOW).map((release) => release.title)).toEqual(["Brand New"]);
+});
+
+test("marking a release seen sticks for that account only", () => {
+  const db = openLibraryDb(":memory:");
+  setFollow(db, "s:u", "Hurt", "followed");
+  setFollow(db, "s:other", "Hurt", "followed");
+  db.run("insert into artist_mbids (key, name, mbid, checked) values ('hurt', 'Hurt', 'mb-hurt', 0)");
+  db.run("insert into release_groups (id, mbid, title, kind, date, seen) values ('g1', 'mb-hurt', 'Brand New', 'album', '2026-10-10', 0)");
+  markSeen(db, "s:u", ["g1"]);
+  expect(newReleases(db, "s:u", NOW).map((release) => release.seen)).toEqual([true]);
+  expect(newReleases(db, "s:other", NOW).map((release) => release.seen)).toEqual([false]);
 });

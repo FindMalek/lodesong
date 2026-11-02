@@ -1,6 +1,7 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@lodesong/ui/components/collapsible";
 import { useQuery } from "@tanstack/react-query";
 import {
+  BellIcon,
   BookmarkIcon,
   ChartColumnIcon,
   ChevronRightIcon,
@@ -54,6 +55,7 @@ const LIBRARY = [
   ["/songs", "songs", MusicIcon],
   ["/liked", "liked songs", HeartIcon],
   ["/history", "history", HistoryIcon],
+  ["/following", "following", BellIcon],
   ["/moments", "moments", BookmarkIcon],
   ["/stats", "stats", ChartColumnIcon],
   ["/genres", "genres", TagIcon],

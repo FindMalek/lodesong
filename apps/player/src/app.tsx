@@ -40,6 +40,7 @@ import {
   ArtistsPage,
   DoctorPage,
   FoldersPage,
+  FollowingPage,
   GenrePage,
   GenresPage,
   HistoryPage,
@@ -140,6 +141,8 @@ function Page({ path }: { path: string }) {
       return <SearchPage />;
     case "history":
       return <HistoryPage />;
+    case "following":
+      return <FollowingPage />;
     case "stats":
       return <StatsPage />;
     case "lyrics":
