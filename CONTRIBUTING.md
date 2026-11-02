@@ -66,7 +66,10 @@ side). Albums and playlists can be kept offline (pinned, never evicted).
 
 Pages are separate chunks (`apps/player/src/routes.tsx`), preloaded when a link is hovered or focused and all fetched once the
 browser is idle. The first screen is budgeted (`bun run size`) and the home page must score ≥ 93 on Lighthouse
-(`e2e/lighthouse.e2e.ts`).
+desktop and ≥ 70 on mobile (slow 4G, 4x CPU; `e2e/lighthouse.e2e.ts`). `e2e/interactions.e2e.ts` budgets the slowest input
+event while a 10k-song list is opened, scrolled and played. `bun run size` also fails when `recharts` or `cmdk` reach the
+first screen. Every CI run uploads the first-screen sizes (`perf-trend-size`), and a release also uploads Lighthouse
+desktop and mobile numbers (`perf-trend-<version>`) to compare release to release.
 
 ## Deploys
 
