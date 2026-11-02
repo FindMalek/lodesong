@@ -12,7 +12,10 @@ test("radio from a song: it starts with that song, keeps 30 ahead as it plays, a
     .first()
     .click({ button: "right" });
   await page.getByRole("menu").getByRole("menuitem", { name: "start radio" }).click();
-  await page.getByRole("button", { name: "play radio" }).click();
+  // The radio opens as a page, like a playlist, with the song it starts from on top.
+  await expect(page).toHaveURL(/\/radio$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(`${titles[0]} radio`);
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
   const bar = page.getByRole("contentinfo");
   await expect(bar.getByRole("link", { name: titles[0] as string, exact: true })).toBeVisible();
 
@@ -51,7 +54,7 @@ test("radio from a song: it starts with that song, keeps 30 ahead as it plays, a
 test("a genre page starts that genre's radio", async ({ page, signedIn }) => {
   await signedIn.goto("/genre/Rock");
   await page.getByRole("button", { name: "rock radio" }).click();
-  await page.getByRole("button", { name: "play radio" }).click();
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
   await page.keyboard.press("q");
   await expect(page.getByRole("complementary", { name: "queue" }).getByRole("region", { name: "radio" })).toContainText("Rock radio");
 });

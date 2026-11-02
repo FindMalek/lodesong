@@ -4,6 +4,7 @@ import { currentSong, player } from "./player";
 import { isSkipped } from "./prefs";
 import { contextUpcoming } from "./queue";
 import { artistOf, pick, type Station } from "./radio-pick";
+import { go } from "./router";
 import { api, HEADERS, onAccountChange } from "./subsonic";
 import type { MenuTarget } from "./targets";
 import type { Song } from "./types";
@@ -211,11 +212,12 @@ async function buildPreview(seed: RadioSeed): Promise<RadioPreview | null> {
   return { seed, station: built, songs: start };
 }
 
-/** Builds the first songs and shows them as a preview; nothing plays until `playRadio`. */
+/** Builds the first songs and opens the radio page with them; nothing plays until `playRadio`. */
 export async function startRadio(seed: RadioSeed): Promise<void> {
   try {
     preview = await buildPreview(seed);
     emit();
+    if (preview) go("/radio");
   } catch {
     notify({ kind: "error", message: "couldn't start the radio" });
   }
@@ -237,8 +239,12 @@ export function dropFromPreview(songId: string): void {
   emit();
 }
 
-export function cancelRadioPreview(): void {
-  preview = null;
+export function moveInPreview(from: number, to: number): void {
+  if (!preview || from === to || to < 0 || to >= preview.songs.length) return;
+  const songs = [...preview.songs];
+  const [moved] = songs.splice(from, 1);
+  if (moved) songs.splice(to, 0, moved);
+  preview = { ...preview, songs };
   emit();
 }
 
@@ -252,7 +258,6 @@ export async function savePreview(): Promise<void> {
 export function playRadio(): void {
   if (!preview?.songs.length) return;
   const { station: built, songs } = preview;
-  preview = null;
   station = built;
   for (const song of songs) station.played.add(song.id);
   player.play(songs, 0, { shuffle: false, source: { kind: SOURCE_KIND, name: station.name, href: "/" } });

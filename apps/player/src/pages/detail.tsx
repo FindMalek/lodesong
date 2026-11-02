@@ -7,7 +7,7 @@ import { Switch } from "@lodesong/ui/components/switch";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon, PlayIcon, RadioIcon, SearchIcon, Trash2Icon } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ArtistCard } from "@/components/artist-card";
 import { Aura } from "@/components/aura";
 import { Cover } from "@/components/cover";
@@ -41,6 +41,7 @@ import {
   updatePlaylist,
 } from "@/lib/playlists";
 import { queries, queryClient } from "@/lib/queries";
+import { dropFromPreview, moveInPreview, playRadio, reshuffleRadio, savePreview, useRadioPreview } from "@/lib/radio";
 import { usePath } from "@/lib/router";
 import { rpc } from "@/lib/rpc";
 import type { Album, Artist, Playlist, Song } from "@/lib/types";
@@ -680,6 +681,61 @@ export function PlaylistPage({ id }: { id: string }) {
             <TrackList songs={shown} source={source} filterable editing={editing} />
           </>
         )}
+      </Content>
+    </>
+  );
+}
+
+/** A radio before and while it plays, laid out like a playlist: the songs it starts with, and it keeps adding more. */
+export function RadioPage() {
+  const preview = useRadioPreview();
+  const noop = useCallback(() => undefined, []);
+  if (!preview)
+    return (
+      <Content>
+        <EmptyState>no radio yet. start one from an album, an artist, a genre or a song</EmptyState>
+      </Content>
+    );
+  const { songs, station } = preview;
+  const source = { kind: "radio", name: station.name, href: "/radio" };
+  const editing: ListEditing = {
+    remove: (indexes) => {
+      for (const index of [...indexes].sort((a, b) => b - a)) {
+        const song = songs[index];
+        if (song) dropFromPreview(song.id);
+      }
+    },
+    move: (index, delta) => {
+      moveInPreview(index, index + delta);
+      return index + delta;
+    },
+    moveTo: moveInPreview,
+    hidden: new Set(),
+    toggleHidden: noop,
+  };
+  const total = songs.reduce((total, song) => total + (song.duration ?? 0), 0);
+  return (
+    <>
+      <Hero
+        cover={songs[0]?.coverArt}
+        kind={<Kind>radio</Kind>}
+        title={station.name}
+        backdrop={songs.length > 0 ? <Aura id={`radio:${station.name}`} songs={songs} className="size-full" /> : undefined}
+        onPlay={playRadio}
+        onShuffle={() => void reshuffleRadio()}
+        onQueue={() => player.addToQueue(songs)}
+        extra={
+          <Button variant="outline" onClick={() => void savePreview()}>
+            save as playlist
+          </Button>
+        }
+      >
+        <span className="font-mono text-muted-foreground text-xs">
+          {plural(songs.length, "song")} to start with{total ? ` · ${length(total)}` : ""} · keeps adding more as it plays
+        </span>
+      </Hero>
+      <Content>
+        <TrackList songs={songs} source={source} editing={editing} />
       </Content>
     </>
   );

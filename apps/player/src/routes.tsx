@@ -41,6 +41,7 @@ const SECTIONS: Record<string, keyof typeof chunks> = {
   doctor: "doctor",
   upload: "upload",
   listen: "listen",
+  radio: "detail",
   song: "moments",
 };
 
@@ -101,6 +102,7 @@ export const AlbumPage = page("detail", "AlbumPage");
 export const ArtistPage = page("detail", "ArtistPage");
 export const GenrePage = page("detail", "GenrePage");
 export const PlaylistPage = page("detail", "PlaylistPage");
+export const RadioPage = page("detail", "RadioPage");
 export const FoldersPage = page("folders", "FoldersPage");
 export const SearchPage = page("search", "SearchPage");
 export const HistoryPage = page("history", "HistoryPage");
