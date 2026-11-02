@@ -12,6 +12,7 @@ const PAGES = [
   "/genres",
   "/import",
   "/doctor",
+  "/stats",
   "/listen",
   "/genre/Rock",
   "/folders",

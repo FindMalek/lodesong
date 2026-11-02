@@ -9,7 +9,8 @@ const PAGE_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-frame-options": "DENY",
-  "permissions-policy": "camera=(), geolocation=(), payment=(), usb=(), microphone=(self), speaker-selection=(self)",
+  "reporting-endpoints": 'csp="/api/csp-report"',
+  "permissions-policy": "camera=(), geolocation=(), payment=(), usb=(), microphone=(self)",
 };
 
 function encoded(request: Request, asset: Asset): { file: string; encoding?: string } {
@@ -37,7 +38,7 @@ function index(request: Request): Response {
   if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag } });
   return serve(request, page, {
     ...PAGE_HEADERS,
-    ...(csp ? { "content-security-policy": `${csp}; frame-ancestors 'none'` } : {}),
+    ...(csp ? { "content-security-policy": `${csp}; frame-ancestors 'none'; report-uri /api/csp-report; report-to csp` } : {}),
     "cache-control": "no-cache",
     etag,
   });

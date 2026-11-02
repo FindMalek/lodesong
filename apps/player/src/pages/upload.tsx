@@ -4,8 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { UploadIcon } from "lucide-react";
 import { type DragEvent, useRef, useState } from "react";
 import { Content, EmptyState, PageHeader } from "@/components/library";
+import { UploadTags } from "@/components/upload-tags";
 import { HEADERS } from "@/lib/subsonic";
 import { cn } from "@/lib/utils";
+
+const AUDIO = /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|wv)$/i;
 
 interface Item {
   file: File;
@@ -13,18 +16,26 @@ interface Item {
   path: string;
   state: "waiting" | "sending" | "done" | "failed";
   sent: number;
+  /** Where the server put it, which differs from `path` when a file with that name was already there. */
+  saved?: string;
   error?: string;
 }
 
 /** One file per request with XHR, because fetch can't report upload progress. */
-function send(item: Item, onProgress: (sent: number) => void): Promise<void> {
+function send(item: Item, onProgress: (sent: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("PUT", `/api/upload?${new URLSearchParams({ path: item.path })}`);
     for (const [name, value] of Object.entries(HEADERS)) request.setRequestHeader(name, value);
     request.upload.onprogress = (event) => onProgress(event.loaded);
     request.onload = () => {
-      if (request.status < 300) return resolve();
+      if (request.status < 300) {
+        try {
+          return resolve((JSON.parse(request.responseText) as { saved: string }).saved);
+        } catch {
+          return resolve(item.path);
+        }
+      }
       // A proxy's 413 or 502 is html: a throw here would leave the promise, and the whole queue, hanging.
       let error: string | undefined;
       try {
@@ -57,7 +68,10 @@ async function filesFrom(entry: FileSystemEntry, prefix = ""): Promise<Item[]> {
 export function UploadPage() {
   const status = useQuery({
     queryKey: ["upload"],
-    queryFn: async () => ((await fetch("/api/upload", { headers: HEADERS })).ok ? true : false),
+    queryFn: async () => {
+      const response = await fetch("/api/upload", { headers: HEADERS });
+      return response.ok ? ((await response.json()) as { enabled: boolean; metadata?: boolean }) : { enabled: false };
+    },
   });
   const [items, setItems] = useState<Item[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -73,8 +87,8 @@ export function UploadPage() {
     for (const item of queue) {
       update(item.path, { state: "sending" });
       try {
-        await send(item, (sent) => update(item.path, { sent }));
-        update(item.path, { state: "done", sent: item.file.size });
+        const saved = await send(item, (sent) => update(item.path, { sent }));
+        update(item.path, { state: "done", sent: item.file.size, saved });
       } catch (error) {
         update(item.path, { state: "failed", error: (error as Error).message });
       }
@@ -95,7 +109,7 @@ export function UploadPage() {
     add((await Promise.all(entries.map((entry) => filesFrom(entry)))).flat());
   };
 
-  if (status.data === false)
+  if (status.data?.enabled === false)
     return (
       <>
         <PageHeader title="upload" />
@@ -152,6 +166,9 @@ export function UploadPage() {
                   </span>
                 </div>
                 <Progress value={item.file.size ? Math.round((item.sent / item.file.size) * 100) : 0} aria-label={item.path} />
+                {status.data && "metadata" in status.data && status.data.metadata && item.saved && AUDIO.test(item.saved) && (
+                  <UploadTags path={item.saved} />
+                )}
               </li>
             ))}
           </ul>

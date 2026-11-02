@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
+import { type GroqConfig, groqJson } from "./groq";
 import { keyOf, seeded, shuffle } from "./mixes";
 import { readPrefs } from "./prefs";
 import { genresOf, type StatsSong as Song } from "./stats";
@@ -130,28 +131,19 @@ Answer with JSON only: {"name": short lowercase playlist name, "description": on
 Pick artists that fit the mood, sound and era asked for, from what you know about them. Never name an artist that isn't in the catalog. Prefer artists they play when it fits, and mix in a few they don't.`;
 
 export async function askGroq(
-  { key, model, url }: { key: string; model: string; url: string },
+  config: GroqConfig,
   prompt: string,
   artists: Map<string, Artist>,
   fetcher: typeof fetch = fetch,
 ): Promise<Plan | null> {
-  const response = await fetcher(`${url}/chat/completions`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      temperature: 0.4,
-      max_completion_tokens: 1200,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: `Request: ${prompt.slice(0, 300)}\n\nCatalog:\n${catalog(artists)}` },
-      ],
-    }),
-    signal: AbortSignal.timeout(30_000),
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const body = (await response.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null;
-  const text = body?.choices?.[0]?.message?.content;
+  const text = await groqJson(
+    config,
+    [
+      { role: "system", content: SYSTEM },
+      { role: "user", content: `Request: ${prompt.slice(0, 300)}\n\nCatalog:\n${catalog(artists)}` },
+    ],
+    { temperature: 0.4, maxTokens: 1200 },
+    fetcher,
+  );
   return text ? parsePlan(text, artists) : null;
 }
