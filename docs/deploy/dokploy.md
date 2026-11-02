@@ -11,6 +11,7 @@ In Dokploy: **Create Service → Compose**, source **Raw**, and paste:
 services:
   player:
     image: ghcr.io/findmalek/lodesong:main   # or :latest for releases only
+    pull_policy: always                        # without it a redeploy reuses the cached image and the old version keeps running
     restart: unless-stopped
     environment:
       NAVIDROME_URL: http://navidrome:4533       # Navidrome's service name on dokploy-network
