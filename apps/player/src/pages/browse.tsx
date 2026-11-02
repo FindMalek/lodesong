@@ -6,7 +6,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { Toggle } from "@lodesong/ui/components/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { HeartIcon, PlayIcon, ShuffleIcon } from "lucide-react";
+import { ArrowRightIcon, HeartIcon, PlayIcon, ShuffleIcon } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { JumpBackIn } from "@/components/jump-back-in";
@@ -59,6 +59,7 @@ function AlbumRow({
   priority?: number;
 }) {
   const [measure, count] = useShelfCount();
+  const [expanded, setExpanded] = useState(false);
   // A failing row says so in place, with a retry; the other rows carry on.
   if (query.isError && !query.data)
     return (
@@ -74,12 +75,48 @@ function AlbumRow({
       </Section>
     );
   if (!query.isPending && !query.data?.length) return null;
+  const more = (query.data?.length ?? 0) > count;
   return (
     <Section title={title} action={action}>
       <div ref={measure}>
-        {query.data ? <AlbumGrid albums={query.data.slice(0, count)} priority={priority} /> : <AlbumGridSkeleton count={count} />}
+        {query.data ? (
+          <AlbumGrid albums={query.data.slice(0, expanded ? SHELF_SIZE : count)} priority={priority} />
+        ) : (
+          <AlbumGridSkeleton count={count} />
+        )}
+        {more && (
+          <Button
+            variant="link"
+            size="xs"
+            className="mt-2 h-auto p-0 font-mono text-muted-foreground"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "show less" : "show more"}
+          </Button>
+        )}
       </div>
     </Section>
+  );
+}
+
+/** Opens the songs page already sorted: the page keeps its sort per browser, so set it, then follow the link. */
+function SeeAll({ sort }: { sort: SongSort }) {
+  return (
+    <Link
+      href="/songs"
+      aria-label={`see all, ${sort}`}
+      title="see all songs"
+      className="text-muted-foreground hover:text-foreground"
+      onClick={() => {
+        try {
+          localStorage.setItem("keep-player:view:songs", JSON.stringify({ sort }));
+        } catch {
+          // The page opens in its last sort instead.
+        }
+      }}
+    >
+      <ArrowRightIcon className="size-4" />
+    </Link>
   );
 }
 
@@ -87,7 +124,6 @@ export function HomePage() {
   const newest = useQuery(queries.albumList("newest", SHELF_SIZE));
   const recent = useQuery(queries.albumList("recent", SHELF_SIZE));
   const frequent = useQuery(queries.albumList("frequent", SHELF_SIZE));
-  const random = useQuery(queries.albumList("random", SHELF_SIZE));
   const nothing = [newest, recent, frequent].every((query) => query.data && query.data.length === 0);
 
   return (
@@ -115,23 +151,14 @@ export function HomePage() {
         </Content>
       ) : (
         <>
-          <JumpBackIn />
-          <MixRow />
-          <AlbumRow title="recently added" query={newest} priority={8} />
-          <AlbumRow title="recently played" query={recent} />
-          <AlbumRow title="most played" query={frequent} />
-          <AlbumRow
-            title="rediscover"
-            query={random}
-            action={
-              <Button variant="link" size="xs" className="h-auto p-0 font-mono text-muted-foreground" onClick={() => void random.refetch()}>
-                shuffle
-              </Button>
-            }
-          />
           <Suspense fallback={null}>
             <NewReleases />
           </Suspense>
+          <JumpBackIn />
+          <MixRow />
+          <AlbumRow title="recently added" query={newest} priority={8} action={<SeeAll sort="added" />} />
+          <AlbumRow title="recently played" query={recent} action={<SeeAll sort="played" />} />
+          <AlbumRow title="most played" query={frequent} action={<SeeAll sort="plays" />} />
         </>
       )}
     </>
@@ -272,6 +299,7 @@ const SONG_SORTS = [
   ["artist", "artist"],
   ["album", "album"],
   ["added", "recently added"],
+  ["played", "recently played"],
   ["plays", "most played"],
   ["year", "year"],
   ["duration", "duration"],
@@ -373,6 +401,7 @@ function sortSongs(songs: Song[], sort: Exclude<SongSort, "library">, addedField
   const text = (value?: string) => value ?? "";
   const sorted = [...songs];
   if (sort === "added") sorted.sort((a, b) => text(b[addedField]).localeCompare(text(a[addedField])));
+  else if (sort === "played") sorted.sort((a, b) => text(b.played).localeCompare(text(a.played)));
   else if (sort === "plays") sorted.sort((a, b) => (b.playCount ?? 0) - (a.playCount ?? 0));
   else if (sort === "year" || sort === "duration") sorted.sort((a, b) => (b[sort] ?? 0) - (a[sort] ?? 0));
   else sorted.sort((a, b) => text(a[sort]).localeCompare(text(b[sort]), undefined, { sensitivity: "base" }));
