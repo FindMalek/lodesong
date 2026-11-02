@@ -3,6 +3,7 @@
 services:
   player:
     image: ghcr.io/findmalek/lodesong:latest
+    pull_policy: always
     restart: unless-stopped
     environment:
       NAVIDROME_URL: http://navidrome:4533
