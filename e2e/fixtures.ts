@@ -5,7 +5,9 @@ export async function signIn(page: Page): Promise<void> {
   await page.getByLabel("username").fill("demo");
   await page.getByLabel("password").fill("demo");
   await page.getByRole("button", { name: "sign in" }).click();
-  await expect(page.getByRole("link", { name: "albums", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "albums", exact: true }).or(page.getByRole("button", { name: "open menu" }))).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 export const test = base.extend<{ signedIn: Page }>({
@@ -31,6 +33,8 @@ export const test = base.extend<{ signedIn: Page }>({
 });
 
 export { expect };
+
+export const onPhone = (): boolean => base.info().project.name === "phone";
 
 /** Headless Chromium never advances <audio> `currentTime`; this moves media time in real time while playing. */
 export function fakeMediaClock(): void {
