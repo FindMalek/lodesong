@@ -9,7 +9,7 @@ apps/macos/build.sh && apps/macos/pkg.sh   # → apps/macos/dist/lodesong-macos.
 
 ## Add it to Fleet
 
-1. Build the pkg (above).
+1. Download `lodesong-macos.pkg` from the [latest release](https://github.com/FindMalek/lodesong/releases/latest), or build it (above).
 2. Fleet → **Software** → **Add software** → **Custom package**, pick the team and upload the file. Fleet reads the
    bundle id (`engineer.findmalek.lodesong`) and version from it.
 3. Leave the default install script, or set **self-service** so people can install it from Fleet Desktop.
