@@ -1,12 +1,11 @@
 import type { StatItem } from "@lodesong/shared/stats";
 import { Button } from "@lodesong/ui/components/button";
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@lodesong/ui/components/chart";
 import { Input } from "@lodesong/ui/components/input";
-import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@lodesong/ui/components/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { ListPlusIcon, PlayIcon, SparklesIcon } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import { lazy, Suspense, useState } from "react";
+import { DayChart } from "@/components/day-chart";
 import { Content, EmptyState, PageHeader, Section, TrackList } from "@/components/library";
 import { Link } from "@/components/link";
 import { TrackListSkeleton } from "@/components/skeletons";
@@ -31,8 +30,6 @@ const RANGES = [
 type Range = (typeof RANGES)[number][0];
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-const chartConfig = { minutes: { label: "minutes", color: "var(--chart-1)" } } satisfies ChartConfig;
-
 const startOfDay = (time: number) => {
   const day = new Date(time);
   day.setHours(0, 0, 0, 0);
@@ -42,6 +39,13 @@ const dateInput = (time: number) => new Date(time - new Date(time).getTimezoneOf
 const fromInput = (value: string) => {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year ?? 1970, (month ?? 1) - 1, day ?? 1).getTime();
+};
+
+const rangeLabel = (from: number, to: number): string => {
+  const sameYear = new Date(from).getFullYear() === new Date(to).getFullYear();
+  const format = (time: number, year: boolean) =>
+    new Date(time).toLocaleDateString(undefined, { month: "short", day: "numeric", ...(year ? { year: "2-digit" } : {}) }).toLowerCase();
+  return `${format(from, !sameYear)} – ${format(to, !sameYear)}`;
 };
 
 /** One figure with what it counts underneath, so nothing needs hovering to be understood. Equal tiles in a grid. */
@@ -60,7 +64,7 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
 function TopList({ title, items, href }: { title: string; items: StatItem[]; href?: (item: StatItem) => string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <h3 className="font-mono text-muted-foreground text-xs">{title}</h3>
+      <h2 className="font-mono text-muted-foreground text-xs">{title}</h2>
       {items.length === 0 ? (
         <p className="font-mono text-muted-foreground text-sm">—</p>
       ) : (
@@ -156,7 +160,6 @@ export function StatsPage() {
     staleTime: 60 * 60_000,
   });
   const data = stats.data;
-  const chartDays = useMemo(() => data?.days.map((day) => ({ ...day, label: day.day.slice(5) })) ?? [], [data]);
 
   async function playlistFromForgotten(): Promise<void> {
     const songs = forgotten.data ?? [];
@@ -171,7 +174,7 @@ export function StatsPage() {
 
   return (
     <>
-      <PageHeader title="stats" meta={data ? `${plural(data.minutes, "minute")} · ${plural(data.plays, "play")}` : undefined}>
+      <PageHeader title="stats" meta={`${rangeLabel(from, to - DAY)}${data ? ` · ${data.minutes.toLocaleString()} min` : ""}`}>
         <Button variant="outline" size="sm" onClick={() => setRecapOpen(true)}>
           <SparklesIcon />
           recap
@@ -179,22 +182,15 @@ export function StatsPage() {
       </PageHeader>
       <Content>
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <ToggleGroup
-            variant="outline"
-            size="sm"
-            aria-label="range"
-            value={[range]}
-            onValueChange={(value: string[]) => {
-              const next = value[0] as Range | undefined;
-              if (next) setRange(next);
-            }}
-          >
-            {RANGES.map(([value, label]) => (
-              <ToggleGroupItem key={value} value={value} className="font-mono font-normal">
-                {label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <Tabs value={range} onValueChange={(value) => setRange(value as Range)}>
+            <TabsList variant="line" aria-label="range" className="font-mono">
+              {RANGES.map(([value, label]) => (
+                <TabsTrigger key={value} value={value} className="flex-none">
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           {range === "custom" && (
             <div className="flex items-center gap-1 font-mono text-sm">
               <Input
@@ -237,14 +233,7 @@ export function StatsPage() {
               <Stat label="streak" value={plural(data.streaks.current, "day")} note={`longest ${plural(data.streaks.longest, "day")}`} />
               <Stat label="skips" value={data.skips.toLocaleString()} note="left within 30 s" />
             </dl>
-            <ChartContainer config={chartConfig} className="aspect-auto h-40 w-full">
-              <BarChart data={chartDays} margin={{ left: 0, right: 0 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={24} />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent hideIndicator />} />
-                <Bar dataKey="minutes" fill="var(--color-minutes)" isAnimationActive={false} />
-              </BarChart>
-            </ChartContainer>
+            <DayChart days={data.days} />
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               <TopList title="top songs" items={data.top.songs} />
               <TopList title="top artists" items={data.top.artists} href={(item) => `/artist/${encodeURIComponent(item.id)}`} />
@@ -252,7 +241,7 @@ export function StatsPage() {
               <TopList title="top genres" items={data.top.genres} href={(item) => `/genre/${encodeURIComponent(item.name)}`} />
             </div>
             <div className="flex flex-col gap-2">
-              <h3 className="font-mono text-muted-foreground text-xs">listening clock · minutes by weekday and hour</h3>
+              <h2 className="font-mono text-muted-foreground text-xs">listening clock · minutes by weekday and hour</h2>
               <ListeningClock clock={data.clock} />
             </div>
           </div>

@@ -495,6 +495,10 @@ const server = Bun.serve({
     // Groq for playlists from a prompt (GROQ_URL points here): picks the first three artists of the catalog it's sent.
     if (url.pathname === "/groq/chat/completions") {
       const body = (await request.json()) as { messages: { content: string }[] };
+      if (body.messages[0]?.content.startsWith("You fix music file tags")) {
+        const content = JSON.stringify({ title: "Rain Song", artist: "Big Roshi", album: "Nights" });
+        return Response.json({ choices: [{ message: { content } }] });
+      }
       const catalog = (body.messages.at(-1)?.content ?? "").split("Catalog:\n")[1] ?? "";
       const artists = catalog
         .split("\n")

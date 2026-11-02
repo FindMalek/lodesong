@@ -14,8 +14,10 @@ import { type CoverCache, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
+import type { GroqConfig } from "./groq";
 import { UpdateCheck } from "./health";
 import { matchTrack } from "./import-match";
+import { FIELDS, isAudio, readTags, suggestTags, type Tags, writeSidecar } from "./import-metadata";
 import { ListenRooms, type Peer } from "./listen";
 import type { LyricsService } from "./lyrics";
 import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-coverage";
@@ -146,7 +148,7 @@ export interface ApiOptions {
   devices?: DeviceHub | null;
   feedback?: FeedbackTarget | null;
   cache?: Cache;
-  groq?: { key: string; model: string; url: string } | null;
+  groq?: GroqConfig | null;
   audiomuseUrl?: string | null;
   fetcher?: typeof fetch;
 }
@@ -682,7 +684,7 @@ export function createApi({
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
     if (!session.admin) return json({ error: "admins only" }, 403);
-    if (request.method === "GET") return json({ enabled: Boolean(uploadDir) });
+    if (request.method === "GET") return json({ enabled: Boolean(uploadDir), metadata: Boolean(uploadDir && groq) });
     if (!uploadDir) return json({ error: "uploads are off (UPLOAD_DIR)" }, 404);
     const relative = new URL(request.url).searchParams.get("path") ?? "";
     const path = uploadPath(uploadDir, relative);
@@ -691,6 +693,34 @@ export function createApi({
     if (!request.body) return json({ error: "empty" }, 400);
     const saved = await saveUpload(path, request.body);
     return json({ saved: saved.slice(uploadDir.length + 1) });
+  }
+
+  /** POST reads an uploaded file's tags and asks Groq what is missing or garbled; PUT writes only what the person accepted, as a sidecar. */
+  async function uploadMetadata(request: Request): Promise<Response> {
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    const session = browserSession(request);
+    if (!session) return json({ error: "signed out" }, 401);
+    if (!session.admin) return json({ error: "admins only" }, 403);
+    if (!uploadDir) return json({ error: "uploads are off (UPLOAD_DIR)" }, 404);
+    if (!groq) return json({ error: "no GROQ_API_KEY on this server" }, 404);
+    const body = (await request.json().catch(() => null)) as { path?: unknown; accepted?: Record<string, unknown> } | null;
+    const relative = typeof body?.path === "string" ? body.path : "";
+    const path = uploadPath(uploadDir, relative);
+    if (!path || !isAudio(path)) return json({ error: "not a music file" }, 400);
+    const tags = await readTags(path);
+    if (request.method === "PUT") {
+      const accepted: Tags = {};
+      for (const field of FIELDS) {
+        const value = body?.accepted?.[field];
+        if (typeof value === "string" && value.trim()) accepted[field] = value.trim().slice(0, 200);
+      }
+      if (!Object.keys(accepted).length) return json({ error: "nothing accepted" }, 400);
+      await writeSidecar(path, tags, accepted);
+      return json({ saved: `${relative}.lodesong.json` });
+    }
+    const suggestions = await suggestTags(groq, relative, tags, fetcher);
+    if (!suggestions) return json({ error: "couldn't ask the model, try again" }, 502);
+    return json({ tags, suggestions });
   }
 
   async function lyterionSummary(request: Request): Promise<Response> {
@@ -895,6 +925,7 @@ export function createApi({
     lyterionSummary,
     wishlist,
     upload,
+    uploadMetadata,
     searchIndex,
     searchLyrics,
     searchLibrary,
