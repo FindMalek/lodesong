@@ -136,6 +136,7 @@ const server = Bun.serve({
     "/api/lyrics/refetch": { POST: api.lyricsRefetch },
     "/api/lyrics/written": { DELETE: api.lyricsWritten },
     "/api/upload": { GET: api.upload, PUT: api.upload },
+    "/api/upload/metadata": { POST: api.uploadMetadata, PUT: api.uploadMetadata },
     "/api/lyterion": { GET: api.lyterionSummary },
     "/api/wishlist/:step": { POST: api.wishlist },
     "/api/lyrics/:songId": { GET: api.songLyrics },
