@@ -4,8 +4,6 @@ The genres page lists what Navidrome's `getGenres` knows, and that is only what 
 with no `GENRE` tag is in no genre. Most libraries have plenty of those: Lyterion writes `GENRE` (the top three Spotify
 genres of the artist) only on files it places itself, and older files have nothing.
 
-![genres page with inferred genres](genres-inferred.png)
-
 ## What lodesong shows
 
 - **How many have no genre.** Under the tag genres, the page says how many songs, in how many albums, carry no genre tag
