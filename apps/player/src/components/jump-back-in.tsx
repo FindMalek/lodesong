@@ -26,7 +26,6 @@ export function JumpBackIn() {
   // The one playing right now says so, like the sidebar does.
   const playingHref = usePlayer((state) => state.queue.context.source?.href);
   const playing = usePlayer((state) => state.playing);
-  // Hold the place while the server's list loads, so the rows below don't jump down when it arrives.
   if (!recent.length && query.isPending)
     return (
       <Section title="jump back in">
