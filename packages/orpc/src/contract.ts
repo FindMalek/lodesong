@@ -118,6 +118,10 @@ export const contract = {
         tags: ["Releases"],
       })
       .output(z.object({ releases: z.array(newReleaseSchema), watching: z.boolean().describe("The weekly check is on") })),
+    seen: oc
+      .route({ method: "POST", path: "/releases/seen", summary: "Mark releases as seen", tags: ["Releases"] })
+      .input(z.object({ ids: z.array(z.string().min(1)).min(1).max(200) }))
+      .output(ok),
     get: oc
       .route({
         method: "POST",

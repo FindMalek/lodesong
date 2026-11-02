@@ -17,6 +17,7 @@ export const newReleaseSchema = z.object({
   date: z.string().describe("YYYY-MM-DD, or YYYY-MM"),
   url: z.string(),
   requested: z.boolean().describe("Already handed to Lyterion"),
+  seen: z.boolean().describe("You marked it seen"),
   canGet: z.boolean().describe("Lyterion is set up and you may use it"),
 });
 export type NewRelease = z.infer<typeof newReleaseSchema>;

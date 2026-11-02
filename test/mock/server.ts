@@ -569,9 +569,16 @@ const server = Bun.serve({
     if (url.pathname === "/musicbrainz/ws/2/release-group") {
       const date = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
       return Response.json({
-        "release-group-count": 2,
+        "release-group-count": 3,
         "release-groups": [
           { id: "rg-fresh-hours", title: "Fresh Hours", "primary-type": "Album", "secondary-types": [], "first-release-date": date },
+          {
+            id: `rg-single-${url.searchParams.get("artist")}`,
+            title: "Late Single",
+            "primary-type": "Single",
+            "secondary-types": [],
+            "first-release-date": date,
+          },
           { id: "rg-live", title: "Live In Nowhere", "primary-type": "Album", "secondary-types": ["Live"], "first-release-date": date },
         ],
       });
