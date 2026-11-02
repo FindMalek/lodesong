@@ -22,7 +22,13 @@ test("no page runs off the side at any window size", async ({ page, signedIn }) 
       const off = await page.evaluate((vw) => {
         const out: string[] = [];
         if (document.documentElement.scrollWidth > vw + 1) out.push("page scrolls sideways");
+        const scrolls = (el: HTMLElement) => {
+          for (let up = el.parentElement; up; up = up.parentElement)
+            if (up.scrollWidth > up.clientWidth && /auto|scroll/.test(getComputedStyle(up).overflowX)) return true;
+          return false;
+        };
         for (const el of document.querySelectorAll<HTMLElement>("button, a, input, [role=slider]")) {
+          if (scrolls(el)) continue;
           const box = el.getBoundingClientRect();
           if (box.width && box.height && (box.right > vw + 1 || box.left < -1))
             out.push((el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 30));

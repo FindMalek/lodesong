@@ -106,6 +106,16 @@ export const contract = {
       .route({ method: "PUT", path: "/follows", summary: "Follow, pin or unfollow an artist", tags: ["Releases"] })
       .input(z.object({ name: z.string().trim().min(1).max(200), status: z.enum(["followed", "pinned", "unfollowed"]) }))
       .output(z.object({ artists: z.array(followSchema) })),
+    sync: oc
+      .route({
+        method: "POST",
+        path: "/follows/sync",
+        summary: "Follow the artists you follow on Spotify",
+        description:
+          "Admins only, with Lyterion set up. Follows each artist Lyterion has from your Spotify; never unfollows, and skips artists you unfollowed here.",
+        tags: ["Releases"],
+      })
+      .output(z.object({ added: z.number(), total: z.number(), artists: z.array(followSchema) })),
   },
 
   releases: {
@@ -119,6 +129,10 @@ export const contract = {
         tags: ["Releases"],
       })
       .output(z.object({ releases: z.array(newReleaseSchema), watching: z.boolean().describe("The weekly check is on") })),
+    seen: oc
+      .route({ method: "POST", path: "/releases/seen", summary: "Mark releases as seen", tags: ["Releases"] })
+      .input(z.object({ ids: z.array(z.string().min(1)).min(1).max(200) }))
+      .output(ok),
     get: oc
       .route({
         method: "POST",

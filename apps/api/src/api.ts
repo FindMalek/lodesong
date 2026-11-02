@@ -15,6 +15,7 @@ import { type CoverCache, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
+import type { FollowSync } from "./follow-sync";
 import type { GroqConfig } from "./groq";
 import { UpdateCheck } from "./health";
 import { matchTrack } from "./import-match";
@@ -146,6 +147,7 @@ export interface ApiOptions {
   lyterion?: { url: string; token: string } | null;
   releases?: ReleaseWatch | null;
   artistGenres?: ArtistGenres | null;
+  followSync?: FollowSync | null;
   rooms?: ListenRooms;
   devices?: DeviceHub | null;
   feedback?: FeedbackTarget | null;
@@ -194,6 +196,7 @@ export function createApi({
   lyterion = null,
   releases = null,
   artistGenres = null,
+  followSync = null,
   devices = null,
   groq = null,
   audiomuseUrl = null,
@@ -216,7 +219,19 @@ export function createApi({
     return folders;
   }
 
-  const rpcHandler = createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache, lyrics, releases, artistGenres });
+  const rpcHandler = createRpc({
+    library,
+    updates,
+    groq,
+    fetcher,
+    upstreamFor,
+    foldersFor,
+    cache,
+    lyrics,
+    releases,
+    artistGenres,
+    followSync,
+  });
 
   const secured = (response: Response) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);

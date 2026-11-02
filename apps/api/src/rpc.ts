@@ -9,6 +9,7 @@ import { appearsOn } from "./appears-on";
 import { type ArtistGenres, reportGenres } from "./artist-genres";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
+import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
 import type { LyricsService } from "./lyrics";
@@ -17,7 +18,16 @@ import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
-import { artistsWithReleases, listFollows, newReleases, type ReleaseWatch, releasesVersion, setFollow, syncAutoFollows } from "./releases";
+import {
+  artistsWithReleases,
+  listFollows,
+  markSeen,
+  newReleases,
+  type ReleaseWatch,
+  releasesVersion,
+  setFollow,
+  syncAutoFollows,
+} from "./releases";
 import type { Session } from "./sessions";
 import { forgottenFavourites, listeningStats } from "./stats";
 import { weeklyPlaylists } from "./weekly-playlists";
@@ -35,6 +45,7 @@ export interface RpcDeps {
   lyrics: LyricsService;
   releases?: ReleaseWatch | null;
   artistGenres?: ArtistGenres | null;
+  followSync?: FollowSync | null;
 }
 
 type Context = { session: Session | null; client: string };
@@ -69,6 +80,7 @@ export function createRpc({
   lyrics,
   releases = null,
   artistGenres = null,
+  followSync = null,
 }: RpcDeps) {
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
@@ -124,6 +136,13 @@ export function createRpc({
         if (input.status !== "unfollowed") releases?.refresh(input.name);
         return { artists: listFollows(library, context.account) };
       }),
+      sync: signedIn.follows.sync.handler(async ({ context }) => {
+        if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
+        if (!followSync) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
+        const result = await followSync.sync(context.account);
+        if (!result) throw new ORPCError("BAD_GATEWAY", { message: "lyterion didn't answer" });
+        return { ...result, artists: listFollows(library, context.account) };
+      }),
     },
     releases: {
       list: signedIn.releases.list.handler(({ context }) => {
@@ -134,10 +153,15 @@ export function createRpc({
           watching: releases !== null,
         };
       }),
+      seen: signedIn.releases.seen.handler(({ context, input }) => {
+        markSeen(library, context.account, input.ids);
+        return OK;
+      }),
       get: signedIn.releases.get.handler(async ({ context, input }) => {
         if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
         if (!releases?.canGet) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
         if (!(await releases.get(input.id))) throw new ORPCError("BAD_GATEWAY", { message: "lyterion couldn't take it, try again" });
+        markSeen(library, context.account, [input.id]);
         return OK;
       }),
     },

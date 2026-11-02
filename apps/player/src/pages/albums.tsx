@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Toggle } from "@lodesong/ui/components/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { LayoutGridIcon, ListIcon, ShuffleIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, ShuffleIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AlbumRows } from "@/components/album-rows";
 import { Hint } from "@/components/hint";
@@ -35,8 +35,10 @@ const DEFAULT_VIEW = { sort: "newest" as AlbumSort, layout: "grid" as Layout, ..
 export function AlbumsPage() {
   const [view, change] = usePageView("albums", DEFAULT_VIEW);
   const [reshuffle, setReshuffle] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const filter: AlbumFilter = view;
   const filtering = isFiltering(filter);
+  const activeFilters = [view.genre, view.fromYear || view.toYear, view.unplayed, view.liked].filter(Boolean).length;
   const serverType = SERVER_TYPE[view.sort];
   // Sorts and filters the server can't do need every album: the pages keep loading until the library is here.
   const everything = filtering || !serverType;
@@ -126,7 +128,22 @@ export function AlbumsPage() {
         </ToggleGroup>
       </PageHeader>
       <Content>
-        <fieldset aria-label="filters" className="mb-3 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0">
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-3 font-mono sm:hidden"
+          aria-expanded={filtersOpen}
+          aria-controls="album-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontalIcon />
+          filters{activeFilters > 0 && ` · ${activeFilters}`}
+        </Button>
+        <fieldset
+          id="album-filters"
+          aria-label="filters"
+          className={`mb-3 min-w-0 flex-wrap items-center gap-2 border-0 p-0 sm:flex ${filtersOpen ? "flex" : "hidden"}`}
+        >
           <Select value={view.genre || ANY} onValueChange={(value) => change({ genre: value === ANY ? "" : String(value) })}>
             <SelectTrigger size="sm" aria-label="genre" className="w-40 font-mono">
               <SelectValue>{view.genre ? view.genre.toLowerCase() : "any genre"}</SelectValue>

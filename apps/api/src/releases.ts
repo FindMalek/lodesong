@@ -98,6 +98,7 @@ export function createReleaseTables(db: Database): void {
     recording_id text
   )`);
   db.run("create index if not exists release_groups_by_artist on release_groups (mbid)");
+  db.run("create table if not exists release_seen (account text not null, id text not null, primary key (account, id))");
   db.run("create table if not exists meta (key text primary key, value text not null)");
 }
 
@@ -178,12 +179,24 @@ function releaseRows(db: Database, account: string): ReleaseRow[] {
     .all(account);
 }
 
+export function markSeen(db: Database, account: string, ids: string[]): void {
+  db.transaction(() => {
+    for (const id of ids) db.query("insert or ignore into release_seen (account, id) values (?, ?)").run(account, id);
+  })();
+}
+
 /** Recent releases by artists you follow that aren't in your library, newest first. */
 export function newReleases(db: Database, account: string, now: number): Omit<NewRelease, "canGet">[] {
+  const seen = new Set(
+    db
+      .query<{ id: string }, [string]>("select id from release_seen where account = ?")
+      .all(account)
+      .map((row) => row.id),
+  );
   return releaseRows(db, account)
     .filter((row) => isRecent(row.date, now) && !albumsOwned(db, row.artist, row.title))
     .sort((a, b) => (releaseTime(b.date) ?? 0) - (releaseTime(a.date) ?? 0))
-    .slice(0, 30)
+    .slice(0, 100)
     .map((row) => ({
       id: row.id,
       artist: row.artist,
@@ -192,6 +205,7 @@ export function newReleases(db: Database, account: string, now: number): Omit<Ne
       date: row.date,
       url: `https://musicbrainz.org/release-group/${row.id}`,
       requested: row.handed !== null,
+      seen: seen.has(row.id),
     }));
 }
 

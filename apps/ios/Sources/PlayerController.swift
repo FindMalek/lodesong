@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import UIKit
 import WebKit
@@ -17,6 +18,8 @@ final class PlayerController: NSObject, ObservableObject, WKNavigationDelegate, 
 
     let webView: WKWebView
     private let server: URL
+    private var playing = false
+    private var resumeAfterInterruption = false
 
     init(server: URL) {
         self.server = server
@@ -31,6 +34,7 @@ final class PlayerController: NSObject, ObservableObject, WKNavigationDelegate, 
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
         content.add(WeakHandler(self), name: "keep")
+        NotificationCenter.default.addObserver(self, selector: #selector(interruption(_:)), name: AVAudioSession.interruptionNotification, object: nil)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -77,9 +81,25 @@ final class PlayerController: NSObject, ObservableObject, WKNavigationDelegate, 
         guard let body = message.body as? [String: Any] else { return }
         if body["preview"] != nil {
             DispatchQueue.main.async { self.showMenu = true }
-        } else if body["playing"] as? Bool == true {
-            AudioSession.activate()
+        } else if let value = body["playing"] as? Bool {
+            playing = value
+            if value { AudioSession.activate() }
         }
+    }
+
+    /// A call or alarm takes the audio session and WebKit pauses the page; when iOS says it's over, take the session
+    /// back and carry on, but only if music was playing when it started.
+    @objc private func interruption(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        if type == .began {
+            resumeAfterInterruption = playing
+            return
+        }
+        let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt).map(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+        guard resumeAfterInterruption, options.contains(.shouldResume) else { return }
+        resumeAfterInterruption = false
+        AudioSession.activate()
+        webView.evaluateJavaScript("window.keepNative && window.keepNative.play()")
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
