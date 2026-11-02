@@ -692,9 +692,12 @@ export function RadioPage() {
   const noop = useCallback(() => undefined, []);
   if (!preview)
     return (
-      <Content>
-        <EmptyState>no radio yet. start one from an album, an artist, a genre or a song</EmptyState>
-      </Content>
+      <>
+        <PageHeader title="radio" />
+        <Content>
+          <EmptyState>no radio yet. start one from an album, an artist, a genre or a song</EmptyState>
+        </Content>
+      </>
     );
   const { songs, station } = preview;
   const source = { kind: "radio", name: station.name, href: "/radio" };

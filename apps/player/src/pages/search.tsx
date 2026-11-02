@@ -82,7 +82,12 @@ export function SearchPage() {
           <Section title="top result">
             <ListContextMenu resolve={menuTarget}>
               <div data-menu={`top-${top.item.id}`} className="flex max-w-xl items-center gap-4 border p-3">
-                <button type="button" className="shrink-0" onClick={() => openResult(top.kind, top.item, query)}>
+                <button
+                  type="button"
+                  className="shrink-0"
+                  aria-label={resultTitle(top.kind, top.item)}
+                  onClick={() => openResult(top.kind, top.item, query)}
+                >
                   <Cover id={String(top.item.coverArt ?? "")} size={128} className="size-24" />
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">

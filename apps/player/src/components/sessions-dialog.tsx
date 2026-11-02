@@ -68,7 +68,7 @@ export function SessionsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         ) : (
           <ItemGroup>
             {data.sessions.map((session) => (
-              <Item key={session.id} variant="outline" size="sm">
+              <Item key={session.id} role="listitem" variant="outline" size="sm">
                 <ItemContent>
                   <ItemTitle>
                     {device(session.agent)}
