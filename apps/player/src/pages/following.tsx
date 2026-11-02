@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Cover } from "@/components/cover";
 import { EmptyState, PageHeader, Section } from "@/components/library";
 import { ReleaseCard } from "@/components/release-card";
+import SyncFollows from "@/components/sync-follows";
 import { apiQueries } from "@/lib/api-queries";
 import { filterKind, groupByWeek, type KindFilter } from "@/lib/releases";
 import { rpc } from "@/lib/rpc";
@@ -168,7 +169,15 @@ export function FollowingPage() {
     <>
       <PageHeader title="following" meta={follows.data ? `${artists.length} artists` : undefined} />
       <FindArtists followed={followed} follow={(name) => set.mutate({ name, status: "followed" })} />
-      <Section title="your artists" action={<Choice label="sort artists" value={sort} options={SORTS} onChange={setSort} />}>
+      <Section
+        title="your artists"
+        action={
+          <div className="flex items-center gap-3">
+            <SyncFollows />
+            <Choice label="sort artists" value={sort} options={SORTS} onChange={setSort} />
+          </div>
+        }
+      >
         {artists.length ? (
           <ul aria-label="followed artists" className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6">
             {sorted(artists, sort, latest).map((artist) => (
