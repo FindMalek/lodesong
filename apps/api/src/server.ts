@@ -8,6 +8,7 @@ import { createCache } from "./cache";
 import { compressed } from "./compress";
 import { config } from "./config";
 import { CoverCache } from "./covers";
+import { createCspReporter } from "./csp-report";
 import { openLibraryDb } from "./db";
 import { DeviceHub } from "./devices";
 import { font } from "./fonts";
@@ -98,6 +99,8 @@ const api = createApi({
 });
 const health = new HealthCheck(config.upstreams);
 
+const cspReport = createCspReporter();
+
 const server = Bun.serve({
   port: config.port,
   development: process.env.NODE_ENV !== "production",
@@ -110,6 +113,7 @@ const server = Bun.serve({
     "/healthz": () => new Response("ok"),
     "/worklets/levels.js": () =>
       new Response(LEVELS_WORKLET_SOURCE, { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=86400" } }),
+    "/api/csp-report": { POST: cspReport },
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
     "/api": api.http,
