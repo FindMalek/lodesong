@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.12.0](https://github.com/FindMalek/lodesong/compare/v1.11.1...v1.12.0) (2026-11-02)
+
+
+### Features
+
+* **home:** rework home layout ([#439](https://github.com/FindMalek/lodesong/issues/439)) ([4f91377](https://github.com/FindMalek/lodesong/commit/4f9137763def24686a5595c20bd0f05bfda36a45))
+
+
+### Bug Fixes
+
+* **ci:** drop duplicate macos job ([#440](https://github.com/FindMalek/lodesong/issues/440)) ([66a974c](https://github.com/FindMalek/lodesong/commit/66a974c223dbbf7d16cdc0c7273f5f76700c8a5c))
+* **home:** meet comment budget ([#444](https://github.com/FindMalek/lodesong/issues/444)) ([275ffbb](https://github.com/FindMalek/lodesong/commit/275ffbbdea7054ae0ceecdbd65247318907f7308))
+* **home:** stop layout shift ([#443](https://github.com/FindMalek/lodesong/issues/443)) ([6ae47c5](https://github.com/FindMalek/lodesong/commit/6ae47c5804a108fc612bc2af80dd74fa247cc474))
+
 ## [1.11.1](https://github.com/FindMalek/lodesong/compare/v1.11.0...v1.11.1) (2026-11-02)
 
 
