@@ -1,3 +1,4 @@
+import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
 import { followSchema, newReleaseSchema } from "@lodesong/shared/releases";
 import { listeningStatsSchema } from "@lodesong/shared/stats";
@@ -142,6 +143,20 @@ export const contract = {
       })
       .input(z.object({ id: z.string().min(1) }))
       .output(ok),
+  },
+
+  genres: {
+    inferred: oc
+      .route({
+        method: "GET",
+        path: "/genres/inferred",
+        summary: "Genres guessed for albums that have none",
+        description:
+          "Albums and songs with no genre tag, and genres of their artists from MusicBrainz (cached, looked up in the background). Empty when `MUSICBRAINZ_URL` is empty. With `genre`, also lists the untagged albums by artists in that genre.",
+        tags: ["Library"],
+      })
+      .input(z.object({ genre: z.string().optional() }))
+      .output(inferredGenresSchema.extend({ albums: z.array(albumSchema) })),
   },
 
   artists: {

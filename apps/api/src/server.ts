@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { MAX_DEVICE_MESSAGE_BYTES } from "@lodesong/shared/devices";
 import { LEVELS_WORKLET_SOURCE } from "@lodesong/shared/levels-worklet";
 import { createApi } from "./api";
+import { ArtistGenres } from "./artist-genres";
 import { syncFeatures } from "./audiomuse";
 import { LyricsBackfill, serviceAccount } from "./backfill";
 import { createCache } from "./cache";
@@ -68,8 +69,10 @@ const backfills = new Map(
     : [],
 );
 for (const backfill of backfills.values()) backfill.start();
-const releases = config.musicbrainzUrl
-  ? new ReleaseWatch(library, new MusicBrainz(config.musicbrainzUrl), {
+const musicbrainz = config.musicbrainzUrl ? new MusicBrainz(config.musicbrainzUrl) : null;
+const artistGenres = musicbrainz ? new ArtistGenres(library, musicbrainz) : null;
+const releases = musicbrainz
+  ? new ReleaseWatch(library, musicbrainz, {
       autoGet: config.releasesAutoGet,
       handOff: config.lyterion ? lyterionHandOff(config.lyterion) : null,
     })
@@ -94,6 +97,7 @@ const api = createApi({
   uploadDir: config.uploadDir,
   lyterion: config.lyterion,
   releases,
+  artistGenres,
   followSync,
   devices: config.oneSession ? new DeviceHub() : null,
   groq: config.groq,

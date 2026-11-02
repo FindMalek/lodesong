@@ -25,6 +25,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | `GET /api/follows`, `PUT /api/follows` | artists you follow; follow, pin or unfollow one |
 | `POST /api/follows/sync` | follow the artists you follow on Spotify, through Lyterion (admins) |
 | `GET /api/releases`, `POST /api/releases/{id}/get` | new releases by artists you follow; hand one to Lyterion |
+| `GET /api/genres/inferred?genre` | songs with no genre tag, and genres of their artists from MusicBrainz ([genres](genres.md)) |
 | `GET /api/artists/{id}/appears-on` | albums by others an artist appears on |
 | `GET /api/remote/now`, `POST /api/remote/toggle·next·previous` | what's playing, and play/pause/skip ([devices](devices.md)) |
 

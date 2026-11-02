@@ -7,6 +7,7 @@ import type { LyricsSearch } from "@lodesong/shared/search";
 import { readTrack } from "@lodesong/shared/spotify-import";
 import type { Server } from "bun";
 import { askGroq, buildPlaylist, libraryArtists } from "./ai-playlist";
+import type { ArtistGenres } from "./artist-genres";
 import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
@@ -145,6 +146,7 @@ export interface ApiOptions {
   uploadDir?: string | null;
   lyterion?: { url: string; token: string } | null;
   releases?: ReleaseWatch | null;
+  artistGenres?: ArtistGenres | null;
   followSync?: FollowSync | null;
   rooms?: ListenRooms;
   devices?: DeviceHub | null;
@@ -193,6 +195,7 @@ export function createApi({
   uploadDir = null,
   lyterion = null,
   releases = null,
+  artistGenres = null,
   followSync = null,
   devices = null,
   groq = null,
@@ -216,7 +219,19 @@ export function createApi({
     return folders;
   }
 
-  const rpcHandler = createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache, lyrics, releases, followSync });
+  const rpcHandler = createRpc({
+    library,
+    updates,
+    groq,
+    fetcher,
+    upstreamFor,
+    foldersFor,
+    cache,
+    lyrics,
+    releases,
+    artistGenres,
+    followSync,
+  });
 
   const secured = (response: Response) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
