@@ -53,7 +53,7 @@ files and Navidrome picks them up on its next scan. Nothing is handed over unles
 
 Every artist you follow on Spotify is followed in lodesong too, so their new releases show up in
 [new from artists you follow](mixes.md#new-from-artists-you-follow). It runs once a day for admins who are signed in, and
-**sync from spotify** in the following dialog (admins) runs it now.
+**sync from spotify** on the following page (admins) runs it now.
 
 It only adds. Artists you follow here are never unfollowed, and an artist you unfollowed here is not followed again.
 

@@ -17,7 +17,16 @@ import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
-import { artistsWithReleases, listFollows, newReleases, type ReleaseWatch, releasesVersion, setFollow, syncAutoFollows } from "./releases";
+import {
+  artistsWithReleases,
+  listFollows,
+  markSeen,
+  newReleases,
+  type ReleaseWatch,
+  releasesVersion,
+  setFollow,
+  syncAutoFollows,
+} from "./releases";
 import type { Session } from "./sessions";
 import { forgottenFavourites, listeningStats } from "./stats";
 import { weeklyPlaylists } from "./weekly-playlists";
@@ -141,10 +150,15 @@ export function createRpc({
           watching: releases !== null,
         };
       }),
+      seen: signedIn.releases.seen.handler(({ context, input }) => {
+        markSeen(library, context.account, input.ids);
+        return OK;
+      }),
       get: signedIn.releases.get.handler(async ({ context, input }) => {
         if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
         if (!releases?.canGet) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
         if (!(await releases.get(input.id))) throw new ORPCError("BAD_GATEWAY", { message: "lyterion couldn't take it, try again" });
+        markSeen(library, context.account, [input.id]);
         return OK;
       }),
     },

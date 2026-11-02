@@ -20,7 +20,7 @@ export default function SyncFollows() {
   );
   if (!canSync) return null;
   return (
-    <Button variant="outline" size="sm" disabled={sync.isPending} onClick={() => sync.mutate({})}>
+    <Button variant="outline" size="xs" disabled={sync.isPending} onClick={() => sync.mutate({})}>
       <RefreshCwIcon className={sync.isPending ? "animate-spin" : undefined} /> sync from spotify
     </Button>
   );

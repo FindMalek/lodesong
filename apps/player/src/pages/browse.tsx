@@ -232,13 +232,16 @@ export function ArtistsPage() {
     <>
       <PageHeader title="artists" meta={data ? plural(total, "artist") : undefined}>
         {/* The whole alphabet from the first frame (missing letters disabled), so its width never changes. */}
-        <nav aria-label="jump to letter" className="flex flex-wrap justify-end">
+        <nav
+          aria-label="jump to letter"
+          className="order-last flex w-full overflow-x-auto sm:order-none sm:w-auto sm:flex-wrap sm:justify-end"
+        >
           {[...new Set([...LETTERS, ...groups.map((group) => group.name)])].map((letter) => (
             <Button
               key={letter}
               variant="ghost"
               size="xs"
-              className="w-5 px-0 font-mono text-muted-foreground"
+              className="w-5 shrink-0 px-0 font-mono font-normal text-muted-foreground"
               disabled={!letterRow.has(letter)}
               onClick={() => virtualizer.scrollToIndex(letterRow.get(letter) ?? 0, { align: "start" })}
             >

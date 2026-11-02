@@ -9,6 +9,7 @@ const chunks = {
   folders: () => import("@/pages/folders"),
   search: () => import("@/pages/search"),
   history: () => import("@/pages/history"),
+  following: () => import("@/pages/following"),
   stats: () => import("@/pages/stats"),
   lyrics: () => import("@/pages/lyrics"),
   settings: () => import("@/pages/settings"),
@@ -33,6 +34,7 @@ const SECTIONS: Record<string, keyof typeof chunks> = {
   folders: "folders",
   search: "search",
   history: "history",
+  following: "following",
   stats: "stats",
   lyrics: "lyrics",
   settings: "settings",
@@ -106,6 +108,7 @@ export const RadioPage = page("detail", "RadioPage");
 export const FoldersPage = page("folders", "FoldersPage");
 export const SearchPage = page("search", "SearchPage");
 export const HistoryPage = page("history", "HistoryPage");
+export const FollowingPage = page("following", "FollowingPage");
 export const StatsPage = page("stats", "StatsPage");
 export const LyricsPage = page("lyrics", "LyricsPage");
 export const SettingsPage = page("settings", "SettingsPage");
