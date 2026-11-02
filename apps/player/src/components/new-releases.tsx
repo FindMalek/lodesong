@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLinkIcon, PinIcon, UsersIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Section } from "@/components/library";
+import { NewReleasesSkeleton } from "@/components/skeletons";
 import { rpc } from "@/lib/rpc";
 
 function when(date: string): string {
@@ -94,7 +95,8 @@ export default function NewReleases() {
       onSuccess: () => void client.invalidateQueries({ queryKey: rpc.releases.list.queryOptions().queryKey }),
     }),
   );
-  if (!data?.watching) return null;
+  if (!data) return <NewReleasesSkeleton />;
+  if (!data.watching) return null;
   return (
     <Section
       title="new from artists you follow"
