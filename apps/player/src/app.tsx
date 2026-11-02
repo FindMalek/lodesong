@@ -51,6 +51,7 @@ import {
   MomentsPage,
   PlaylistPage,
   preloadAllRoutes,
+  RadioPage,
   SearchPage,
   SettingsPage,
   SongLink,
@@ -77,7 +78,6 @@ const CheatSheet = lazy(() => import("@/components/cheat-sheet").then((module) =
 const SearchPalette = lazy(() => import("@/components/search-palette").then((module) => ({ default: module.SearchPalette })));
 
 const PlaylistDialogs = lazy(() => import("@/components/playlist-dialogs").then((module) => ({ default: module.PlaylistDialogs })));
-const RadioPreviewDialog = lazy(() => import("@/components/radio-preview").then((module) => ({ default: module.RadioPreviewDialog })));
 const MiniPlayerPortal = lazy(() => import("@/components/mini-player").then((module) => ({ default: module.MiniPlayerPortal })));
 const OfflineBanner = lazy(() => import("@/components/offline-banner").then((module) => ({ default: module.OfflineBanner })));
 const TopProgressLine = lazy(() => import("@/components/top-progress").then((module) => ({ default: module.TopProgressLine })));
@@ -154,6 +154,8 @@ function Page({ path }: { path: string }) {
       return <UploadPage />;
     case "listen":
       return <ListenPage code={param} />;
+    case "radio":
+      return <RadioPage />;
     case "song":
       return param ? <SongLink key={param} id={param} /> : null;
     default:
@@ -303,9 +305,6 @@ export function App() {
           />
         </Suspense>
       )}
-      <Suspense>
-        <RadioPreviewDialog />
-      </Suspense>
       {miniWindow && (
         <Suspense>
           <MiniPlayerPortal target={miniWindow} />
