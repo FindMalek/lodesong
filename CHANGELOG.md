@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/FindMalek/lodesong/compare/v1.10.0...v1.11.0) (2026-11-02)
+
+
+### Features
+
+* **aura:** audio features ([#423](https://github.com/FindMalek/lodesong/issues/423)) ([709aef9](https://github.com/FindMalek/lodesong/commit/709aef9f1f782607297989a218872d87aece8e6d))
+
 ## [1.10.0](https://github.com/FindMalek/lodesong/compare/v1.9.1...v1.10.0) (2026-10-31)
 
 
