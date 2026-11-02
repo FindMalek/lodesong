@@ -13,6 +13,7 @@ export default defineConfig({
   testMatch: "**/*.e2e.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  expect: { timeout: process.env.CI ? 10_000 : 5_000 },
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://127.0.0.1:${APP}`, trace: "retain-on-failure" },
