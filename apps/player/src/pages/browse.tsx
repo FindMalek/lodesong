@@ -14,7 +14,7 @@ import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, PageHeader, Section,
 import { Link } from "@/components/link";
 import { ListFilterBar } from "@/components/list-filter-bar";
 import { MixRow } from "@/components/mix-row";
-import { ArtistRowsSkeleton, Delayed, TrackListSkeleton } from "@/components/skeletons";
+import { ArtistRowsSkeleton, Delayed, NewReleasesSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { plural } from "@/lib/format";
 import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
 import { usePageView } from "@/lib/page-view";
@@ -77,22 +77,24 @@ function AlbumRow({
   if (!query.isPending && !query.data?.length) return null;
   const more = (query.data?.length ?? 0) > count;
   return (
-    <Section title={title} action={action}>
+    <Section
+      title={title}
+      action={
+        <span className="flex items-center gap-3">
+          {more && (
+            <Button variant="link" size="xs" className="h-auto p-0 font-mono text-muted-foreground" onClick={() => setExpanded(!expanded)}>
+              {expanded ? "show less" : "show more"}
+            </Button>
+          )}
+          {action}
+        </span>
+      }
+    >
       <div ref={measure}>
         {query.data ? (
           <AlbumGrid albums={query.data.slice(0, expanded ? SHELF_SIZE : count)} priority={priority} />
         ) : (
           <AlbumGridSkeleton count={count} />
-        )}
-        {more && (
-          <Button
-            variant="link"
-            size="xs"
-            className="mt-2 h-auto p-0 font-mono text-muted-foreground"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? "show less" : "show more"}
-          </Button>
         )}
       </div>
     </Section>
@@ -151,7 +153,7 @@ export function HomePage() {
         </Content>
       ) : (
         <>
-          <Suspense fallback={null}>
+          <Suspense fallback={<NewReleasesSkeleton />}>
             <NewReleases />
           </Suspense>
           <JumpBackIn />

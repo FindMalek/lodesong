@@ -1,3 +1,4 @@
+import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Cover } from "@/components/cover";
@@ -13,7 +14,8 @@ import { cn } from "@/lib/utils";
 export function JumpBackIn() {
   const local = useRecentSources();
   // This browser's list is lost with its storage and empty on a new device: the server's recent albums fill the gaps.
-  const albums = useQuery(queries.albumList("recent", KEEP)).data;
+  const query = useQuery(queries.albumList("recent", KEEP));
+  const albums = query.data;
   const recent = useMemo(() => {
     const seen = new Set(local.map((source) => source.href));
     const server = (albums ?? [])
@@ -24,6 +26,21 @@ export function JumpBackIn() {
   // The one playing right now says so, like the sidebar does.
   const playingHref = usePlayer((state) => state.queue.context.source?.href);
   const playing = usePlayer((state) => state.playing);
+  // Hold the place while the server's list loads, so the rows below don't jump down when it arrives.
+  if (!recent.length && query.isPending)
+    return (
+      <Section title="jump back in">
+        <ul aria-label="jump back in" aria-busy className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
+          {["a", "b", "c", "d", "e", "f", "g", "h"].map((key) => (
+            <li key={key}>
+              <div className="relative h-12">
+                <Skeleton />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Section>
+    );
   if (!recent.length) return null;
   return (
     <Section title="jump back in">
