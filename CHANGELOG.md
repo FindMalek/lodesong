@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/FindMalek/lodesong/compare/v1.11.0...v1.11.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **deploy:** always pull the image ([#425](https://github.com/FindMalek/lodesong/issues/425)) ([f018a4e](https://github.com/FindMalek/lodesong/commit/f018a4e063cbf1aa16554879da4841391c8221a9))
+
 ## [1.11.0](https://github.com/FindMalek/lodesong/compare/v1.10.0...v1.11.0) (2026-11-02)
 
 
