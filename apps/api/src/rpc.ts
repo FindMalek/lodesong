@@ -6,6 +6,7 @@ import { implement, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { appearsOn } from "./appears-on";
+import { type ArtistGenres, reportGenres } from "./artist-genres";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
 import { type UpdateCheck, VERSION } from "./health";
@@ -33,6 +34,7 @@ export interface RpcDeps {
   cache?: Cache;
   lyrics: LyricsService;
   releases?: ReleaseWatch | null;
+  artistGenres?: ArtistGenres | null;
 }
 
 type Context = { session: Session | null; client: string };
@@ -66,6 +68,7 @@ export function createRpc({
   cache = memoryCache(),
   lyrics,
   releases = null,
+  artistGenres = null,
 }: RpcDeps) {
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
@@ -136,6 +139,16 @@ export function createRpc({
         if (!releases?.canGet) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
         if (!(await releases.get(input.id))) throw new ORPCError("BAD_GATEWAY", { message: "lyterion couldn't take it, try again" });
         return OK;
+      }),
+    },
+    genres: {
+      inferred: signedIn.genres.inferred.handler(async ({ context, input }) => {
+        const upstream = upstreamFor(context.session.server);
+        if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
+        const folders = await foldersFor(context.session, upstream);
+        if (artistGenres) return artistGenres.report(upstream.id, folders, input.genre);
+        const { missing: _, ...report } = reportGenres(library, upstream.id, folders, new Map(), input.genre);
+        return { watching: false, ...report };
       }),
     },
     artists: {

@@ -18,6 +18,7 @@ export interface Library {
   lyrics: Map<string, StructuredLyrics>;
 }
 
+export const UNTAGGED_ARTIST = "ar-200";
 const GENRES = ["Rock", "Electronic", "Jazz", "Hip-Hop", "Classical", "Folk", "Ambient", "Pop", "Metal", "Soul", "Blues", "Indie"];
 const WORDS = [
   "night",
@@ -137,6 +138,12 @@ export function createLibrary(trackCount = 10_000, seed = 7): Library {
     }
     artist.albumCount = artist.album?.length ?? 0;
   }
+
+  for (const item of [...albums, ...songs])
+    if (item.artistId === UNTAGGED_ARTIST) {
+      item.genre = undefined;
+      if ("genres" in item) item.genres = undefined;
+    }
 
   const playlists: Playlist[] = ["Mix / Morning", "Mix / Late night", "Running", "Favorites"].map((name, index) => {
     const entry = songs.slice(index * 40, index * 40 + 25 + index * 10);

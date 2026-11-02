@@ -15,6 +15,7 @@ const MIN_SCORE = 90;
 const RETRY_UNMATCHED_MS = 30 * DAY;
 const WEEK_MS = 7 * DAY;
 const CHECK_EVERY_MS = 6 * 3_600_000;
+const MAX_GENRES = 3;
 const PAGE = 100;
 const MAX_PAGES = 3;
 const AUTO_GET_PER_RUN = 10;
@@ -249,6 +250,16 @@ export class MusicBrainz {
         aliases: artist.aliases?.map((alias) => alias.name),
       })) ?? null
     );
+  }
+
+  /** The artist's genres, most voted first. */
+  async artistGenres(mbid: string): Promise<string[] | null> {
+    const answer = await this.get<{ genres?: { name: string; count: number }[] }>(`artist/${encodeURIComponent(mbid)}?inc=genres`);
+    if (!answer) return null;
+    return (answer.genres ?? [])
+      .sort((a, b) => b.count - a.count)
+      .slice(0, MAX_GENRES)
+      .map((genre) => genre.name);
   }
 
   async releaseGroups(mbid: string): Promise<ReleaseGroup[] | null> {

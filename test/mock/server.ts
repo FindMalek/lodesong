@@ -562,6 +562,13 @@ const server = Bun.serve({
       const name = /artist:"(.*)"/.exec(url.searchParams.get("query") ?? "")?.[1] ?? "";
       return Response.json({ artists: [{ id: `mb-${name.toLowerCase().replace(/\W+/g, "-")}`, name, score: 100 }] });
     }
+    if (url.pathname.startsWith("/musicbrainz/ws/2/artist/"))
+      return Response.json({
+        genres: [
+          { name: "dream pop", count: 4 },
+          { name: "shoegaze", count: 9 },
+        ],
+      });
     if (url.pathname === "/musicbrainz/ws/2/release-group") {
       const date = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
       return Response.json({

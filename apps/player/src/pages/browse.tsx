@@ -20,6 +20,7 @@ import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
 import { usePageView } from "@/lib/page-view";
 import { player } from "@/lib/player";
 import { queries, queryClient } from "@/lib/queries";
+import { rpc } from "@/lib/rpc";
 import type { Album, Artist, Song } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useColumns, usePageVirtualizer } from "@/lib/virtual";
@@ -350,15 +351,27 @@ export function SongsPage() {
   );
 }
 
+const INFERRED_POLL_MS = 8000;
+
+/** Genres from the files' tags. Songs without one are counted, and with MusicBrainz their artists' genres are listed apart, marked inferred. */
 export function GenresPage() {
   const { data } = useQuery(queries.genres());
+  const inferred = useQuery(
+    rpc.genres.inferred.queryOptions({
+      input: {},
+      staleTime: 0,
+      refetchInterval: (query) => (query.state.data?.pending ? INFERRED_POLL_MS : false),
+    }),
+  );
   const genres = (data ?? []).filter((genre) => genre.albumCount > 0).sort((a, b) => b.songCount - a.songCount);
+  const loaded = data && !inferred.isPending;
+  const guess = inferred.data;
 
   return (
     <>
       <PageHeader title="genres" meta={data ? plural(genres.length, "genre") : undefined} />
       <Content>
-        {!data && (
+        {!loaded && (
           <Delayed>
             <div aria-hidden className="flex flex-wrap gap-2">
               {Array.from({ length: 16 }, (_, index) => (
@@ -368,21 +381,48 @@ export function GenresPage() {
             </div>
           </Delayed>
         )}
-        {genres.length === 0 && data && <EmptyState>no genres yet · they come from your files' tags</EmptyState>}
-        <ul className="flex flex-wrap gap-2">
-          {genres.map((genre) => (
-            <li key={genre.value}>
-              <Badge
-                variant="outline"
-                className="h-7 gap-2.5 px-2.5 font-mono font-normal"
-                render={<Link href={`/genre/${encodeURIComponent(genre.value)}`} />}
-              >
-                {genre.value.toLowerCase()}
-                <span className="text-muted-foreground tabular-nums">{genre.albumCount}</span>
-              </Badge>
-            </li>
-          ))}
-        </ul>
+        {loaded && genres.length === 0 && <EmptyState>no genres yet · they come from your files' tags</EmptyState>}
+        {loaded && (
+          <ul className="flex flex-wrap gap-2">
+            {genres.map((genre) => (
+              <li key={genre.value}>
+                <Badge
+                  variant="outline"
+                  className="h-7 gap-2.5 px-2.5 font-mono font-normal"
+                  render={<Link href={`/genre/${encodeURIComponent(genre.value)}`} />}
+                >
+                  {genre.value.toLowerCase()}
+                  <span className="text-muted-foreground tabular-nums">{genre.albumCount}</span>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+        {loaded && guess && guess.untagged.songs > 0 && (
+          <p className="mt-6 max-w-prose font-mono text-muted-foreground text-xs leading-relaxed">
+            {plural(guess.untagged.songs, "song")} in {plural(guess.untagged.albums, "album")} have no genre tag, so they are in no genre
+            above. genres are read from the files' tags: add them in the files (lyterion can backfill them), then rescan in navidrome.
+          </p>
+        )}
+        {loaded && guess && guess.genres.length > 0 && (
+          <section aria-label="inferred genres" className="mt-6">
+            <h2 className="mb-2.5 font-mono text-muted-foreground text-xs">inferred from artists · not in your tags</h2>
+            <ul className="flex flex-wrap gap-2">
+              {guess.genres.map((genre) => (
+                <li key={genre.name}>
+                  <Badge
+                    variant="secondary"
+                    className="h-7 gap-2.5 px-2.5 font-mono font-normal text-muted-foreground"
+                    render={<Link href={`/genre/${encodeURIComponent(genre.name)}`} />}
+                  >
+                    {genre.name.toLowerCase()}
+                    <span className="tabular-nums">{genre.albums}</span>
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </Content>
     </>
   );

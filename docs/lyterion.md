@@ -48,6 +48,11 @@ text `Artist - Release title` through the same call as add a song, so Lyterion f
 files and Navidrome picks them up on its next scan. Nothing is handed over unless you press **get it** or set
 `RELEASES_AUTO_GET=on`.
 
+## Genres
+
+Lyterion writes `GENRE` only on files it places itself. Backfilling it on older files is Lyterion's work; until then
+lodesong says how many songs have no genre and [infers genres from their artists](genres.md).
+
 ## What goes where
 
 lodesong never downloads anything itself and never writes into the music folder itself (uploads only land in `UPLOAD_DIR`).
