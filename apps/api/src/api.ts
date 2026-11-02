@@ -811,7 +811,7 @@ export function createApi({
     });
   }
 
-  /** `GET /api/audiomuse` status, `POST /api/audiomuse/sync` (admins), `GET /api/audiomuse/similar/:id`, `POST /api/audiomuse/shuffle`. */
+  /** `GET /api/audiomuse` status, `POST /api/audiomuse/sync` (admins), `GET /api/audiomuse/similar/:id`, `POST /api/audiomuse/shuffle`, `POST /api/audiomuse/features`. */
   async function audiomuse(request: Request & { params?: { id?: string } }): Promise<Response> {
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
@@ -838,12 +838,14 @@ export function createApi({
       );
       return json({ songs }, 200, { "cache-control": "private, no-cache" });
     }
-    if (action === "shuffle") {
+    if (action === "shuffle" || action === "features") {
       const body = (await request.json().catch(() => null)) as { ids?: unknown } | null;
       const ids = body?.ids;
       if (!Array.isArray(ids) || ids.length > 2000 || !ids.every((id) => typeof id === "string"))
         return json({ error: "send up to 2000 song ids" }, 400);
-      return json({ ids: smartShuffle(ids, featuresFor(library, upstream.id, ids)) });
+      const features = featuresFor(library, upstream.id, ids);
+      if (action === "features") return json({ features: Object.fromEntries(features) }, 200, { "cache-control": "private, no-cache" });
+      return json({ ids: smartShuffle(ids, features) });
     }
     return json({ error: "not found" }, 404);
   }

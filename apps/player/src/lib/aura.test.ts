@@ -52,3 +52,15 @@ describe("the look follows the music", () => {
     expect(vibe(auraParams("x", metal))).toContain("driving");
   });
 });
+
+describe("audio analysis", () => {
+  test("measured energy, valence and BPM beat the genre guess", () => {
+    const calm = Array.from({ length: 5 }, () => ({ genre: "Heavy Metal", energy: 0.1, valence: 0.9, bpm: 70 }));
+    const tense = Array.from({ length: 5 }, () => ({ genre: "Folk", energy: 0.9, valence: 0.1, bpm: 170 }));
+    const [soft, hard] = [auraParams("x", calm), auraParams("x", tense)];
+    expect(soft.energy).toBeLessThan(0.2);
+    expect(hard.energy).toBeGreaterThan(0.8);
+    expect(soft.softness).toBeGreaterThan(hard.softness + 0.3);
+    expect(hard.speed).toBeGreaterThan(soft.speed);
+  });
+});

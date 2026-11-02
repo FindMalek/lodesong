@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { type AuraParams, type AuraSong, auraParams, blurPixels, drawAura } from "@/lib/aura";
+import { useAnalysed, withFeatures } from "@/lib/features";
 import { subscribeTheme } from "@/lib/theme";
 
 /** The theme's own ink and paper, read when drawing so light and dark both work. */
@@ -14,9 +15,10 @@ function colors(): { ink: string; paper: string } {
 /**
  * A playlist's aura as a backdrop: a canvas painted at half resolution (it is a soft picture), still (no motion).
  */
-export function Aura({ id, songs, className }: { id: string; songs: AuraSong[]; className?: string }) {
+export function Aura({ id, songs, className }: { id: string; songs: (AuraSong & { id: string })[]; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const params = useMemo(() => auraParams(id, songs), [id, songs]);
+  const analysed = useAnalysed(songs);
+  const params = useMemo(() => auraParams(id, analysed), [id, analysed]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -45,13 +47,13 @@ export function Aura({ id, songs, className }: { id: string; songs: AuraSong[]; 
   return <canvas ref={canvas} aria-hidden className={className} style={{ filter: `blur(${(blurPixels(params, 1) * 2).toFixed(1)}px)` }} />;
 }
 
-export function exportAura(id: string, songs: AuraSong[], name: string, size = 1024): void {
+export function exportAura(id: string, songs: (AuraSong & { id: string })[], name: string, size = 1024): void {
   const target = document.createElement("canvas");
   target.width = size;
   target.height = size;
   const context = target.getContext("2d");
   if (!context) return;
-  const params: AuraParams = auraParams(id, songs);
+  const params: AuraParams = auraParams(id, withFeatures(songs));
   const { ink, paper } = colors();
   drawAura(context, size, size, params, ink, paper, 0);
   target.toBlob((blob) => {
