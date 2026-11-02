@@ -128,7 +128,7 @@ export function ItemActions({ target }: { target: MenuTarget }) {
         <DropdownMenuItem
           onClick={run(async () => {
             const [{ exportAura }, songs] = await Promise.all([import("@/components/aura"), songsOf(target)]);
-            exportAura(target.playlist.id, songs, leafOf(target.playlist.name));
+            await exportAura(target.playlist.id, songs, leafOf(target.playlist.name));
           })}
         >
           <ImageDownIcon /> save aura as png

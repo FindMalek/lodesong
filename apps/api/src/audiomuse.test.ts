@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { audiomuseStatus, type Features, featuresFor, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
+import { audiomuseStatus, type Features, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import { openLibraryDb } from "./db";
 import { createIndexTables } from "./search-index";
 
@@ -62,4 +62,10 @@ test("smart shuffle flows by tempo and key, builds energy up and leaves unanalys
   expect(ordered.indexOf("mid-near")).toBeLessThan(ordered.indexOf("mid-far"));
   expect(ordered.indexOf("peak")).toBeGreaterThan(ordered.indexOf("mid-near"));
   expect([...ordered].sort()).toEqual(["mid-far", "mid-near", "none", "peak", "peak-half", "slow"]);
+});
+
+test("features are only handed out for songs in the caller's folders", () => {
+  const db = seeded();
+  for (const id of ["a", "hidden", "ghost"]) db.query("insert into song_features values ('s', ?, 100, 'C', 0.5, 0.5, 0.5, 0)").run(id);
+  expect([...featuresIn(db, "s", ["a", "hidden", "ghost"], ["1"]).keys()]).toEqual(["a"]);
 });

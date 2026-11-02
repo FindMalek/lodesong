@@ -1,5 +1,5 @@
-// Monochrome aura seeded by the playlist id so it's always the same; energy sets contrast and grain, softness blur,
-// organic vs geometric picks a flow field or a dither. Without audio analysis, genre, era and BPM tags stand in.
+// Monochrome aura seeded by the playlist id; energy sets contrast and grain, softness blur, organic vs geometric the style.
+// AudioMuse's energy, valence and BPM drive it when the server has them, else genre, era and BPM tags.
 
 export interface AuraParams {
   seed: number;
@@ -17,6 +17,8 @@ export interface AuraSong {
   genres?: { name: string }[];
   year?: number;
   bpm?: number;
+  energy?: number;
+  valence?: number;
 }
 
 const LOUD = [
@@ -103,14 +105,24 @@ export function auraParams(id: string, songs: AuraSong[]): AuraParams {
   const years = songs.map((song) => song.year).filter((year): year is number => Boolean(year));
   const meanYear = years.length ? years.reduce((sum, year) => sum + year, 0) / years.length : 2000;
   const bpms = songs.map((song) => song.bpm).filter((bpm): bpm is number => Boolean(bpm && bpm > 30 && bpm < 240));
-  const energy = clamp(0.5 + (loud - quiet) * 0.6 + (random() - 0.5) * 0.12);
+  const analysed = (pick: (song: AuraSong) => number | undefined): number | null => {
+    const values = songs.map(pick).filter((value): value is number => typeof value === "number");
+    return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  };
+  const measuredEnergy = analysed((song) => song.energy);
+  const valence = analysed((song) => song.valence);
+  const energy = clamp(measuredEnergy ?? 0.5 + (loud - quiet) * 0.6 + (random() - 0.5) * 0.12);
   const bpm = bpms.length ? bpms.reduce((sum, value) => sum + value, 0) / bpms.length : 70 + energy * 80;
   const organic = share(songs, ORGANIC) - share(songs, GEOMETRIC) * 0.9 + (random() - 0.5) * 0.1;
   return {
     seed: hash(id),
     energy,
     // Quiet music is soft; older recordings are warmer (softer), recent ones crisper.
-    softness: clamp(0.7 - energy * 0.6 + (2000 - meanYear) / 400 + (random() - 0.5) * 0.1),
+    softness: clamp(
+      valence === null
+        ? 0.7 - energy * 0.6 + (2000 - meanYear) / 400 + (random() - 0.5) * 0.1
+        : 0.15 + valence * 0.55 + (1 - energy) * 0.3 + (random() - 0.5) * 0.06,
+    ),
     organic: clamp(0.5 + organic),
     speed: 0.01 + (bpm / 240) * 0.05,
     density: clamp(0.35 + energy * 0.5 + (random() - 0.5) * 0.15),

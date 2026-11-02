@@ -7,7 +7,7 @@ import type { LyricsSearch } from "@lodesong/shared/search";
 import { readTrack } from "@lodesong/shared/spotify-import";
 import type { Server } from "bun";
 import { askGroq, buildPlaylist, libraryArtists } from "./ai-playlist";
-import { audiomuseStatus, featuresFor, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
+import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
 import { type CoverCache, snapCoverSize } from "./covers";
@@ -811,7 +811,7 @@ export function createApi({
     });
   }
 
-  /** `GET /api/audiomuse` status, `POST /api/audiomuse/sync` (admins), `GET /api/audiomuse/similar/:id`, `POST /api/audiomuse/shuffle`. */
+  /** `GET /api/audiomuse` status, `POST /api/audiomuse/sync` (admins), `GET /api/audiomuse/similar/:id`, `POST /api/audiomuse/shuffle`, `POST /api/audiomuse/features`. */
   async function audiomuse(request: Request & { params?: { id?: string } }): Promise<Response> {
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
@@ -838,11 +838,15 @@ export function createApi({
       );
       return json({ songs }, 200, { "cache-control": "private, no-cache" });
     }
-    if (action === "shuffle") {
+    if (action === "shuffle" || action === "features") {
       const body = (await request.json().catch(() => null)) as { ids?: unknown } | null;
       const ids = body?.ids;
       if (!Array.isArray(ids) || ids.length > 2000 || !ids.every((id) => typeof id === "string"))
         return json({ error: "send up to 2000 song ids" }, 400);
+      if (action === "features") {
+        const features = featuresIn(library, upstream.id, ids, await foldersFor(session, upstream));
+        return json({ features: Object.fromEntries(features) }, 200, { "cache-control": "private, no-cache" });
+      }
       return json({ ids: smartShuffle(ids, featuresFor(library, upstream.id, ids)) });
     }
     return json({ error: "not found" }, 404);

@@ -144,6 +144,7 @@ const server = Bun.serve({
     "/api/audiomuse": { GET: api.audiomuse },
     "/api/audiomuse/sync": { POST: api.audiomuse },
     "/api/audiomuse/shuffle": { POST: api.audiomuse },
+    "/api/audiomuse/features": { POST: api.audiomuse },
     "/api/audiomuse/similar/:id": { GET: api.audiomuse },
     "/api/import/match": { POST: api.importMatch },
     "/api/search/lyrics": { GET: api.searchLyrics },

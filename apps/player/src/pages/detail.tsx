@@ -22,6 +22,7 @@ import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
 import { auraParams, vibe } from "@/lib/aura";
 import { cachedSummary } from "@/lib/cached";
+import { useAnalysed } from "@/lib/features";
 import { length, plural, quality } from "@/lib/format";
 import type { LikeKind } from "@/lib/likes";
 import { openListFilter } from "@/lib/list-filter";
@@ -505,7 +506,8 @@ export function PlaylistPage({ id }: { id: string }) {
   const path = usePath();
   const songs = playlist?.entry ?? [];
   const shown = useMemo(() => sortSongs(songs, sort), [songs, sort]);
-  const vibeWords = useMemo(() => (playlist && songs.length ? vibe(auraParams(playlist.id, songs)) : []), [playlist, songs]);
+  const analysed = useAnalysed(songs);
+  const vibeWords = useMemo(() => (playlist && songs.length ? vibe(auraParams(playlist.id, analysed)) : []), [playlist, songs, analysed]);
   const editable = Boolean(playlist && canEdit(playlist) && !isPlaceholderData);
   const editing = useMemo<ListEditing | undefined>(
     () =>
@@ -638,7 +640,7 @@ export function PlaylistPage({ id }: { id: string }) {
                 <ul aria-label="vibe" className="flex gap-1.5">
                   {vibeWords.map((word) => (
                     <li key={word}>
-                      <Badge variant="outline" className="font-mono font-normal text-muted-foreground">
+                      <Badge variant="outline" className="w-24 justify-center font-mono font-normal text-muted-foreground">
                         {word}
                       </Badge>
                     </li>
