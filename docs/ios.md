@@ -28,14 +28,27 @@ unsigned: a sideloading tool signs it with your own free Apple ID.
 - **[Sideloadly](https://sideloadly.io)** (Mac or Windows): plug in the phone, drag the IPA in, enter your Apple ID,
   press Start.
 - **[AltStore](https://altstore.io)** or **[SideStore](https://sidestore.io)**: install once, then add the IPA under My
-  Apps. They refresh it before the 7 days run out (AltStore while your computer is on the same Wi-Fi; SideStore needs
-  no computer after setup).
+  Apps, or better, add the lodesong source (below). They refresh it before the 7 days run out (AltStore while your
+  computer is on the same Wi-Fi; SideStore needs no computer after setup).
 
 Then: Settings → General → **VPN & Device Management** → trust your Apple ID. On iOS 16 and later also switch on
 Settings → Privacy & Security → **Developer Mode** (it asks to restart).
 
 A free Apple ID allows 3 sideloaded apps at a time, and each one expires after 7 days; opening your sideloading tool
 renews it.
+
+### The AltStore / SideStore source (updates itself)
+
+Every release also carries `altstore.json`, a source feed the release workflow generates from the IPA
+(`apps/ios/altstore/source.sh`). Add this URL in AltStore (Browse → Sources → **+**) or SideStore (Sources → **+**):
+
+```
+https://github.com/FindMalek/lodesong/releases/latest/download/altstore.json
+```
+
+lodesong then shows up under the source, installs from there, and each new release appears as an update. The feed
+points at that release's `lodesong-ios.ipa`, so it only changes when a release is made. Not yet checked in a real
+AltStore: the first release that carries `altstore.json` is the test.
 
 ## 3. Build it yourself in Xcode (free Apple ID)
 
