@@ -155,6 +155,16 @@ jobs:
     with:
       tag: v${{ needs.release.outputs.version }}
 
+  # The Linux and Windows desktop app: installers attached to the release (docs/desktop.md).
+  desktop:
+    needs: [check, e2e, release]
+    if: ${{ !cancelled() && !failure() && needs.release.outputs.created == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop.yml
+    with:
+      tag: v${{ needs.release.outputs.version }}
+
   # The macOS app: the zip the in-app updater reads and the pkg Fleet installs (docs/macos/fleet.md).
   macos:
     needs: [check, e2e, release]
