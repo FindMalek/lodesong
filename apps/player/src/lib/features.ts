@@ -31,8 +31,9 @@ async function batch(ids: string[]): Promise<boolean> {
       headers: { ...HEADERS, "content-type": "application/json" },
       body: JSON.stringify({ ids }),
     });
+    const body = (await response.json().catch(() => ({}))) as { features?: Record<string, Analysed> };
     if (!response.ok) return false;
-    const { features } = (await response.json()) as { features?: Record<string, Analysed> };
+    const { features } = body;
     for (const [id, value] of Object.entries(features ?? {})) known.set(id, value);
     return Object.keys(features ?? {}).length > 0;
   } catch {
