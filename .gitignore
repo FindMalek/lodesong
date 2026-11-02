@@ -16,3 +16,8 @@ apps/web/AGENTS.md
 apps/ios/*.xcodeproj
 apps/ios/Info.plist
 apps/ios/build
+
+# Android build output
+apps/android/.gradle
+apps/android/build
+apps/android/app/build
