@@ -83,7 +83,6 @@ export function MixRow() {
         queryClient.setQueryData(queries.playlists().queryKey, (current?: Playlist[]) => (current ? [...current, ...created] : current));
     });
   }, [data, day, slot]);
-  // No placeholder while pending: most days there may be no mixes, and a skeleton that vanishes shifts the page.
   if (mixes.isPending) return null;
   if (mixes.isError && !data)
     return (

@@ -7,7 +7,6 @@ import { Section } from "@/components/library";
 
 const SHOW_AFTER_MS = 150;
 
-/** Holds the place of "new from artists you follow" at the top of home while it (or its chunk) loads. */
 export function NewReleasesSkeleton() {
   return (
     <Section title="new from artists you follow">
