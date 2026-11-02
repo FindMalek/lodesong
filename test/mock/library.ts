@@ -18,7 +18,7 @@ export interface Library {
   lyrics: Map<string, StructuredLyrics>;
 }
 
-export const UNTAGGED_ARTIST = "ar-200";
+const UNTAGGED_ARTIST = "ar-200";
 const GENRES = ["Rock", "Electronic", "Jazz", "Hip-Hop", "Classical", "Folk", "Ambient", "Pop", "Metal", "Soul", "Blues", "Indie"];
 const WORDS = [
   "night",

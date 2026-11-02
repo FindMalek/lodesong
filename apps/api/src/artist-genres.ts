@@ -12,7 +12,7 @@ export type UntaggedAlbum = LibraryAlbum & { songCount?: number; genre?: string;
 
 export type GenreReport = Omit<InferredGenres, "watching"> & { albums: UntaggedAlbum[] };
 
-export function createArtistGenreTables(db: Database): void {
+function createArtistGenreTables(db: Database): void {
   db.run(`create table if not exists artist_genres (
     key text primary key,
     name text not null,
