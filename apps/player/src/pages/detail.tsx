@@ -640,7 +640,7 @@ export function PlaylistPage({ id }: { id: string }) {
                 <ul aria-label="vibe" className="flex gap-1.5">
                   {vibeWords.map((word) => (
                     <li key={word}>
-                      <Badge variant="outline" className="font-mono font-normal text-muted-foreground">
+                      <Badge variant="outline" className="w-24 justify-center font-mono font-normal text-muted-foreground">
                         {word}
                       </Badge>
                     </li>

@@ -97,6 +97,17 @@ export async function syncFeatures(db: Database, server: string, url: string, fe
   return stored;
 }
 
+export function featuresIn(db: Database, server: string, ids: string[], folders: string[]): Map<string, Features> {
+  const folder = db.query<{ folder: string }, [string, string]>(
+    "select folder from idx_items where server = ? and kind = 'song' and id = ?",
+  );
+  const visible = ids.filter((id) => {
+    const row = folder.get(server, id);
+    return row && folders.includes(row.folder);
+  });
+  return featuresFor(db, server, visible);
+}
+
 export function featuresFor(db: Database, server: string, ids?: string[]): Map<string, Features> {
   const rows = db
     .query<Features & { song_id: string }, [string]>(

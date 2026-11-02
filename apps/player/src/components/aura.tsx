@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { type AuraParams, type AuraSong, auraParams, blurPixels, drawAura } from "@/lib/aura";
-import { useAnalysed, withFeatures } from "@/lib/features";
+import { analyse, useAnalysed, withFeatures } from "@/lib/features";
 import { subscribeTheme } from "@/lib/theme";
 
 /** The theme's own ink and paper, read when drawing so light and dark both work. */
@@ -47,7 +47,8 @@ export function Aura({ id, songs, className }: { id: string; songs: (AuraSong & 
   return <canvas ref={canvas} aria-hidden className={className} style={{ filter: `blur(${(blurPixels(params, 1) * 2).toFixed(1)}px)` }} />;
 }
 
-export function exportAura(id: string, songs: (AuraSong & { id: string })[], name: string, size = 1024): void {
+export async function exportAura(id: string, songs: (AuraSong & { id: string })[], name: string, size = 1024): Promise<void> {
+  await analyse(songs.map((song) => song.id));
   const target = document.createElement("canvas");
   target.width = size;
   target.height = size;

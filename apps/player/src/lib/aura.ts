@@ -1,6 +1,5 @@
-// Monochrome aura seeded by the playlist id so it's always the same; energy sets contrast and grain, softness blur,
-// organic vs geometric picks a flow field or a dither. AudioMuse's energy, valence and BPM drive it when the server has
-// them; without analysis, genre, era and BPM tags stand in.
+// Monochrome aura seeded by the playlist id; energy sets contrast and grain, softness blur, organic vs geometric the style.
+// AudioMuse's energy, valence and BPM drive it when the server has them, else genre, era and BPM tags.
 
 export interface AuraParams {
   seed: number;
@@ -18,7 +17,6 @@ export interface AuraSong {
   genres?: { name: string }[];
   year?: number;
   bpm?: number;
-  /** AudioMuse, 0 to 1. */
   energy?: number;
   valence?: number;
 }
