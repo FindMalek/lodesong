@@ -35,7 +35,7 @@ function CheckSection({ check, upgrade }: { check: Check; upgrade?: Playlist }) 
             <TableBody>
               {check.findings.map((finding) => (
                 <TableRow key={`${finding.songId ?? finding.albumId}-${finding.label}`}>
-                  <TableCell className="max-w-96 truncate">
+                  <TableCell className="w-full max-w-0 truncate sm:w-auto sm:max-w-96">
                     {finding.albumId ? (
                       <Link href={`/album/${encodeURIComponent(finding.albumId)}`} className="hover:underline">
                         {finding.label}
@@ -43,8 +43,9 @@ function CheckSection({ check, upgrade }: { check: Check; upgrade?: Playlist }) 
                     ) : (
                       finding.label
                     )}
+                    <span className="block truncate text-muted-foreground sm:hidden">{finding.detail}</span>
                   </TableCell>
-                  <TableCell className="max-w-96 truncate text-muted-foreground">{finding.detail}</TableCell>
+                  <TableCell className="max-w-96 truncate text-muted-foreground max-sm:hidden">{finding.detail}</TableCell>
                   {upgrade && (
                     <TableCell className="w-0 text-right">
                       {(finding.songId || finding.albumId) && (

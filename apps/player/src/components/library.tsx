@@ -39,7 +39,7 @@ export function PageHeader({ title, meta, children }: { title: ReactNode; meta?:
         <h1 className="truncate font-medium font-mono text-sm">{title}</h1>
         {meta !== undefined && <span className="shrink-0 font-mono text-muted-foreground text-xs">{meta}</span>}
       </div>
-      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+      {children && <div className="flex max-w-full flex-wrap items-center gap-2">{children}</div>}
     </header>
   );
 }

@@ -175,7 +175,7 @@ export function LyricsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>album</TableHead>
-                <TableHead>artist</TableHead>
+                <TableHead className="max-sm:hidden">artist</TableHead>
                 <TableHead className="text-right">missing</TableHead>
                 <TableHead className="text-right">synced</TableHead>
                 <TableHead className="text-right">songs</TableHead>
@@ -184,12 +184,13 @@ export function LyricsPage() {
             <TableBody>
               {data.albums.map((album) => (
                 <TableRow key={album.id}>
-                  <TableCell className="max-w-64 truncate">
+                  <TableCell className="w-full max-w-0 truncate sm:w-auto sm:max-w-64">
                     <Link href={`/album/${encodeURIComponent(album.id)}`} className="hover:underline">
                       {album.name || "unknown album"}
                     </Link>
+                    <span className="block truncate text-muted-foreground sm:hidden">{album.artist}</span>
                   </TableCell>
-                  <TableCell className="max-w-48 truncate text-muted-foreground">{album.artist}</TableCell>
+                  <TableCell className="max-w-48 truncate text-muted-foreground max-sm:hidden">{album.artist}</TableCell>
                   <TableCell className="text-right tabular-nums">{album.missing}</TableCell>
                   <TableCell className="text-right text-muted-foreground tabular-nums">{album.synced}</TableCell>
                   <TableCell className="text-right text-muted-foreground tabular-nums">{album.total}</TableCell>
