@@ -21,8 +21,8 @@ boot with a message naming the variable.
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org` | Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off. |
 | `RELEASES_AUTO_GET` | `off` | `on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over. |
-| `GROQ_API_KEY` | — | Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Kept server-side. Empty: off. |
-| `GROQ_MODEL` | `openai/gpt-oss-120b` | The Groq model for playlists from a prompt. |
+| `GROQ_API_KEY` | — | Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Also fills missing or garbled tags of uploads for review (needs `UPLOAD_DIR`). Kept server-side. Empty: off. |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | The Groq model for playlists from a prompt and for upload tags. |
 | `GROQ_URL` | `https://api.groq.com/openai/v1` | Groq's API, or any OpenAI-compatible one. |
 | `AUDIOMUSE_URL` | — | AudioMuse-AI, as this container reaches it: song features (tempo, key, energy, mood) are copied into the index for `bpm:` / `energy:` / `mood:` search filters, smart shuffle and sonic neighbours. Empty: off, everything else works as is. |
 | `FEEDBACK_GITHUB_TOKEN` | — | A GitHub token that may open issues and write contents on `FEEDBACK_REPO`: turns on "send feedback" in the user menu, filed as an issue (screenshots go to a `feedback` branch). Empty: off. |
