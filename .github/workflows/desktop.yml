@@ -71,7 +71,7 @@ jobs:
             cp "$file" "$GITHUB_WORKSPACE/out/lodesong-${{ runner.os == 'Linux' && 'linux' || 'windows' }}$suffix.$ext"
           done
           ls -l "$GITHUB_WORKSPACE/out"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lodesong-desktop-${{ runner.os }}
           path: out/*

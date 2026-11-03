@@ -37,7 +37,7 @@ jobs:
       - run: bun run colors
       - run: bun run test
       - run: SIZE_REPORT=perf-trend/size.json bun run size
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: perf-trend-size
@@ -70,7 +70,7 @@ jobs:
       # Safari's engine on one shard: the app must render there too.
       - if: matrix.shard == 1
         run: bun run e2e --project=webkit
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -142,7 +142,7 @@ jobs:
       # One artifact per release: first-screen size and the Lighthouse desktop and mobile numbers.
       - run: SIZE_REPORT=perf-trend/size.json bun run size
       - run: bun run e2e --project=lighthouse --no-deps
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: perf-trend-${{ needs.release.outputs.version || github.ref_name }}
