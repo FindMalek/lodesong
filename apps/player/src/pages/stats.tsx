@@ -15,7 +15,7 @@ import { player } from "@/lib/player";
 import { createPlaylist } from "@/lib/playlists";
 import { go } from "@/lib/router";
 import { rpc } from "@/lib/rpc";
-import { api, getUser } from "@/lib/subsonic";
+import { scrobblingQuery } from "@/lib/scrobbling";
 import type { Song } from "@/lib/types";
 
 const Recap = lazy(() => import("@/components/recap").then((module) => ({ default: module.Recap })));
@@ -153,12 +153,7 @@ export function StatsPage() {
   const forgotten = useQuery(
     rpc.stats.forgotten.queryOptions({ input: { days: 60 }, staleTime: 60_000, select: (result) => result.songs as Song[] }),
   );
-  const scrobbling = useQuery({
-    queryKey: ["scrobbling"],
-    queryFn: async () =>
-      (await api<{ user?: { scrobblingEnabled?: boolean } }>("getUser", { username: getUser() ?? "" })).user?.scrobblingEnabled ?? null,
-    staleTime: 60 * 60_000,
-  });
+  const scrobbling = useQuery(scrobblingQuery);
   const data = stats.data;
 
   async function playlistFromForgotten(): Promise<void> {

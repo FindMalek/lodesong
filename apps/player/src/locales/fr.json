@@ -1,0 +1,11 @@
+{
+  "history.title": "historique",
+  "history.recentAlbums": "albums écoutés récemment",
+  "history.empty": "rien n'a été écouté ici pour l'instant · ce que vous écoutez apparaît ici, jour après jour",
+  "history.today": "aujourd'hui",
+  "history.yesterday": "hier",
+  "history.playAgain": "réécouter",
+  "history.songs.one": "{count} titre",
+  "history.songs.other": "{count} titres",
+  "history.skipped": "{count} passés"
+}
