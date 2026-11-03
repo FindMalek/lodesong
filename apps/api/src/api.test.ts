@@ -126,3 +126,20 @@ test("a terminal token reads what the playing player plays and skips it; the coo
   expect((await remoteApi.remoteAction(toggle)).status).toBe(200);
   expect(JSON.parse(got.at(-1) as string)).toEqual({ t: "command", command: { action: "toggle", playing: false } });
 });
+
+test("release covers stay off without MusicBrainz and never reach out for a bad id", async () => {
+  const real = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (() => {
+    calls++;
+    return Promise.resolve(new Response(null, { status: 404 }));
+  }) as unknown as typeof fetch;
+  try {
+    const id = "6bd1a8f4-6c8b-4c1c-9f1d-3b1f3a1f2a11";
+    expect((await api.releaseCover(Object.assign(request(`/release-cover/${id}`), { params: { id } }))).status).toBe(404);
+    expect((await api.releaseCover(Object.assign(request("/release-cover/../x"), { params: { id: "../x" } }))).status).toBe(404);
+    expect(calls).toBe(0);
+  } finally {
+    globalThis.fetch = real;
+  }
+});

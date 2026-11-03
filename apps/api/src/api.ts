@@ -17,7 +17,7 @@ import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
 import type { FollowSync } from "./follow-sync";
 import type { GroqConfig } from "./groq";
-import { UpdateCheck } from "./health";
+import { UpdateCheck, VERSION } from "./health";
 import { matchTrack } from "./import-match";
 import { FIELDS, isAudio, readTags, suggestTags, type Tags, writeSidecar } from "./import-metadata";
 import { ListenRooms, type Peer } from "./listen";
@@ -453,6 +453,28 @@ export function createApi({
         "cache-control": "private, max-age=31536000, immutable",
         "server-timing": `cover;dur=${(performance.now() - started).toFixed(1)}`,
       },
+    });
+  }
+
+  /** Release art comes from Cover Art Archive through here: the browser never talks to it, and each cover is fetched once. */
+  async function releaseCover(request: Request & { params: { id: string } }): Promise<Response> {
+    if (!browserSession(request)) return json({ error: "signed out" }, 401);
+    const id = request.params.id.toLowerCase();
+    const missing = () => new Response(null, { status: 404, headers: { ...SECURITY_HEADERS, "cache-control": "private, max-age=3600" } });
+    if (!releases || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) return missing();
+    const path = await covers.get(
+      `release:${id}`,
+      512,
+      (mbid) =>
+        fetch(`https://coverartarchive.org/release-group/${mbid}/front-500`, {
+          headers: { "user-agent": `lodesong/${VERSION} ( https://github.com/FindMalek/lodesong )` },
+          signal: AbortSignal.timeout(15_000),
+        }).catch(() => null),
+      id,
+    );
+    if (!path) return missing();
+    return new Response(Bun.file(path), {
+      headers: { ...SECURITY_HEADERS, "content-type": "image/webp", "cache-control": "private, max-age=2592000" },
     });
   }
 
@@ -930,6 +952,7 @@ export function createApi({
     revokeSession,
     proxy,
     cover,
+    releaseCover,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,
     lyricsMissing,
