@@ -26,7 +26,7 @@ import { Art } from "@/components/art";
 import { DevicesDemo, LyricsDemo, PaletteDemo } from "@/components/demos";
 import { Island } from "@/components/island";
 import { SiteFooter, SiteHeader } from "@/components/site";
-import { DOCS, MAC_APP, REPO, SELF_HOSTING, SITE_URL, stars } from "@/lib/site";
+import { DEMO_URL, DOCS, MAC_APP, REPO, SELF_HOSTING, SITE_URL, stars } from "@/lib/site";
 
 export const revalidate = 86_400;
 
@@ -203,7 +203,12 @@ export default async function Home() {
                 mixes made from what you play, synced lyrics and one session across all your devices. your files, your server, no tracking.
               </p>
               <div className="hero-in mt-9 flex flex-wrap justify-center gap-3 [animation-delay:240ms]">
-                <a href={SELF_HOSTING} className={buttonVariants({ size: "lg" })}>
+                {DEMO_URL && (
+                  <a href={DEMO_URL} className={buttonVariants({ size: "lg" })}>
+                    try it
+                  </a>
+                )}
+                <a href={SELF_HOSTING} className={buttonVariants({ size: "lg", variant: DEMO_URL ? "outline" : "default" })}>
                   self-host it
                 </a>
                 {github}

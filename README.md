@@ -28,6 +28,9 @@
 </picture>
 </p>
 
+**Try it:** a public [live demo](docs/public-demo.md) (sign in with `demo` / `demo`, resets every night) is set up in the
+repo and waits for its host; the page says what is left.
+
 > A monochrome web player for your [Navidrome](https://www.navidrome.org) library. Square covers, hairline borders,
 > synced lyrics, a queue you can see, mixes made from what you play, and one session across all your devices.
 
@@ -193,7 +196,7 @@ Setting them up together: [lyterion](docs/lyterion.md).
 | [genres](docs/genres.md) · [lyterion](docs/lyterion.md) · [spotify import](docs/spotify-import.md) | bringing a Spotify library over |
 | [API](docs/api.md) | the typed API, its reference at `/api`, tokens for your own integrations |
 | [architecture](docs/architecture.md) · [security](docs/security.md) | how it's built, what's protected |
-| [demo library](docs/demo-library.md) · [previews](docs/previews.md) | the generated library, per-PR previews |
+| [demo library](docs/demo-library.md) · [previews](docs/previews.md) · [public demo](docs/public-demo.md) | the generated library, per-PR previews, the permanent demo |
 | [troubleshooting](docs/troubleshooting.md) | when something's off |
 | [contributing](CONTRIBUTING.md) · [roadmap](docs/ROADMAP.md) | working on it |
 

@@ -44,6 +44,8 @@ const CSRF_HEADER = "x-lodesong";
 const CLIENT_HEADER = "x-keep-client";
 
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
+const DEMO_BLOCKED = new Set(["deletePlaylist"]);
+
 const ENDPOINTS = new Set([
   "ping",
   "getLicense",
@@ -140,6 +142,7 @@ export interface ApiOptions {
   limiter: LoginLimiter;
   idleSeconds: number;
   trustProxy: boolean;
+  publicDemo?: boolean;
   updates?: UpdateCheck;
   backfills?: Map<string, { restart(): void }>;
   lrc?: { count(server: string): number; undoAll(server: string): { removed: number; kept: number } } | null;
@@ -188,6 +191,7 @@ export function createApi({
   limiter,
   idleSeconds,
   trustProxy,
+  publicDemo = false,
   updates = new UpdateCheck(false),
   backfills = new Map(),
   lrc = null,
@@ -316,7 +320,7 @@ export function createApi({
       token,
       salt,
       agent: request.headers.get("user-agent") ?? "",
-      admin: Boolean(profile?.user?.adminRole),
+      admin: !publicDemo && Boolean(profile?.user?.adminRole),
     });
     return json({ user, server: upstream.id }, 200, { "set-cookie": sessionCookie(request, cookie, idleSeconds) });
   }
@@ -366,6 +370,7 @@ export function createApi({
     const endpoint = /^\/rest\/(\w+?)(?:\.view)?$/.exec(url.pathname)?.[1];
     if (!endpoint || !ENDPOINTS.has(endpoint)) return json({ error: "not allowed" }, 404);
     if (!MEDIA.has(endpoint) && request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    if (publicDemo && DEMO_BLOCKED.has(endpoint)) return json({ error: "not in the public demo" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
     const upstream = upstreamFor(session.server);
@@ -525,6 +530,7 @@ export function createApi({
 
   function mintToken(request: Request, agent: string): Response {
     if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    if (publicDemo) return json({ error: "not in the public demo" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
     const token = sessions.create({ server: session.server, user: session.user, token: session.token, salt: session.salt, agent });

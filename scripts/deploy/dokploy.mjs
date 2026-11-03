@@ -6,6 +6,7 @@ const MODE = process.argv[2];
 const COMMENT_MARKER = "<!-- lodesong-preview -->";
 const PROJECT = "lodesong-previews";
 const DEMO_APP = "lodesong-demo";
+const PUBLIC_DEMO_APP = "lodesong-public-demo";
 const DEMO_USER = "demo";
 const DEMO_PASSWORD = "demo";
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 5_000;
@@ -62,7 +63,7 @@ async function ensureApplication(environment, name) {
   return app;
 }
 
-async function ensureDomain(applicationId, host, port) {
+async function ensureDomain(applicationId, host, port, open) {
   const domains = await query("domain.byApplicationId", { applicationId });
   if (domains.some((d) => d.host === host)) return;
   await dokploy("domain.create", {
@@ -71,7 +72,7 @@ async function ensureDomain(applicationId, host, port) {
     https: true,
     certificateType: "custom",
     customCertResolver: "vercel",
-    middlewares: ["tailnet-only@file"],
+    middlewares: open ? [] : ["tailnet-only@file"],
     applicationId,
     domainType: "application",
   });
@@ -103,7 +104,7 @@ async function deployApp(environment, app) {
     buildSecrets: null,
     createEnvFile: false,
   });
-  await ensureDomain(applicationId, app.host, app.port);
+  await ensureDomain(applicationId, app.host, app.port, app.open);
   await dokploy("application.deploy", { applicationId });
   // project.all leaves appName off its rows, and it is the swarm service name other apps dial.
   const { appName } = await query("application.one", { applicationId });
@@ -294,12 +295,43 @@ async function demoUp() {
   throw new Error("couldn't reach the demo Navidrome to create the demo account");
 }
 
+// docs/public-demo.md: rebuild the demo Navidrome, then a fresh PUBLIC_DEMO player in front of it; run nightly.
+async function publicDemoUp() {
+  const host = requireEnv("PUBLIC_DEMO_HOST");
+  await demoUp();
+  const environment = await ensureEnvironment();
+  const demo = environment.applications.find((a) => a.name === DEMO_APP);
+  const { appName: demoName } = await query("application.one", { applicationId: demo.applicationId });
+  const player = await deployApp(environment, {
+    name: PUBLIC_DEMO_APP,
+    image: "ghcr.io/findmalek/lodesong:latest",
+    host,
+    port: 8080,
+    open: true,
+    env: {
+      NAVIDROME_URL: `http://${demoName}:4533`,
+      TRUST_PROXY: "true",
+      LRCLIB_URL: "",
+      LYRICS_BACKFILL: "off",
+      UPDATE_CHECK: "off",
+      SESSION_SECRET: randomBytes(24).toString("hex"),
+      INDEX_USER: DEMO_USER,
+      INDEX_PASSWORD: DEMO_PASSWORD,
+      DEMO_SEED: "on",
+      PUBLIC_DEMO: "on",
+    },
+  });
+  if (!(await waitForApp({ ...player, status: "deploying" }, async () => {}))) throw new Error("the public demo didn't come up");
+  console.info(`public demo: https://${host}`);
+}
+
 const MODES = {
   "comment-building": commentBuilding,
   "preview-up": previewUp,
   "preview-down": previewDown,
   "comment-failed": commentFailed,
   "demo-up": demoUp,
+  "public-demo-up": publicDemoUp,
 };
 const run = MODES[MODE];
 if (!run) {
