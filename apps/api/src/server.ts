@@ -91,6 +91,7 @@ const api = createApi({
   limiter: new LoginLimiter(),
   idleSeconds,
   trustProxy: config.trustProxy,
+  publicDemo: config.publicDemo,
   updates: new UpdateCheck(config.updateCheck),
   backfills,
   lrc,

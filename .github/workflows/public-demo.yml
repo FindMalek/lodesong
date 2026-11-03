@@ -1,0 +1,45 @@
+# The permanent public demo (docs/public-demo.md): rebuilt every night so nothing a visitor did survives.
+# Skipped until PUBLIC_DEMO_HOST and DEPLOY_ENABLED are set, and the Demo workflow has pushed its image once.
+name: Public demo
+
+on:
+  schedule:
+    - cron: "15 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-demo
+
+jobs:
+  reset:
+    if: vars.PUBLIC_DEMO_HOST != '' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, the-keep]
+    timeout-minutes: 30
+    env:
+      DOKPLOY_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
+      DOKPLOY_PUBLIC_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Rebuild the demo Navidrome and the public player
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          DEMO_HOST: demo.${{ vars.PREVIEW_DOMAIN }}
+          PUBLIC_DEMO_HOST: ${{ vars.PUBLIC_DEMO_HOST }}
+        run: node scripts/deploy/dokploy.mjs public-demo-up
+      - name: Wait until the public demo answers
+        env:
+          HOST: ${{ vars.PUBLIC_DEMO_HOST }}
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "https://$HOST/healthz" && exit 0
+            sleep 5
+          done
+          echo "https://$HOST did not answer" && exit 1
