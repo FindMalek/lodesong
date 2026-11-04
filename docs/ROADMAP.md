@@ -70,7 +70,7 @@ Priorities: **P0** blocks people or hides a bug class, **P1** the next thing wor
 |---|---|---|---|
 | | the promo video (`apps/video`) on the landing page, with captions | P2 | S |
 | | comparison and "migrate from Spotify" pages for search, with real screenshots | P2 | M |
-| | a docs version switcher and a "last updated" per page | P3 | S |
+| | a docs version switcher | P3 | S |
 | [#320](https://github.com/FindMalek/lodesong/issues/320) | a hosted lodesong against your own Navidrome ([design](design/hosted.md)) | P3 | L |
 
 ## Next version
