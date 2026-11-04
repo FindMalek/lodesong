@@ -4,6 +4,8 @@ test("signs in, plays and opens an album in safari's engine", async ({ page, sig
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   // In-app navigation: a full reload aborts the first page's lazy imports, which WebKit reports as a page error.
+  const menu = signedIn.getByRole("button", { name: "open menu" });
+  if (await menu.isVisible()) await menu.click();
   await signedIn.getByRole("link", { name: "albums", exact: true }).click();
   await page.locator('a[href^="/album/"]').first().click();
   await page.getByRole("button", { name: "play", exact: true }).click();

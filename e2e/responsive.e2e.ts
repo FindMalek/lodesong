@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, fakeMediaClock, test } from "./fixtures";
+import { expect, fakeMediaClock, onPhone, test } from "./fixtures";
 
 const SIZES: [number, number][] = [
   [2560, 1440],
@@ -14,6 +14,8 @@ const SIZES: [number, number][] = [
   [320, 640],
 ];
 
+const SETTINGS = ["playback", "appearance", "library", "sync", "storage", "lyrics", "shortcuts", "account", "about"];
+
 async function playPlaylist(page: Page): Promise<void> {
   await page.addInitScript(fakeMediaClock);
   await page.goto("/playlist/pl-1");
@@ -24,6 +26,7 @@ async function playPlaylist(page: Page): Promise<void> {
 test("the window is filled exactly at every size: one scrollbar, the bar in view, nothing overlapping or cut off", async ({
   signedIn: page,
 }) => {
+  test.skip(onPhone(), "it sets desktop window sizes itself");
   test.setTimeout(120_000);
   await playPlaylist(page);
   for (const [width, height] of SIZES) {
@@ -63,6 +66,7 @@ test("the window is filled exactly at every size: one scrollbar, the bar in view
 });
 
 test("the bar folds its rarely used controls into a menu as the window narrows", async ({ signedIn: page }) => {
+  test.skip(onPhone(), "it hovers the cover on a 2560 px window");
   test.setTimeout(60_000);
   await playPlaylist(page);
   const bar = page.getByRole("contentinfo");
@@ -220,3 +224,27 @@ for (const width of [320, 390])
       if (path === "/lyrics") await expect(page.getByRole("columnheader", { name: "synced" })).toBeInViewport();
     }
   });
+
+test("on a phone no paragraph on a page or in settings is squeezed into a few characters a line", async ({ signedIn: page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const paths = ["/", "/albums", "/artists", "/stats", "/history", "/doctor", ...SETTINGS.map((section) => `/settings/${section}`)];
+  const squeezed: string[] = [];
+  for (const path of paths) {
+    await page.goto(path);
+    await page.waitForTimeout(500);
+    const found = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("main p, [role=dialog] p")]
+        .filter((paragraph) => {
+          const box = paragraph.getBoundingClientRect();
+          const text = (paragraph.textContent ?? "").trim();
+          return box.width > 1 && box.height > 1 && text.split(/\s+/).length > 5 && box.width < 150;
+        })
+        .map(
+          (paragraph) => `${Math.round(paragraph.getBoundingClientRect().width)}px: ${(paragraph.textContent ?? "").trim().slice(0, 40)}`,
+        ),
+    );
+    for (const item of found) squeezed.push(`${path} ${item}`);
+  }
+  expect(squeezed).toEqual([]);
+});
