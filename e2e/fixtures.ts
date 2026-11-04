@@ -16,7 +16,8 @@ export const test = base.extend<{ signedIn: Page }>({
     await page.addInitScript(() => {
       const key = "keep-player:settings";
       const settings = JSON.parse(localStorage.getItem(key) ?? "{}") as Record<string, unknown>;
-      if (!("queueSync" in settings)) localStorage.setItem(key, JSON.stringify({ ...settings, queueSync: false }));
+      const defaults = { queueSync: false, streamQuality: "original" };
+      localStorage.setItem(key, JSON.stringify({ ...defaults, ...settings }));
       if (localStorage.getItem("keep-player:onboarded") === null) localStorage.setItem("keep-player:onboarded", "test");
     });
     // Playback rules and synced settings are per account, which every test shares: each test starts with none.

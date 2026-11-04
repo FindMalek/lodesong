@@ -135,6 +135,7 @@ const server = Bun.serve({
     "/auth/api-token": { POST: api.apiToken },
     "/rest/*": api.proxy,
     "/cover/:id/:size": api.cover,
+    "/release-cover/:id": api.releaseCover,
     "/api/listen": { POST: api.listenCreate },
     "/api/listen/:code": { GET: api.listenSocket },
     "/api/devices": { GET: api.devicesSocket },

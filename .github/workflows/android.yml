@@ -43,7 +43,7 @@ jobs:
           CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
           gradle -p apps/android assembleRelease -PversionName="$VERSION" -PversionCode="$CODE"
           cp apps/android/app/build/outputs/apk/release/app-release.apk lodesong-android.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lodesong-android
           path: lodesong-android.apk

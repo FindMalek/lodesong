@@ -25,7 +25,8 @@ The artists you play most (the top 15 of the last 90 days) are followed for you.
 [MusicBrainz](https://musicbrainz.org) for their new albums, EPs and singles (live albums, compilations and the like
 are left out), and the top of home lists the ones from the last three months that aren't in your library yet, as cards with
 the type, the release date, a link and a mark for the ones you haven't seen. Only artist names leave your server, one request a second with a lodesong user agent,
-and answers are kept, so a release is looked up once.
+and answers are kept, so a release is looked up once. Cards show the cover from [Cover Art Archive](https://coverartarchive.org)
+(by release id, through your server, kept on disk); a release without one keeps its initials.
 
 **following** (or `/following` in the sidebar) is a page: search for an artist (typos are fine, it's the same search as
 the rest of the app, and a name that isn't in your library can be followed by name), see everyone you follow and sort

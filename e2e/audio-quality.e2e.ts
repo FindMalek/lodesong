@@ -37,10 +37,18 @@ test("the equalizer opens, presets set the bands and turn it on, reset flattens 
   await expect.poll(async () => ((await stored(page)).eqGains as number[]).every((gain) => gain === 0)).toBe(true);
 });
 
-test("a transcode stream quality is requested for new plays, and the original stays the default", async ({ page, signedIn }) => {
+test("auto streams a song that isn't kept as opus 192", async ({ page, signedIn }) => {
+  await signedIn.goto("/settings/playback");
+  await page.getByRole("group", { name: "stream quality" }).getByRole("button", { name: "auto" }).click();
+  await signedIn.goto("/album/al-3");
+  const request = page.waitForRequest((candidate) => candidate.url().includes("/rest/stream") && candidate.url().includes("format=opus"));
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  expect(new URL((await request).url()).searchParams.get("maxBitRate")).toBe("192");
+});
+
+test("a chosen stream quality is requested for new plays", async ({ page, signedIn }) => {
   await signedIn.goto("/settings/playback");
   const group = page.getByRole("group", { name: "stream quality" });
-  await expect(group.getByRole("button", { name: "original" })).toHaveAttribute("aria-pressed", "true");
   await group.getByRole("button", { name: "opus 96" }).click();
   await expect.poll(async () => (await stored(page)).streamQuality).toBe("opus-96");
 

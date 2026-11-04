@@ -2,6 +2,7 @@ import type { NewRelease } from "@lodesong/shared/releases";
 import { Button } from "@lodesong/ui/components/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import { useState } from "react";
 import { RELEASE_CARD_HEIGHT, when } from "@/lib/releases";
 import { rpc } from "@/lib/rpc";
 
@@ -34,6 +35,7 @@ function useReleaseActions() {
 
 export function ReleaseCard({ release }: { release: NewRelease }) {
   const { get, seen } = useReleaseActions();
+  const [artFailed, setArtFailed] = useState(false);
   return (
     <li className="flex w-40 shrink-0 flex-col" style={{ height: RELEASE_CARD_HEIGHT }}>
       <div
@@ -42,6 +44,16 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
         style={{ background: `color-mix(in oklab, var(--card), var(--foreground) ${4 + (tone(release.id) % 5) * 3}%)` }}
       >
         {initials(release.title)}
+        {!artFailed && (
+          <img
+            src={`/release-cover/${release.id}`}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover"
+            onError={() => setArtFailed(true)}
+          />
+        )}
         {!release.seen && (
           <span className="absolute top-1.5 left-1.5 bg-foreground px-1 font-mono text-label text-background leading-4">new</span>
         )}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { FALLBACK, isStreamQuality, QUALITIES, streamParams } from "./stream-quality";
+import { FALLBACK, isStreamQuality, QUALITIES, resolveQuality, streamParams } from "./stream-quality";
 
 describe("stream quality", () => {
   test("original asks for the raw file", () => {
@@ -14,5 +14,11 @@ describe("stream quality", () => {
     expect(isStreamQuality(FALLBACK)).toBe(true);
     expect(isStreamQuality("flac-9000")).toBe(false);
     expect(isStreamQuality(undefined)).toBe(false);
+  });
+  test("auto keeps kept songs original and streams the rest light; a fixed choice is never overridden", () => {
+    expect(resolveQuality("auto", true)).toBe("original");
+    expect(resolveQuality("auto", false)).toBe("opus-192");
+    expect(resolveQuality("opus-96", true)).toBe("opus-96");
+    expect(resolveQuality("original", false)).toBe("original");
   });
 });

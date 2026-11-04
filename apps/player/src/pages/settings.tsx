@@ -256,11 +256,14 @@ function ToastPositionRow() {
   );
 }
 
-/** What to stream (#24): the original file, or a transcode for a slow or metered connection. Kept per device. */
+/** What to stream (#24): auto, the original file, or a transcode for a slow or metered connection. Kept per device. */
 function StreamQualityRow() {
   const quality = useSetting("streamQuality");
   return (
-    <Row label="stream quality" hint={<>original plays your files as they are · a transcode saves data on a slow connection · {DEVICE}</>}>
+    <Row
+      label="stream quality"
+      hint={<>auto plays kept songs as they are and streams the rest as opus 192 · original never transcodes · {DEVICE}</>}
+    >
       <ToggleGroup
         variant="outline"
         size="sm"

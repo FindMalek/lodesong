@@ -47,7 +47,7 @@ jobs:
           zip -qr "$GITHUB_WORKSPACE/lodesong-ios.ipa" Payload
       - name: Check the AltStore source
         run: apps/ios/altstore/source.sh lodesong-ios.ipa "v$(node -p "require('./package.json').version")" | jq -e '.apps[0].versions[0].size > 0'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lodesong-ios
           path: lodesong-ios.ipa
