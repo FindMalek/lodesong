@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/FindMalek/lodesong/compare/v1.13.0...v1.14.0) (2026-11-04)
+
+
+### Features
+
+* **player:** auto stream quality ([#478](https://github.com/FindMalek/lodesong/issues/478)) ([157ed9e](https://github.com/FindMalek/lodesong/commit/157ed9e75ea4ecb74921692ef0dd6fa673d299da))
+
 ## [1.13.0](https://github.com/FindMalek/lodesong/compare/v1.12.0...v1.13.0) (2026-11-03)
 
 
