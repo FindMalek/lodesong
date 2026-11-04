@@ -14,7 +14,6 @@ export const test = base.extend<{ signedIn: Page }>({
     await page.addInitScript(() => {
       const key = "keep-player:settings";
       const settings = JSON.parse(localStorage.getItem(key) ?? "{}") as Record<string, unknown>;
-      // Original keeps the precache the offline tests rely on; auto (the real default) has its own test.
       const defaults = { queueSync: false, streamQuality: "original" };
       localStorage.setItem(key, JSON.stringify({ ...defaults, ...settings }));
       if (localStorage.getItem("keep-player:onboarded") === null) localStorage.setItem("keep-player:onboarded", "test");

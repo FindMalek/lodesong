@@ -6,7 +6,6 @@ export const QUALITIES = [
   ["opus-96", "opus 96"],
 ] as const;
 export type StreamQuality = (typeof QUALITIES)[number][0];
-/** What a song actually plays as: `auto` is settled per song. */
 export type Playing = Exclude<StreamQuality, "auto">;
 
 /** What the browser plays when it can't play a song's own format: widely supported and still good. */

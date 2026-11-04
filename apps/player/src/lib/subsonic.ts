@@ -176,7 +176,6 @@ export function fallBackToTranscode(id: string): void {
   transcoded.add(id);
 }
 
-// Set by the offline cache (it imports this file, so this can't import it back).
 let isKept = (_id: string): boolean => false;
 export function lookUpKept(check: (id: string) => boolean): void {
   isKept = check;
