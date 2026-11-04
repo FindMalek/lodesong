@@ -2,7 +2,7 @@ import { snapCoverSize } from "@lodesong/shared/cover-sizes";
 import { useSyncExternalStore } from "react";
 import { markUnreachable, noteResponse } from "./reachability";
 import { getSetting } from "./settings";
-import { FALLBACK, type StreamQuality, streamParams } from "./stream-quality";
+import { FALLBACK, type Playing, resolveQuality, streamParams } from "./stream-quality";
 
 // The browser never holds credentials: the server keeps them behind an httpOnly cookie. Only the username is
 // remembered here, to render the app shell before the first request.
@@ -176,8 +176,13 @@ export function fallBackToTranscode(id: string): void {
   transcoded.add(id);
 }
 
-export function qualityOf(id: string): StreamQuality {
-  return transcoded.has(id) ? FALLBACK : getSetting("streamQuality");
+let isKept = (_id: string): boolean => false;
+export function lookUpKept(check: (id: string) => boolean): void {
+  isKept = check;
+}
+
+export function qualityOf(id: string): Playing {
+  return transcoded.has(id) ? FALLBACK : resolveQuality(getSetting("streamQuality"), isKept(id));
 }
 
 export function streamUrl(id: string): string {

@@ -58,7 +58,7 @@ const DEFAULTS: Settings = {
   queueSync: true,
   followOtherDevices: false,
   crossfade: 0,
-  streamQuality: "original",
+  streamQuality: "auto",
   normalization: "auto",
   preamp: 0,
   eqOn: false,
