@@ -11,7 +11,7 @@ import type { ArtistGenres } from "./artist-genres";
 import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
-import { type CoverCache, snapCoverSize } from "./covers";
+import { type CoverCache, gate, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
@@ -456,6 +456,8 @@ export function createApi({
     });
   }
 
+  const archiveSlot = gate(4);
+
   /** Release art comes from Cover Art Archive through here: the browser never talks to it, and each cover is fetched once. */
   async function releaseCover(request: Request & { params: { id: string } }): Promise<Response> {
     if (!browserSession(request)) return json({ error: "signed out" }, 401);
@@ -466,10 +468,12 @@ export function createApi({
       `release:${id}`,
       512,
       (mbid) =>
-        fetch(`https://coverartarchive.org/release-group/${mbid}/front-500`, {
-          headers: { "user-agent": `lodesong/${VERSION} ( https://github.com/FindMalek/lodesong )` },
-          signal: AbortSignal.timeout(15_000),
-        }).catch(() => null),
+        archiveSlot(() =>
+          fetch(`https://coverartarchive.org/release-group/${mbid}/front-500`, {
+            headers: { "user-agent": `lodesong/${VERSION} ( https://github.com/FindMalek/lodesong )` },
+            signal: AbortSignal.timeout(15_000),
+          }).catch(() => null),
+        ),
       id,
     );
     if (!path) return missing();
