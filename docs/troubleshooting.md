@@ -31,8 +31,11 @@ URL that has `/rest/ping` under it.
 - Large FLACs over a slow link: the next songs only download after the current one is buffered, but a very slow
   connection can still stall. The player waits as long as bytes keep arriving and only gives up on a stream that
   is silent for 8 s, four times.
+  Set [stream quality](devices.md#stream-quality) to a transcode (**auto** already streams most songs as Opus 192), and
+  check the server's link: a port negotiated at 10 Mb/s (`ethtool <nic> | grep Speed`) is about 1 MB/s, which a bad
+  cable or router port causes.
 - "it's in a format this browser can't play": the browser has no decoder for the file type (e.g. ALAC in
-  Firefox). Navidrome can transcode; see its docs.
+  Firefox). lodesong retries the song as an MP3 320 transcode on its own; Navidrome does the converting.
 
 ## Streams cut off behind a proxy
 

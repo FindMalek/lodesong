@@ -12,12 +12,16 @@ import {
   type LucideIcon,
   MicVocalIcon,
   MinusIcon,
+  MonitorIcon,
   MonitorSmartphoneIcon,
+  RadioIcon,
   SmartphoneIcon,
   SparklesIcon,
   StarIcon,
+  TabletSmartphoneIcon,
   TerminalIcon,
   UserRoundCheckIcon,
+  UserRoundPlusIcon,
   WandSparklesIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -36,9 +40,9 @@ const JSON_LD = {
   "@type": "SoftwareApplication",
   name: "lodesong",
   applicationCategory: "MultimediaApplication",
-  operatingSystem: "Web, macOS, iOS (PWA)",
+  operatingSystem: "Web, macOS, iOS, Android, Linux, Windows",
   description:
-    "A self-hosted music player for Navidrome: made-for-you mixes, synced lyrics, one session across your devices and the song in your Mac's notch.",
+    "A self-hosted music player for Navidrome: made-for-you mixes, synced lyrics, new releases from the artists you follow, one session across your devices, apps for Mac, iPhone, Android, Linux and Windows, and the song in your Mac's notch.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   license: "https://opensource.org/licenses/MIT",
   codeRepository: REPO,
@@ -74,7 +78,7 @@ const YOURS: { icon: LucideIcon; title: string; text: string }[] = [
   {
     icon: StarIcon,
     title: "open source",
-    text: "the player, the server and the mac app, mit licensed. read it, fork it, run it the way you like.",
+    text: "the player, the server and every app, mit licensed. read it, fork it, run it the way you like.",
   },
 ];
 
@@ -87,6 +91,27 @@ const COMPARE: { feature: string; keep: boolean; spotify: boolean; navidrome: bo
   { feature: "one session across your devices", keep: true, spotify: true, navidrome: false },
   { feature: "a year in review", keep: true, spotify: true, navidrome: false },
   { feature: "the song in your mac's notch", keep: true, spotify: false, navidrome: false },
+];
+
+const APPS: { icon: LucideIcon; title: string; text: string; href: string }[] = [
+  {
+    icon: TabletSmartphoneIcon,
+    title: "iphone",
+    text: "its own icon and music that keeps playing with the screen locked. a free apple id and altstore or sideloadly install it, and an altstore source keeps it updated.",
+    href: "/docs/ios",
+  },
+  {
+    icon: SmartphoneIcon,
+    title: "android",
+    text: "an apk from the releases, with lock screen and notification controls and playback with the screen off. android 8 or newer.",
+    href: "/docs/android",
+  },
+  {
+    icon: MonitorIcon,
+    title: "linux and windows",
+    text: "a small window on your lodesong: a deb or an appimage for linux, an msi or an exe for windows, about 5 mb each.",
+    href: "/docs/desktop",
+  },
 ];
 
 const MIXES = [
@@ -214,7 +239,7 @@ export default async function Home() {
                 {github}
               </div>
               <ul className="hero-in mt-8 flex flex-wrap justify-center gap-x-5 gap-y-1 font-mono text-muted-foreground text-xs [animation-delay:320ms]">
-                {["one container", "web, mac and phone", "mit licensed", "no tracking"].map((item) => (
+                {["one container", "web, desktop and phone", "mit licensed", "no tracking"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
                     <CheckIcon aria-hidden className="size-3" />
                     {item}
@@ -274,7 +299,7 @@ export default async function Home() {
             <Cell
               icon={CommandIcon}
               title="⌘K for everything"
-              text="ranked search that forgives typos and puts your likes first, with filters, and every action by name."
+              text="ranked search that forgives typos and puts your likes first, with filters (tempo, energy and mood once audiomuse has listened), and every action by name."
             >
               <PaletteDemo />
             </Cell>
@@ -378,6 +403,29 @@ export default async function Home() {
             </div>
           </div>
 
+          <div className="mt-px grid gap-px border border-t-0 bg-border lg:grid-cols-2">
+            <div className="reveal flex items-start gap-3 bg-background p-6">
+              <UserRoundPlusIcon className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              <div>
+                <h3 className="font-medium">follow your artists</h3>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  the artists you play most are followed for you; follow, pin or unfollow the rest. their new albums, eps and singles land
+                  on a following page, grouped by week, and you mark them seen. with lyterion, your spotify follows come over too.
+                </p>
+              </div>
+            </div>
+            <div className="reveal flex items-start gap-3 bg-background p-6">
+              <RadioIcon className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              <div>
+                <h3 className="font-medium">radio from any song</h3>
+                <p className="mt-1 text-muted-foreground text-sm">
+                  start a station from a song or an artist and it opens as a page of its own. 👎 drops a song and, after two, keeps its
+                  artist away.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-12 grid gap-4 sm:grid-cols-3">
             {[
               { name: "search", alt: "⌘K search with songs, albums and artists", caption: "⌘K, ranked the way you listen" },
@@ -448,12 +496,27 @@ export default async function Home() {
             ))}
           </div>
 
+          <div className="reveal mt-8 grid gap-px border bg-border md:grid-cols-3">
+            {APPS.map(({ icon: Icon, title, text, href }) => (
+              <div key={title} className="flex flex-col gap-3 bg-background p-6">
+                <div className="flex items-center gap-2">
+                  <Icon className="size-4" strokeWidth={1.5} />
+                  <h3 className="font-medium">{title}</h3>
+                </div>
+                <p className="text-muted-foreground text-sm">{text}</p>
+                <a href={href} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mt-auto self-start")}>
+                  how to install
+                </a>
+              </div>
+            ))}
+          </div>
+
           <div className="reveal mt-8 flex gap-4 border border-dashed p-6">
             <SmartphoneIcon className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
             <p className="text-muted-foreground text-sm">
-              <span className="font-medium text-foreground">on your phone,</span> open lodesong in the browser and add it to the home
-              screen: it installs like an app, with the layout made for a phone. any subsonic app (arpeggi, symfonium, substreamer) works
-              against the same navidrome too, and your queue hands off both ways. a native iphone app is in the works.
+              <span className="font-medium text-foreground">or just the browser:</span> open lodesong and add it to the home screen, or
+              install it from chrome or edge, and it runs like an app. any subsonic app (arpeggi, symfonium, substreamer) works against the
+              same navidrome too, and your queue hands off both ways.
             </p>
           </div>
         </Section>

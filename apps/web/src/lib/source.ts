@@ -10,6 +10,7 @@ import {
   GitPullRequest,
   Import,
   Keyboard,
+  Laptop,
   Library,
   LifeBuoy,
   type LucideIcon,
@@ -23,6 +24,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  TabletSmartphone,
   Users,
   Workflow,
 } from "lucide-react";
@@ -39,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   GitPullRequest,
   Import,
   Keyboard,
+  Laptop,
   Library,
   LifeBuoy,
   Map: MapIcon,
@@ -51,6 +54,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  TabletSmartphone,
   Users,
   Workflow,
 };
