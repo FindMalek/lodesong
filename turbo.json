@@ -32,7 +32,7 @@
         "../../docs/**"
       ],
       "outputs": [".next/**", "!.next/cache/**"],
-      "env": ["SITE_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_ENV", "GITHUB_TOKEN"]
+      "env": ["SITE_URL", "DEMO_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_ENV", "GITHUB_TOKEN"]
     },
     "dev": {
       "cache": false,

@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 .deploy.env
 test-results
+perf-trend
 playwright-report
 dist
 data
@@ -21,3 +22,7 @@ apps/ios/build
 apps/android/.gradle
 apps/android/build
 apps/android/app/build
+
+# Rust/Tauri build output
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen

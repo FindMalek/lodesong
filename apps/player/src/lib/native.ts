@@ -86,6 +86,7 @@ export function startNativeBridge(): void {
   setInterval(() => player.getState().playing && void post(true), 15_000);
   (window as unknown as { keepNative: unknown }).keepNative = {
     toggle: () => player.toggle(),
+    play: () => player.toggle(true),
     next: () => player.next(),
     previous: () => player.previous(),
     seek: (seconds: number) => player.seek(seconds),

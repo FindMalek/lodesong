@@ -430,6 +430,9 @@ export function GenrePage({ name }: { name: string }) {
   const songs = useQuery(queries.songsByGenre(name, 200));
   const artists = useMemo(() => topArtists(data ?? []), [data]);
   const popular = useMemo(() => topSongs(songs.data ?? []), [songs.data]);
+  const inferred = useQuery(
+    rpc.genres.inferred.queryOptions({ input: { genre: name }, staleTime: 0, select: (result) => result.albums as Album[] }),
+  );
   const source = { kind: "genre", name: name.toLowerCase(), href: `/genre/${encodeURIComponent(name)}` };
 
   return (
@@ -472,6 +475,11 @@ export function GenrePage({ name }: { name: string }) {
           </Delayed>
         )}
       </Section>
+      {inferred.data && inferred.data.length > 0 && (
+        <Section title="inferred · no genre tag, by artists in this genre">
+          <AlbumGrid albums={inferred.data} />
+        </Section>
+      )}
     </>
   );
 }
@@ -692,9 +700,12 @@ export function RadioPage() {
   const noop = useCallback(() => undefined, []);
   if (!preview)
     return (
-      <Content>
-        <EmptyState>no radio yet. start one from an album, an artist, a genre or a song</EmptyState>
-      </Content>
+      <>
+        <PageHeader title="radio" />
+        <Content>
+          <EmptyState>no radio yet. start one from an album, an artist, a genre or a song</EmptyState>
+        </Content>
+      </>
     );
   const { songs, station } = preview;
   const source = { kind: "radio", name: station.name, href: "/radio" };

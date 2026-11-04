@@ -66,7 +66,10 @@ side). Albums and playlists can be kept offline (pinned, never evicted).
 
 Pages are separate chunks (`apps/player/src/routes.tsx`), preloaded when a link is hovered or focused and all fetched once the
 browser is idle. The first screen is budgeted (`bun run size`) and the home page must score ≥ 93 on Lighthouse
-(`e2e/lighthouse.e2e.ts`).
+desktop and ≥ 70 on mobile (slow 4G, 4x CPU; `e2e/lighthouse.e2e.ts`). `e2e/interactions.e2e.ts` budgets the slowest input
+event while a 10k-song list is opened, scrolled and played. `bun run size` also fails when `recharts` or `cmdk` reach the
+first screen. Every CI run uploads the first-screen sizes (`perf-trend-size`), and a release also uploads Lighthouse
+desktop and mobile numbers (`perf-trend-<version>`) to compare release to release.
 
 ## Deploys
 
@@ -78,3 +81,11 @@ webhook and waits for `$PLAYER_URL/api/health`. Every PR gets its own Dokploy pr
 Setup: [docs/deploy/dokploy.md](docs/deploy/dokploy.md).
 
 New settings go in `apps/api/src/settings.ts` (parsed and checked at boot), then `bun run config-docs`.
+
+## Translations
+
+Strings live in flat catalogs, `apps/player/src/locales/<language>.json` (`en.json` is the source of the keys; `{count}` picks
+`.one` / `.other`). A component is converted by calling `useT()` from `@/lib/i18n`; from then on the `i18n/no-literal-text`
+lint rule rejects literal text in its JSX. Only `history` is converted so far; other languages load lazily and the choice is
+a device setting (settings, appearance). Add a language: a new `<language>.json` with the same keys (a unit test checks),
+and an entry in `LANGUAGES`, `LOADERS` and the settings type.

@@ -59,7 +59,7 @@ const SETTINGS = [
     name: "LYTERION_URL",
     fallback: "",
     description:
-      "Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead.",
+      "Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced.",
   },
   {
     name: "LYTERION_TOKEN",
@@ -129,6 +129,12 @@ const SETTINGS = [
       "`on`: fill `INDEX_USER`'s history with months of generated listening, once (for demos and previews, see docs/previews.md). Needs `INDEX_USER`.",
   },
   {
+    name: "PUBLIC_DEMO",
+    fallback: "off",
+    description:
+      "`on`: a public demo (docs/public-demo.md). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted.",
+  },
+  {
     name: "REDIS_URL",
     fallback: "",
     description:
@@ -171,6 +177,7 @@ export interface Config {
   indexUser: string | undefined;
   indexPassword: string | undefined;
   demoSeed: boolean;
+  publicDemo: boolean;
   redisUrl?: string;
   trustProxy: boolean;
   updateCheck: boolean;
@@ -265,6 +272,7 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     indexUser,
     indexPassword,
     demoSeed,
+    publicDemo: flag("PUBLIC_DEMO", ["on"], ["off"]),
     redisUrl: get("REDIS_URL") || undefined,
     trustProxy: flag("TRUST_PROXY", ["1", "true", "yes", "on"], ["0", "false", "no", "off", ""]),
     updateCheck: flag("UPDATE_CHECK", ["on"], ["off"]),

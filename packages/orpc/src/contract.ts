@@ -1,3 +1,4 @@
+import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
 import { followSchema, newReleaseSchema } from "@lodesong/shared/releases";
 import { listeningStatsSchema } from "@lodesong/shared/stats";
@@ -105,6 +106,16 @@ export const contract = {
       .route({ method: "PUT", path: "/follows", summary: "Follow, pin or unfollow an artist", tags: ["Releases"] })
       .input(z.object({ name: z.string().trim().min(1).max(200), status: z.enum(["followed", "pinned", "unfollowed"]) }))
       .output(z.object({ artists: z.array(followSchema) })),
+    sync: oc
+      .route({
+        method: "POST",
+        path: "/follows/sync",
+        summary: "Follow the artists you follow on Spotify",
+        description:
+          "Admins only, with Lyterion set up. Follows each artist Lyterion has from your Spotify; never unfollows, and skips artists you unfollowed here.",
+        tags: ["Releases"],
+      })
+      .output(z.object({ added: z.number(), total: z.number(), artists: z.array(followSchema) })),
   },
 
   releases: {
@@ -132,6 +143,20 @@ export const contract = {
       })
       .input(z.object({ id: z.string().min(1) }))
       .output(ok),
+  },
+
+  genres: {
+    inferred: oc
+      .route({
+        method: "GET",
+        path: "/genres/inferred",
+        summary: "Genres guessed for albums that have none",
+        description:
+          "Albums and songs with no genre tag, and genres of their artists from MusicBrainz (cached, looked up in the background). Empty when `MUSICBRAINZ_URL` is empty. With `genre`, also lists the untagged albums by artists in that genre.",
+        tags: ["Library"],
+      })
+      .input(z.object({ genre: z.string().optional() }))
+      .output(inferredGenresSchema.extend({ albums: z.array(albumSchema) })),
   },
 
   artists: {

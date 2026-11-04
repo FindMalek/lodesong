@@ -75,3 +75,20 @@ test("a genre page shows its top artists, popular songs and albums", async ({ pa
   await expect(page.getByText("albums", { exact: true }).first()).toBeVisible();
   await expect(page.locator('a[href^="/artist/"]').first()).toBeVisible();
 });
+
+test("songs with no genre tag are counted, and their artist's genres are listed apart as inferred", async ({ page, signedIn }) => {
+  const index = (method = "GET") =>
+    signedIn.evaluate(async (verb) => (await fetch("/api/index", { method: verb, headers: { "x-lodesong": "1" } })).json(), method);
+  if ((await index()).lastSync === null) await index("POST");
+  await expect.poll(async () => (await index()).songs > 0 && !(await index()).building, { timeout: 30_000 }).toBe(true);
+  const inferred = page.getByRole("region", { name: "inferred genres" });
+  await expect(async () => {
+    await signedIn.goto("/genres");
+    await expect(inferred).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30_000 });
+  await expect(page.getByText(/20 songs in 2 albums have no genre tag/)).toBeVisible();
+
+  await inferred.getByRole("link", { name: /shoegaze/ }).click();
+  await expect(page.getByText(/^inferred · no genre tag/)).toBeVisible();
+  await expect(page.locator('a[href^="/album/"]')).toHaveCount(2);
+});

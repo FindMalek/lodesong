@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.13.0](https://github.com/FindMalek/lodesong/compare/v1.12.0...v1.13.0) (2026-11-03)
+
+
+### Features
+
+* **android:** webview shell app ([#451](https://github.com/FindMalek/lodesong/issues/451)) ([87e722d](https://github.com/FindMalek/lodesong/commit/87e722d98f165381142a13e46c0ef555baafddaa))
+* **demo:** public demo repo side ([#469](https://github.com/FindMalek/lodesong/issues/469)) ([c070769](https://github.com/FindMalek/lodesong/commit/c070769e53e67acecfe461c8bed9cc24f1b95152))
+* **desktop:** tauri shell app ([#464](https://github.com/FindMalek/lodesong/issues/464)) ([4934f31](https://github.com/FindMalek/lodesong/commit/4934f3189284d7ebfaf2f8af42835edd09f24974))
+* **following:** following page and release cards ([#462](https://github.com/FindMalek/lodesong/issues/462)) ([2feb9ec](https://github.com/FindMalek/lodesong/commit/2feb9ec331ff137133f82362ca50d6bfae960bb5))
+* **follows:** sync spotify follows ([#450](https://github.com/FindMalek/lodesong/issues/450)) ([6d510b7](https://github.com/FindMalek/lodesong/commit/6d510b796dfa3bb6e23b5cd3e5dbca21f36fa7b1))
+* **import:** ai fill upload tags ([#448](https://github.com/FindMalek/lodesong/issues/448)) ([c49d35d](https://github.com/FindMalek/lodesong/commit/c49d35d1fe9bf7493c69ab302e4ffcd04dc5bce6))
+* **ios:** altstore source feed ([#446](https://github.com/FindMalek/lodesong/issues/446)) ([d5c58cb](https://github.com/FindMalek/lodesong/commit/d5c58cb0d0205699646dc487d0f1050971ca2b71))
+* **radio:** radio opens as a page ([#442](https://github.com/FindMalek/lodesong/issues/442)) ([30a9870](https://github.com/FindMalek/lodesong/commit/30a98700ff1bd6583eb3bf20fd05524bc8b44022))
+* **settings:** scrobbling row, i18n groundwork ([#470](https://github.com/FindMalek/lodesong/issues/470)) ([db6e442](https://github.com/FindMalek/lodesong/commit/db6e44263d475702760685dc88d36fedb1bdd363))
+* **stats:** inline svg charts, drop recharts ([#449](https://github.com/FindMalek/lodesong/issues/449)) ([c9b2523](https://github.com/FindMalek/lodesong/commit/c9b25235870a6706bc03d544d9ac40847fee5ea8))
+
+
+### Bug Fixes
+
+* **ci:** drop dependency review ([#452](https://github.com/FindMalek/lodesong/issues/452)) ([c46112d](https://github.com/FindMalek/lodesong/commit/c46112da8f07c17637dee43e4575a79ac242eee2))
+* **genres:** infer genres from artists ([#461](https://github.com/FindMalek/lodesong/issues/461)) ([918ae7e](https://github.com/FindMalek/lodesong/commit/918ae7e237fb573213db5d28fa76f692dd618559))
+* **phone:** filters, tables, a-z strip ([#463](https://github.com/FindMalek/lodesong/issues/463)) ([21213b4](https://github.com/FindMalek/lodesong/commit/21213b470017da725e87153574cac0f62eabbdd3))
+
+
+### Performance Improvements
+
+* **ci:** mobile budgets, size trend ([#468](https://github.com/FindMalek/lodesong/issues/468)) ([12de099](https://github.com/FindMalek/lodesong/commit/12de099d620cec0bd0069455e982edf94311914e))
+
 ## [1.12.0](https://github.com/FindMalek/lodesong/compare/v1.11.1...v1.12.0) (2026-11-02)
 
 

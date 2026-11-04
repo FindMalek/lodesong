@@ -1,0 +1,11 @@
+{
+  "history.title": "history",
+  "history.recentAlbums": "albums you played lately",
+  "history.empty": "nothing played here yet · what you play shows up here, day by day",
+  "history.today": "today",
+  "history.yesterday": "yesterday",
+  "history.playAgain": "play again",
+  "history.songs.one": "{count} song",
+  "history.songs.other": "{count} songs",
+  "history.skipped": "{count} skipped"
+}

@@ -7,6 +7,7 @@ import type { LyricsSearch } from "@lodesong/shared/search";
 import { readTrack } from "@lodesong/shared/spotify-import";
 import type { Server } from "bun";
 import { askGroq, buildPlaylist, libraryArtists } from "./ai-playlist";
+import type { ArtistGenres } from "./artist-genres";
 import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
@@ -14,6 +15,7 @@ import { type CoverCache, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
+import type { FollowSync } from "./follow-sync";
 import type { GroqConfig } from "./groq";
 import { UpdateCheck } from "./health";
 import { matchTrack } from "./import-match";
@@ -42,6 +44,8 @@ const CSRF_HEADER = "x-lodesong";
 const CLIENT_HEADER = "x-keep-client";
 
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
+const DEMO_BLOCKED = new Set(["deletePlaylist"]);
+
 const ENDPOINTS = new Set([
   "ping",
   "getLicense",
@@ -138,12 +142,15 @@ export interface ApiOptions {
   limiter: LoginLimiter;
   idleSeconds: number;
   trustProxy: boolean;
+  publicDemo?: boolean;
   updates?: UpdateCheck;
   backfills?: Map<string, { restart(): void }>;
   lrc?: { count(server: string): number; undoAll(server: string): { removed: number; kept: number } } | null;
   uploadDir?: string | null;
   lyterion?: { url: string; token: string } | null;
   releases?: ReleaseWatch | null;
+  artistGenres?: ArtistGenres | null;
+  followSync?: FollowSync | null;
   rooms?: ListenRooms;
   devices?: DeviceHub | null;
   feedback?: FeedbackTarget | null;
@@ -184,6 +191,7 @@ export function createApi({
   limiter,
   idleSeconds,
   trustProxy,
+  publicDemo = false,
   updates = new UpdateCheck(false),
   backfills = new Map(),
   lrc = null,
@@ -191,6 +199,8 @@ export function createApi({
   uploadDir = null,
   lyterion = null,
   releases = null,
+  artistGenres = null,
+  followSync = null,
   devices = null,
   groq = null,
   audiomuseUrl = null,
@@ -213,7 +223,19 @@ export function createApi({
     return folders;
   }
 
-  const rpcHandler = createRpc({ library, updates, groq, fetcher, upstreamFor, foldersFor, cache, lyrics, releases });
+  const rpcHandler = createRpc({
+    library,
+    updates,
+    groq,
+    fetcher,
+    upstreamFor,
+    foldersFor,
+    cache,
+    lyrics,
+    releases,
+    artistGenres,
+    followSync,
+  });
 
   const secured = (response: Response) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) response.headers.set(name, value);
@@ -298,7 +320,7 @@ export function createApi({
       token,
       salt,
       agent: request.headers.get("user-agent") ?? "",
-      admin: Boolean(profile?.user?.adminRole),
+      admin: !publicDemo && Boolean(profile?.user?.adminRole),
     });
     return json({ user, server: upstream.id }, 200, { "set-cookie": sessionCookie(request, cookie, idleSeconds) });
   }
@@ -348,6 +370,7 @@ export function createApi({
     const endpoint = /^\/rest\/(\w+?)(?:\.view)?$/.exec(url.pathname)?.[1];
     if (!endpoint || !ENDPOINTS.has(endpoint)) return json({ error: "not allowed" }, 404);
     if (!MEDIA.has(endpoint) && request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    if (publicDemo && DEMO_BLOCKED.has(endpoint)) return json({ error: "not in the public demo" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
     const upstream = upstreamFor(session.server);
@@ -507,6 +530,7 @@ export function createApi({
 
   function mintToken(request: Request, agent: string): Response {
     if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    if (publicDemo) return json({ error: "not in the public demo" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
     const token = sessions.create({ server: session.server, user: session.user, token: session.token, salt: session.salt, agent });
