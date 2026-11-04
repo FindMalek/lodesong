@@ -28,7 +28,7 @@ env:
 jobs:
   # The image builds on GitHub's runner (fast network to the registry)...
   build:
-    if: github.event.action != 'closed' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -38,14 +38,14 @@ jobs:
           node-version: "24"
       - name: Say it's building
         run: node scripts/deploy/dokploy.mjs comment-building
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
       - uses: docker/setup-buildx-action@v3
       - name: Build the preview image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -76,7 +76,7 @@ jobs:
         run: node scripts/deploy/dokploy.mjs comment-failed
 
   cleanup:
-    if: github.event.action == 'closed' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action == 'closed' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

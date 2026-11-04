@@ -39,7 +39,7 @@ jobs:
           apps/macos/pkg.sh
           ditto -c -k --keepParent apps/macos/dist/lodesong.app lodesong-macos.zip
           cp apps/macos/dist/lodesong-macos.pkg .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lodesong-macos
           path: |
