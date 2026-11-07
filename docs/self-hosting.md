@@ -191,7 +191,7 @@ music.example.com {
 ```
 
 Add `TRUST_PROXY=true` to `.env` (login rate limits then see the real client address) and remove the `8080:8080`
-port. Traefik, nginx and Dokploy: [deploy](deploy/README.md). Whatever the proxy, it must pass WebSockets (the device
+port. Set `PUBLIC_URL=https://music.example.com` too, so link previews point at the public address. Traefik, nginx and Dokploy: [deploy](deploy/README.md). Whatever the proxy, it must pass WebSockets (the device
 picker and listen together use them) and must not buffer audio.
 
 ```sh

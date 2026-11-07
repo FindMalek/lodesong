@@ -24,6 +24,16 @@ URL that has `/rest/ping` under it.
   message says how long.
 - Behind a reverse proxy, set `TRUST_PROXY=true`, or every user shares the proxy's IP for rate limits.
 
+## Pasted links don't unfurl, or the preview image is missing
+
+- A crawler only sees the details of an item when the link came from "copy share link" (item menu); a plain address
+  shows the generic card. Copy the link again if it was stopped or is older than 180 days.
+- The image address comes from `PUBLIC_URL`, or from the request when that is unset. Behind a reverse proxy set
+  `PUBLIC_URL`, or `TRUST_PROXY=true` with the proxy passing `Host` or `X-Forwarded-Host` and `X-Forwarded-Proto`.
+- Titles in scripts the bundled fonts lack (CJK, Arabic, Hebrew, Thai) show as `…` on the card; the preview text above
+  the card keeps the real name.
+- Chat apps cache previews; a changed card can take a while to show.
+
 ## Songs start slowly or skip
 
 - Look at the browser's network panel: each `/rest/stream` response has `Server-Timing: upstream;dur=…`, the time
