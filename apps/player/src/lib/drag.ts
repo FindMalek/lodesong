@@ -1,7 +1,7 @@
 import type { DragEvent } from "react";
 import { notify } from "./notify";
 import type { MenuTarget } from "./targets";
-import type { Song } from "./types";
+import type { Playlist, Song } from "./types";
 
 export const dropSongs = (target: MenuTarget): Promise<Song[]> => import("./targets").then((module) => module.songsOf(target));
 
@@ -17,6 +17,7 @@ const DRAG_TYPE = "application/x-lodesong";
 interface Dragging {
   target: MenuTarget;
   reorder?: { list: string; index: number; key?: string };
+  move?: boolean;
 }
 
 let dragging: Dragging | null = null;
@@ -29,7 +30,7 @@ const labelOf = (target: MenuTarget): string => {
 };
 
 export function startDrag(event: DragEvent, target: MenuTarget, reorder?: Dragging["reorder"]): void {
-  dragging = { target, reorder };
+  dragging = { target, reorder, move: target.kind === "playlist" };
   event.dataTransfer.effectAllowed = "copyMove";
   event.dataTransfer.setData(DRAG_TYPE, "1");
   // A link too, so dropping onto another app or the address bar does something sensible.
@@ -47,7 +48,13 @@ export function endDrag(): void {
 }
 
 export function current(event: DragEvent): Dragging | null {
-  return event.dataTransfer.types.includes(DRAG_TYPE) ? dragging : null;
+  return event.dataTransfer.types.includes(DRAG_TYPE) && !dragging?.move ? dragging : null;
+}
+
+export function currentMove(event: DragEvent): Playlist | null {
+  return event.dataTransfer.types.includes(DRAG_TYPE) && dragging?.move && dragging.target.kind === "playlist"
+    ? dragging.target.playlist
+    : null;
 }
 
 export function dropTarget(

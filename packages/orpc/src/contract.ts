@@ -1,5 +1,13 @@
 import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
+import {
+  coverSchema,
+  idSchema,
+  importSchema,
+  nameSchema,
+  playlistFolderSchema,
+  playlistFoldersSchema,
+} from "@lodesong/shared/playlist-folders";
 import { followSchema, newReleaseSchema } from "@lodesong/shared/releases";
 import { listeningStatsSchema } from "@lodesong/shared/stats";
 import { fitReasonSchema } from "@lodesong/shared/vibe-fit";
@@ -316,6 +324,72 @@ export const contract = {
       .route({ method: "PUT", path: "/playlists/{id}/hidden", summary: "Hide or show a song in a playlist", tags: ["Playlists"] })
       .input(z.object({ id: z.string().min(1), songId: z.string().min(1), hidden: z.boolean() }))
       .output(hiddenSchema),
+  },
+
+  folders: {
+    list: oc
+      .route({
+        method: "GET",
+        path: "/folders",
+        summary: "Your playlist folders",
+        description:
+          "Folders live in lodesong, not Navidrome: playlist names are never changed. `items` says which folder a playlist is in. " +
+          "A folder's picture is not in this list: `coverVersion` says there is one, and it is at `/folders/{id}/cover`.",
+        tags: ["Playlist folders"],
+      })
+      .output(playlistFoldersSchema),
+    create: oc
+      .route({ method: "POST", path: "/folders", successStatus: 201, summary: "Make a folder", tags: ["Playlist folders"] })
+      .input(z.object({ name: nameSchema, parentId: idSchema.nullable().default(null) }))
+      .output(playlistFolderSchema),
+    update: oc
+      .route({
+        method: "PATCH",
+        path: "/folders/{id}",
+        summary: "Rename, move or give a folder a cover (the fields sent)",
+        description:
+          "Nesting stops at 4 levels. The cover is a png, jpeg or webp data URL, at most 56 KB and 1024 px a side; null goes back to the generated aura. " +
+          "Not in the public demo.",
+        tags: ["Playlist folders"],
+      })
+      .input(
+        z.object({
+          id: idSchema,
+          name: nameSchema.optional(),
+          parentId: idSchema.nullable().optional(),
+          cover: coverSchema.nullable().optional(),
+        }),
+      )
+      .output(playlistFolderSchema),
+    remove: oc
+      .route({
+        method: "DELETE",
+        path: "/folders/{id}",
+        summary: "Delete a folder",
+        description: "What is inside moves up one level; no playlist is deleted.",
+        tags: ["Playlist folders"],
+      })
+      .input(z.object({ id: idSchema }))
+      .output(ok),
+    place: oc
+      .route({
+        method: "PUT",
+        path: "/playlists/{id}/folder",
+        summary: "Put a playlist in a folder, or back at the top with null",
+        tags: ["Playlist folders"],
+      })
+      .input(z.object({ id: idSchema, folderId: idSchema.nullable() }))
+      .output(ok),
+    import: oc
+      .route({
+        method: "POST",
+        path: "/folders/import",
+        successStatus: 201,
+        summary: "Make several nested folders and fill them with playlists, all or nothing",
+        tags: ["Playlist folders"],
+      })
+      .input(importSchema)
+      .output(ok),
   },
 
   lyrics: {

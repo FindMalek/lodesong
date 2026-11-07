@@ -30,6 +30,8 @@ Other e2e files cover keyboard operation (`every-shortcut.e2e.ts`, `focus.e2e.ts
   "up next" card near the end of a song (`role="status"`)
 - the app has no animation at all (`app.css`: `animation: none; transition: none` everywhere except the loader and the
   refresh line), so `prefers-reduced-motion` has nothing to turn off
+- playlists move into folders by drag or from "move to folder…" (the playlist menu and the playlist page), a plain select
+  that works from a keyboard or a phone
 - track lists take a move-up / move-down edit (`ListEditing.move`) next to dragging; whether it is discoverable with a screen
   reader is on the manual list
 
