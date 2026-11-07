@@ -10,6 +10,7 @@ import { isHidden, songPref } from "./prefs";
 import { queries, queryClient } from "./queries";
 import * as Q from "./queue";
 import { getSetting, subscribeSettings } from "./settings";
+import { FALLBACK } from "./stream-quality";
 import { api, coverUrl, fallBackToTranscode, onAccountChange, preloadCover, qualityOf, scrobble, streamUrl } from "./subsonic";
 import type { Song } from "./types";
 import { done, record } from "./undo";
@@ -266,16 +267,19 @@ async function onMediaError(): Promise<void> {
   if (!song || code === null) return;
   if (code === MediaError.MEDIA_ERR_DECODE) return unplayable(song, "the file can't be decoded");
   if (code === MediaError.MEDIA_ERR_NETWORK) return recover();
-  const { verdict, type } = await probe(streamUrl(song.id));
-  if (song !== current()) return;
+  const url = streamUrl(song.id);
+  const { verdict, type } = await probe(url);
+  if (song !== current() || url !== streamUrl(song.id)) return;
+  const refusedTranscode = code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && qualityOf(song.id).startsWith("opus");
   if (verdict === "missing") skipBroken("the server doesn't have the file");
-  else if (verdict === "ok" && type && decks.element.canPlayType(type) === "") unplayable(song, "it's in a format this browser can't play");
+  else if (verdict === "ok" && type && (decks.element.canPlayType(type) === "" || refusedTranscode))
+    unplayable(song, "it's in a format this browser can't play");
   else recover();
 }
 
-// A song this browser can't play (ALAC in Firefox) is retried as a transcode before it is skipped.
+// A song this browser can't play (ALAC in Firefox, Opus in an old Safari) is retried as mp3 before it is skipped.
 function unplayable(song: Song, reason: string): void {
-  if (qualityOf(song.id) !== "original") {
+  if (qualityOf(song.id) === FALLBACK) {
     skipBroken(reason);
     return;
   }

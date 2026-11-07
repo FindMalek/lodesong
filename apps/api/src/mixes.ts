@@ -11,6 +11,8 @@ const FAMILIAR = 0.6;
 const MIN_PLAYS = 5;
 const SESSION_MS = 2 * 3_600_000;
 const NEIGHBOURS = 4;
+const MEMORY_DAYS = 3;
+const KEEP_DAYS = 14;
 const DISCOVER_SIZE = 30;
 const DISCOVER_KNOWN = 0.6;
 const DAYLIST_SIZE = 40;
@@ -125,14 +127,30 @@ export function listening(db: Database, server: string, account: string, now: nu
   return { plays, byArtist, counts, playedKeys, together };
 }
 
-export function blend(l: Listening, artists: string[], size: number, random: () => number): Song[] {
+/** Songs not in `avoid` first; the avoided ones only fill what's left, so a small library still gets a full mix. */
+function preferring(songs: Song[], avoid: Set<string>, random: () => number): Song[] {
+  return [
+    ...shuffle(
+      songs.filter((song) => !avoid.has(keyOf(song))),
+      random,
+    ),
+    ...shuffle(
+      songs.filter((song) => avoid.has(keyOf(song))),
+      random,
+    ),
+  ];
+}
+
+export function blend(l: Listening, artists: string[], size: number, random: () => number, avoid: Set<string> = new Set()): Song[] {
   const pool = artists.flatMap((artist) => l.byArtist.get(artist) ?? []);
-  const familiar = shuffle(
+  const familiar = preferring(
     pool.filter((song) => l.playedKeys.has(keyOf(song))),
+    avoid,
     random,
   ).slice(0, Math.round(size * FAMILIAR));
-  const fresh = shuffle(
+  const fresh = preferring(
     pool.filter((song) => !l.playedKeys.has(keyOf(song))),
+    avoid,
     random,
   ).slice(0, size - familiar.length);
   return shuffle([...familiar, ...fresh], random);
@@ -151,14 +169,93 @@ const topNeighbours = (l: Listening, artist: string, count: number) =>
     .slice(0, count)
     .map(([other]) => other);
 
-function daily(l: Listening, account: string, day: number): Mix[] {
-  const seeds = [...l.counts.entries()]
+export function createMixTables(db: Database): void {
+  db.run(`create table if not exists mix_days (
+    account text not null,
+    day integer not null,
+    id text not null,
+    description text not null,
+    keys text not null,
+    primary key (account, day, id)
+  )`);
+}
+
+function remembered(
+  db: Database,
+  account: string,
+  from: number,
+  to: number,
+): { day: number; id: string; description: string; keys: string[] }[] {
+  return db
+    .query<{ day: number; id: string; description: string; keys: string }, [string, number, number]>(
+      "select day, id, description, keys from mix_days where account = ? and day >= ? and day <= ? order by id",
+    )
+    .all(account, from, to)
+    .map((row) => ({ ...row, keys: parseKeys(row.keys) }));
+}
+
+function parseKeys(text: string): string[] {
+  try {
+    const keys: unknown = JSON.parse(text);
+    return Array.isArray(keys) ? keys.filter((key): key is string => typeof key === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A client's day, kept within two days of the server's: it keys what is stored and pruned. */
+export function nearToday(day: number, now: number): number {
+  const today = Math.floor(now / DAY);
+  return Math.abs(day - today) <= 2 ? day : today;
+}
+
+function remember(db: Database, account: string, day: number, mixes: Mix[]): void {
+  db.transaction(() => {
+    db.query("delete from mix_days where account = ? and (day < ? or day = ?)").run(account, day - KEEP_DAYS, day);
+    for (const mix of mixes)
+      db.query("insert or replace into mix_days (account, day, id, description, keys) values (?, ?, ?, ?, ?)").run(
+        account,
+        day,
+        mix.id,
+        mix.description,
+        JSON.stringify([...new Set(mix.songs.map(keyOf))]),
+      );
+  })();
+}
+
+/** The artists you play most, reshuffled a little each week so the six mixes aren't always the same six. */
+function seedsFor(l: Listening, account: string, day: number): string[] {
+  const week = Math.floor((day + 3) / 7);
+  return [...l.counts.entries()]
     .filter(([artist, n]) => n >= MIN_PLAYS && l.byArtist.has(artist))
     .sort((a, b) => b[1] - a[1])
-    .map(([artist]) => artist);
+    .map(([artist, n]) => ({ artist, score: n * (0.5 + seeded(`${account}:seed:${week}:${artist}`)()) }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.artist);
+}
+
+type Stored = { id: string; description: string; keys: string[] };
+
+function fromStored(l: Listening, rows: Stored[]): Mix[] {
+  const library = new Map<string, Song>();
+  for (const songs of l.byArtist.values()) for (const song of songs) if (!library.has(keyOf(song))) library.set(keyOf(song), song);
+  return rows
+    .map((row) => ({
+      id: row.id,
+      name: row.id.replace("daily-", "daily mix "),
+      description: row.description,
+      songs: row.keys.map((key) => library.get(key)).filter((song): song is Song => Boolean(song)),
+    }))
+    .filter((mix) => mix.songs.length > 0);
+}
+
+function daily(db: Database, l: Listening, account: string, day: number): Mix[] {
+  const stored = fromStored(l, remembered(db, account, day, day));
+  if (stored.length >= MIXES) return stored;
+  const avoid = new Set(remembered(db, account, day - MEMORY_DAYS, day - 1).flatMap((row) => row.keys));
   const used = new Set<string>();
   const mixes: Mix[] = [];
-  for (const seed of seeds) {
+  for (const seed of seedsFor(l, account, day)) {
     if (mixes.length === MIXES) break;
     if (used.has(seed)) continue;
     const artists = [seed, ...topNeighbours(l, seed, NEIGHBOURS)];
@@ -167,10 +264,15 @@ function daily(l: Listening, account: string, day: number): Mix[] {
       id: `daily-${mixes.length + 1}`,
       name: `daily mix ${mixes.length + 1}`,
       description: artistNames(l, artists),
-      songs: blend(l, artists, PER_MIX, seeded(`${account}:${day}:${seed}`)),
+      songs: blend(l, artists, PER_MIX, seeded(`${account}:${day}:${seed}`), avoid),
     });
   }
-  return mixes;
+  if (stored.length >= mixes.length) return stored;
+  remember(db, account, day, mixes);
+  return fromStored(
+    l,
+    mixes.map((mix) => ({ id: mix.id, description: mix.description, keys: [...new Set(mix.songs.map(keyOf))] })),
+  );
 }
 
 function discover(l: Listening, account: string, friday: number, boosted: Set<string>): Mix | null {
@@ -273,7 +375,7 @@ export function madeForYou(
   const l = listening(db, server, account, now);
   if (!l) return [];
   return [
-    ...daily(l, account, day),
+    ...daily(db, l, account, day),
     discover(l, account, lastFriday(day), boosted),
     releaseRadar(l, now),
     onThisDay(db, l, account, now),
@@ -301,5 +403,5 @@ export function mixesVersion(db: Database, server: string, account: string): str
 
 export function dailyMixes(db: Database, server: string, account: string, day: number, now = Date.now()): Mix[] {
   const l = listening(db, server, account, now);
-  return l ? daily(l, account, day) : [];
+  return l ? daily(db, l, account, day) : [];
 }

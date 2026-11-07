@@ -181,8 +181,12 @@ export function lookUpKept(check: (id: string) => boolean): void {
   isKept = check;
 }
 
+let opusOk: boolean | undefined;
+// A browser that can't play Ogg Opus answers "": auto then streams mp3.
+const canPlayOpus = (): boolean => (opusOk ??= typeof Audio === "undefined" || new Audio().canPlayType('audio/ogg; codecs="opus"') !== "");
+
 export function qualityOf(id: string): Playing {
-  return transcoded.has(id) ? FALLBACK : resolveQuality(getSetting("streamQuality"), isKept(id));
+  return transcoded.has(id) ? FALLBACK : resolveQuality(getSetting("streamQuality"), isKept(id), canPlayOpus());
 }
 
 export function streamUrl(id: string): string {
