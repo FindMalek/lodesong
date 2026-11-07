@@ -26,7 +26,7 @@ export async function coverFromFile(file: File): Promise<string | null> {
     canvas.height = size;
     const context = canvas.getContext("2d");
     if (context) {
-      context.fillStyle = "#fff";
+      context.fillStyle = "white";
       context.fillRect(0, 0, size, size);
       context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
     }
