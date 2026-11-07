@@ -291,10 +291,10 @@ test("a day that regenerates after songs vanish stays the same on the next calls
   const names = () => dailyMixes(db, "s", "s:u", 20_000, NOW).map((mix) => mix.description);
   const first = names();
   expect(first).toHaveLength(6);
-  const [gone] = first;
-  db.run("delete from idx_items where id = ?", [`${gone}1`]);
+  const gone = first.slice(0, 2);
+  for (const artist of gone) db.run("delete from idx_items where id = ?", [`${artist}1`]);
   const after = names();
-  expect(after).not.toContain(gone as string);
+  expect(after).toHaveLength(5);
   expect(new Set(after).size).toBe(after.length);
   expect(names()).toEqual(after);
   expect(names()).toEqual(after);
