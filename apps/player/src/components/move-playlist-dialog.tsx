@@ -4,7 +4,7 @@ import { Label } from "@lodesong/ui/components/label";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { placePlaylist } from "@/lib/folder-edits";
-import { folderOptions, placedIn } from "@/lib/folder-tree";
+import { folderOptions, placedIn } from "@/lib/folder-find";
 import { usePlaylistTree } from "@/lib/playlist-folders";
 import { leafOf } from "@/lib/playlists";
 import { queries } from "@/lib/queries";

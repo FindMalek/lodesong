@@ -6,7 +6,7 @@ import { Label } from "@lodesong/ui/components/label";
 import { useRef, useState } from "react";
 import { coverFromFile } from "@/lib/folder-cover-file";
 import { changeFolder, createFolder, deleteFolder } from "@/lib/folder-edits";
-import { findFolder, movableInto, pathTo } from "@/lib/folder-tree";
+import { findFolder, movableInto, pathTo } from "@/lib/folder-find";
 import { notify } from "@/lib/notify";
 import { openPlaylistDialog } from "@/lib/playlist-dialogs";
 import { usePlaylistTree } from "@/lib/playlist-folders";

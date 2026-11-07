@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { buildTree, folderOptions, movableInto, placedIn, shownName } from "./folder-tree";
+import { folderOptions, movableInto, placedIn } from "./folder-find";
+import { buildTree, shownName } from "./folder-tree";
 import type { Playlist } from "./types";
 
 const playlist = (id: string, name: string): Playlist => ({ id, name, songCount: 0, duration: 0 });

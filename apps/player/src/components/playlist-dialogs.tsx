@@ -4,7 +4,7 @@ import { Input } from "@lodesong/ui/components/input";
 import { Label } from "@lodesong/ui/components/label";
 import { useState } from "react";
 import { convertFolder } from "@/lib/folder-edits";
-import { findLegacy } from "@/lib/folder-tree";
+import { findLegacy } from "@/lib/folder-find";
 import { openPlaylistDialog, type PlaylistDialog } from "@/lib/playlist-dialogs";
 import { usePlaylistTree } from "@/lib/playlist-folders";
 import { renameFolder } from "@/lib/playlists";
