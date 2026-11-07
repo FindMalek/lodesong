@@ -68,6 +68,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run e2e --project=chromium --shard=${{ matrix.shard }}/4
       # Safari's engine and an iPhone (WebKit, touch) on a subset of the specs, one project per shard to keep the run short.
+      - if: matrix.shard == 3
+        run: bun run e2e --project=audio
       - if: matrix.shard == 1
         run: bun run e2e --project=webkit
       - if: matrix.shard == 2

@@ -216,7 +216,6 @@ function control(url: URL, request: Request): Response {
   return new Response("not found", { status: 404 });
 }
 
-// Real encoded tones for `format=mp3` and `format=opus`, as Navidrome's transcodes arrive: a browser has to decode them.
 const TONES: Record<string, { type: string; bytes: Uint8Array<ArrayBuffer> }> = {
   mp3: { type: "audio/mpeg", bytes: await Bun.file(new URL("./audio/tone.mp3", import.meta.url)).bytes() },
   opus: { type: "audio/ogg", bytes: await Bun.file(new URL("./audio/tone.opus", import.meta.url)).bytes() },

@@ -18,7 +18,17 @@ export default defineConfig({
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://127.0.0.1:${APP}`, trace: "retain-on-failure" },
   projects: [
-    { name: "chromium", testIgnore: /lighthouse|webkit/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    {
+      name: "chromium",
+      testIgnore: /lighthouse|webkit|audio-output/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    // A fake audio output: a CI container has no sound card, and a context without one never leaves "suspended".
+    {
+      name: "audio",
+      testMatch: /audio-output/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, launchOptions: { args: ["--disable-audio-output"] } },
+    },
     { name: "webkit", testMatch: WEBKIT_SPECS, use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } } },
     { name: "phone", testMatch: PHONE_SPECS, use: { ...devices["iPhone 14"] } },
     // Alone and last: a busy CPU from parallel tests would skew the score.

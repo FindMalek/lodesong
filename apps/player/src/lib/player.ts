@@ -274,8 +274,7 @@ async function onMediaError(): Promise<void> {
   else recover();
 }
 
-// A song this browser can't play (ALAC in Firefox, Ogg Opus in an older Safari) is retried as an mp3 transcode before it
-// is skipped.
+// A song this browser can't play (ALAC in Firefox, Opus in an old Safari) is retried as mp3 before it is skipped.
 function unplayable(song: Song, reason: string): void {
   if (qualityOf(song.id) === FALLBACK) {
     skipBroken(reason);
