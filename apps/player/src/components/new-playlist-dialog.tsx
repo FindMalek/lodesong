@@ -29,11 +29,13 @@ export function NewPlaylistDialog({
   onOpenChange,
   songs = [],
   folder = "",
+  folderId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   songs?: Song[];
   folder?: string;
+  folderId?: string;
 }) {
   const [name, setName] = useState(folder ? `${folder} / ` : "");
   // Keyed by the host on what was asked, so a "new playlist in here" starts from that folder.
@@ -73,6 +75,7 @@ export function NewPlaylistDialog({
     const id = await createPlaylist(trimmed, { comment: comment.trim(), isPublic, songs: made?.songs ?? songs });
     setSaving(false);
     if (!id) return;
+    if (folderId) await import("@/lib/folder-edits").then((edits) => edits.placePlaylist(id, folderId));
     onOpenChange(false);
     go(`/playlist/${id}`);
   }

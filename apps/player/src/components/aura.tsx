@@ -4,7 +4,7 @@ import { analyse, useAnalysed, withFeatures } from "@/lib/features";
 import { subscribeTheme } from "@/lib/theme";
 
 /** The theme's own ink and paper, read when drawing so light and dark both work. */
-function colors(): { ink: string; paper: string } {
+export function colors(): { ink: string; paper: string } {
   const tokens = getComputedStyle(document.documentElement);
   return {
     ink: tokens.getPropertyValue("--foreground").trim() || "CanvasText",

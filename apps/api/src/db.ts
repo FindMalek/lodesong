@@ -3,6 +3,8 @@ import { createFeatureTables } from "./audiomuse";
 import { createHistoryTables } from "./history";
 import { createMixTables } from "./mixes";
 import { createMomentTables } from "./moments";
+import { createPlaylistFolderTables } from "./playlist-folders";
+import { createPlaylistTables } from "./playlist-songs";
 import { createPrefTables } from "./prefs";
 import { createRadioTables } from "./radio";
 import { createReleaseTables } from "./releases";
@@ -29,11 +31,13 @@ export function openLibraryDb(path: string): Database {
   createFeatureTables(db);
   createHistoryTables(db);
   createMomentTables(db);
+  createPlaylistFolderTables(db);
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);
   createShareTables(db);
   createMixTables(db);
+  createPlaylistTables(db);
   // Songs you keep in a playlist but don't want to hear from it (#46): per user, the playlist itself is untouched.
   db.run(`create table if not exists playlist_hidden (
     account text not null,

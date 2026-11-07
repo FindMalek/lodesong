@@ -1,5 +1,6 @@
 import { normalize } from "@lodesong/shared/normalize";
 import { parseQuery } from "@lodesong/shared/search-query";
+import { fitsGenre, vibeOf } from "@lodesong/shared/vibes";
 import { Badge } from "@lodesong/ui/components/badge";
 import { Button } from "@lodesong/ui/components/button";
 import {
@@ -13,8 +14,8 @@ import {
   CommandShortcut,
 } from "@lodesong/ui/components/command";
 import { useQuery } from "@tanstack/react-query";
-import { ClockIcon, PlayIcon, PlusIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ClockIcon, PlayIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { player, usePlayer } from "@/lib/player";
 import { queries } from "@/lib/queries";
@@ -32,9 +33,12 @@ import {
 } from "@/lib/search-actions";
 import { bindingsOf, useShortcutList } from "@/lib/shortcuts";
 import type { Song } from "@/lib/types";
+import { playVibe } from "@/lib/vibe-actions";
+import { vibePlaylists as rankedPlaylists } from "@/lib/vibe-playlists";
 import { isLink } from "@/lib/wishlist";
 import { AddTrack } from "./add-track";
 import { Cover } from "./cover";
+import { FitWhy } from "./fit-why";
 import { ListContextMenu, type MenuTarget } from "./item-menu";
 import { KeyCombo } from "./key-combo";
 import { LyricsSnippet } from "./lyrics-snippet";
@@ -43,7 +47,7 @@ import { ResultGroupSkeleton } from "./skeletons";
 /** Typing pauses shorter than this don't send a request; the previous results stay up meanwhile. */
 const DEBOUNCE_MS = 30;
 
-function Row({ cover, title, sub }: { cover?: string; title: string; sub: string }) {
+function Row({ cover, title, sub }: { cover?: string; title: string; sub: ReactNode }) {
   return (
     <>
       <Cover id={cover} size={32} className="size-8 shrink-0" />
@@ -60,7 +64,8 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const [query, setQuery] = useState("");
   // Adding a song replaces the results: the same box, but the text becomes what to look for.
   const [adding, setAdding] = useState<string | null>(null);
-  const canAdd = useQuery({ ...apiQueries.session(), enabled: open }).data?.lyterionAdd === true;
+  const session = useQuery({ ...apiQueries.session(), enabled: open }).data;
+  const canAdd = session?.lyterionAdd === true;
   useEffect(() => {
     if (!open) setAdding(null);
   }, [open]);
@@ -83,11 +88,23 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const lyrics = lyricsQuery.data;
   const lyricHits = lyricsWanted ? (lyrics?.hits ?? []) : [];
   const playlistsData = useQuery({ ...queries.playlists(), enabled: open }).data;
-  const playlists = useMemo(() => {
-    const wanted = normalize(active.text);
-    if (!wanted || active.lyricsOnly || active.chips.length) return [];
-    return (playlistsData ?? []).filter((playlist) => normalize(playlist.name).includes(wanted)).slice(0, 4);
-  }, [playlistsData, active]);
+  const vibe = useMemo(() => (active.chips.length || active.lyricsOnly ? null : vibeOf(active.text)), [active]);
+  const genresData = useQuery({ ...queries.genres(), enabled: open && vibe !== null }).data;
+  const vibeGenres = useMemo(
+    () =>
+      vibe
+        ? (genresData ?? [])
+            .filter((genre) => fitsGenre(vibe, genre.value))
+            .sort((a, b) => b.songCount - a.songCount)
+            .slice(0, 4)
+        : [],
+    [genresData, vibe],
+  );
+  const fit = useQuery({
+    ...apiQueries.moodPlaylists(vibe?.label ?? ""),
+    enabled: open && vibe !== null && session?.audiomuse === true,
+  }).data;
+  const vibePlaylists = useMemo(() => (vibe ? rankedPlaylists(vibe, playlistsData ?? [], fit) : []), [playlistsData, vibe, fit]);
   const history = usePlayer((state) => state.queue.history);
 
   // New results start at the top with the first one selected; cmdk would keep the old scroll and selection.
@@ -146,13 +163,24 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
     </CommandGroup>
   );
   const addFirst = needle && isLink(text);
+  const canMix = vibeGenres.length > 0 || session?.audiomuse === true;
+  const showVibe = vibe && settled && (canMix || vibePlaylists.length > 0);
+  const wantedPlaylist = normalize(active.text);
+  const shownPlaylists = new Set(showVibe ? vibePlaylists.map(({ playlist }) => playlist.id) : []);
+  const playlists =
+    !wantedPlaylist || active.lyricsOnly || active.chips.length
+      ? []
+      : (playlistsData ?? [])
+          .filter((playlist) => !shownPlaylists.has(playlist.id) && normalize(playlist.name).includes(wantedPlaylist))
+          .slice(0, 4);
 
   const targets = new Map<string, MenuTarget>();
   for (const song of played) targets.set(`played-${song.id}`, { kind: "songs", songs: [song] });
   if (top) targets.set(`top-${top.item.id}`, resultTarget(top.kind, top.item));
   for (const song of songs) targets.set(`so-${song.id}`, { kind: "songs", songs: [song] });
   for (const [kind, items] of groups) for (const item of items) targets.set(`${kind}-${item.id}`, resultTarget(kind, item));
-  for (const playlist of playlists) targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
+  for (const playlist of [...(showVibe ? vibePlaylists.map((item) => item.playlist) : []), ...playlists])
+    targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
   for (const hit of lyricHits)
     targets.set(`ly-${(hit.song as unknown as Song).id}`, { kind: "songs", songs: [hit.song as unknown as Song] });
   const menuTarget = (element: Element) => targets.get(element.closest("[data-value]")?.getAttribute("data-value") ?? "") ?? null;
@@ -260,6 +288,50 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                       <span className="truncate">play {resultTitle(top.kind, top.item)}</span>
                     </CommandItem>
                   )}
+                </CommandGroup>
+              )}
+              {vibe && showVibe && (
+                <CommandGroup heading={`for ${vibe.label}`}>
+                  {canMix && (
+                    <CommandItem
+                      value="vibe-mix"
+                      onSelect={run(
+                        () =>
+                          void playVibe(
+                            vibe,
+                            vibeGenres.map((genre) => genre.value),
+                          ),
+                      )}
+                    >
+                      <SparklesIcon className="text-muted-foreground" />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-body">play a mix for {vibe.label}</span>
+                        <span className="truncate text-muted-foreground text-xs">{vibe.why}</span>
+                      </span>
+                    </CommandItem>
+                  )}
+                  {vibePlaylists.map(({ playlist, reasons }) => (
+                    <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
+                      <Row
+                        cover={playlist.coverArt}
+                        title={playlist.name}
+                        sub={
+                          <>
+                            playlist · {playlist.songCount} songs · <FitWhy reasons={reasons} />
+                          </>
+                        }
+                      />
+                    </CommandItem>
+                  ))}
+                  {vibeGenres.map((genre) => (
+                    <CommandItem
+                      key={genre.value}
+                      value={`genre-${genre.value}`}
+                      onSelect={run(() => go(`/genre/${encodeURIComponent(genre.value)}`))}
+                    >
+                      <Row title={genre.value} sub={`genre · ${genre.songCount} songs`} />
+                    </CommandItem>
+                  ))}
                 </CommandGroup>
               )}
               {songs.length > 0 && (

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { SIDEBAR_DEFAULT } from "./sidebar-width";
 import type { StreamQuality } from "./stream-quality";
 
 // Prefs in SYNCED follow you to every browser through the server (settings-sync.ts); the rest belong to this device.
@@ -21,6 +22,7 @@ export interface Settings {
   /** Never inside an album played in order. */
   crossfade: number;
   streamQuality: StreamQuality;
+  sidebarWidth: number;
   normalization: "off" | "track" | "album" | "auto";
   preamp: number;
   eqOn: boolean;
@@ -59,6 +61,7 @@ const DEFAULTS: Settings = {
   followOtherDevices: false,
   crossfade: 0,
   streamQuality: "auto",
+  sidebarWidth: SIDEBAR_DEFAULT,
   normalization: "auto",
   preamp: 0,
   eqOn: false,

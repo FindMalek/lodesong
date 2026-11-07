@@ -1,6 +1,6 @@
 # Builds on the CI's own CPU and cross-compiles the executable for each target (amd64, arm64), so a multi-arch image
 # needs no emulation for the slow part.
-FROM --platform=$BUILDPLATFORM oven/bun:1.4.2-alpine AS build
+FROM --platform=$BUILDPLATFORM oven/bun:1.4.4-alpine AS build
 ARG TARGETARCH
 WORKDIR /app
 # The workspace manifests first, so the install layer is cached until a dependency changes.

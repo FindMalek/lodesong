@@ -142,6 +142,7 @@ const server = Bun.serve({
     "/api/csp-report": { POST: cspReport },
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
+    "/api/folders/:id/cover": { GET: api.folderPicture },
     "/api": api.http,
     "/api/*": api.http,
     "/auth/login": { POST: api.login },

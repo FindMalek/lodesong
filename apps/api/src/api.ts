@@ -15,6 +15,7 @@ import { type CoverCache, gate, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
 import { type FeedbackTarget, fileFeedback, MAX_SCREENSHOT_BYTES } from "./feedback";
+import { coverResponse } from "./folder-cover";
 import type { FollowSync } from "./follow-sync";
 import type { GroqConfig } from "./groq";
 import { UpdateCheck, VERSION } from "./health";
@@ -27,6 +28,7 @@ import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
 import { ShareCards, type ShareKind } from "./og";
 import { originOf } from "./origin-of";
+import { folderCover, forgetPlaylist } from "./playlist-folders";
 import type { LoginLimiter } from "./rate-limit";
 import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
@@ -257,6 +259,7 @@ export function createApi({
     releases,
     artistGenres,
     followSync,
+    publicDemo,
   });
 
   const secured = (response: Response) => {
@@ -445,6 +448,14 @@ export function createApi({
     out.set("vary", "cookie");
     out.set("server-timing", `upstream;dur=${(performance.now() - started).toFixed(1)}`);
     if (endpoint === "star" || endpoint === "unstar") likesCache.delete(session.id);
+    const gone = endpoint === "deletePlaylist" ? query.get("id") : null;
+    if (gone && response.ok) {
+      const body = (await response
+        .clone()
+        .json()
+        .catch(() => null)) as { "subsonic-response"?: { status?: string } } | null;
+      if (body?.["subsonic-response"]?.status === "ok") forgetPlaylist(library, dataAccount(session), gone);
+    }
     return new Response(response.body, { status: response.status, headers: out });
   }
 
@@ -565,6 +576,14 @@ export function createApi({
     return new Response(Bun.file(path), {
       headers: { ...SECURITY_HEADERS, "content-type": "image/webp", "cache-control": "private, max-age=2592000" },
     });
+  }
+
+  /** A folder's picture, for `<img>`: your session (cookie or token) decides whose folders it looks in. */
+  function folderPicture(request: Request & { params: { id: string } }): Response {
+    const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/)?.[1];
+    const session = bearer ? sessions.get(bearer) : browserSession(request);
+    if (!session || session.agent === REMOTE_AGENT) return json({ error: "signed out" }, 401);
+    return coverResponse(request, folderCover(library, dataAccount(session), request.params.id), SECURITY_HEADERS);
   }
 
   async function songLyrics(request: Request & { params: { songId: string } }): Promise<Response> {
@@ -1048,6 +1067,7 @@ export function createApi({
     shareList,
     shareRemove,
     releaseCover,
+    folderPicture,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,
     lyricsMissing,
