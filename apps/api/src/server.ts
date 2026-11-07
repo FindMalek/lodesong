@@ -17,6 +17,7 @@ import { font } from "./fonts";
 import { HealthCheck, UpdateCheck, VERSION } from "./health";
 import { LrcWriter } from "./lrc-writer";
 import { LyricsService } from "./lyrics";
+import { cardImage, type ShareKind } from "./og";
 import { pwaRoutes } from "./pwa";
 import { LoginLimiter } from "./rate-limit";
 import { lyterionHandOff, MusicBrainz, ReleaseWatch } from "./releases";
@@ -25,7 +26,7 @@ import { SessionStore } from "./sessions";
 import { MAX_UPLOAD_BYTES } from "./upload";
 
 // Dead-code eliminated per build: the executable only contains the static server, dev only the bundler route.
-const { webRoutes } = process.env.NODE_ENV === "production" ? await import("./static") : await import("./dev");
+const { webRoutes, pageWith } = process.env.NODE_ENV === "production" ? await import("./static") : await import("./dev");
 
 const idleSeconds = config.sessionIdleDays * 86_400;
 const sessions = new SessionStore(join(config.dataDir, "sessions.db"), config.sessionSecret, idleSeconds * 1000);
@@ -110,6 +111,16 @@ const health = new HealthCheck(config.upstreams);
 
 const cspReport = createCspReporter();
 
+// The player's own links, so a pasted one unfurls. Dev serves the bundler's page as is.
+const shareRoutes = pageWith
+  ? Object.fromEntries(
+      (["album", "artist", "playlist", "song"] as ShareKind[]).map((kind) => [
+        `/${kind}/:id`,
+        async (request: Request & { params: { id: string } }) => pageWith(await api.shareHead(request, kind)),
+      ]),
+    )
+  : {};
+
 const server = Bun.serve({
   port: config.port,
   development: process.env.NODE_ENV !== "production",
@@ -122,6 +133,7 @@ const server = Bun.serve({
     "/healthz": () => new Response("ok"),
     "/worklets/levels.js": () =>
       new Response(LEVELS_WORKLET_SOURCE, { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=86400" } }),
+    "/og.png": cardImage,
     "/api/csp-report": { POST: cspReport },
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
@@ -165,6 +177,7 @@ const server = Bun.serve({
     "/api/search/lyrics": { GET: api.searchLyrics },
     "/fonts/:name": font,
     ...pwaRoutes,
+    ...shareRoutes,
     ...webRoutes,
   }),
 });

@@ -25,6 +25,7 @@ import type { LyricsService } from "./lyrics";
 import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-coverage";
 import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
+import { type ShareKind, shareTags } from "./og";
 import type { LoginLimiter } from "./rate-limit";
 import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
@@ -424,6 +425,13 @@ export function createApi({
     out.set("server-timing", `upstream;dur=${(performance.now() - started).toFixed(1)}`);
     if (endpoint === "star" || endpoint === "unstar") likesCache.delete(session.id);
     return new Response(response.body, { status: response.status, headers: out });
+  }
+
+  /** `<head>` tags for a shared link: the real name and cover for a signed-in browser, a generic card for anyone else. */
+  async function shareHead(request: Request & { params: { id: string } }, kind: ShareKind): Promise<string> {
+    const session = browserSession(request);
+    const upstream = session ? upstreamFor(session.server) : undefined;
+    return shareTags(request, kind, request.params.id, session && upstream ? { session, upstream } : null);
   }
 
   /** Navidrome's cover ids change when the art does, which is what makes `immutable` safe. */
@@ -956,6 +964,7 @@ export function createApi({
     revokeSession,
     proxy,
     cover,
+    shareHead,
     releaseCover,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,

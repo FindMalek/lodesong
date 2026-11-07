@@ -33,15 +33,25 @@ const html = page ? await Bun.file(page.path).text() : "";
 const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(html)?.[1];
 const etag = `"${Bun.hash(html).toString(36)}"`;
 
+const pageHeaders = {
+  ...PAGE_HEADERS,
+  ...(csp ? { "content-security-policy": `${csp}; frame-ancestors 'none'; report-uri /api/csp-report; report-to csp` } : {}),
+};
+
 function index(request: Request): Response {
   if (!page) return new Response("app not built", { status: 500 });
   if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag } });
-  return serve(request, page, {
-    ...PAGE_HEADERS,
-    ...(csp ? { "content-security-policy": `${csp}; frame-ancestors 'none'; report-uri /api/csp-report; report-to csp` } : {}),
-    "cache-control": "no-cache",
-    etag,
-  });
+  return serve(request, page, { ...pageHeaders, "cache-control": "no-cache", etag });
+}
+
+export function pageWith(head: string): Response {
+  if (!page) return new Response("app not built", { status: 500 });
+  return new Response(
+    html.replace("</head>", () => `    ${head}\n  </head>`),
+    {
+      headers: { "content-type": page.type, ...pageHeaders, "cache-control": "private, no-store", vary: "cookie" },
+    },
+  );
 }
 
 export const webRoutes = {
