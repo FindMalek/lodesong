@@ -1,5 +1,6 @@
 import { normalize } from "@lodesong/shared/normalize";
 import { parseQuery } from "@lodesong/shared/search-query";
+import { fitsGenre, fitsPlaylist, vibeOf } from "@lodesong/shared/vibes";
 import { Badge } from "@lodesong/ui/components/badge";
 import { Button } from "@lodesong/ui/components/button";
 import {
@@ -13,7 +14,7 @@ import {
   CommandShortcut,
 } from "@lodesong/ui/components/command";
 import { useQuery } from "@tanstack/react-query";
-import { ClockIcon, PlayIcon, PlusIcon, XIcon } from "lucide-react";
+import { ClockIcon, PlayIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { player, usePlayer } from "@/lib/player";
@@ -32,6 +33,7 @@ import {
 } from "@/lib/search-actions";
 import { bindingsOf, useShortcutList } from "@/lib/shortcuts";
 import type { Song } from "@/lib/types";
+import { playVibe } from "@/lib/vibe-actions";
 import { isLink } from "@/lib/wishlist";
 import { AddTrack } from "./add-track";
 import { Cover } from "./cover";
@@ -83,11 +85,28 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const lyrics = lyricsQuery.data;
   const lyricHits = lyricsWanted ? (lyrics?.hits ?? []) : [];
   const playlistsData = useQuery({ ...queries.playlists(), enabled: open }).data;
+  const vibe = useMemo(() => (active.chips.length || active.lyricsOnly ? null : vibeOf(active.text)), [active]);
+  const genresData = useQuery({ ...queries.genres(), enabled: open && vibe !== null }).data;
+  const vibeGenres = useMemo(
+    () =>
+      vibe
+        ? (genresData ?? [])
+            .filter((genre) => fitsGenre(vibe, genre.value))
+            .sort((a, b) => b.songCount - a.songCount)
+            .slice(0, 4)
+        : [],
+    [genresData, vibe],
+  );
+  const vibePlaylists = useMemo(
+    () => (vibe ? (playlistsData ?? []).filter((playlist) => fitsPlaylist(vibe, playlist.name)).slice(0, 4) : []),
+    [playlistsData, vibe],
+  );
   const playlists = useMemo(() => {
     const wanted = normalize(active.text);
     if (!wanted || active.lyricsOnly || active.chips.length) return [];
-    return (playlistsData ?? []).filter((playlist) => normalize(playlist.name).includes(wanted)).slice(0, 4);
-  }, [playlistsData, active]);
+    const shown = new Set(vibePlaylists.map((playlist) => playlist.id));
+    return (playlistsData ?? []).filter((playlist) => !shown.has(playlist.id) && normalize(playlist.name).includes(wanted)).slice(0, 4);
+  }, [playlistsData, active, vibePlaylists]);
   const history = usePlayer((state) => state.queue.history);
 
   // New results start at the top with the first one selected; cmdk would keep the old scroll and selection.
@@ -152,7 +171,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   if (top) targets.set(`top-${top.item.id}`, resultTarget(top.kind, top.item));
   for (const song of songs) targets.set(`so-${song.id}`, { kind: "songs", songs: [song] });
   for (const [kind, items] of groups) for (const item of items) targets.set(`${kind}-${item.id}`, resultTarget(kind, item));
-  for (const playlist of playlists) targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
+  for (const playlist of [...vibePlaylists, ...playlists]) targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
   for (const hit of lyricHits)
     targets.set(`ly-${(hit.song as unknown as Song).id}`, { kind: "songs", songs: [hit.song as unknown as Song] });
   const menuTarget = (element: Element) => targets.get(element.closest("[data-value]")?.getAttribute("data-value") ?? "") ?? null;
@@ -260,6 +279,40 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                       <span className="truncate">play {resultTitle(top.kind, top.item)}</span>
                     </CommandItem>
                   )}
+                </CommandGroup>
+              )}
+              {vibe && (
+                <CommandGroup heading={`for ${vibe.label}`}>
+                  <CommandItem
+                    value="vibe-mix"
+                    onSelect={run(
+                      () =>
+                        void playVibe(
+                          vibe,
+                          vibeGenres.map((genre) => genre.value),
+                        ),
+                    )}
+                  >
+                    <SparklesIcon className="text-muted-foreground" />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-body">play a mix for {vibe.label}</span>
+                      <span className="truncate text-muted-foreground text-xs">{vibe.why}</span>
+                    </span>
+                  </CommandItem>
+                  {vibePlaylists.map((playlist) => (
+                    <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
+                      <Row cover={playlist.coverArt} title={playlist.name} sub={`playlist · ${playlist.songCount} songs`} />
+                    </CommandItem>
+                  ))}
+                  {vibeGenres.map((genre) => (
+                    <CommandItem
+                      key={genre.value}
+                      value={`genre-${genre.value}`}
+                      onSelect={run(() => go(`/genre/${encodeURIComponent(genre.value)}`))}
+                    >
+                      <Row title={genre.value} sub={`genre · ${genre.songCount} songs`} />
+                    </CommandItem>
+                  ))}
                 </CommandGroup>
               )}
               {songs.length > 0 && (

@@ -10,6 +10,18 @@ test("⌘K finds a song and picking it plays it", async ({ signedIn: page }) => 
   await expect(page.getByRole("contentinfo").getByRole("button", { name: "pause" })).toBeVisible();
 });
 
+test("⌘K: a mood like gym finds its playlists and genres, and the mix plays", async ({ signedIn: page }) => {
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "search" });
+  await dialog.getByRole("combobox").fill("gym");
+  const group = dialog.getByRole("group", { name: "for gym" });
+  await expect(group.getByRole("option", { name: /Running/ })).toBeVisible();
+  await expect(group.getByRole("option", { name: /Electronic/ })).toBeVisible();
+  await group.getByRole("option", { name: /play a mix for gym/ }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("contentinfo").getByRole("button", { name: "pause" })).toBeVisible();
+});
+
 test("a few words of a lyric find the song, and picking it plays from that line", async ({ page, signedIn }) => {
   await page.addInitScript(fakeMediaClock);
   await signedIn.goto("/");

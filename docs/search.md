@@ -35,6 +35,16 @@ Add these to any search; each shows as a chip you can remove.
 
 Filters alone work too: `genre:jazz year:1950..1965` lists the most played matches.
 
+## Moods
+
+Type a mood in `⌘K` (`gym`, `workout`, `melancholy`, `rainy`, `focus`, `late night`, `chill`, `party`, `happy`, a few
+french words too) and a "for gym" group comes first: a mix that plays right away, your playlists whose names fit, and
+the genres that fit. The mix uses the `bpm:` / `energy:` / `mood:` filters above when AudioMuse-AI has analysed your
+songs (gym is high energy and 110+ bpm), and plays songs from the matching genres when it hasn't. The words live in
+`packages/shared/src/vibes.ts`.
+
+![mood search for gym](search-vibe.png)
+
 ## Search inside a list
 
 `⌘F` on an album, playlist, liked songs, the queue or any song list filters that list in place.
