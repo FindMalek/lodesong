@@ -36,6 +36,13 @@ export const apiQueries = {
       staleTime: Number.POSITIVE_INFINITY,
     }),
   version: () => rpc.version.queryOptions({ staleTime: 60 * MINUTE }),
+  moodPlaylists: (mood: string) =>
+    rpc.playlists.forMood.queryOptions({
+      input: { mood },
+      staleTime: MINUTE,
+      // Reading hundreds of playlists the first time takes a few seconds; the rest comes in on the next ask.
+      refetchInterval: (query) => (query.state.data?.complete === false ? 3000 : false),
+    }),
   searchIndex: () =>
     queryOptions({
       queryKey: ["searchIndex"],

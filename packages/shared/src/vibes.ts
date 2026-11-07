@@ -1,10 +1,21 @@
 import { normalize } from "./normalize";
 
+export type Range = [number, number];
+
+export interface Profile {
+  energy?: Range;
+  valence?: Range;
+  bpm?: Range;
+}
+
+const OPEN = Number.POSITIVE_INFINITY;
+
 export interface Vibe {
   label: string;
   why: string;
   /** Search operators (bpm, energy, mood) for the songs that fit by AudioMuse features. */
   query: string;
+  profile: Profile;
   words: string[];
   names: string[];
   genres: string[];
@@ -15,6 +26,7 @@ export const VIBES: Vibe[] = [
     label: "gym",
     why: "fast and loud",
     query: "energy:high bpm:110..",
+    profile: { energy: [0.7, 1], bpm: [110, OPEN] },
     words: ["gym", "workout", "work out", "training", "exercise", "cardio", "running", "lifting", "entrainement"],
     names: ["gym", "workout", "training", "cardio", "running"],
     genres: ["electro", "electronic", "hip hop", "rap", "metal", "punk", "dance", "drum and bass", "dnb"],
@@ -23,6 +35,7 @@ export const VIBES: Vibe[] = [
     label: "melancholy",
     why: "dark and quiet",
     query: "mood:sad",
+    profile: { energy: [0, 0.5], valence: [0, 0.5] },
     words: ["melancholy", "melancholic", "sad", "heartbreak", "lonely", "gloomy", "triste", "melancolie"],
     names: ["melancholy", "sad", "blue", "heartbreak", "lonely", "gloom", "gloomy", "triste"],
     genres: ["blues", "folk", "indie", "shoegaze", "slowcore", "classical"],
@@ -31,6 +44,7 @@ export const VIBES: Vibe[] = [
     label: "rainy days",
     why: "low energy",
     query: "energy:low",
+    profile: { energy: [0, 0.4] },
     words: ["rainy", "rain", "rainy day", "cozy", "pluie"],
     names: ["rain", "rainy", "cozy", "pluie"],
     genres: ["jazz", "ambient", "folk", "lo fi", "lofi", "acoustic"],
@@ -39,6 +53,7 @@ export const VIBES: Vibe[] = [
     label: "focus",
     why: "steady, no surprises",
     query: "energy:mid bpm:..120",
+    profile: { energy: [0.4, 0.7], bpm: [0, 120] },
     words: ["focus", "study", "studying", "concentrate", "concentration", "coding", "work"],
     names: ["focus", "study", "concentration", "work", "deep work", "deep focus"],
     genres: ["ambient", "classical", "post rock", "instrumental", "lo fi", "lofi", "electro"],
@@ -47,6 +62,7 @@ export const VIBES: Vibe[] = [
     label: "late night",
     why: "slow and close",
     query: "energy:low bpm:..100",
+    profile: { energy: [0, 0.4], bpm: [0, 100] },
     words: ["late night", "midnight", "after dark", "insomnia", "nuit"],
     names: ["late night", "midnight", "after dark", "nuit"],
     genres: ["jazz", "soul", "ambient", "trip hop", "downtempo", "r&b", "rnb"],
@@ -55,6 +71,7 @@ export const VIBES: Vibe[] = [
     label: "chill",
     why: "calm and warm",
     query: "mood:chill",
+    profile: { energy: [0, 0.5], valence: [0.5, 1] },
     words: ["chill", "chill out", "chillout", "relax", "relaxing", "calm", "unwind", "sleep", "sleepy", "lofi", "lo fi", "detente"],
     names: ["chill", "chill out", "chillout", "relax", "calm", "sleep", "unwind"],
     genres: ["ambient", "lo fi", "lofi", "downtempo", "jazz", "acoustic", "chillout", "chill out", "chill"],
@@ -63,6 +80,7 @@ export const VIBES: Vibe[] = [
     label: "party",
     why: "upbeat and danceable",
     query: "mood:upbeat bpm:110..",
+    profile: { energy: [0.5, 1], valence: [0.5, 1], bpm: [110, OPEN] },
     words: ["party", "dancing", "fete"],
     names: ["party", "dance", "club"],
     genres: ["dance", "house", "pop", "disco", "funk", "hip hop"],
@@ -71,6 +89,7 @@ export const VIBES: Vibe[] = [
     label: "happy",
     why: "bright and upbeat",
     query: "mood:upbeat",
+    profile: { energy: [0.5, 1], valence: [0.5, 1] },
     words: ["happy", "feel good", "heureux"],
     names: ["happy", "sunny", "summer", "feel good"],
     genres: ["pop", "funk", "disco", "reggae", "soul"],

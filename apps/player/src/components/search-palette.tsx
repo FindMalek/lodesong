@@ -1,6 +1,6 @@
 import { normalize } from "@lodesong/shared/normalize";
 import { parseQuery } from "@lodesong/shared/search-query";
-import { fitsGenre, fitsPlaylist, vibeOf } from "@lodesong/shared/vibes";
+import { fitsGenre, vibeOf } from "@lodesong/shared/vibes";
 import { Badge } from "@lodesong/ui/components/badge";
 import { Button } from "@lodesong/ui/components/button";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@lodesong/ui/components/command";
 import { useQuery } from "@tanstack/react-query";
 import { ClockIcon, PlayIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { player, usePlayer } from "@/lib/player";
 import { queries } from "@/lib/queries";
@@ -34,9 +34,11 @@ import {
 import { bindingsOf, useShortcutList } from "@/lib/shortcuts";
 import type { Song } from "@/lib/types";
 import { playVibe } from "@/lib/vibe-actions";
+import { vibePlaylists as rankedPlaylists } from "@/lib/vibe-playlists";
 import { isLink } from "@/lib/wishlist";
 import { AddTrack } from "./add-track";
 import { Cover } from "./cover";
+import { FitWhy } from "./fit-why";
 import { ListContextMenu, type MenuTarget } from "./item-menu";
 import { KeyCombo } from "./key-combo";
 import { LyricsSnippet } from "./lyrics-snippet";
@@ -45,7 +47,7 @@ import { ResultGroupSkeleton } from "./skeletons";
 /** Typing pauses shorter than this don't send a request; the previous results stay up meanwhile. */
 const DEBOUNCE_MS = 30;
 
-function Row({ cover, title, sub }: { cover?: string; title: string; sub: string }) {
+function Row({ cover, title, sub }: { cover?: string; title: string; sub: ReactNode }) {
   return (
     <>
       <Cover id={cover} size={32} className="size-8 shrink-0" />
@@ -98,10 +100,11 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
         : [],
     [genresData, vibe],
   );
-  const vibePlaylists = useMemo(
-    () => (vibe ? (playlistsData ?? []).filter((playlist) => fitsPlaylist(vibe, playlist.name)).slice(0, 4) : []),
-    [playlistsData, vibe],
-  );
+  const fit = useQuery({
+    ...apiQueries.moodPlaylists(vibe?.label ?? ""),
+    enabled: open && vibe !== null && session?.audiomuse === true,
+  }).data;
+  const vibePlaylists = useMemo(() => (vibe ? rankedPlaylists(vibe, playlistsData ?? [], fit) : []), [playlistsData, vibe, fit]);
   const history = usePlayer((state) => state.queue.history);
 
   // New results start at the top with the first one selected; cmdk would keep the old scroll and selection.
@@ -163,7 +166,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const canMix = vibeGenres.length > 0 || session?.audiomuse === true;
   const showVibe = vibe && settled && (canMix || vibePlaylists.length > 0);
   const wantedPlaylist = normalize(active.text);
-  const shownPlaylists = new Set(showVibe ? vibePlaylists.map((playlist) => playlist.id) : []);
+  const shownPlaylists = new Set(showVibe ? vibePlaylists.map(({ playlist }) => playlist.id) : []);
   const playlists =
     !wantedPlaylist || active.lyricsOnly || active.chips.length
       ? []
@@ -176,7 +179,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   if (top) targets.set(`top-${top.item.id}`, resultTarget(top.kind, top.item));
   for (const song of songs) targets.set(`so-${song.id}`, { kind: "songs", songs: [song] });
   for (const [kind, items] of groups) for (const item of items) targets.set(`${kind}-${item.id}`, resultTarget(kind, item));
-  for (const playlist of [...(showVibe ? vibePlaylists : []), ...playlists])
+  for (const playlist of [...(showVibe ? vibePlaylists.map((item) => item.playlist) : []), ...playlists])
     targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
   for (const hit of lyricHits)
     targets.set(`ly-${(hit.song as unknown as Song).id}`, { kind: "songs", songs: [hit.song as unknown as Song] });
@@ -307,9 +310,17 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                       </span>
                     </CommandItem>
                   )}
-                  {vibePlaylists.map((playlist) => (
+                  {vibePlaylists.map(({ playlist, reasons }) => (
                     <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
-                      <Row cover={playlist.coverArt} title={playlist.name} sub={`playlist · ${playlist.songCount} songs`} />
+                      <Row
+                        cover={playlist.coverArt}
+                        title={playlist.name}
+                        sub={
+                          <>
+                            playlist · {playlist.songCount} songs · <FitWhy reasons={reasons} />
+                          </>
+                        }
+                      />
                     </CommandItem>
                   ))}
                   {vibeGenres.map((genre) => (

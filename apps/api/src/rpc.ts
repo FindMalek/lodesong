@@ -16,6 +16,7 @@ import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
+import { createMoodPlaylists } from "./playlist-mood";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
 import {
@@ -82,6 +83,7 @@ export function createRpc({
   artistGenres = null,
   followSync = null,
 }: RpcDeps) {
+  const moodPlaylists = createMoodPlaylists(library, cache);
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED", { message: "signed out" });
@@ -238,6 +240,13 @@ export function createRpc({
       }),
     },
     playlists: {
+      forMood: signedIn.playlists.forMood.handler(async ({ context, input }) => {
+        const upstream = upstreamFor(context.session.server);
+        if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
+        const found = await moodPlaylists(upstream, context.session, input.mood);
+        if (!found) throw new ORPCError("BAD_GATEWAY", { message: "navidrome didn't answer" });
+        return found;
+      }),
       hidden: signedIn.playlists.hidden.handler(({ context, input }) => ({ songs: hiddenIn(library, context.account, input.id) })),
       hide: signedIn.playlists.hide.handler(({ context, input }) => {
         library
