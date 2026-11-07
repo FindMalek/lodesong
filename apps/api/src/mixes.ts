@@ -269,7 +269,7 @@ function fromStored(l: Listening, rows: Stored[]): Mix[] {
     .filter((mix) => mix.songs.length > 0);
 }
 
-function daily(db: Database, l: Listening, account: string, day: number): Mix[] {
+function daily(db: Database, l: Listening, account: string, day: number, keep = true): Mix[] {
   const stored = fromStored(l, remembered(db, account, day, day));
   if (stored.length >= MIXES) return stored;
   const avoid = new Set(remembered(db, account, day - MEMORY_DAYS, day - 1).flatMap((row) => row.keys));
@@ -288,7 +288,7 @@ function daily(db: Database, l: Listening, account: string, day: number): Mix[] 
     });
   }
   if (stored.length >= mixes.length) return stored;
-  remember(db, account, day, mixes);
+  if (keep) remember(db, account, day, mixes);
   return fromStored(
     l,
     mixes.map((mix) => ({ id: mix.id, description: mix.description, keys: [...new Set(mix.songs.map(keyOf))] })),
@@ -391,12 +391,12 @@ export function madeForYou(
   { day, hour, tzMinutes }: { day: number; hour: number; tzMinutes: number },
   now = Date.now(),
   boosted: Set<string> = new Set(),
-  liked: Set<string> = new Set(),
+  liked: Set<string> | null = new Set(),
 ): Mix[] {
-  const l = listening(db, server, account, now, liked);
+  const l = listening(db, server, account, now, liked ?? new Set());
   if (!l) return [];
   return [
-    ...daily(db, l, account, day),
+    ...daily(db, l, account, day, liked !== null),
     discover(l, account, lastFriday(day), boosted),
     releaseRadar(l, now),
     onThisDay(db, l, account, now),
@@ -428,8 +428,8 @@ export function dailyMixes(
   account: string,
   day: number,
   now = Date.now(),
-  liked: Set<string> = new Set(),
+  liked: Set<string> | null = new Set(),
 ): Mix[] {
-  const l = listening(db, server, account, now, liked);
-  return l ? daily(db, l, account, day) : [];
+  const l = listening(db, server, account, now, liked ?? new Set());
+  return l ? daily(db, l, account, day, liked !== null) : [];
 }

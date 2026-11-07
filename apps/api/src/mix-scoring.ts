@@ -3,6 +3,7 @@ import type { Listening } from "./mixes";
 const LIKE_POINTS = 3;
 const REPLAY_POINTS = 0.6;
 const SKIP_POINTS = 5;
+const SKIPS_FOR_FULL_WEIGHT = 3;
 const RECENCY_POINTS = 2;
 const RECENCY_HALF_LIFE_DAYS = 14;
 const JITTER = 0.5;
@@ -19,7 +20,7 @@ function tasteOf(l: Listening, key: string): number {
   const signal = l.signals.get(key);
   const plays = signal?.plays ?? 0;
   const skips = signal?.skips ?? 0;
-  const skipShare = plays + skips ? skips / (plays + skips) : 0;
+  const skipShare = plays + skips ? (skips / (plays + skips)) * Math.min(1, skips / SKIPS_FOR_FULL_WEIGHT) : 0;
   const rested = plays ? 1 - 0.5 ** ((l.now - (signal?.last ?? l.now)) / DAY / RECENCY_HALF_LIFE_DAYS) : 0;
   return (l.liked.has(key) ? LIKE_POINTS : 0) + REPLAY_POINTS * Math.log(1 + plays) - SKIP_POINTS * skipShare + RECENCY_POINTS * rested;
 }
