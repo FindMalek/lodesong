@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@lodesong/ui/components/switch";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon, PlayIcon, RadioIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, FolderInputIcon, PlayIcon, RadioIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ArtistCard } from "@/components/artist-card";
 import { Aura } from "@/components/aura";
@@ -27,6 +27,7 @@ import { length, plural, quality } from "@/lib/format";
 import type { LikeKind } from "@/lib/likes";
 import { openListFilter } from "@/lib/list-filter";
 import { player } from "@/lib/player";
+import { openPlaylistDialog } from "@/lib/playlist-dialogs";
 import {
   canEdit,
   deletePlaylist,
@@ -597,6 +598,16 @@ export function PlaylistPage({ id }: { id: string }) {
         extra={
           <>
             <KeepOffline group={`playlist:${playlist.id}`} songs={playable} />
+            <Hint label="move to a folder">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="move to folder"
+                onClick={() => openPlaylistDialog({ kind: "folder-move", playlistId: playlist.id })}
+              >
+                <FolderInputIcon />
+              </Button>
+            </Hint>
             <ItemMoreButton target={{ kind: "playlist", playlist }} label={leafOf(playlist.name)} className="size-8" />
             {editable ? (
               <>

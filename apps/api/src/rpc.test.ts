@@ -217,3 +217,18 @@ test("a like added or removed shows in the next mixes, per account, and a failin
   }
   navidrome.stop();
 });
+
+test("playlists for a mood: signed in only, the words are bounded, and plain HTTP reaches it", async () => {
+  const headers = { "x-lodesong": "1", cookie: `kp_session=${cookie}` };
+  const signedIn = client(headers);
+  expect(await signedIn.playlists.forMood({ mood: "Workout" })).toEqual({ mood: "gym", playlists: [], complete: true });
+  expect(await signedIn.playlists.forMood({ mood: "x".repeat(40) })).toEqual({ mood: "", playlists: [], complete: true });
+  for (const mood of ["", "   ", "x".repeat(41)])
+    await expect(signedIn.playlists.forMood({ mood })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  await expect(client({ "x-lodesong": "1" }).playlists.forMood({ mood: "gym" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+
+  const call = (path: string) => api.http(new Request(`http://app${path}`, { headers }));
+  expect(await (await call("/api/playlists/mood?mood=gym")).json()).toEqual({ mood: "gym", playlists: [], complete: true });
+  expect((await call("/api/playlists/mood")).status).toBe(400);
+  expect((await call(`/api/playlists/mood?mood=${"x".repeat(41)}`)).status).toBe(400);
+});
