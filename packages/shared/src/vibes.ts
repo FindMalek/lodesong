@@ -15,33 +15,33 @@ export const VIBES: Vibe[] = [
     label: "gym",
     why: "fast and loud",
     query: "energy:high bpm:110..",
-    words: ["gym", "workout", "work out", "training", "exercise", "cardio", "running", "run", "lifting", "pump", "sport", "entrainement"],
-    names: ["gym", "workout", "training", "cardio", "running", "run", "energy", "pump", "sport"],
-    genres: ["electro", "hip hop", "rap", "metal", "punk", "dance", "drum"],
+    words: ["gym", "workout", "work out", "training", "exercise", "cardio", "running", "lifting", "entrainement"],
+    names: ["gym", "workout", "training", "cardio", "running"],
+    genres: ["electro", "electronic", "hip hop", "rap", "metal", "punk", "dance", "drum and bass", "dnb"],
   },
   {
     label: "melancholy",
-    why: "slow and low",
+    why: "dark and quiet",
     query: "mood:sad",
-    words: ["melancholy", "melancholic", "sad", "blue", "heartbreak", "lonely", "gloomy", "triste", "melancolie"],
-    names: ["melancholy", "sad", "blue", "heartbreak", "lonely", "gloom", "triste"],
-    genres: ["blues", "soul", "folk", "indie", "shoegaze", "slowcore", "classical"],
+    words: ["melancholy", "melancholic", "sad", "heartbreak", "lonely", "gloomy", "triste", "melancolie"],
+    names: ["melancholy", "sad", "blue", "heartbreak", "lonely", "gloom", "gloomy", "triste"],
+    genres: ["blues", "folk", "indie", "shoegaze", "slowcore", "classical"],
   },
   {
     label: "rainy days",
-    why: "soft and slow",
+    why: "low energy",
     query: "energy:low",
     words: ["rainy", "rain", "rainy day", "cozy", "pluie"],
-    names: ["rain", "cozy", "pluie"],
-    genres: ["jazz", "ambient", "folk", "lo fi", "acoustic"],
+    names: ["rain", "rainy", "cozy", "pluie"],
+    genres: ["jazz", "ambient", "folk", "lo fi", "lofi", "acoustic"],
   },
   {
     label: "focus",
     why: "steady, no surprises",
     query: "energy:mid bpm:..120",
-    words: ["focus", "study", "studying", "concentrate", "concentration", "coding", "reading", "work"],
-    names: ["focus", "study", "concentration", "work", "deep"],
-    genres: ["ambient", "classical", "post rock", "instrumental", "lo fi", "electro"],
+    words: ["focus", "study", "studying", "concentrate", "concentration", "coding", "work"],
+    names: ["focus", "study", "concentration", "work", "deep work", "deep focus"],
+    genres: ["ambient", "classical", "post rock", "instrumental", "lo fi", "lofi", "electro"],
   },
   {
     label: "late night",
@@ -49,21 +49,21 @@ export const VIBES: Vibe[] = [
     query: "energy:low bpm:..100",
     words: ["late night", "midnight", "after dark", "insomnia", "nuit"],
     names: ["late night", "midnight", "after dark", "nuit"],
-    genres: ["jazz", "soul", "ambient", "trip hop", "downtempo", "r b"],
+    genres: ["jazz", "soul", "ambient", "trip hop", "downtempo", "r&b", "rnb"],
   },
   {
     label: "chill",
     why: "calm and warm",
     query: "mood:chill",
-    words: ["chill", "relax", "calm", "unwind", "sleep", "detente"],
-    names: ["chill", "relax", "calm", "sleep", "unwind"],
-    genres: ["ambient", "lo fi", "downtempo", "jazz", "acoustic", "chillout"],
+    words: ["chill", "chill out", "chillout", "relax", "relaxing", "calm", "unwind", "sleep", "sleepy", "lofi", "lo fi", "detente"],
+    names: ["chill", "chill out", "chillout", "relax", "calm", "sleep", "unwind"],
+    genres: ["ambient", "lo fi", "lofi", "downtempo", "jazz", "acoustic", "chillout", "chill out", "chill"],
   },
   {
     label: "party",
     why: "upbeat and danceable",
     query: "mood:upbeat bpm:110..",
-    words: ["party", "dance", "club", "dancing", "fete"],
+    words: ["party", "dancing", "fete"],
     names: ["party", "dance", "club"],
     genres: ["dance", "house", "pop", "disco", "funk", "hip hop"],
   },
@@ -71,25 +71,39 @@ export const VIBES: Vibe[] = [
     label: "happy",
     why: "bright and upbeat",
     query: "mood:upbeat",
-    words: ["happy", "sunny", "summer", "feel good", "joy", "heureux"],
+    words: ["happy", "feel good", "heureux"],
     names: ["happy", "sunny", "summer", "feel good"],
     genres: ["pop", "funk", "disco", "reggae", "soul"],
   },
 ];
 
-const FILLER = /\s(?:mix|music|playlist|playlists|songs|vibes?)$/;
+const LEAD = /^(?:(?:music|songs|playlist|mix)\s+)?for\s+(?:(?:the|a|some)\s+)?/;
+const FILLER = /\s(?:mix|mixes|music|playlist|playlists|songs|vibes?)$/;
+const PREFIX_MIN = 6;
 
-/** "gym", "gym mix", "melan": the vibe the text names, or null. Prefixes need 4 letters so "run" never means "running". */
+/** Plurals fold ("workouts" is "workout"); every comparison here goes through it, vocabulary included. */
+const stems = (text: string) =>
+  normalize(text)
+    .split(" ")
+    .map((word) => word.replace(/s$/, ""))
+    .join(" ");
+
+/** "gym", "for the gym", "gym mix", "melanchol": the vibe the text names, or null. Exact words win over prefixes, which need 6 letters so "train" and "after" stay searches. */
 export function vibeOf(text: string): Vibe | null {
-  const wanted = normalize(text)
-    .replace(/^for\s+/, "")
-    .replace(FILLER, "");
+  const wanted = stems(normalize(text).replace(LEAD, "").replace(FILLER, ""));
   if (!wanted) return null;
-  return VIBES.find((vibe) => vibe.words.some((word) => word === wanted || (wanted.length >= 4 && word.startsWith(wanted)))) ?? null;
+  const known = VIBES.map((vibe) => ({ vibe, words: vibe.words.map(stems) }));
+  const exact = known.find(({ words }) => words.includes(wanted));
+  if (exact) return exact.vibe;
+  if (wanted.length < PREFIX_MIN) return null;
+  return known.find(({ words }) => words.some((word) => word.startsWith(wanted)))?.vibe ?? null;
 }
 
-const startsAWord = (value: string, starts: string[]) => starts.some((start) => ` ${normalize(value)}`.includes(` ${start}`));
+const hasWord = (value: string, entries: string[]) => {
+  const have = ` ${stems(value)} `;
+  return entries.some((entry) => have.includes(` ${stems(entry)} `));
+};
 
-export const fitsPlaylist = (vibe: Vibe, name: string) => startsAWord(name, vibe.names);
+export const fitsPlaylist = (vibe: Vibe, name: string) => hasWord(name, vibe.names);
 
-export const fitsGenre = (vibe: Vibe, genre: string) => startsAWord(genre, vibe.genres);
+export const fitsGenre = (vibe: Vibe, genre: string) => hasWord(genre, vibe.genres);

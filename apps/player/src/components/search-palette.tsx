@@ -62,7 +62,8 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const [query, setQuery] = useState("");
   // Adding a song replaces the results: the same box, but the text becomes what to look for.
   const [adding, setAdding] = useState<string | null>(null);
-  const canAdd = useQuery({ ...apiQueries.session(), enabled: open }).data?.lyterionAdd === true;
+  const session = useQuery({ ...apiQueries.session(), enabled: open }).data;
+  const canAdd = session?.lyterionAdd === true;
   useEffect(() => {
     if (!open) setAdding(null);
   }, [open]);
@@ -101,12 +102,6 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
     () => (vibe ? (playlistsData ?? []).filter((playlist) => fitsPlaylist(vibe, playlist.name)).slice(0, 4) : []),
     [playlistsData, vibe],
   );
-  const playlists = useMemo(() => {
-    const wanted = normalize(active.text);
-    if (!wanted || active.lyricsOnly || active.chips.length) return [];
-    const shown = new Set(vibePlaylists.map((playlist) => playlist.id));
-    return (playlistsData ?? []).filter((playlist) => !shown.has(playlist.id) && normalize(playlist.name).includes(wanted)).slice(0, 4);
-  }, [playlistsData, active, vibePlaylists]);
   const history = usePlayer((state) => state.queue.history);
 
   // New results start at the top with the first one selected; cmdk would keep the old scroll and selection.
@@ -165,13 +160,24 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
     </CommandGroup>
   );
   const addFirst = needle && isLink(text);
+  const canMix = vibeGenres.length > 0 || session?.audiomuse === true;
+  const showVibe = vibe && settled && (canMix || vibePlaylists.length > 0);
+  const wantedPlaylist = normalize(active.text);
+  const shownPlaylists = new Set(showVibe ? vibePlaylists.map((playlist) => playlist.id) : []);
+  const playlists =
+    !wantedPlaylist || active.lyricsOnly || active.chips.length
+      ? []
+      : (playlistsData ?? [])
+          .filter((playlist) => !shownPlaylists.has(playlist.id) && normalize(playlist.name).includes(wantedPlaylist))
+          .slice(0, 4);
 
   const targets = new Map<string, MenuTarget>();
   for (const song of played) targets.set(`played-${song.id}`, { kind: "songs", songs: [song] });
   if (top) targets.set(`top-${top.item.id}`, resultTarget(top.kind, top.item));
   for (const song of songs) targets.set(`so-${song.id}`, { kind: "songs", songs: [song] });
   for (const [kind, items] of groups) for (const item of items) targets.set(`${kind}-${item.id}`, resultTarget(kind, item));
-  for (const playlist of [...vibePlaylists, ...playlists]) targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
+  for (const playlist of [...(showVibe ? vibePlaylists : []), ...playlists])
+    targets.set(`pl-${playlist.id}`, { kind: "playlist", playlist });
   for (const hit of lyricHits)
     targets.set(`ly-${(hit.song as unknown as Song).id}`, { kind: "songs", songs: [hit.song as unknown as Song] });
   const menuTarget = (element: Element) => targets.get(element.closest("[data-value]")?.getAttribute("data-value") ?? "") ?? null;
@@ -281,24 +287,26 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                   )}
                 </CommandGroup>
               )}
-              {vibe && (
+              {vibe && showVibe && (
                 <CommandGroup heading={`for ${vibe.label}`}>
-                  <CommandItem
-                    value="vibe-mix"
-                    onSelect={run(
-                      () =>
-                        void playVibe(
-                          vibe,
-                          vibeGenres.map((genre) => genre.value),
-                        ),
-                    )}
-                  >
-                    <SparklesIcon className="text-muted-foreground" />
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-body">play a mix for {vibe.label}</span>
-                      <span className="truncate text-muted-foreground text-xs">{vibe.why}</span>
-                    </span>
-                  </CommandItem>
+                  {canMix && (
+                    <CommandItem
+                      value="vibe-mix"
+                      onSelect={run(
+                        () =>
+                          void playVibe(
+                            vibe,
+                            vibeGenres.map((genre) => genre.value),
+                          ),
+                      )}
+                    >
+                      <SparklesIcon className="text-muted-foreground" />
+                      <span className="flex min-w-0 flex-col">
+                        <span className="truncate text-body">play a mix for {vibe.label}</span>
+                        <span className="truncate text-muted-foreground text-xs">{vibe.why}</span>
+                      </span>
+                    </CommandItem>
+                  )}
                   {vibePlaylists.map((playlist) => (
                     <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
                       <Row cover={playlist.coverArt} title={playlist.name} sub={`playlist · ${playlist.songCount} songs`} />

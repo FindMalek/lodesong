@@ -37,12 +37,16 @@ Filters alone work too: `genre:jazz year:1950..1965` lists the most played match
 
 ## Moods
 
-Type a mood in `⌘K` (`gym`, `workout`, `melancholy`, `rainy`, `focus`, `late night`, `chill`, `party`, `happy`, a few
-french words too) and a "for gym" group comes first: a mix that plays right away, your playlists whose names fit, and
-the genres that fit. The mix uses the `bpm:` / `energy:` / `mood:` filters above when AudioMuse-AI has analysed your
-songs (gym is high energy and 110+ bpm), and plays songs from the matching genres when it hasn't. The words live in
-`packages/shared/src/vibes.ts`.
+Type a mood in `⌘K` (`gym`, `workout`, `melancholy`, `rainy days`, `focus`, `late night`, `chill`, `party`, `happy`, a few
+french words too) and a "for gym" group shows up once the search has settled, after the top result and before the songs.
+It has a mix, your playlists whose names fit and the genres that fit. Whole words match (`Runaway` is not a gym
+playlist, `Train` is still a band), and a half typed word needs 6 letters (`melanc`).
 
+The mix uses the `bpm:` / `energy:` / `mood:` filters above when AudioMuse-AI has analysed your songs (gym is high energy
+and 110+ bpm; melancholy is `mood:sad`, rainy days is `energy:low`). The filters alone always give your most played 50,
+so each matching genre adds its own pool, and the mix plays shuffled. With fewer than 20 analysed matches it is topped up
+with songs from the matching genres, which also carries it when AudioMuse-AI is off. Without AudioMuse-AI and without a matching genre there is no mix option.
+The words live in `packages/shared/src/vibes.ts`.
 
 ## Search inside a list
 

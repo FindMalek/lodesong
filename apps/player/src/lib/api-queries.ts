@@ -28,6 +28,7 @@ export const apiQueries = {
           admin?: boolean;
           oneSession?: boolean;
           ai?: boolean;
+          audiomuse?: boolean;
           feedback?: boolean;
           lyterionAdd?: boolean;
         };
