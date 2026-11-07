@@ -49,6 +49,7 @@ const SHELL = `shell-${__VERSION__}`;
 const AUDIO = "audio-v1";
 const COVERS = "covers-v1";
 const COVER_LIMIT = 2000;
+const ITEM_PAGE = /^\/(?:album|artist|playlist|song)\//;
 const INDEX_KEY = "keep-player:audio-index";
 
 interface Index {
@@ -199,7 +200,7 @@ async function coverResponse(request: Request): Promise<Response> {
 async function navigation(request: Request): Promise<Response> {
   try {
     const response = await fetch(request);
-    if (response.ok) await (await caches.open(SHELL)).put("/", response.clone());
+    if (response.ok && !ITEM_PAGE.test(new URL(request.url).pathname)) await (await caches.open(SHELL)).put("/", response.clone());
     return response;
   } catch {
     return (await (await caches.open(SHELL)).match("/")) ?? Response.error();
