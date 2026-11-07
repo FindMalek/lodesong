@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 interface OutputProbe {
   level: () => number;
   states: () => string[];
+  silencedElement: () => boolean;
 }
 
 /** Taps what is wired to a context's speakers: `outputLevel` is the loudest recent RMS, `outputStates` every context's state. */
@@ -17,6 +18,12 @@ export function tapOutput(): void {
     setSinkId = async (): Promise<void> => undefined;
   };
   const contexts = new Set<BaseAudioContext>();
+  const elements = new Set<HTMLMediaElement>();
+  const play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+    elements.add(this);
+    return play.call(this);
+  };
   const analysers = new Map<BaseAudioContext, AnalyserNode>();
   const connect = AudioNode.prototype.connect as (this: AudioNode, ...args: unknown[]) => unknown;
   AudioNode.prototype.connect = function (this: AudioNode, ...args: unknown[]) {
@@ -35,7 +42,18 @@ export function tapOutput(): void {
     }
     return connect.apply(this, args);
   } as typeof AudioNode.prototype.connect;
+  const disconnect = AudioNode.prototype.disconnect as (this: AudioNode, ...args: unknown[]) => unknown;
+  AudioNode.prototype.disconnect = function (this: AudioNode, ...args: unknown[]) {
+    const analyser = analysers.get(this.context);
+    if (analyser && (args.length === 0 || args[0] === this.context.destination)) {
+      try {
+        disconnect.call(this, analyser);
+      } catch {}
+    }
+    return disconnect.apply(this, args);
+  } as typeof AudioNode.prototype.disconnect;
   const probe: OutputProbe = {
+    silencedElement: () => [...elements].some((element) => !element.paused && (element.muted || element.volume < 1)),
     level: () => {
       let loudest = 0;
       for (const analyser of analysers.values()) {
@@ -52,6 +70,9 @@ export function tapOutput(): void {
 
 export const outputLevel = (page: Page): Promise<number> =>
   page.evaluate(() => (window as unknown as { __output: OutputProbe }).__output?.level() ?? 0);
+
+export const silencedElement = (page: Page): Promise<boolean> =>
+  page.evaluate(() => (window as unknown as { __output: OutputProbe }).__output?.silencedElement() ?? false);
 
 export const outputStates = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __output: OutputProbe }).__output?.states() ?? []);
