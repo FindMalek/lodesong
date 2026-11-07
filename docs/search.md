@@ -43,7 +43,6 @@ the genres that fit. The mix uses the `bpm:` / `energy:` / `mood:` filters above
 songs (gym is high energy and 110+ bpm), and plays songs from the matching genres when it hasn't. The words live in
 `packages/shared/src/vibes.ts`.
 
-![mood search for gym](search-vibe.png)
 
 ## Search inside a list
 
