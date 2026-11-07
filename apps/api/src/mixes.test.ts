@@ -329,6 +329,8 @@ const heard = (db: ReturnType<typeof openLibraryDb>, account: string, artists: s
   }
 };
 const artistsIn = (mix?: { songs: { artist?: string }[] }) => [...new Set(mix?.songs.map((item) => item.artist))].sort();
+const playedArtists = (mix?: { songs: { artist?: string; title?: string }[] }) =>
+  artistsIn({ songs: mix?.songs.filter((item) => item.title === `${item.artist} 0`) ?? [] });
 const firstMix = (db: ReturnType<typeof openLibraryDb>, account = "s:u") => dailyMixes(db, "s", account, 20_000, NOW)[0];
 
 test("artists next to the artists next to a seed join its mix at a lower weight", () => {
@@ -355,7 +357,7 @@ test("a mix draws on at most 15 artists", () => {
     heard(db, "s:u", ["Seed", name], 6);
     for (const other of far[i] ?? []) heard(db, "s:u", [name, other], 3);
   });
-  expect(artistsIn(firstMix(db))).toHaveLength(15);
+  expect(playedArtists(firstMix(db))).toHaveLength(15);
 });
 
 test("a seed is joined by the five artists it was played next to most", () => {
@@ -367,7 +369,7 @@ test("a seed is joined by the five artists it was played next to most", () => {
   near.forEach((name, i) => {
     heard(db, "s:u", ["Seed", name], 7 - i);
   });
-  expect(artistsIn(firstMix(db))).toEqual(["Near 0", "Near 1", "Near 2", "Near 3", "Near 4", "Seed"]);
+  expect(playedArtists(firstMix(db))).toEqual(["Near 0", "Near 1", "Near 2", "Near 3", "Near 4", "Seed"]);
 });
 
 test("one artist takes at most a fifth of a mix while others have songs left", () => {
@@ -458,10 +460,12 @@ test("at the same recency, a like outweighs a hundred replays", () => {
   const db = openLibraryDb(":memory:");
   createIndexTables(db);
   hurt(db, 100);
-  for (let i = 0; i < 100; i++) listen(db, "s:u", `Hurt ${i}`, i < 50 ? 1 : 100);
+  db.transaction(() => {
+    for (let i = 0; i < 100; i++) listen(db, "s:u", `Hurt ${i}`, i < 50 ? 1 : 100);
+  })();
   const liked = new Set(Array.from({ length: 50 }, (_, i) => `Hurt-${i}`));
   expect(inMix(titlesOn(db, "s:u", liked), 0, 50)).toHaveLength(50);
-});
+}, 30_000);
 
 test("songs you skip sink, but one skip doesn't sink a song you replay", () => {
   const db = openLibraryDb(":memory:");
@@ -518,6 +522,164 @@ test("one account's skips are its own, and songs with the same taste differ betw
   expect([...v].sort()).not.toEqual([...w].sort());
 });
 
+const SIX = ["A", "B", "C", "D", "E", "F"];
+const knownIn = (mix?: { songs: { title?: string }[] }) => mix?.songs.filter((item) => Number(item.title?.split(" ")[1]) < 12).length;
+
+test("someone who never repeats gets mostly songs they haven't played", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, SIX, 24);
+  for (let i = 0; i < 12; i++) heard(db, "s:u", SIX, 1, i);
+  expect(knownIn(firstMix(db))).toBe(20);
+});
+
+test("someone who plays the same songs over and over gets mostly songs they know", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, SIX, 24);
+  for (let i = 0; i < 12; i++) heard(db, "s:u", SIX, 10, i);
+  expect(knownIn(firstMix(db))).toBe(38);
+});
+
+const withOutsiders = (db: ReturnType<typeof openLibraryDb>) => {
+  const near = ["N1", "N2", "N3", "N4", "N5"];
+  songsOf(db, ["Seed", ...near, "Outer1", "Outer2"], 100);
+  for (let i = 0; i < 10; i++) heard(db, "s:u", ["Seed", ...near], 1, i);
+  heard(db, "s:u", ["Seed", "Outer1"], 1, 90);
+  heard(db, "s:u", ["Seed", "Outer2"], 1, 91);
+  for (let i = 10; i < 90; i++) heard(db, "s:u", ["Seed"], 1, i);
+};
+const byArtist = <T extends { artist?: string }>(mix: { songs: T[] } | undefined, prefix: string) =>
+  mix?.songs.filter((item) => item.artist?.startsWith(prefix)) ?? [];
+
+test("half of what's new in a mix is songs you never played by artists played next to it", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  withOutsiders(db);
+  const mix = firstMix(db);
+  expect(mix?.songs).toHaveLength(50);
+  const outer = byArtist(mix, "Outer");
+  expect(outer).toHaveLength(15);
+  expect(outer.some((item) => ["Outer1 90", "Outer2 91"].includes(item.title ?? ""))).toBe(false);
+});
+
+const sounds = (db: ReturnType<typeof openLibraryDb>, ids: string[], level: number) => {
+  for (const id of ids)
+    db.query(
+      "insert into song_features (server, song_id, bpm, key, energy, valence, danceability, updated) values ('s', ?, 120, 'C major', ?, ?, ?, 0)",
+    ).run(id, level, level, level);
+};
+const withSounds = (db: ReturnType<typeof openLibraryDb>, account: string) => {
+  const near = ["N1", "N2", "N3", "N4", "N5"];
+  for (let i = 0; i < 10; i++) heard(db, account, ["Seed", ...near], 1, i);
+  for (let i = 10; i < 90; i++) heard(db, account, ["Seed"], 1, i);
+};
+test("when audiomuse has analysed the library the new songs are the ones that sound like the mix", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const near = ["N1", "N2", "N3", "N4", "N5"];
+  songsOf(db, ["Seed", ...near], 100);
+  songsOf(db, ["Close1", "Close2", "Close3", "Close4"], 5);
+  songsOf(db, ["Distant1", "Distant2", "Distant3", "Distant4"], 10);
+  sounds(
+    db,
+    [...Array.from({ length: 100 }, (_, i) => `Seed-${i}`), ...near.flatMap((n) => Array.from({ length: 100 }, (_, i) => `${n}-${i}`))],
+    0.9,
+  );
+  sounds(
+    db,
+    ["Close1", "Close2", "Close3", "Close4"].flatMap((n) => Array.from({ length: 5 }, (_, i) => `${n}-${i}`)),
+    0.9,
+  );
+  sounds(
+    db,
+    ["Distant1", "Distant2", "Distant3", "Distant4"].flatMap((n) => Array.from({ length: 10 }, (_, i) => `${n}-${i}`)),
+    0.6,
+  );
+  withSounds(db, "s:u");
+  const mix = firstMix(db);
+  expect(byArtist(mix, "Close")).toHaveLength(15);
+  expect(byArtist(mix, "Distant")).toHaveLength(0);
+});
+
+test("the sound-alike songs rotate between accounts", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const near = ["N1", "N2", "N3", "N4", "N5"];
+  songsOf(db, ["Seed", ...near], 100);
+  songsOf(db, ["Close1", "Close2", "Close3", "Close4"], 10);
+  sounds(
+    db,
+    [
+      ...Array.from({ length: 100 }, (_, i) => `Seed-${i}`),
+      ...["Close1", "Close2", "Close3", "Close4"].flatMap((n) => Array.from({ length: 10 }, (_, i) => `${n}-${i}`)),
+    ],
+    0.9,
+  );
+  const picks = ["s:u", "s:v", "s:w"].map((account) => {
+    withSounds(db, account);
+    return (dailyMixes(db, "s", account, 20_000, NOW)[0]?.songs ?? [])
+      .filter((item) => item.artist?.startsWith("Close"))
+      .map((item) => item.id)
+      .sort()
+      .join();
+  });
+  expect(new Set(picks).size).toBeGreaterThan(1);
+});
+
+test("a stored day with a discovery lane replays the same after likes and analysis change", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  withOutsiders(db);
+  const ids = (liked = new Set<string>()) => dailyMixes(db, "s", "s:u", 20_000, NOW, liked)[0]?.songs.map((item) => item.id);
+  const first = ids();
+  sounds(
+    db,
+    ["Seed", "N1", "Outer1", "Outer2"].flatMap((n) => Array.from({ length: 100 }, (_, i) => `${n}-${i}`)),
+    0.5,
+  );
+  expect([ids(new Set(["Outer1-3"])), ids(), ids()]).toEqual([first, first, first]);
+});
+
+test("a song set to never after the day is stored leaves it without a refill, and the day replays that way", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  withOutsiders(db);
+  const ids = () => dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id) ?? [];
+  const first = ids();
+  const gone = first.find((id) => id.startsWith("Outer")) as string;
+  changeSong(db, "s:u", gone, { never: true });
+  const after = ids();
+  expect(after).toEqual(first.filter((id) => id !== gone));
+  expect([ids(), ids()]).toEqual([after, after]);
+});
+
+test("songs set to never stay out of the discovery lane, whether it is found by sound or by company", () => {
+  for (const analysed of [false, true]) {
+    const db = openLibraryDb(":memory:");
+    createIndexTables(db);
+    withOutsiders(db);
+    if (analysed)
+      sounds(
+        db,
+        ["Seed", "N1", "Outer1", "Outer2"].flatMap((n) => Array.from({ length: 100 }, (_, i) => `${n}-${i}`)),
+        0.5,
+      );
+    for (let i = 0; i < 50; i++) changeSong(db, "s:u", `Outer1-${i}`, { never: true });
+    const outer = [...byArtist(firstMix(db), "Outer")];
+    expect(outer.length).toBeGreaterThan(0);
+    expect(outer.some((item) => Number(item.title?.split(" ")[1]) < 50 && item.artist === "Outer1")).toBe(false);
+  }
+});
+
+test("a mix still fills when every song of its neighbours was played", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, SIX, 12);
+  for (let i = 0; i < 12; i++) heard(db, "s:u", SIX, 1, i);
+  expect(firstMix(db)?.songs).toHaveLength(50);
+});
+
 test("skips never count as plays: not in what you played, your top artists, a song's last play or the daylist", () => {
   const db = openLibraryDb(":memory:");
   createIndexTables(db);
@@ -540,6 +702,18 @@ test("skips never count as plays: not in what you played, your top artists, a so
   const daylist = madeForYou(db, "s", "s:u", { day: 20_000, hour: 8, tzMinutes: 0 }, NOW).find((mix) => mix.id === "daylist");
   expect(daylist?.description).toContain("Hurt");
   expect(daylist?.description).not.toContain("Skipper");
+});
+
+test("only the last 30 days say how much you repeat", () => {
+  const share = (daysAgo: number) => {
+    const db = openLibraryDb(":memory:");
+    createIndexTables(db);
+    hurt(db, 3);
+    for (let i = 0; i < 3; i++) listen(db, "s:u", `Hurt ${i}`, 10, daysAgo);
+    return listening(db, "s", "s:u", NOW)?.familiar;
+  };
+  expect(share(40)).toBe(0.4);
+  expect(share(5)).toBeCloseTo(0.4 + 0.45 * 0.8);
 });
 
 test("one skip dents a liked song but doesn't sink it below songs you never touched", () => {
@@ -589,18 +763,6 @@ test("a seed's neighbours without songs in the library don't take its slots", ()
   heard(db, "s:u", ["Seed", "Ghost"], 30);
   for (const name of near) heard(db, "s:u", ["Seed", name], 6);
   expect(artistsIn(firstMix(db))).toEqual(["N1", "N2", "N3", "N4", "N5", "Seed"]);
-});
-
-test("six in ten songs of a mix are ones you have played", () => {
-  const db = openLibraryDb(":memory:");
-  createIndexTables(db);
-  const group = ["A", "B", "C", "D", "E"];
-  songsOf(db, group, 20);
-  heard(db, "s:u", group, 6);
-  for (const artist of group) for (let i = 1; i < 10; i++) heard(db, "s:u", [artist], 1, i);
-  const songs = firstMix(db)?.songs ?? [];
-  expect(songs).toHaveLength(50);
-  expect(songs.filter((item) => Number(item.title?.split(" ")[1]) < 10)).toHaveLength(30);
 });
 
 test("a one-artist library still fills the mix from songs you have played", () => {

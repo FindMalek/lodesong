@@ -16,7 +16,7 @@ export interface Signal {
 }
 
 /** Likes and replays lift a song, skips sink it, and one left alone for a while is due; the jitter keeps equals rotating. */
-function tasteOf(l: Listening, key: string): number {
+export function tasteOf(l: Listening, key: string): number {
   const signal = l.signals.get(key);
   const plays = signal?.plays ?? 0;
   const skips = signal?.skips ?? 0;
