@@ -12,7 +12,7 @@ const first = (request: Request, name: string): string | undefined => request.he
  * address only when the proxy is trusted, and otherwise the address this request arrived on.
  */
 export function originOf(request: Request, { publicUrl, trustProxy }: OriginSettings): string {
-  if (publicUrl) return publicUrl.replace(/\/+$/, "");
+  if (publicUrl) return new URL(publicUrl).origin;
   const url = new URL(request.url);
   if (!trustProxy) return url.origin;
   const forwardedHost = first(request, "x-forwarded-host");
