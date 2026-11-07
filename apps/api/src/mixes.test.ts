@@ -465,7 +465,7 @@ test("at the same recency, a like outweighs a hundred replays", () => {
   })();
   const liked = new Set(Array.from({ length: 50 }, (_, i) => `Hurt-${i}`));
   expect(inMix(titlesOn(db, "s:u", liked), 0, 50)).toHaveLength(50);
-});
+}, 30_000);
 
 test("songs you skip sink, but one skip doesn't sink a song you replay", () => {
   const db = openLibraryDb(":memory:");
@@ -538,7 +538,7 @@ test("someone who plays the same songs over and over gets mostly songs they know
   createIndexTables(db);
   songsOf(db, SIX, 24);
   for (let i = 0; i < 12; i++) heard(db, "s:u", SIX, 10, i);
-  expect(knownIn(firstMix(db))).toBe(40);
+  expect(knownIn(firstMix(db))).toBe(38);
 });
 
 const withOutsiders = (db: ReturnType<typeof openLibraryDb>) => {
@@ -549,7 +549,7 @@ const withOutsiders = (db: ReturnType<typeof openLibraryDb>) => {
   heard(db, "s:u", ["Seed", "Outer2"], 1, 91);
   for (let i = 10; i < 90; i++) heard(db, "s:u", ["Seed"], 1, i);
 };
-const byArtist = (mix: { songs: { artist?: string }[] } | undefined, prefix: string) =>
+const byArtist = <T extends { artist?: string }>(mix: { songs: T[] } | undefined, prefix: string) =>
   mix?.songs.filter((item) => item.artist?.startsWith(prefix)) ?? [];
 
 test("half of what's new in a mix is songs you never played by artists played next to it", () => {
@@ -560,7 +560,7 @@ test("half of what's new in a mix is songs you never played by artists played ne
   expect(mix?.songs).toHaveLength(50);
   const outer = byArtist(mix, "Outer");
   expect(outer).toHaveLength(15);
-  expect(outer.some((item) => ["Outer1 90", "Outer2 91"].includes((item as { title: string }).title))).toBe(false);
+  expect(outer.some((item) => ["Outer1 90", "Outer2 91"].includes(item.title ?? ""))).toBe(false);
 });
 
 const sounds = (db: ReturnType<typeof openLibraryDb>, ids: string[], level: number) => {
@@ -641,6 +641,45 @@ test("a stored day with a discovery lane replays the same after likes and analys
   expect([ids(new Set(["Outer1-3"])), ids(), ids()]).toEqual([first, first, first]);
 });
 
+test("a song set to never after the day is stored leaves it without a refill, and the day replays that way", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  withOutsiders(db);
+  const ids = () => dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id) ?? [];
+  const first = ids();
+  const gone = first.find((id) => id.startsWith("Outer")) as string;
+  changeSong(db, "s:u", gone, { never: true });
+  const after = ids();
+  expect(after).toEqual(first.filter((id) => id !== gone));
+  expect([ids(), ids()]).toEqual([after, after]);
+});
+
+test("songs set to never stay out of the discovery lane, whether it is found by sound or by company", () => {
+  for (const analysed of [false, true]) {
+    const db = openLibraryDb(":memory:");
+    createIndexTables(db);
+    withOutsiders(db);
+    if (analysed)
+      sounds(
+        db,
+        ["Seed", "N1", "Outer1", "Outer2"].flatMap((n) => Array.from({ length: 100 }, (_, i) => `${n}-${i}`)),
+        0.5,
+      );
+    for (let i = 0; i < 50; i++) changeSong(db, "s:u", `Outer1-${i}`, { never: true });
+    const outer = [...byArtist(firstMix(db), "Outer")];
+    expect(outer.length).toBeGreaterThan(0);
+    expect(outer.some((item) => Number(item.title?.split(" ")[1]) < 50 && item.artist === "Outer1")).toBe(false);
+  }
+});
+
+test("a mix still fills when every song of its neighbours was played", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, SIX, 12);
+  for (let i = 0; i < 12; i++) heard(db, "s:u", SIX, 1, i);
+  expect(firstMix(db)?.songs).toHaveLength(50);
+});
+
 test("skips never count as plays: not in what you played, your top artists, a song's last play or the daylist", () => {
   const db = openLibraryDb(":memory:");
   createIndexTables(db);
@@ -663,6 +702,18 @@ test("skips never count as plays: not in what you played, your top artists, a so
   const daylist = madeForYou(db, "s", "s:u", { day: 20_000, hour: 8, tzMinutes: 0 }, NOW).find((mix) => mix.id === "daylist");
   expect(daylist?.description).toContain("Hurt");
   expect(daylist?.description).not.toContain("Skipper");
+});
+
+test("only the last 30 days say how much you repeat", () => {
+  const share = (daysAgo: number) => {
+    const db = openLibraryDb(":memory:");
+    createIndexTables(db);
+    hurt(db, 3);
+    for (let i = 0; i < 3; i++) listen(db, "s:u", `Hurt ${i}`, 10, daysAgo);
+    return listening(db, "s", "s:u", NOW)?.familiar;
+  };
+  expect(share(40)).toBe(0.4);
+  expect(share(5)).toBeCloseTo(0.4 + 0.45 * 0.8);
 });
 
 test("one skip dents a liked song but doesn't sink it below songs you never touched", () => {

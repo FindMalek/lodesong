@@ -11,6 +11,7 @@ const listeningOf = (rows: Record<string, [string, number][]>, library: string[]
   signals: new Map(),
   liked: new Set(),
   sounds: new Map(),
+  familiar: 0.6,
   now: 0,
 });
 

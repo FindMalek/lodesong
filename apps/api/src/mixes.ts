@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
 import { type Features, featuresFor } from "./audiomuse";
-import { discoveryLane, familiarShare } from "./mix-discovery";
+import { discoveryLane, FAMILIAR_WINDOW_DAYS, familiarShare } from "./mix-discovery";
 import { ARTIST_CAP, artistPool, closest, roundRobin } from "./mix-pool";
 import { rankByTaste, type Signal } from "./mix-scoring";
 import { readPrefs } from "./prefs";
@@ -80,6 +80,7 @@ export interface Listening {
   signals: Map<string, Signal>;
   liked: Set<string>;
   sounds: Map<string, { song: Song; key: string; features: Features }[]>;
+  familiar: number;
   now: number;
 }
 
@@ -135,6 +136,7 @@ export function listening(db: Database, server: string, account: string, now: nu
   const playedKeys = new Set<string>();
   const together = new Map<string, Map<string, number>>();
   const signals = new Map<string, Signal>();
+  const recent = new Map<string, number>();
   for (const row of rows) {
     const key = keyOf(row.song);
     const signal = signals.get(key) ?? { plays: 0, skips: 0, last: 0 };
@@ -149,7 +151,9 @@ export function listening(db: Database, server: string, account: string, now: nu
     if (!play.song.artist) continue;
     const artist = normalize(play.song.artist);
     counts.set(artist, (counts.get(artist) ?? 0) + 1);
-    playedKeys.add(keyOf(play.song));
+    const key = keyOf(play.song);
+    playedKeys.add(key);
+    if (play.started >= now - FAMILIAR_WINDOW_DAYS * DAY) recent.set(key, (recent.get(key) ?? 0) + 1);
     for (let j = index + 1; j < plays.length; j++) {
       const next = plays[j];
       if (!next || next.started - play.started > SESSION_MS) break;
@@ -165,7 +169,7 @@ export function listening(db: Database, server: string, account: string, now: nu
       }
     }
   }
-  return { plays, byArtist, counts, playedKeys, together, signals, liked, sounds, now };
+  return { plays, byArtist, counts, playedKeys, together, signals, liked, sounds, familiar: familiarShare(recent), now };
 }
 
 /** Songs not in `avoid` first, best taste first in each half; the avoided ones only fill what's left, so a small library still gets a full mix. */
@@ -194,7 +198,7 @@ export function blend(
   const [known, unknown] = [queues(true), queues(false)];
   const cap = Math.ceil(size * ARTIST_CAP);
   const taken = artists.map(() => 0);
-  const familiar = roundRobin(known, Math.round(size * familiarShare(l)), cap, taken);
+  const familiar = roundRobin(known, Math.round(size * l.familiar), cap, taken);
   const found = lane ? discoveryLane(l, artists, size - familiar.length, cap, keyOf, avoid, random) : [];
   const fresh = roundRobin(unknown, size - familiar.length - found.length, cap, taken);
   const rest = size - familiar.length - found.length - fresh.length;
