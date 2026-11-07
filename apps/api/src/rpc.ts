@@ -13,7 +13,7 @@ import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
 import type { LyricsService } from "./lyrics";
-import { listening, madeForYou, mixesVersion, slotOf } from "./mixes";
+import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
@@ -104,22 +104,23 @@ export function createRpc({
     mixes: signedIn.mixes.handler(async ({ context, input }) => {
       const { session } = context;
       const account = accountOf(session);
+      const day = nearToday(input.day, Date.now());
       // ~30 ms with 10k songs, and the same answer until the slot, a play, the index or a "never" pref changes.
-      const key = `mixes:${account}:${input.day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
+      const key = `mixes:${account}:${day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
       const cached = await cache.get<{ day: number; mixes: Awaited<ReturnType<typeof madeForYou>> }>(key);
       if (cached) return cached;
       const made = madeForYou(
         library,
         session.server,
         account,
-        { day: input.day, hour: input.hour, tzMinutes: input.tz },
+        { day, hour: input.hour, tzMinutes: input.tz },
         Date.now(),
         artistsWithReleases(library, account, Date.now()),
       );
       const heard = groq ? listening(library, session.server, account, Date.now()) : null;
-      const moods = await moodMixes(library, groq, account, input.day, heard, fetcher);
-      const weekly = await weeklyPlaylists(library, groq, account, input.day, heard, fetcher);
-      const result = { day: input.day, mixes: [...made, ...moods, ...weekly] };
+      const moods = await moodMixes(library, groq, account, day, heard, fetcher);
+      const weekly = await weeklyPlaylists(library, groq, account, day, heard, fetcher);
+      const result = { day, mixes: [...made, ...moods, ...weekly] };
       // Empty means not ready yet (no plays, the index building): asked again, never kept. Groq coming back empty is
       // most likely a timeout or a rate limit, so that answer is kept only briefly.
       const groqMissed = groq && (!moods.length || !weekly.length);

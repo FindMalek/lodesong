@@ -7,7 +7,7 @@ playlists, so your phone and every other Subsonic app have them too.
 
 | | what | changes |
 |---|---|---|
-| **daily mix 1–6** | each starts from an artist you play a lot and takes in the artists you play around the same time (within two hours); about half songs you play, half theirs you rarely or never do | every day at your midnight |
+| **daily mix 1–6** | each starts from an artist you play a lot and takes in the artists you play around the same time (within two hours); about half songs you play, half theirs you rarely or never do | every day at your midnight, and the same all day on every device; the last three days' songs are pushed down, and the artists they start from rotate through your top ones each week |
 | **discover weekly** | 30 songs you own and never played: most by artists you play (the ones you play most count most, and artists you follow with a new release come first), the rest by artists you've never played | every Friday |
 | **daylist** | what you tend to play at this time of day, plus songs by the same artists you haven't | morning, afternoon, evening, night |
 | **release radar** | songs added to your library in the last month by artists you play, newest first | as songs arrive |

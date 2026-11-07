@@ -51,6 +51,7 @@ on Base UI's ContextMenu (the registry was unreachable when it was added); repla
 - Commits: `type(scope): subject`, subject ≤ 5 words, lowercase, imperative (`fix(lyrics): offset drift`).
 - Tests: one focused test per behavior or bug. Pure logic gets a unit test; flows and shortcuts get an e2e test.
   Mock only the network (the mock Subsonic server), never our own modules.
+- Playback is checked by sound, not by the pause button: `e2e/audio-output.e2e.ts` reads what reaches the speakers (`tapOutput`), and the mock streams real mp3 and opus tones (`format=`) that `/mock/fault` can break per song.
 - The mock server lives in `test/mock/`. When the app calls a new Subsonic endpoint, add it there in the same PR.
 
 ## How it ships
