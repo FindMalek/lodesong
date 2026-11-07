@@ -32,7 +32,7 @@ test("plays count by artist and title even when the song's id changed, and artis
   const mixes = dailyMixes(db, "s", "s:u", 20_000, NOW);
   expect(mixes).toHaveLength(1);
   const mix = mixes[0];
-  expect(mix?.description).toBe("Hurt, Tool");
+  expect(mix?.description.split(", ").sort()).toEqual(["Hurt", "Tool"]);
   expect(mix?.songs.map((item) => item.id).sort()).toEqual(["a1", "a2", "b1"]);
   expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toEqual(mixes);
 });
@@ -134,4 +134,28 @@ test("the cache key for made for you changes with a play or a never pref, and on
   expect(version()).toBe(played);
   changeSong(db, "s:u", "a1", { never: true });
   expect(version()).not.toBe(played);
+});
+
+test("a day's daily mix is kept all day, and the next days steer away from it", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  for (let i = 0; i < 130; i++) {
+    const item = song(`h${i}`, "Hurt", `Song ${i}`);
+    db.query(
+      "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('s', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+    ).run(item.id, JSON.stringify(item));
+  }
+  for (let i = 0; i < 6; i++)
+    recordPlay(db, "s:u", "", { song: song("x", "Hurt", "Song 0"), started: NOW - (i + 1) * DAY_MS, listened: 200, finished: true });
+
+  const first = dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id) ?? [];
+  expect(first).toHaveLength(50);
+  // A play later the same day doesn't reshuffle it.
+  recordPlay(db, "s:u", "", { song: song("y", "Hurt", "Song 1"), started: NOW, listened: 200, finished: true });
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id)).toEqual(first);
+
+  const next = dailyMixes(db, "s", "s:u", 20_001, NOW)[0]?.songs.map((item) => item.id) ?? [];
+  expect(next).toHaveLength(50);
+  // Only the songs you actually played may come back (there are too few of them to avoid).
+  expect(next.filter((id) => first.includes(id)).every((id) => id === "h0" || id === "h1")).toBe(true);
 });
