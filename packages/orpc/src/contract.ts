@@ -1,5 +1,6 @@
 import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
+import { coverSchema, playlistFolderSchema, playlistFoldersSchema } from "@lodesong/shared/playlist-folders";
 import { followSchema, newReleaseSchema } from "@lodesong/shared/releases";
 import { listeningStatsSchema } from "@lodesong/shared/stats";
 import { oc } from "@orpc/contract";
@@ -288,6 +289,59 @@ export const contract = {
       .route({ method: "PUT", path: "/playlists/{id}/hidden", summary: "Hide or show a song in a playlist", tags: ["Playlists"] })
       .input(z.object({ id: z.string().min(1), songId: z.string().min(1), hidden: z.boolean() }))
       .output(hiddenSchema),
+  },
+
+  folders: {
+    list: oc
+      .route({
+        method: "GET",
+        path: "/folders",
+        summary: "Your playlist folders",
+        description:
+          "Folders live in lodesong, not Navidrome: playlist names are never changed. `items` says which folder a playlist is in.",
+        tags: ["Playlist folders"],
+      })
+      .output(playlistFoldersSchema),
+    create: oc
+      .route({ method: "POST", path: "/folders", successStatus: 201, summary: "Make a folder", tags: ["Playlist folders"] })
+      .input(z.object({ name: z.string().min(1), parentId: z.string().nullable().default(null) }))
+      .output(playlistFolderSchema),
+    update: oc
+      .route({
+        method: "PATCH",
+        path: "/folders/{id}",
+        summary: "Rename, move or give a folder a cover (the fields sent)",
+        description: "Nesting stops at 4 levels. A null cover goes back to the generated aura.",
+        tags: ["Playlist folders"],
+      })
+      .input(
+        z.object({
+          id: z.string().min(1),
+          name: z.string().min(1).optional(),
+          parentId: z.string().nullable().optional(),
+          cover: coverSchema.nullable().optional(),
+        }),
+      )
+      .output(playlistFolderSchema),
+    remove: oc
+      .route({
+        method: "DELETE",
+        path: "/folders/{id}",
+        summary: "Delete a folder",
+        description: "What is inside moves up one level; no playlist is deleted.",
+        tags: ["Playlist folders"],
+      })
+      .input(z.object({ id: z.string().min(1) }))
+      .output(ok),
+    place: oc
+      .route({
+        method: "PUT",
+        path: "/playlists/{id}/folder",
+        summary: "Put a playlist in a folder, or back at the top with null",
+        tags: ["Playlist folders"],
+      })
+      .input(z.object({ id: z.string().min(1), folderId: z.string().nullable() }))
+      .output(playlistFoldersSchema),
   },
 
   lyrics: {

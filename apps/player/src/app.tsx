@@ -50,6 +50,7 @@ import {
   ListenPage,
   LyricsPage,
   MomentsPage,
+  PlaylistFolderPage,
   PlaylistPage,
   preloadAllRoutes,
   RadioPage,
@@ -137,6 +138,8 @@ function Page({ path }: { path: string }) {
       return <FoldersPage key={param ?? "root"} id={param} />;
     case "playlist":
       return param ? <PlaylistPage key={param} id={param} /> : null;
+    case "playlist-folder":
+      return param ? <PlaylistFolderPage key={param} id={param} /> : null;
     case "search":
       return <SearchPage />;
     case "history":
@@ -303,7 +306,13 @@ export function App() {
       {playlistDialog && (
         <Suspense>
           <PlaylistDialogs
-            key={playlistDialog.kind === "new" ? `new:${playlistDialog.folder ?? ""}` : `folder:${playlistDialog.path}`}
+            key={
+              playlistDialog.kind === "new"
+                ? `new:${playlistDialog.folder ?? ""}:${playlistDialog.folderId ?? ""}`
+                : playlistDialog.kind === "folder"
+                  ? `folder:${playlistDialog.path}`
+                  : `${playlistDialog.kind}:${"id" in playlistDialog ? playlistDialog.id : playlistDialog.parentId}`
+            }
             dialog={playlistDialog}
           />
         </Suspense>

@@ -112,6 +112,11 @@ output to expect, and a closing checklist, so the agent can tell you what it did
   so your phone has them too.
 - **Playlists from a prompt**: "late night drive, 90s, no vocals" → Groq picks artists from your library, the server
   builds the list from songs you own. Review it, make it again, save.
+- **Playlist folders**: make, nest (4 deep), rename and delete folders, drag playlists in and out, give a folder a picture
+  or keep its generated aura. Folders live in lodesong, so playlist names in Navidrome never change; a `Chill / Night`
+  group converts to a real folder in one click.
+
+  ![A playlist folder](docs/playlist-folders.png)
 - **Recap**: your month or year as a reel: minutes, top artists and songs, your listening hours, your biggest day,
   and your top songs played back or saved.
 - **Stats**, history, forgotten favourites, and a radio that learns what you skip. Radio opens as a page.

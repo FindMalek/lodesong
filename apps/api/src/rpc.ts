@@ -16,6 +16,7 @@ import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
+import { createFolder, type FolderResult, listFolders, placePlaylist, removeFolder, updateFolder } from "./playlist-folders";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
 import {
@@ -55,6 +56,11 @@ export const accountOf = (session: Session) => `${session.server}:${session.user
 const MIXES_TTL_MS = 60 * 60_000;
 const GROQ_MISS_TTL_MS = 2 * 60_000;
 const OK = { ok: true } as const;
+
+function folderOrThrow(result: FolderResult) {
+  if ("folder" in result) return result.folder;
+  throw new ORPCError(result.error === "missing" ? "NOT_FOUND" : "BAD_REQUEST", { message: result.error });
+}
 
 function readSettings(db: Database, account: string) {
   const row = db
@@ -247,6 +253,25 @@ export function createRpc({
           )
           .run(context.account, input.id, input.songId);
         return { songs: hiddenIn(library, context.account, input.id) };
+      }),
+    },
+    folders: {
+      list: signedIn.folders.list.handler(({ context }) => listFolders(library, context.account)),
+      create: signedIn.folders.create.handler(({ context, input }) =>
+        folderOrThrow(createFolder(library, context.account, input.name, input.parentId)),
+      ),
+      update: signedIn.folders.update.handler(({ context, input }) => {
+        const { id, ...change } = input;
+        return folderOrThrow(updateFolder(library, context.account, id, change));
+      }),
+      remove: signedIn.folders.remove.handler(({ context, input }) => {
+        if (!removeFolder(library, context.account, input.id)) throw new ORPCError("NOT_FOUND");
+        return OK;
+      }),
+      place: signedIn.folders.place.handler(({ context, input }) => {
+        if (!placePlaylist(library, context.account, input.id, input.folderId))
+          throw new ORPCError("NOT_FOUND", { message: "no such folder" });
+        return listFolders(library, context.account);
       }),
     },
     lyrics: {

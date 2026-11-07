@@ -6,7 +6,12 @@ import type { Song } from "./types";
  * one without carrying the dialog code: the host in app.tsx loads it when asked.
  */
 
-export type PlaylistDialog = { kind: "new"; folder?: string; songs?: Song[] } | { kind: "folder"; path: string } | null;
+export type PlaylistDialog =
+  | { kind: "new"; folder?: string; folderId?: string; songs?: Song[] }
+  | { kind: "folder"; path: string }
+  | { kind: "folder-new"; parentId: string | null }
+  | { kind: "folder-edit"; id: string }
+  | null;
 
 let open: PlaylistDialog = null;
 const listeners = new Set<() => void>();

@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { createFeatureTables } from "./audiomuse";
 import { createHistoryTables } from "./history";
 import { createMomentTables } from "./moments";
+import { createPlaylistFolderTables } from "./playlist-folders";
 import { createPrefTables } from "./prefs";
 import { createRadioTables } from "./radio";
 import { createReleaseTables } from "./releases";
@@ -27,6 +28,7 @@ export function openLibraryDb(path: string): Database {
   createFeatureTables(db);
   createHistoryTables(db);
   createMomentTables(db);
+  createPlaylistFolderTables(db);
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);
