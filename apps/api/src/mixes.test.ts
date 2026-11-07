@@ -309,3 +309,120 @@ test("a corrupt stored row is skipped instead of failing the mixes", () => {
   db.run("update mix_days set keys = 'oops'");
   expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toHaveLength(1);
 });
+
+const songsOf = (db: ReturnType<typeof openLibraryDb>, artists: string[], count: number) =>
+  index(
+    db,
+    artists.flatMap((artist) => Array.from({ length: count }, (_, i) => song(`${artist}-${i}`, artist, `${artist} ${i}`))),
+  );
+const heard = (db: ReturnType<typeof openLibraryDb>, account: string, artists: string[], times: number, title = 0) => {
+  for (let i = 0; i < times; i++) {
+    const before = db.query<{ n: number }, [string]>("select count(*) as n from plays where account = ?").get(account)?.n ?? 0;
+    artists.forEach((artist, n) => {
+      recordPlay(db, account, "", {
+        song: song("p", artist, `${artist} ${title}`),
+        started: NOW - (before + 1) * 3 * 3_600_000 + n * 600_000,
+        listened: 200,
+        finished: true,
+      });
+    });
+  }
+};
+const artistsIn = (mix?: { songs: { artist?: string }[] }) => [...new Set(mix?.songs.map((item) => item.artist))].sort();
+const firstMix = (db: ReturnType<typeof openLibraryDb>, account = "s:u") => dailyMixes(db, "s", account, 20_000, NOW)[0];
+
+test("artists next to the artists next to a seed join its mix at a lower weight", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, ["Seed", "Nina", "Nova", "Ada"], 12);
+  heard(db, "s:u", ["Seed"], 80);
+  heard(db, "s:u", ["Seed", "Nina"], 10);
+  heard(db, "s:u", ["Seed", "Nova"], 8);
+  heard(db, "s:u", ["Nina", "Ada"], 10);
+  const mix = firstMix(db);
+  expect(mix?.description).toBe("Seed, Nina, Nova");
+  expect(artistsIn(mix)).toEqual(["Ada", "Nina", "Nova", "Seed"]);
+});
+
+test("a mix draws on at most 15 artists", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const near = Array.from({ length: 5 }, (_, i) => `Near ${i}`);
+  const far = near.map((_, i) => Array.from({ length: 5 }, (_, k) => `Far ${i}-${k}`));
+  songsOf(db, ["Seed", ...near, ...far.flat()], 10);
+  heard(db, "s:u", ["Seed"], 80);
+  near.forEach((name, i) => {
+    heard(db, "s:u", ["Seed", name], 6);
+    for (const other of far[i] ?? []) heard(db, "s:u", [name, other], 3);
+  });
+  expect(artistsIn(firstMix(db))).toHaveLength(15);
+});
+
+test("a seed is joined by the five artists it was played next to most", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const near = Array.from({ length: 7 }, (_, i) => `Near ${i}`);
+  songsOf(db, ["Seed", ...near], 12);
+  heard(db, "s:u", ["Seed"], 80);
+  near.forEach((name, i) => {
+    heard(db, "s:u", ["Seed", name], 7 - i);
+  });
+  expect(artistsIn(firstMix(db))).toEqual(["Near 0", "Near 1", "Near 2", "Near 3", "Near 4", "Seed"]);
+});
+
+test("one artist takes at most a fifth of a mix while others have songs left", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const near = ["N1", "N2", "N3", "N4"];
+  songsOf(db, ["Seed"], 60);
+  songsOf(db, near, 30);
+  for (let i = 0; i < 60; i++) heard(db, "s:u", ["Seed"], 1, i);
+  heard(db, "s:u", ["Seed", ...near], 6);
+  const mix = firstMix(db);
+  expect(mix?.songs).toHaveLength(50);
+  const count = (artist: string) => mix?.songs.filter((item) => item.artist === artist).length;
+  expect([count("Seed"), count("N1"), count("N2"), count("N3"), count("N4")]).toEqual([10, 10, 10, 10, 10]);
+});
+
+test("groups of artists played together still make a mix each, even when one link joins them", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const groups = [0, 1, 2].map((g) => Array.from({ length: 5 }, (_, k) => `G${g}A${k}`));
+  songsOf(db, groups.flat(), 12);
+  for (const group of groups) heard(db, "s:u", group, 6);
+  heard(db, "s:u", ["G0A0", "G1A0"], 1);
+  heard(db, "s:u", ["G1A1", "G2A1"], 1);
+  const mixes = dailyMixes(db, "s", "s:u", 20_000, NOW);
+  expect(mixes).toHaveLength(3);
+  expect(mixes.every((mix) => artistsIn(mix).length >= 5)).toBe(true);
+});
+
+test("a song under two ids doesn't take two of the fifty slots", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, ["Hurt"], 60);
+  index(
+    db,
+    Array.from({ length: 30 }, (_, i) => song(`copy-${i}`, "Hurt", `Hurt ${i}`)),
+  );
+  heard(db, "s:u", ["Hurt"], 6);
+  const titles = firstMix(db)?.songs.map((item) => item.title) ?? [];
+  expect(titles).toHaveLength(50);
+  expect(new Set(titles).size).toBe(50);
+});
+
+test("a stored day replays the same after a never pref and after the index changes", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  songsOf(db, ["Hurt", "Tool"], 40);
+  heard(db, "s:u", ["Hurt", "Tool"], 6);
+  const ids = () => idsOn(db, "s:u", 20_000);
+  const first = ids();
+  const dropped = first[0] ?? "";
+  changeSong(db, "s:u", dropped, { never: true });
+  const afterNever = ids();
+  expect(afterNever).toEqual(first.filter((id) => id !== dropped));
+  expect([ids(), ids()]).toEqual([afterNever, afterNever]);
+  index(db, [song("late", "Hurt", "Late One")]);
+  expect([ids(), ids(), ids()]).toEqual([afterNever, afterNever, afterNever]);
+});
