@@ -14,6 +14,9 @@ function nextTo(l: Listening, artist: string): [string, number][] {
   return row.map(([other, count]) => [other, count / best]);
 }
 
+/** The artists a seed is played closest to: the pool's first ring, so the guard and the pool can't drift apart. */
+export const closest = (l: Listening, artist: string): string[] => nextTo(l, artist).map(([other]) => other);
+
 /** The seed, then the artists around it: those it was played next to, and those next to them at a decaying weight. */
 export function artistPool(l: Listening, seed: string): string[] {
   const weights = new Map<string, number>();
@@ -23,7 +26,6 @@ export function artistPool(l: Listening, seed: string): string[] {
   for (const [artist, weight] of near) for (const [other, share] of nextTo(l, artist)) add(other, weight * share * HOP_DECAY);
   weights.delete(seed);
   const around = [...weights.entries()]
-    .filter(([, weight]) => weight > 0)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, Math.max(POOL_ARTISTS - 1, 0))
     .map(([artist]) => artist);

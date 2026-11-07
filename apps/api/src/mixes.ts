@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
-import { ARTIST_CAP, artistPool, roundRobin } from "./mix-pool";
+import { ARTIST_CAP, artistPool, closest, roundRobin } from "./mix-pool";
 import { rankByTaste, type Signal } from "./mix-scoring";
 import { readPrefs } from "./prefs";
 import type { StatsSong as Song } from "./stats";
@@ -12,7 +12,6 @@ const PER_MIX = 50;
 const FAMILIAR = 0.6;
 const MIN_PLAYS = 5;
 const SESSION_MS = 2 * 3_600_000;
-const NEIGHBOURS = 4;
 const MEMORY_DAYS = 3;
 const KEEP_DAYS = 14;
 const DISCOVER_SIZE = 30;
@@ -100,17 +99,23 @@ export function listening(db: Database, server: string, account: string, now: nu
       .songs.filter((pref) => pref.never)
       .map((pref) => pref.id),
   );
-  const byArtist = new Map<string, Song[]>();
-  const seen = new Set<string>();
-  const liked = new Set<string>();
-  for (const row of db.query<{ data: string }, [string]>("select data from idx_items where server = ? and kind = 'song'").all(server)) {
-    const song = JSON.parse(row.data) as Song;
-    if (never.has(song.id) || !song.artist) continue;
+  const library = db
+    .query<{ data: string }, [string]>("select data from idx_items where server = ? and kind = 'song'")
+    .all(server)
+    .map((row) => JSON.parse(row.data) as Song);
+  const neverKeys = new Set(library.filter((song) => never.has(song.id)).map(keyOf));
+  const liked = new Set(library.filter((song) => likedIds.has(song.id)).map(keyOf));
+  const added = (song: Song) => Date.parse(typeof song.created === "string" ? song.created : "") || 0;
+  const newest = new Map<string, Song>();
+  for (const song of library) {
     const key = keyOf(song);
-    if (likedIds.has(song.id)) liked.add(key);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const artist = normalize(song.artist);
+    if (!song.artist || neverKeys.has(key)) continue;
+    const kept = newest.get(key);
+    if (!kept || added(song) > added(kept)) newest.set(key, song);
+  }
+  const byArtist = new Map<string, Song[]>();
+  for (const song of newest.values()) {
+    const artist = normalize(song.artist ?? "");
     const songs = byArtist.get(artist);
     if (songs) songs.push(song);
     else byArtist.set(artist, [song]);
@@ -169,7 +174,7 @@ export function blend(l: Listening, artists: string[], size: number, random: () 
       ),
     );
   const [known, unknown] = [queues(true), queues(false)];
-  const cap = Math.max(1, Math.ceil(size * ARTIST_CAP));
+  const cap = Math.ceil(size * ARTIST_CAP);
   const taken = artists.map(() => 0);
   const familiar = roundRobin(known, Math.round(size * FAMILIAR), cap, taken);
   const fresh = roundRobin(unknown, size - familiar.length, cap, taken);
@@ -183,13 +188,6 @@ const artistNames = (l: Listening, artists: string[]) =>
     .slice(0, 3)
     .map((artist) => l.byArtist.get(artist)?.[0]?.artist ?? artist)
     .join(", ");
-
-const topNeighbours = (l: Listening, artist: string, count: number) =>
-  [...(l.together.get(artist) ?? new Map<string, number>()).entries()]
-    .filter(([other]) => l.byArtist.has(other))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, count)
-    .map(([other]) => other);
 
 export function createMixTables(db: Database): void {
   db.run(`create table if not exists mix_days (
@@ -280,7 +278,7 @@ function daily(db: Database, l: Listening, account: string, day: number): Mix[] 
   for (const seed of seedsFor(l, account, day)) {
     if (mixes.length === MIXES) break;
     if (used.has(seed)) continue;
-    for (const artist of [seed, ...topNeighbours(l, seed, NEIGHBOURS)]) used.add(artist);
+    for (const artist of [seed, ...closest(l, seed)]) used.add(artist);
     const artists = artistPool(l, seed);
     mixes.push({
       id: `daily-${mixes.length + 1}`,
