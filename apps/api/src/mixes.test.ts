@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { openLibraryDb } from "./db";
 import { recordPlay } from "./history";
-import { dailyMixes, mixesVersion } from "./mixes";
+import { dailyMixes, mixesVersion, nearToday } from "./mixes";
 import { changeSong } from "./prefs";
 import { createIndexTables } from "./search-index";
 
@@ -150,12 +150,125 @@ test("a day's daily mix is kept all day, and the next days steer away from it", 
 
   const first = dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id) ?? [];
   expect(first).toHaveLength(50);
-  // A play later the same day doesn't reshuffle it.
   recordPlay(db, "s:u", "", { song: song("y", "Hurt", "Song 1"), started: NOW, listened: 200, finished: true });
   expect(dailyMixes(db, "s", "s:u", 20_000, NOW)[0]?.songs.map((item) => item.id)).toEqual(first);
 
   const next = dailyMixes(db, "s", "s:u", 20_001, NOW)[0]?.songs.map((item) => item.id) ?? [];
   expect(next).toHaveLength(50);
-  // Only the songs you actually played may come back (there are too few of them to avoid).
   expect(next.filter((id) => first.includes(id)).every((id) => id === "h0" || id === "h1")).toBe(true);
+});
+
+const index = (db: ReturnType<typeof openLibraryDb>, items: { id: string; artist: string; title: string }[]) =>
+  items.forEach((item) =>
+    db
+      .query(
+        "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('s', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+      )
+      .run(item.id, JSON.stringify(item)),
+  );
+const playsOf = (db: ReturnType<typeof openLibraryDb>, account: string, artist: string, title: string) => {
+  for (let i = 0; i < 6; i++)
+    recordPlay(db, account, "", { song: song("x", artist, title), started: NOW - (i + 1) * DAY_MS, listened: 200, finished: true });
+};
+const idsOn = (db: ReturnType<typeof openLibraryDb>, account: string, day: number) =>
+  dailyMixes(db, "s", account, day, NOW)[0]?.songs.map((item) => item.id) ?? [];
+
+test("seeds rotate through your top artists week to week", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  for (let a = 0; a < 20; a++) {
+    index(db, [{ id: `a${a}`, artist: `Artist ${a}`, title: "x" }]);
+    for (let i = 0; i < 8; i++)
+      recordPlay(db, "s:u", "", {
+        song: song("p", `Artist ${a}`, "x"),
+        started: NOW - (a * 8 + i + 1) * 3 * 3_600_000,
+        listened: 200,
+        finished: true,
+      });
+  }
+  const seeds = new Set<string>();
+  for (let week = 0; week < 6; week++) for (const mix of dailyMixes(db, "s", "s:u", 20_000 + week * 7, NOW)) seeds.add(mix.description);
+  expect(seeds.size).toBeGreaterThan(6);
+});
+
+test("accounts don't see each other's mixes, and cleaning one account leaves the other", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [song("h", "Hurt", "x"), song("t", "Tool", "y")]);
+  playsOf(db, "s:u", "Hurt", "x");
+  playsOf(db, "s:v", "Tool", "y");
+  dailyMixes(db, "s", "s:u", 20_000, NOW);
+  expect(dailyMixes(db, "s", "s:v", 20_000, NOW)[0]?.description).toBe("Tool");
+  dailyMixes(db, "s", "s:v", 20_100, NOW);
+  expect(db.query("select count(*) as n from mix_days where account = 's:u'").get()).toEqual({ n: 1 });
+});
+
+test("mixes older than 14 days are cleaned and only the last 3 days are avoided", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(
+    db,
+    Array.from({ length: 130 }, (_, i) => song(`h${i}`, "Hurt", `Song ${i}`)),
+  );
+  playsOf(db, "s:u", "Hurt", "Song 0");
+  const first = idsOn(db, "s:u", 20_000);
+  const overlap = (day: number) => idsOn(db, "s:u", day).filter((id) => first.includes(id)).length;
+  expect(overlap(20_004)).toBeGreaterThan(5);
+  expect(overlap(20_003)).toBeLessThanOrEqual(1);
+  const rows = (day: number) => db.query("select count(*) as n from mix_days where day = ?").get(day);
+  idsOn(db, "s:u", 20_014);
+  expect(rows(20_000)).toEqual({ n: 1 });
+  idsOn(db, "s:u", 20_015);
+  expect(rows(20_000)).toEqual({ n: 0 });
+});
+
+test("a small library still gets a full mix on the next day", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(
+    db,
+    Array.from({ length: 60 }, (_, i) => song(`h${i}`, "Hurt", `Song ${i}`)),
+  );
+  playsOf(db, "s:u", "Hurt", "Song 0");
+  idsOn(db, "s:u", 20_000);
+  expect(idsOn(db, "s:u", 20_001)).toHaveLength(50);
+});
+
+test("a day far from the server's is pulled back, so it can't wipe or flood the history", () => {
+  const today = Math.floor(NOW / DAY_MS);
+  expect(nearToday(today + 1, NOW)).toBe(today + 1);
+  expect(nearToday(9_000_000_000, NOW)).toBe(today);
+  expect(nearToday(-5, NOW)).toBe(today);
+});
+
+test("the same song under two ids shows once, and a repeat of the day's mix is identical", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [song("alb", "Hurt", "Rapture"), song("cmp", "Hurt", "Rapture"), song("o", "Hurt", "Other")]);
+  playsOf(db, "s:u", "Hurt", "Other");
+  const first = idsOn(db, "s:u", 20_000);
+  expect(new Set(first).size).toBe(first.length);
+  expect(idsOn(db, "s:u", 20_000)).toEqual(first);
+});
+
+test("stored mixes whose songs are gone aren't served empty", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [song("h", "Hurt", "x")]);
+  playsOf(db, "s:u", "Hurt", "x");
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toHaveLength(1);
+  db.run("delete from idx_items");
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toEqual([]);
+});
+
+test("a short list made early in the day grows when more artists qualify", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [song("h", "Hurt", "x"), song("t", "Tool", "y")]);
+  playsOf(db, "s:u", "Hurt", "x");
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toHaveLength(1);
+  const gap = NOW - 30 * DAY_MS;
+  for (let i = 0; i < 6; i++)
+    recordPlay(db, "s:u", "", { song: song("y", "Tool", "y"), started: gap - i * 3 * 3_600_000, listened: 200, finished: true });
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW).length).toBeGreaterThan(1);
 });

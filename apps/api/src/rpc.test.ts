@@ -28,7 +28,9 @@ const client = (headers: Record<string, string>) => createKeepClient("http://app
 test("the typed client reaches the procedures signed in, is turned away signed out, and bad input never runs", async () => {
   const signedIn = client({ "x-lodesong": "1", cookie: `kp_session=${cookie}` });
   expect(await signedIn.stats.forgotten({ days: 30 })).toEqual({ songs: [] });
-  expect(await signedIn.mixes({ day: 20_000, hour: 9, tz: 0 })).toEqual({ day: 20_000, mixes: [] });
+  const today = Math.floor(Date.now() / 86_400_000);
+  expect(await signedIn.mixes({ day: today, hour: 9, tz: 0 })).toEqual({ day: today, mixes: [] });
+  expect((await signedIn.mixes({ day: 9_000_000, hour: 9, tz: 0 })).day).toBe(today);
 
   await expect(client({ "x-lodesong": "1" }).stats.forgotten({ days: 30 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   await expect(signedIn.stats.range({ from: 2, to: 1, tz: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
