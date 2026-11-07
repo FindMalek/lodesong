@@ -36,11 +36,11 @@ import {
 } from "@/components/ui/sidebar";
 import { current as currentDrag, dropFailed, dropSongs, endDrag, leftTarget, startDrag } from "@/lib/drag";
 import { useElsewhere } from "@/lib/elsewhere";
-import { folderDrop } from "@/lib/folder-drop";
+import { folderDrop, legacyDrop } from "@/lib/folder-drop";
 import { type FolderNode, shownName } from "@/lib/folder-tree";
 import { usePlayer } from "@/lib/player";
 import { openPlaylistDialog } from "@/lib/playlist-dialogs";
-import { readOpen, usePlaylistTree, writeOpen } from "@/lib/playlist-folders";
+import { useFoldersSettled, useOpenFolders, usePlaylistTree } from "@/lib/playlist-folders";
 import { queries } from "@/lib/queries";
 import { useUser } from "@/lib/subsonic";
 import type { Playlist } from "@/lib/types";
@@ -101,7 +101,7 @@ function SubTree({ node, chain, path, dropId, dropFolder, setDropFolder, open, t
                 render={<CollapsibleTrigger />}
                 data-folder-id={id ?? undefined}
                 className="w-full font-mono text-muted-foreground [&[data-panel-open]>svg]:rotate-90"
-                {...(id ? folderDrop(id, setDropFolder) : {})}
+                {...(id ? folderDrop(id, setDropFolder) : legacyDrop)}
               >
                 <ChevronRightIcon className="transition-transform" />
                 <span>{folder.name}</span>
@@ -171,14 +171,8 @@ export function AppSidebar({ path }: { path: string }) {
   // Dragging songs, an album or a playlist over a playlist you can edit adds them to it on drop.
   const [dropId, setDropId] = useState<string | null>(null);
   const [dropFolder, setDropFolder] = useState<string | null>(null);
-  const [open, setOpen] = useState(readOpen);
-  const toggle = (key: string, next: boolean) => {
-    const updated = new Set(open);
-    if (next) updated.add(key);
-    else updated.delete(key);
-    setOpen(updated);
-    writeOpen(updated);
-  };
+  const [open, toggle] = useOpenFolders();
+  const settled = useFoldersSettled();
   const [menu, setMenu] = useState<{ target: { kind: "playlist"; playlist: Playlist }; x: number; y: number } | null>(null);
   const { data } = useQuery(queries.playlists());
   const tree = usePlaylistTree();
@@ -246,7 +240,7 @@ export function AppSidebar({ path }: { path: string }) {
             </SidebarGroupAction>
             <SidebarMenu>
               <SidebarMenuItem>
-                {playlists.length === 0 ? (
+                {playlists.length > 0 && !settled ? null : playlists.length === 0 ? (
                   <span className="flex h-7 items-center gap-2 px-2 text-faint text-xs">
                     <ListMusicIcon /> none yet · save your queue as one
                   </span>
@@ -259,7 +253,7 @@ export function AppSidebar({ path }: { path: string }) {
                       const drag = currentDrag(event);
                       // Yours and not a smart playlist (lib/playlists canEdit, inlined to keep it off the first screen).
                       const editable = playlist && !playlist.readonly && (!playlist.owner || playlist.owner === user);
-                      if (!drag || !playlist || !editable || (drag.target.kind === "playlist" && drag.target.playlist.id === id)) {
+                      if (!drag || !playlist || !editable) {
                         setDropId(null);
                         return;
                       }

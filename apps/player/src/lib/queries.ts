@@ -25,7 +25,7 @@ export const persister = createAsyncStoragePersister({
 
 export const shouldPersist = (query: Query) =>
   query.state.status === "success" &&
-  !["search", "lyricsSearch", "lyricsOffset", "session", "searchIndex", "history", "playlistHidden", "moments", "playlistFolders"].includes(
+  !["search", "lyricsSearch", "lyricsOffset", "session", "searchIndex", "history", "playlistHidden", "moments"].includes(
     query.queryKey[0] as string,
   );
 

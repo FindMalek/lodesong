@@ -11,7 +11,17 @@ export type PlaylistDialog =
   | { kind: "folder"; path: string }
   | { kind: "folder-new"; parentId: string | null }
   | { kind: "folder-edit"; id: string }
+  | { kind: "folder-move"; playlistId: string }
   | null;
+
+/** What makes two asks for a dialog different, so a new ask starts a fresh one. */
+export function playlistDialogKey(dialog: NonNullable<PlaylistDialog>): string {
+  if (dialog.kind === "new") return `new:${dialog.folder ?? ""}:${dialog.folderId ?? ""}`;
+  if (dialog.kind === "folder") return `folder:${dialog.path}`;
+  if (dialog.kind === "folder-new") return `folder-new:${dialog.parentId ?? ""}`;
+  if (dialog.kind === "folder-move") return `folder-move:${dialog.playlistId}`;
+  return `folder-edit:${dialog.id}`;
+}
 
 let open: PlaylistDialog = null;
 const listeners = new Set<() => void>();

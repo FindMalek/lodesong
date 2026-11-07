@@ -114,7 +114,7 @@ output to expect, and a closing checklist, so the agent can tell you what it did
   builds the list from songs you own. Review it, make it again, save.
 - **Playlist folders**: make, nest (4 deep), rename and delete folders, drag playlists in and out, give a folder a picture
   or keep its generated aura. Folders live in lodesong, so playlist names in Navidrome never change; a `Chill / Night`
-  group converts to a real folder in one click.
+  group converts to a real folder in one click. Playlists move by drag or from "move to folder…" in their menu.
 
   ![A playlist folder](docs/playlist-folders.png)
 - **Recap**: your month or year as a reel: minutes, top artists and songs, your listening hours, your biggest day,

@@ -21,7 +21,7 @@ import { openMiniPlayer, setAutoMiniPlayer, useMiniWindow } from "@/lib/mini-pla
 import { notify } from "@/lib/notify";
 import { PageScrollContext } from "@/lib/page-scroll";
 import { currentSong, player, usePlayer } from "@/lib/player";
-import { openPlaylistDialog, usePlaylistDialog } from "@/lib/playlist-dialogs";
+import { openPlaylistDialog, playlistDialogKey, usePlaylistDialog } from "@/lib/playlist-dialogs";
 import { loadPrefs } from "@/lib/prefs";
 import { prefetchHome } from "@/lib/queries";
 import { useReachability } from "@/lib/reachability";
@@ -305,16 +305,7 @@ export function App() {
       <TopProgress />
       {playlistDialog && (
         <Suspense>
-          <PlaylistDialogs
-            key={
-              playlistDialog.kind === "new"
-                ? `new:${playlistDialog.folder ?? ""}:${playlistDialog.folderId ?? ""}`
-                : playlistDialog.kind === "folder"
-                  ? `folder:${playlistDialog.path}`
-                  : `${playlistDialog.kind}:${"id" in playlistDialog ? playlistDialog.id : playlistDialog.parentId}`
-            }
-            dialog={playlistDialog}
-          />
+          <PlaylistDialogs key={playlistDialogKey(playlistDialog)} dialog={playlistDialog} />
         </Suspense>
       )}
       {miniWindow && (

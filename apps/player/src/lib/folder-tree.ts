@@ -12,6 +12,8 @@ export interface FolderNode {
 
 const SEPARATOR = " / ";
 
+const folderCoverUrl = (id: string, version: string): string => `/api/folders/${encodeURIComponent(id)}/cover?v=${version}`;
+
 const node = (id: string | null, name: string, key: string, cover: string | null = null): FolderNode => ({
   id,
   name,
@@ -24,7 +26,12 @@ const node = (id: string | null, name: string, key: string, cover: string | null
 /** Real folders first, then the old "Chill / Night" naming for playlists that are not in one; a dead id is ignored. */
 export function buildTree(playlists: Playlist[], data: PlaylistFolders | undefined): FolderNode {
   const root = node(null, "", "");
-  const real = new Map((data?.folders ?? []).map((folder) => [folder.id, node(folder.id, folder.name, folder.id, folder.cover)]));
+  const real = new Map(
+    (data?.folders ?? []).map((folder) => [
+      folder.id,
+      node(folder.id, folder.name, folder.id, folder.coverVersion ? folderCoverUrl(folder.id, folder.coverVersion) : null),
+    ]),
+  );
   for (const folder of data?.folders ?? []) {
     const parent = folder.parentId ? real.get(folder.parentId) : undefined;
     (parent ?? root).folders.push(real.get(folder.id) as FolderNode);
@@ -101,4 +108,26 @@ export function movableInto(root: FolderNode, id: string, limit: number): { id: 
   };
   walk(root.folders, []);
   return out;
+}
+
+export function folderOptions(root: FolderNode): { id: string; label: string }[] {
+  const out: { id: string; label: string }[] = [];
+  const walk = (folders: FolderNode[], names: string[]) => {
+    for (const folder of folders) {
+      const label = [...names, folder.name];
+      if (folder.id !== null) out.push({ id: folder.id, label: label.join(SEPARATOR) });
+      walk(folder.folders, label);
+    }
+  };
+  walk(root.folders, []);
+  return out;
+}
+
+export function placedIn(root: FolderNode, playlistId: string): string {
+  for (const folder of root.folders) {
+    if (folder.id !== null && folder.playlists.some((playlist) => playlist.id === playlistId)) return folder.id;
+    const below = placedIn(folder, playlistId);
+    if (below) return below;
+  }
+  return "";
 }

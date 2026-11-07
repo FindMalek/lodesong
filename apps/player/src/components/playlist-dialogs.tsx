@@ -9,6 +9,7 @@ import { openPlaylistDialog, type PlaylistDialog } from "@/lib/playlist-dialogs"
 import { usePlaylistTree } from "@/lib/playlist-folders";
 import { renameFolder } from "@/lib/playlists";
 import { EditFolderDialog, NewFolderDialog } from "./folder-dialogs";
+import { MovePlaylistDialog } from "./move-playlist-dialog";
 import { NewPlaylistDialog } from "./new-playlist-dialog";
 
 /** A folder is the "Folder / " part of playlist names: renaming it renames every playlist inside. */
@@ -48,7 +49,7 @@ function FolderDialog({ path, onClose }: { path: string; onClose: () => void }) 
                 disabled={saving}
                 onClick={() => {
                   setSaving(true);
-                  void convertFolder(legacy, null).finally(onClose);
+                  void convertFolder(legacy).then((made) => (made ? onClose() : setSaving(false)));
                 }}
               >
                 make it a real folder
@@ -69,6 +70,7 @@ export function PlaylistDialogs({ dialog }: { dialog: NonNullable<PlaylistDialog
   if (dialog.kind === "folder") return <FolderDialog path={dialog.path} onClose={close} />;
   if (dialog.kind === "folder-new") return <NewFolderDialog parentId={dialog.parentId} onClose={close} />;
   if (dialog.kind === "folder-edit") return <EditFolderDialog id={dialog.id} onClose={close} />;
+  if (dialog.kind === "folder-move") return <MovePlaylistDialog playlistId={dialog.playlistId} onClose={close} />;
   return (
     <NewPlaylistDialog
       open
