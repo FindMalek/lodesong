@@ -158,14 +158,12 @@ test("a day's daily mix is kept all day, and the next days steer away from it", 
   expect(next.filter((id) => first.includes(id)).every((id) => id === "h0" || id === "h1")).toBe(true);
 });
 
-const index = (db: ReturnType<typeof openLibraryDb>, items: { id: string; artist: string; title: string }[]) =>
-  items.forEach((item) =>
-    db
-      .query(
-        "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('s', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
-      )
-      .run(item.id, JSON.stringify(item)),
-  );
+const index = (db: ReturnType<typeof openLibraryDb>, items: { id: string; artist: string; title: string }[]) => {
+  for (const item of items)
+    db.query(
+      "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('s', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+    ).run(item.id, JSON.stringify(item));
+};
 const playsOf = (db: ReturnType<typeof openLibraryDb>, account: string, artist: string, title: string) => {
   for (let i = 0; i < 6; i++)
     recordPlay(db, account, "", { song: song("x", artist, title), started: NOW - (i + 1) * DAY_MS, listened: 200, finished: true });
