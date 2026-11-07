@@ -29,6 +29,7 @@ import {
   updateFolder,
 } from "./playlist-folders";
 import { playlistsExist } from "./playlist-lookup";
+import { createMoodPlaylists } from "./playlist-mood";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
 import {
@@ -118,6 +119,7 @@ export function createRpc({
   followSync = null,
   publicDemo = false,
 }: RpcDeps) {
+  const moodPlaylists = createMoodPlaylists(library, cache);
   const folderLimit = publicDemo ? MAX_DEMO_FOLDERS : MAX_FOLDERS;
   const upstreamOf = (session: Session): Upstream => {
     const upstream = upstreamFor(session.server);
@@ -280,6 +282,13 @@ export function createRpc({
       }),
     },
     playlists: {
+      forMood: signedIn.playlists.forMood.handler(async ({ context, input }) => {
+        const upstream = upstreamFor(context.session.server);
+        if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
+        const found = await moodPlaylists(upstream, context.session, input.mood);
+        if (!found) throw new ORPCError("BAD_GATEWAY", { message: "navidrome didn't answer" });
+        return found;
+      }),
       hidden: signedIn.playlists.hidden.handler(({ context, input }) => ({ songs: hiddenIn(library, context.account, input.id) })),
       hide: signedIn.playlists.hide.handler(({ context, input }) => {
         library

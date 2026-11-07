@@ -31,6 +31,26 @@ test("⌘K: a mood like gym finds its playlists and genres, and the mix plays", 
   await expect(page.getByRole("contentinfo").getByRole("button", { name: "pause" })).toBeVisible();
 });
 
+test("⌘K: gym ranks playlists by how their songs sound and says why", async ({ signedIn: page }) => {
+  await indexed(page);
+  const stored = await page.evaluate(
+    async () => (await (await fetch("/api/audiomuse/sync", { method: "POST", headers: { "x-lodesong": "1" } })).json()).stored,
+  );
+  expect(stored).toBeGreaterThan(100);
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "search" });
+  await dialog.getByRole("combobox").fill("gym");
+  const group = dialog.getByRole("group", { name: "for gym" });
+  await expect(group.getByRole("option", { name: /Running.*name fits, loud, fast/ })).toBeVisible();
+  const favorites = group.getByRole("option", { name: /Favorites/ });
+  await expect(favorites).toContainText("loud, fast");
+  await expect(favorites).not.toContainText("name fits");
+  await expect(group.getByRole("option", { name: /Late night/ })).toBeHidden();
+  if (process.env.SHOT) await dialog.screenshot({ path: process.env.SHOT });
+  await favorites.click();
+  await expect(page).toHaveURL(/\/playlist\/pl-3/);
+});
+
 test("⌘K: the gym mix plays the songs the mood search found, not the genre fallback", async ({ signedIn: page }) => {
   await indexed(page);
   const found: string[] = [];

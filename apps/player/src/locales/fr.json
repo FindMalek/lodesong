@@ -7,5 +7,14 @@
   "history.playAgain": "réécouter",
   "history.songs.one": "{count} titre",
   "history.songs.other": "{count} titres",
-  "history.skipped": "{count} passés"
+  "history.skipped": "{count} passés",
+  "fit.name": "le nom correspond",
+  "fit.loud": "fort",
+  "fit.quiet": "doux",
+  "fit.steady": "régulier",
+  "fit.fast": "rapide",
+  "fit.slow": "lent",
+  "fit.bright": "lumineux",
+  "fit.dark": "sombre",
+  "fit.mood": "colle à l'ambiance"
 }

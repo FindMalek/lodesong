@@ -47,6 +47,7 @@ export default defineConfig({
         MUSICBRAINZ_URL: `http://127.0.0.1:${MOCK}/musicbrainz`,
         LRCLIB_URL: `http://127.0.0.1:${MOCK}/lrclib`,
         LYRICS_BACKFILL: "off",
+        AUDIOMUSE_URL: `http://127.0.0.1:${MOCK}/audiomuse`,
       },
       timeout: 120_000,
     },

@@ -1,6 +1,7 @@
 import type { IndexStatus, LyricsSearch, SearchResults } from "@lodesong/shared/search";
 import { queryOptions } from "@tanstack/react-query";
 import { rpc } from "./rpc";
+import { moodPollMs } from "./vibe-playlists";
 
 // Only lazy UI uses these: kept out of queries.ts so they stay off the first screen.
 
@@ -36,6 +37,13 @@ export const apiQueries = {
       staleTime: Number.POSITIVE_INFINITY,
     }),
   version: () => rpc.version.queryOptions({ staleTime: 60 * MINUTE }),
+  moodPlaylists: (mood: string) =>
+    rpc.playlists.forMood.queryOptions({
+      input: { mood },
+      staleTime: MINUTE,
+      // Reading hundreds of playlists the first time takes a few seconds; the rest comes in on the next ask.
+      refetchInterval: (query) => moodPollMs(query.state),
+    }),
   searchIndex: () =>
     queryOptions({
       queryKey: ["searchIndex"],

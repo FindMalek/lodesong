@@ -32,6 +32,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | `PUT /api/playlists/{id}/folder` | put a playlist in a folder, or back at the top with `folderId: null` |
 | `POST /api/folders/import` | make a nested set of folders and fill them with playlists (2000 in all), all or nothing |
 | `GET /api/artists/{id}/appears-on` | albums by others an artist appears on |
+| `GET /api/playlists/mood?mood` | your playlists that fit a mood like `gym`, ranked, with why ([search](search.md#moods)) |
 | `GET /api/remote/now`, `POST /api/remote/toggle·next·previous` | what's playing, and play/pause/skip ([devices](devices.md)) |
 
 More of the player moves onto the typed API release by release; the reference always lists what's there. Library data

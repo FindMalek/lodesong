@@ -39,14 +39,32 @@ Filters alone work too: `genre:jazz year:1950..1965` lists the most played match
 
 Type a mood in `⌘K` (`gym`, `workout`, `melancholy`, `rainy days`, `focus`, `late night`, `chill`, `party`, `happy`, a few
 french words too) and a "for gym" group shows up once the search has settled, after the top result and before the songs.
-It has a mix, your playlists whose names fit and the genres that fit. Whole words match (`Runaway` is not a gym
+It has a mix, your playlists that fit and the genres that fit. Whole words match (`Runaway` is not a gym
 playlist, `Train` is still a band), and a half typed word needs 6 letters (`melanc`).
+
+Playlists are ranked by how their songs sound, plus their name. Each mood is a profile of AudioMuse-AI features (gym is
+energy 0.7+ and 110+ bpm, melancholy is low energy and low valence). A song fits when every feature the profile
+cares about is in range, fading to nothing over a small margin outside it; a playlist's score is the average over its
+analysed songs. It is listed when the score is at least 0.65 and at least half of its songs (and at least 3, or all of
+them in a playlist shorter than 3) are analysed, or when its name fits. Its rank is the score times the share of its
+songs that are analysed (a playlist with 5 of 10 analysed counts half), plus 0.5 for a name match; ties go by name, then
+id. Each playlist says why in its second line: `name fits, loud, fast`. The words come from the playlist's averages
+(`loud` or `quiet`, `fast` or `slow`, `bright` or `dark`, `steady`); a playlist that fits without any of them says
+`fits the mood`. Without AudioMuse-AI only the name counts and the line says `name fits`.
+
+The server does the ranking (`GET /api/playlists/mood?mood=gym`, at most 8 playlists, from the ones you can see in Navidrome, and the palette shows the first 4 of them). It
+reads each playlist's songs from Navidrome once and again only when Navidrome says the playlist changed (a playlist
+over 2000 songs counts its first 2000). The first search after a lot of new playlists can take a few seconds while they
+are read; the palette shows the name matches meanwhile and fills in the ranking as it arrives, asking again every 3
+seconds up to 5 times. A playlist Navidrome fails to give 3 times in a row is left out for 10 minutes so it can't hold
+the answer back. The answer is cached for
+10 minutes per account and mood, and refreshed sooner when your playlists change or AudioMuse-AI analyses songs.
 
 The mix uses the `bpm:` / `energy:` / `mood:` filters above when AudioMuse-AI has analysed your songs (gym is high energy
 and 110+ bpm; melancholy is `mood:sad`, rainy days is `energy:low`). The filters alone always give your most played 50,
 so each matching genre adds its own pool, and the mix plays shuffled. With fewer than 20 analysed matches it is topped up
 with songs from the matching genres, which also carries it when AudioMuse-AI is off. Without AudioMuse-AI and without a matching genre there is no mix option.
-The words live in `packages/shared/src/vibes.ts`.
+The words and profiles live in `packages/shared/src/vibes.ts`.
 
 ## Search inside a list
 
