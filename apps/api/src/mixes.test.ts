@@ -270,3 +270,42 @@ test("a short list made early in the day grows when more artists qualify", () =>
     recordPlay(db, "s:u", "", { song: song("y", "Tool", "y"), started: gap - i * 3 * 3_600_000, listened: 200, finished: true });
   expect(dailyMixes(db, "s", "s:u", 20_000, NOW).length).toBeGreaterThan(1);
 });
+
+test("a day that regenerates after songs vanish stays the same on the next calls", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const artists = ["A", "B", "C", "D", "E", "F", "G"];
+  index(
+    db,
+    artists.map((artist) => song(`${artist}1`, artist, "x")),
+  );
+  artists.forEach((artist, n) => {
+    for (let i = 0; i < 6; i++)
+      recordPlay(db, "s:u", "", {
+        song: song("p", artist, "x"),
+        started: NOW - (n * 6 + i + 1) * 3 * 3_600_000,
+        listened: 200,
+        finished: true,
+      });
+  });
+  const names = () => dailyMixes(db, "s", "s:u", 20_000, NOW).map((mix) => mix.description);
+  const first = names();
+  expect(first).toHaveLength(6);
+  const [gone] = first;
+  db.run("delete from idx_items where id = ?", [`${gone}1`]);
+  const after = names();
+  expect(after).not.toContain(gone as string);
+  expect(new Set(after).size).toBe(after.length);
+  expect(names()).toEqual(after);
+  expect(names()).toEqual(after);
+});
+
+test("a corrupt stored row is skipped instead of failing the mixes", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [song("h", "Hurt", "x")]);
+  playsOf(db, "s:u", "Hurt", "x");
+  dailyMixes(db, "s", "s:u", 20_000, NOW);
+  db.run("update mix_days set keys = 'oops'");
+  expect(dailyMixes(db, "s", "s:u", 20_000, NOW)).toHaveLength(1);
+});

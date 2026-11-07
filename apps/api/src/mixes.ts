@@ -211,7 +211,7 @@ export function nearToday(day: number, now: number): number {
 
 function remember(db: Database, account: string, day: number, mixes: Mix[]): void {
   db.transaction(() => {
-    db.query("delete from mix_days where account = ? and day < ?").run(account, day - KEEP_DAYS);
+    db.query("delete from mix_days where account = ? and (day < ? or day = ?)").run(account, day - KEEP_DAYS, day);
     for (const mix of mixes)
       db.query("insert or replace into mix_days (account, day, id, description, keys) values (?, ?, ?, ?, ?)").run(
         account,
