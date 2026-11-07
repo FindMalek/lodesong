@@ -262,7 +262,12 @@ function StreamQualityRow() {
   return (
     <Row
       label="stream quality"
-      hint={<>auto plays kept songs as they are and streams the rest as opus 192 · original never transcodes · {DEVICE}</>}
+      hint={
+        <>
+          auto plays kept songs as they are and streams the rest as opus 192 (mp3 320 where the browser can't play opus) · original never
+          transcodes · {DEVICE}
+        </>
+      }
     >
       <ToggleGroup
         variant="outline"

@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { createFeatureTables } from "./audiomuse";
 import { createHistoryTables } from "./history";
+import { createMixTables } from "./mixes";
 import { createMomentTables } from "./moments";
 import { createPlaylistFolderTables } from "./playlist-folders";
 import { createPrefTables } from "./prefs";
@@ -32,6 +33,7 @@ export function openLibraryDb(path: string): Database {
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);
+  createMixTables(db);
   // Songs you keep in a playlist but don't want to hear from it (#46): per user, the playlist itself is untouched.
   db.run(`create table if not exists playlist_hidden (
     account text not null,

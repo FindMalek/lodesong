@@ -7,16 +7,16 @@ playlists, so your phone and every other Subsonic app have them too.
 
 | | what | changes |
 |---|---|---|
-| **daily mix 1–6** | each starts from an artist you play a lot and takes in the artists you play around the same time (within two hours); about half songs you play, half theirs you rarely or never do | every day at your midnight |
+| **daily mix 1–6** | each starts from an artist you play a lot and takes in up to 15 artists in all: the five you play closest to it (within two hours), then the artists next to those, who count for less; songs go in turns, one artist after another, and no artist takes more than a fifth of a mix unless nothing else is left; six in ten songs you have played, four in ten you haven't | every day at your midnight, and the same all day on every device; the last three days' songs are pushed down, and the artists they start from rotate through your top ones each week |
 | **discover weekly** | 30 songs you own and never played: most by artists you play (the ones you play most count most, and artists you follow with a new release come first), the rest by artists you've never played | every Friday |
-| **daylist** | what you tend to play at this time of day, plus songs by the same artists you haven't | morning, afternoon, evening, night |
+| **daylist** | what you tend to play at this time of day, plus songs by the same artists you haven't; songs go in turns, and no artist takes more than a fifth unless nothing else is left | morning, afternoon, evening, night |
 | **release radar** | songs added to your library in the last month by artists you play, newest first | as songs arrive |
 | **on this day** | what you played around this date a year ago, most played first | every day |
-| **focus mix, late night mix, energy mix** | with `GROQ_API_KEY`: Groq sorts the artists you play into moods once a week (one call, cached), and each mix is a fresh blend of their songs every day | every day |
+| **focus mix, late night mix, energy mix** | with `GROQ_API_KEY`: Groq sorts the artists you play into moods once a week (one call, cached), and each mix is a fresh blend of their songs every day, in turns, no artist over a fifth | every day |
 | **… · weekly** | with `GROQ_API_KEY`, after [Sonaraem](https://github.com/FindMalek/sonaraem): up to five playlists Groq names and fills by grouping the artists you play by shared sound and mood; no artist takes over a list | every week |
 
 They need some listening history first (a few days of plays). A card opens its playlist; the play button on a card
-starts it. Plays are matched to the library by artist and title, so a tagger moving files doesn't lose your history.
+starts it. Plays are matched to the library by artist and title, so a tagger moving files doesn't lose your history. A song that exists under two ids counts once (the newest copy), and "never play" on one of them covers both.
 Songs marked "never in shuffle or radio" are left out.
 
 ## New from artists you follow
