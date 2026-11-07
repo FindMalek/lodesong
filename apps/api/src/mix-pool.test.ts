@@ -10,6 +10,8 @@ const listeningOf = (rows: Record<string, [string, number][]>, library: string[]
   together: new Map(Object.entries(rows).map(([artist, row]) => [artist, new Map(row)])),
   signals: new Map(),
   liked: new Set(),
+  sounds: new Map(),
+  familiar: 0.6,
   now: 0,
 });
 
