@@ -50,6 +50,7 @@ on Base UI's ContextMenu (the registry was unreachable when it was added); repla
 - One issue, one PR. Branch with `gh issue develop <n> --checkout`, PR body says `Closes #<n>`.
 - Commits: `type(scope): subject`, subject ≤ 5 words, lowercase, imperative (`fix(lyrics): offset drift`).
 - Tests: one focused test per behavior or bug. Pure logic gets a unit test; flows and shortcuts get an e2e test.
+  Playback is checked by sound, not by the pause button: `e2e/audio-output.e2e.ts` reads what reaches the speakers (`tapOutput`), and the mock streams real mp3 and opus tones (`format=`), which `/mock/fault` can break per song.
   Mock only the network (the mock Subsonic server), never our own modules.
 - The mock server lives in `test/mock/`. When the app calls a new Subsonic endpoint, add it there in the same PR.
 
