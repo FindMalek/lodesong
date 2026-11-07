@@ -17,6 +17,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { SidebarResizer } from "@/components/sidebar-resizer";
 import {
   Sidebar,
   SidebarContent,
@@ -254,6 +255,7 @@ export function AppSidebar({ path }: { path: string }) {
             </Suspense>
           )}
         </SidebarFooter>
+        <SidebarResizer />
       </nav>
     </Sidebar>
   );

@@ -29,6 +29,7 @@ import { startRecentSources } from "@/lib/recent-sources";
 import { go, replace, usePath } from "@/lib/router";
 import { useSetting } from "@/lib/settings";
 import { installShortcuts, useShortcuts } from "@/lib/shortcuts";
+import { clampSidebarWidth } from "@/lib/sidebar-width";
 import { useCheckingSession, useUser } from "@/lib/subsonic";
 import { isOnboarded, welcomeTip } from "@/lib/tips";
 import { loadTooltips } from "@/lib/tooltips";
@@ -176,6 +177,7 @@ export function App() {
   const miniWindow = useMiniWindow();
   const playlistDialog = usePlaylistDialog();
   const autoMini = useSetting("miniPlayerWhenHidden");
+  const sidebarWidth = clampSidebarWidth(useSetting("sidebarWidth"));
   useEffect(() => setAutoMiniPlayer(autoMini), [autoMini]);
   // Opening on the home page: its rows load while its code does, not after.
   useEffect(() => {
@@ -325,7 +327,7 @@ export function App() {
         >
           skip to content
         </a>
-        <SidebarProvider className="min-h-0 flex-1" style={{ "--sidebar-width": "200px" } as CSSProperties}>
+        <SidebarProvider className="min-h-0 flex-1" style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
           <AppSidebar path={path} />
           <SidebarInset className="min-h-0 min-w-0">
             <MobileBar onSearch={() => setSearching(true)} onShortcuts={() => setCheatSheet(true)} />
