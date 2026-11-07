@@ -17,7 +17,7 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN BUN_TARGET="bun-linux-$([ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64)-musl" bun scripts/build.ts
 
-FROM alpine:3.22
+FROM alpine:3.24
 RUN apk add --no-cache libstdc++ libgcc && adduser -D -H -u 1000 app && mkdir /data && chown app /data
 COPY --from=build /app/dist/lodesong /usr/local/bin/lodesong
 USER app

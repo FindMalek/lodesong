@@ -62,8 +62,7 @@ the user menu (sessions). Rotating `SESSION_SECRET` signs everyone out.
 ## Automated checks
 
 - CodeQL (`security-extended`) runs on every pull request, on main and weekly (`.github/workflows/codeql.yml`).
-- `bun audit --audit-level=high` fails the `dependencies` workflow on a high or critical advisory, and the dependency
-  review action blocks a pull request that adds one. Dependabot opens weekly update pull requests for npm, GitHub
+- `bun audit --audit-level=high` fails the `dependencies` workflow on a high or critical advisory. Dependabot opens weekly update pull requests for npm, GitHub
   Actions and the Dockerfile.
 - Transitive advisories we can't wait for upstream on are pinned with `overrides` in the root `package.json`.
 

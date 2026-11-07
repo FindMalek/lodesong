@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, fakeMediaClock, test } from "./fixtures";
+import { expect, fakeMediaClock, onPhone, test } from "./fixtures";
 
 const SIZES: [number, number][] = [
   [2560, 1440],
@@ -14,6 +14,8 @@ const SIZES: [number, number][] = [
   [320, 640],
 ];
 
+const SETTINGS = ["playback", "appearance", "library", "sync", "storage", "lyrics", "shortcuts", "account", "about"];
+
 async function playPlaylist(page: Page): Promise<void> {
   await page.addInitScript(fakeMediaClock);
   await page.goto("/playlist/pl-1");
@@ -24,6 +26,7 @@ async function playPlaylist(page: Page): Promise<void> {
 test("the window is filled exactly at every size: one scrollbar, the bar in view, nothing overlapping or cut off", async ({
   signedIn: page,
 }) => {
+  test.skip(onPhone(), "it sets desktop window sizes itself");
   test.setTimeout(120_000);
   await playPlaylist(page);
   for (const [width, height] of SIZES) {
@@ -63,6 +66,7 @@ test("the window is filled exactly at every size: one scrollbar, the bar in view
 });
 
 test("the bar folds its rarely used controls into a menu as the window narrows", async ({ signedIn: page }) => {
+  test.skip(onPhone(), "it hovers the cover on a 2560 px window");
   test.setTimeout(60_000);
   await playPlaylist(page);
   const bar = page.getByRole("contentinfo");
@@ -146,4 +150,101 @@ test("on a phone settings is a tab strip above the content, not a sidebar that s
   expect((hint?.y ?? 0) > (tabs?.y ?? 0) + (tabs?.height ?? 0) - 1).toBe(true);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
   expect(wide).toBe(false);
+});
+
+for (const width of [320, 390])
+  test(`at ${width}px the albums filters sit behind a button`, async ({ signedIn: page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.goto("/albums");
+    const filters = page.getByRole("button", { name: "filters", exact: true });
+    await expect(filters).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "genre" })).toBeHidden();
+    await filters.click();
+    await expect(page.getByRole("combobox", { name: "genre" })).toBeVisible();
+    await page.getByRole("button", { name: "unplayed" }).click();
+    await expect(page.getByRole("button", { name: "filters · 1" })).toBeVisible();
+  });
+
+for (const width of [320, 390])
+  test(`at ${width}px the A-Z strip is one scrollable row and the lyrics and doctor tables show every column`, async ({
+    signedIn: page,
+  }) => {
+    await page.setViewportSize({ width, height: 700 });
+    const albums = Array.from({ length: 3 }, (_, index) => ({
+      id: `al-${index}`,
+      name: `An album with quite a long name ${index}`,
+      artist: "An artist with a long name too",
+      total: 12,
+      synced: 2,
+      plain: 1,
+      missing: 9,
+    }));
+    await page.route("**/api/lyrics/coverage", (route) =>
+      route.fulfill({ json: { total: 100, synced: 20, plain: 10, instrumental: 5, missing: 60, unchecked: 5, albums } }),
+    );
+    await page.route("**/api/doctor", (route) =>
+      route.fulfill({
+        json: {
+          health: 80,
+          checks: [
+            {
+              id: "duplicates",
+              title: "possible duplicates",
+              hint: "the same song twice",
+              count: 2,
+              of: 100,
+              findings: [
+                { label: "An artist with a long name – A song with a long title", detail: "al-1 · 3:45 · FLAC", songId: "so-1" },
+                { label: "Another artist – Another song", detail: "al-2 · 4:01 · MP3", songId: "so-2" },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    await page.goto("/artists");
+    const strip = page.getByRole("navigation", { name: "jump to letter" });
+    await expect(strip).toBeVisible();
+    const row = await strip.evaluate((nav) => ({
+      scrolls: nav.scrollWidth > nav.clientWidth,
+      tops: new Set([...nav.querySelectorAll("button")].map((button) => Math.round(button.getBoundingClientRect().top))).size,
+    }));
+    expect(row.scrolls).toBe(true);
+    expect(row.tops).toBe(1);
+
+    for (const path of ["/lyrics", "/doctor"]) {
+      await page.goto(path);
+      const table = page.locator("[data-slot=table-container]").first();
+      await expect(table).toBeVisible();
+      const fits = await table.evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+      expect(fits, `${path}: the table scrolls sideways`).toBe(true);
+      const wide = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+      expect(wide, `${path}: the page scrolls sideways`).toBe(false);
+      if (path === "/lyrics") await expect(page.getByRole("columnheader", { name: "synced" })).toBeInViewport();
+    }
+  });
+
+test("on a phone no paragraph on a page or in settings is squeezed into a few characters a line", async ({ signedIn: page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const paths = ["/", "/albums", "/artists", "/stats", "/history", "/doctor", ...SETTINGS.map((section) => `/settings/${section}`)];
+  const squeezed: string[] = [];
+  for (const path of paths) {
+    await page.goto(path);
+    await page.waitForTimeout(500);
+    const found = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>("main p, [role=dialog] p")]
+        .filter((paragraph) => {
+          const box = paragraph.getBoundingClientRect();
+          const text = (paragraph.textContent ?? "").trim();
+          return box.width > 1 && box.height > 1 && text.split(/\s+/).length > 5 && box.width < 150;
+        })
+        .map(
+          (paragraph) => `${Math.round(paragraph.getBoundingClientRect().width)}px: ${(paragraph.textContent ?? "").trim().slice(0, 40)}`,
+        ),
+    );
+    for (const item of found) squeezed.push(`${path} ${item}`);
+  }
+  expect(squeezed).toEqual([]);
 });

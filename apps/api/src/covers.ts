@@ -5,6 +5,23 @@ export { snapCoverSize } from "@lodesong/shared/cover-sizes";
 
 type Fetcher = (id: string, size: number) => Promise<Response | null>;
 
+/** Runs tasks at most `max` at a time; the rest queue in order. */
+export function gate(max: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async (task) => {
+    if (active >= max) await new Promise<void>((resume) => waiting.push(resume));
+    else active++;
+    try {
+      return await task();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else active--;
+    }
+  };
+}
+
 /** Concurrent requests for the same cover share one conversion. */
 export class CoverCache {
   private readonly entries = new Map<string, { bytes: number; used: number }>();

@@ -6,17 +6,28 @@ import { implement, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { appearsOn } from "./appears-on";
+import { type ArtistGenres, reportGenres } from "./artist-genres";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
+import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
 import type { LyricsService } from "./lyrics";
-import { listening, madeForYou, mixesVersion, slotOf } from "./mixes";
+import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
-import { artistsWithReleases, listFollows, newReleases, type ReleaseWatch, releasesVersion, setFollow, syncAutoFollows } from "./releases";
+import {
+  artistsWithReleases,
+  listFollows,
+  markSeen,
+  newReleases,
+  type ReleaseWatch,
+  releasesVersion,
+  setFollow,
+  syncAutoFollows,
+} from "./releases";
 import type { Session } from "./sessions";
 import { forgottenFavourites, listeningStats } from "./stats";
 import { weeklyPlaylists } from "./weekly-playlists";
@@ -33,6 +44,8 @@ export interface RpcDeps {
   cache?: Cache;
   lyrics: LyricsService;
   releases?: ReleaseWatch | null;
+  artistGenres?: ArtistGenres | null;
+  followSync?: FollowSync | null;
 }
 
 type Context = { session: Session | null; client: string };
@@ -66,6 +79,8 @@ export function createRpc({
   cache = memoryCache(),
   lyrics,
   releases = null,
+  artistGenres = null,
+  followSync = null,
 }: RpcDeps) {
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
@@ -89,22 +104,23 @@ export function createRpc({
     mixes: signedIn.mixes.handler(async ({ context, input }) => {
       const { session } = context;
       const account = accountOf(session);
+      const day = nearToday(input.day, Date.now());
       // ~30 ms with 10k songs, and the same answer until the slot, a play, the index or a "never" pref changes.
-      const key = `mixes:${account}:${input.day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
+      const key = `mixes:${account}:${day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
       const cached = await cache.get<{ day: number; mixes: Awaited<ReturnType<typeof madeForYou>> }>(key);
       if (cached) return cached;
       const made = madeForYou(
         library,
         session.server,
         account,
-        { day: input.day, hour: input.hour, tzMinutes: input.tz },
+        { day, hour: input.hour, tzMinutes: input.tz },
         Date.now(),
         artistsWithReleases(library, account, Date.now()),
       );
       const heard = groq ? listening(library, session.server, account, Date.now()) : null;
-      const moods = await moodMixes(library, groq, account, input.day, heard, fetcher);
-      const weekly = await weeklyPlaylists(library, groq, account, input.day, heard, fetcher);
-      const result = { day: input.day, mixes: [...made, ...moods, ...weekly] };
+      const moods = await moodMixes(library, groq, account, day, heard, fetcher);
+      const weekly = await weeklyPlaylists(library, groq, account, day, heard, fetcher);
+      const result = { day, mixes: [...made, ...moods, ...weekly] };
       // Empty means not ready yet (no plays, the index building): asked again, never kept. Groq coming back empty is
       // most likely a timeout or a rate limit, so that answer is kept only briefly.
       const groqMissed = groq && (!moods.length || !weekly.length);
@@ -121,6 +137,13 @@ export function createRpc({
         if (input.status !== "unfollowed") releases?.refresh(input.name);
         return { artists: listFollows(library, context.account) };
       }),
+      sync: signedIn.follows.sync.handler(async ({ context }) => {
+        if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
+        if (!followSync) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
+        const result = await followSync.sync(context.account);
+        if (!result) throw new ORPCError("BAD_GATEWAY", { message: "lyterion didn't answer" });
+        return { ...result, artists: listFollows(library, context.account) };
+      }),
     },
     releases: {
       list: signedIn.releases.list.handler(({ context }) => {
@@ -131,11 +154,26 @@ export function createRpc({
           watching: releases !== null,
         };
       }),
+      seen: signedIn.releases.seen.handler(({ context, input }) => {
+        markSeen(library, context.account, input.ids);
+        return OK;
+      }),
       get: signedIn.releases.get.handler(async ({ context, input }) => {
         if (!context.session.admin) throw new ORPCError("FORBIDDEN", { message: "admins only" });
         if (!releases?.canGet) throw new ORPCError("NOT_FOUND", { message: "lyterion isn't set up" });
         if (!(await releases.get(input.id))) throw new ORPCError("BAD_GATEWAY", { message: "lyterion couldn't take it, try again" });
+        markSeen(library, context.account, [input.id]);
         return OK;
+      }),
+    },
+    genres: {
+      inferred: signedIn.genres.inferred.handler(async ({ context, input }) => {
+        const upstream = upstreamFor(context.session.server);
+        if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
+        const folders = await foldersFor(context.session, upstream);
+        if (artistGenres) return artistGenres.report(upstream.id, folders, input.genre);
+        const { missing: _, ...report } = reportGenres(library, upstream.id, folders, new Map(), input.genre);
+        return { watching: false, ...report };
       }),
     },
     artists: {

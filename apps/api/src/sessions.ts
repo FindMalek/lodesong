@@ -139,6 +139,13 @@ export class SessionStore {
     return { user: row.user, token, salt };
   }
 
+  adminAccounts(): string[] {
+    return this.db
+      .query<{ server: string; user: string }, [number]>("select distinct server, user from sessions where admin = 1 and seen > ?")
+      .all(this.now() - this.idleMs)
+      .map((row) => `${row.server}:${row.user}`);
+  }
+
   purgeIdle(): void {
     this.db.query("delete from sessions where seen < ?").run(this.now() - this.idleMs);
   }

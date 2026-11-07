@@ -28,10 +28,12 @@ import { OutputDevice } from "@/components/output-device";
 import { apiQueries } from "@/lib/api-queries";
 import { MAX_CROSSFADE } from "@/lib/crossfade";
 import { doctorQuery } from "@/lib/doctor-query";
+import { LANGUAGES } from "@/lib/i18n";
 import { install, useInstallState } from "@/lib/install";
 import { installHelp, isArc } from "@/lib/install-help";
 import { MINI_PLAYER_SUPPORTED } from "@/lib/mini-player";
 import { previewNotice } from "@/lib/notify";
+import { playsTodayQuery, scrobblingQuery } from "@/lib/scrobbling";
 import { type Settings, setSetting, TOAST_LEVELS, TOAST_POSITIONS, type ToastPosition, useSetting } from "@/lib/settings";
 import { isStreamQuality, QUALITIES } from "@/lib/stream-quality";
 import { HEADERS, logout, useUser } from "@/lib/subsonic";
@@ -166,6 +168,55 @@ function ToastsRow() {
   );
 }
 
+const LANGUAGE_NAMES = { auto: "auto", en: "english", fr: "français" } as const;
+
+/** The pages already translated follow this; the rest of the app is still english. */
+function LanguageRow() {
+  const chosen = useSetting("language");
+  return (
+    <Row label="language" hint={<>only some pages are translated so far (history) · {DEVICE}</>}>
+      <ToggleGroup
+        variant="outline"
+        size="sm"
+        aria-label="language"
+        value={[chosen]}
+        onValueChange={(value: string[]) => {
+          const next = (["auto", ...LANGUAGES] as const).find((item) => item === value[0]);
+          if (next) setSetting("language", next);
+        }}
+      >
+        {(["auto", ...LANGUAGES] as const).map((value) => (
+          <ToggleGroupItem key={value} value={value} className="font-mono font-normal" lang={value === "auto" ? undefined : value}>
+            {LANGUAGE_NAMES[value]}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </Row>
+  );
+}
+
+/** Navidrome does the scrobbling (Last.fm, ListenBrainz); this only says whether it is on for you. */
+function ScrobblingRow() {
+  const enabled = useQuery(scrobblingQuery);
+  const today = useQuery(playsTodayQuery());
+  const state = enabled.data === true ? "on" : enabled.data === false ? "off" : "unknown";
+  return (
+    <Row
+      label="scrobbling"
+      hint={
+        state === "off"
+          ? "off in navidrome: turn it on in navidrome's personal settings to send plays to last.fm or listenbrainz"
+          : "navidrome sends your plays to last.fm and listenbrainz; connect them in navidrome's personal settings"
+      }
+    >
+      <span className="font-mono text-muted-foreground text-xs">
+        {state}
+        {state === "on" && today.data ? ` · ${today.data.plays.toLocaleString()} sent today` : ""}
+      </span>
+    </Row>
+  );
+}
+
 /** Which corner toasts use; picking one shows a sample there. */
 function ToastPositionRow() {
   const position = useSetting("toastPosition");
@@ -205,11 +256,19 @@ function ToastPositionRow() {
   );
 }
 
-/** What to stream (#24): the original file, or a transcode for a slow or metered connection. Kept per device. */
+/** What to stream (#24): auto, the original file, or a transcode for a slow or metered connection. Kept per device. */
 function StreamQualityRow() {
   const quality = useSetting("streamQuality");
   return (
-    <Row label="stream quality" hint={<>original plays your files as they are · a transcode saves data on a slow connection · {DEVICE}</>}>
+    <Row
+      label="stream quality"
+      hint={
+        <>
+          auto plays kept songs as they are and streams the rest as opus 192 (mp3 320 where the browser can't play opus) · original never
+          transcodes · {DEVICE}
+        </>
+      }
+    >
       <ToggleGroup
         variant="outline"
         size="sm"
@@ -447,6 +506,7 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
                 <ThemeBuilder />
               </Suspense>
               <ToastsRow />
+              <LanguageRow />
               <ToastPositionRow />
               <Toggle
                 setting="upNext"
@@ -553,6 +613,7 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
                   </Button>
                 </Row>
               )}
+              <ScrobblingRow />
               <Row label="sessions" hint="every browser signed in as you, and a way to sign one out">
                 <Button variant="outline" size="sm" onClick={() => setSessionsOpen(true)}>
                   <MonitorSmartphoneIcon />

@@ -1,0 +1,16 @@
+[package]
+name = "lodesong-desktop"
+version = "0.0.0"
+description = "lodesong in its own window"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true

@@ -7,7 +7,7 @@ playlists, so your phone and every other Subsonic app have them too.
 
 | | what | changes |
 |---|---|---|
-| **daily mix 1–6** | each starts from an artist you play a lot and takes in the artists you play around the same time (within two hours); about half songs you play, half theirs you rarely or never do | every day at your midnight |
+| **daily mix 1–6** | each starts from an artist you play a lot and takes in the artists you play around the same time (within two hours); about half songs you play, half theirs you rarely or never do | every day at your midnight, and the same all day on every device; the last three days' songs are pushed down, and the artists they start from rotate through your top ones each week |
 | **discover weekly** | 30 songs you own and never played: most by artists you play (the ones you play most count most, and artists you follow with a new release come first), the rest by artists you've never played | every Friday |
 | **daylist** | what you tend to play at this time of day, plus songs by the same artists you haven't | morning, afternoon, evening, night |
 | **release radar** | songs added to your library in the last month by artists you play, newest first | as songs arrive |
@@ -23,14 +23,18 @@ Songs marked "never in shuffle or radio" are left out.
 
 The artists you play most (the top 15 of the last 90 days) are followed for you. Once a week lodesong asks
 [MusicBrainz](https://musicbrainz.org) for their new albums, EPs and singles (live albums, compilations and the like
-are left out), and the bottom of home lists the ones from the last three months that aren't in your library yet, with
-the release date and a link. Only artist names leave your server, one request a second with a lodesong user agent,
-and answers are kept, so a release is looked up once.
+are left out), and the top of home lists the ones from the last three months that aren't in your library yet, as cards with
+the type, the release date, a link and a mark for the ones you haven't seen. Only artist names leave your server, one request a second with a lodesong user agent,
+and answers are kept, so a release is looked up once. Cards show the cover from [Cover Art Archive](https://coverartarchive.org)
+(by release id, through your server, kept on disk); a release without one keeps its initials.
 
-**following** on that row opens the list: follow any artist by name, **pin** one so it stays when you stop playing
-them, or **unfollow** one for good (an unfollowed artist isn't followed automatically again). Following an artist
-looks them up right away. The artist has to be an exact match on MusicBrainz; when two artists share a name, none is
-picked.
+**following** (or `/following` in the sidebar) is a page: search for an artist (typos are fine, it's the same search as
+the rest of the app, and a name that isn't in your library can be followed by name), see everyone you follow and sort
+them (pinned first, a-z, newest release), **pin** one so it stays when you stop playing them, or **unfollow** one for
+good (an unfollowed artist isn't followed automatically again). Below, the releases are grouped by week (coming up,
+this week, last week, then by date), can be filtered to albums, EPs or singles, and **mark seen** (one, or all of
+what's shown) is remembered per account. Following an artist looks them up right away. The artist has to be an exact
+match on MusicBrainz; when two artists share a name, none is picked.
 
 Without [Lyterion](lyterion.md#new-releases) this is a list. With it, **get it** on a release hands it over (admins),
 and `RELEASES_AUTO_GET=on` does so for every new release on its own. `MUSICBRAINZ_URL` empty turns all of it off.

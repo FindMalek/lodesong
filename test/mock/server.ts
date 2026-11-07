@@ -3,7 +3,7 @@ import type { Album, Song } from "../../apps/player/src/lib/types";
 import { createLibrary } from "./library";
 import { greyPng } from "./png";
 
-/** Subsonic/OpenSubsonic mock over a seeded library for e2e and perf budgets. Login demo/demo, audio is silence. */
+/** Subsonic/OpenSubsonic mock over a seeded library for e2e and perf budgets. Login demo/demo, audio is a quiet 440 Hz tone. */
 const PORT = Number(process.env.MOCK_PORT ?? 4599);
 const USER = "demo";
 const PASSWORD = "demo";
@@ -129,11 +129,24 @@ function directory(id: string): Payload | null {
   return null;
 }
 
-/** 8 kHz 8-bit mono silence: about 8 KB per second, seekable with Range. */
+const wavs = new Map<number, Uint8Array<ArrayBuffer>>();
+// Not 8000: WebKit routes an 8 kHz source to nothing when it goes through a media element source, so it plays silently.
+const WAV_RATE = 11_025;
+
+/** 11 kHz 8-bit mono, a quiet 440 Hz tone: about 11 KB per second, seekable with Range. */
 function wav(seconds: number): Uint8Array<ArrayBuffer> {
-  const rate = 8000;
+  const cached = wavs.get(seconds);
+  if (cached) return cached;
+  const made = makeWav(seconds);
+  wavs.set(seconds, made);
+  return made;
+}
+
+function makeWav(seconds: number): Uint8Array<ArrayBuffer> {
+  const rate = WAV_RATE;
   const data = rate * seconds;
-  const bytes = new Uint8Array(44 + data).fill(128, 44);
+  const bytes = new Uint8Array(44 + data);
+  for (let i = 0; i < data; i += 1) bytes[44 + i] = Math.round(128 + 40 * Math.sin((2 * Math.PI * 440 * i) / rate));
   // `MOCK_AUDIO=beat`: a 120 bpm kick with a hat on the off-beat, for checking visuals that follow the music.
   if (process.env.MOCK_AUDIO === "beat")
     for (let i = 0; i < data; i += 1) {
@@ -165,7 +178,7 @@ function wav(seconds: number): Uint8Array<ArrayBuffer> {
 
 /** `mockPause=<s>` (tests): the first 3 s of audio at once, then nothing for that long, then the rest. A slow link. */
 function pausedStream(body: Uint8Array<ArrayBuffer>, seconds: number, onDone = () => {}): Response {
-  const head = 44 + 8000 * 3;
+  const head = 44 + WAV_RATE * 3;
   const chunks = [body.subarray(0, head), body.subarray(head)];
   const stream = new ReadableStream({
     async pull(controller) {
@@ -192,11 +205,49 @@ function control(url: URL, request: Request): Response {
     slowNext.set(id, Number(url.searchParams.get("seconds") ?? 10));
     return Response.json({ ok: true });
   }
+  if (url.pathname === "/mock/fault" && request.method === "POST") {
+    const key = `${id}:${url.searchParams.get("format")}`;
+    const mode = url.searchParams.get("mode") ?? "garbage";
+    if (mode === "off") faults.delete(key);
+    else faults.set(key, mode);
+    return Response.json({ ok: true });
+  }
   if (url.pathname === "/mock/streams") return Response.json(streamLog.filter((entry) => entry.id === id));
   return new Response("not found", { status: 404 });
 }
 
+const TONES: Record<string, { type: string; bytes: Uint8Array<ArrayBuffer> }> = {
+  mp3: { type: "audio/mpeg", bytes: await Bun.file(new URL("./audio/tone.mp3", import.meta.url)).bytes() },
+  opus: { type: "audio/ogg", bytes: await Bun.file(new URL("./audio/tone.opus", import.meta.url)).bytes() },
+};
+// `POST /mock/fault?id=&format=opus&mode=garbage|empty|off`: that song's stream in that format arrives broken until switched off.
+const faults = new Map<string, string>();
+
+function ranged(body: Uint8Array<ArrayBuffer>, type: string, request: Request): Response {
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");
+  if (!range || (!range[1] && !range[2])) return new Response(body, { headers: { "content-type": type, "accept-ranges": "bytes" } });
+  // "bytes=-500" is a suffix range: the last 500 bytes.
+  const start = range[1] ? Number(range[1]) : Math.max(body.length - Number(range[2]), 0);
+  const end = range[1] && range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1;
+  if (start >= body.length || start > end)
+    return new Response(null, { status: 416, headers: { "content-range": `bytes */${body.length}` } });
+  return new Response(body.subarray(start, end + 1), {
+    status: 206,
+    headers: { "content-type": type, "accept-ranges": "bytes", "content-range": `bytes ${start}-${end}/${body.length}` },
+  });
+}
+
+function transcoded(song: Song, format: string, request: Request): Response {
+  const tone = TONES[format] as { type: string; bytes: Uint8Array<ArrayBuffer> };
+  const fault = faults.get(`${song.id}:${format}`);
+  if (fault === "empty") return new Response(null, { headers: { "content-type": tone.type } });
+  if (fault === "garbage") return ranged(new Uint8Array(4096).fill(0x17), tone.type, request);
+  return ranged(tone.bytes, tone.type, request);
+}
+
 function stream(song: Song, request: Request): Response {
+  const format = new URL(request.url).searchParams.get("format") ?? "raw";
+  if (Object.hasOwn(TONES, format)) return transcoded(song, format, request);
   const body = wav(song.duration ?? 180);
   const entry = { id: song.id, aborted: false, finished: false };
   streamLog.push(entry);
@@ -209,17 +260,7 @@ function stream(song: Song, request: Request): Response {
   }
   const pause = Number(new URL(request.url).searchParams.get("mockPause") ?? 0);
   if (pause) return pausedStream(body, pause);
-  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");
-  if (!range || (!range[1] && !range[2])) return new Response(body, { headers: { "content-type": "audio/wav", "accept-ranges": "bytes" } });
-  // "bytes=-500" is a suffix range: the last 500 bytes.
-  const start = range[1] ? Number(range[1]) : Math.max(body.length - Number(range[2]), 0);
-  const end = range[1] && range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1;
-  if (start >= body.length || start > end)
-    return new Response(null, { status: 416, headers: { "content-range": `bytes */${body.length}` } });
-  return new Response(body.subarray(start, end + 1), {
-    status: 206,
-    headers: { "content-type": "audio/wav", "accept-ranges": "bytes", "content-range": `bytes ${start}-${end}/${body.length}` },
-  });
+  return ranged(body, "audio/wav", request);
 }
 
 function cover(id: string, size: number): Response {
@@ -538,6 +579,16 @@ const server = Bun.serve({
             ],
           })
         : new Response("unauthorized", { status: 401 });
+    if (url.pathname === "/lyterion/api/rpc/api-reference/player/followed-artists")
+      return request.headers.get("x-lyterion-token") === "e2e-lyterion-token-0123456789"
+        ? Response.json({
+            artists: [
+              { id: "sp1", name: "Night Owls", genres: [], image: null },
+              { id: "sp2", name: "Glass Harbor", genres: ["indie"], image: null },
+            ],
+            syncedAt: "2026-11-01T04:00:00.000Z",
+          })
+        : new Response("unauthorized", { status: 401 });
     // Lyterion's wishlist (add a song from a link or a name): preview, add, then a status that moves along per call.
     if (url.pathname.startsWith("/lyterion/api/rpc/api-reference/player/wishlist")) {
       if (request.headers.get("x-lyterion-token") !== "e2e-lyterion-token-0123456789") return new Response("unauthorized", { status: 401 });
@@ -566,12 +617,26 @@ const server = Bun.serve({
       const name = /artist:"(.*)"/.exec(url.searchParams.get("query") ?? "")?.[1] ?? "";
       return Response.json({ artists: [{ id: `mb-${name.toLowerCase().replace(/\W+/g, "-")}`, name, score: 100 }] });
     }
+    if (url.pathname.startsWith("/musicbrainz/ws/2/artist/"))
+      return Response.json({
+        genres: [
+          { name: "dream pop", count: 4 },
+          { name: "shoegaze", count: 9 },
+        ],
+      });
     if (url.pathname === "/musicbrainz/ws/2/release-group") {
       const date = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
       return Response.json({
-        "release-group-count": 2,
+        "release-group-count": 3,
         "release-groups": [
           { id: "rg-fresh-hours", title: "Fresh Hours", "primary-type": "Album", "secondary-types": [], "first-release-date": date },
+          {
+            id: `rg-single-${url.searchParams.get("artist")}`,
+            title: "Late Single",
+            "primary-type": "Single",
+            "secondary-types": [],
+            "first-release-date": date,
+          },
           { id: "rg-live", title: "Live In Nowhere", "primary-type": "Album", "secondary-types": ["Live"], "first-release-date": date },
         ],
       });

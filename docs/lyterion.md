@@ -10,6 +10,7 @@ folder. lodesong plays what it places and talks to it in three places.
 | **library doctor** | **fix** on a problem (a low-quality file, a fake FLAC) and **fix all shown** hand the songs to Lyterion's `⇪ Upgrade` playlist; it looks for a better copy and replaces the file |
 | **add a song** | ⌘K, then paste a YouTube, SoundCloud or Deezer link, or type a song name (admins only). lodesong shows what it understood, Lyterion finds a good copy across its sources, checks and places it, and you can play it when it lands |
 | **new releases** | **get it** on a release in "new from artists you follow" (admins) hands that album, EP or single to Lyterion the way add a song does; `RELEASES_AUTO_GET=on` does it for every new one (at most ten a week). See [new releases](#new-releases) |
+| **follow sync** | the artists you follow on Spotify are followed in lodesong, daily and on demand (admins). See [follow from Spotify](#follow-from-spotify) |
 | **playlists** | Lyterion pushes its playlists into Navidrome as normal playlists, so you can edit them in lodesong (and every Subsonic app) |
 
 ## Setting them up together
@@ -47,6 +48,35 @@ set `UPLOAD_DIR` to that folder, mounted writable.
 text `Artist - Release title` through the same call as add a song, so Lyterion finds, checks, tags and places the
 files and Navidrome picks them up on its next scan. Nothing is handed over unless you press **get it** or set
 `RELEASES_AUTO_GET=on`.
+
+## Genres
+
+Lyterion writes `GENRE` only on files it places itself. Backfilling it on older files is Lyterion's work; until then
+lodesong says how many songs have no genre and [infers genres from their artists](genres.md).
+
+## Follow from Spotify
+
+Every artist you follow on Spotify is followed in lodesong too, so their new releases show up in
+[new from artists you follow](mixes.md#new-from-artists-you-follow). It runs once a day for admins who are signed in, and
+**sync from spotify** on the following page (admins) runs it now.
+
+It only adds. Artists you follow here are never unfollowed, and an artist you unfollowed here is not followed again.
+
+lodesong asks Lyterion's api, with the same `x-lyterion-token` header as the other calls:
+
+```
+GET {LYTERION_URL}/api/rpc/api-reference/player/followed-artists
+
+200 {
+  "artists": [{ "id": "<spotify artist id>", "name": "Night Owls", "genres": ["indie"], "image": "https://..." }],
+  "syncedAt": "2026-11-01T04:00:00.000Z"
+}
+```
+
+lodesong reads `artists[].name` (required) and `id`; the rest is ignored. `401` for a wrong token. Lyterion already
+exports followed artists into `spotify_artist` with its daily sync, so the endpoint reads that table
+([FindMalek/lyterion#192](https://github.com/FindMalek/lyterion/issues/192)). Until it exists lodesong gets a `404`, follows
+nothing and tries again at the next check.
 
 ## What goes where
 

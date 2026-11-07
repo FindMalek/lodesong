@@ -77,17 +77,10 @@ the lock screen or the silent switch.
 
 ## What to check on your phone
 
-This version was written and compiled without a phone in reach, so these are the things worth testing, in this order:
-
-1. Play a song with the **silent switch on**: you should hear it.
-2. **Lock the screen** while it plays: it should keep going, past the end of the song into the next one.
-3. The **lock screen controls** (play, pause, next, previous, the scrubber) and the cover and title.
-4. **AirPods** or the car: play and pause from them.
-5. A **call or alarm** interrupting, then music again.
-6. Switch off Wi-Fi: the failure screen appears, and *try again* recovers when it's back.
-
-If something fails, say which step and on which iOS version: the first three are where WebKit in a web view is most
-likely to behave differently from Safari.
+This version was written and compiled without a phone in reach. The full step-by-step list, with what should happen
+and where to look when it doesn't, is [the device checklist](ios-device-checklist.md). The short version, in order:
+silent switch, screen lock, lock screen controls, AirPods, a call or alarm, then Wi-Fi off. The first three are where
+WebKit in a web view is most likely to behave differently from Safari.
 
 ## How it works
 
@@ -95,6 +88,7 @@ likely to behave differently from Safari.
   (`webkit.messageHandlers.keep`): it takes the audio session when a song starts playing.
 - The audio session category is *playback*, which is what ignores the silent switch and allows background audio
   (`UIBackgroundModes: audio`).
+- After a call or alarm the app takes the audio session back and resumes if music was playing.
 - The lock screen controls come from WebKit's media session, from the page's own `navigator.mediaSession`, the same as
   in Safari and in the Mac app.
 - `NSAllowsArbitraryLoadsInWebContent` and local networking are allowed, so a server at `http://192.168…` works.

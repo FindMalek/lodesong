@@ -4,6 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
 const OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
 const APP = 4580 + OFFSET;
 const MOCK = 4599 + OFFSET;
+const WEBKIT_SPECS = /(webkit|audio-output|navigation|settings|responsive|now-playing|sticky-bar)\.e2e/;
+const PHONE_SPECS = /(webkit|settings|responsive|now-playing)\.e2e/;
 process.env.E2E_MOCK_URL = `http://127.0.0.1:${MOCK}`;
 
 export default defineConfig({
@@ -11,12 +13,14 @@ export default defineConfig({
   testMatch: "**/*.e2e.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  expect: { timeout: process.env.CI ? 10_000 : 5_000 },
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://127.0.0.1:${APP}`, trace: "retain-on-failure" },
   projects: [
     { name: "chromium", testIgnore: /lighthouse|webkit/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
-    { name: "webkit", testMatch: /webkit/, use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } } },
+    { name: "webkit", testMatch: WEBKIT_SPECS, use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } } },
+    { name: "phone", testMatch: PHONE_SPECS, use: { ...devices["iPhone 14"] } },
     // Alone and last: a busy CPU from parallel tests would skew the score.
     { name: "lighthouse", testMatch: /lighthouse/, dependencies: ["chromium"] },
   ],

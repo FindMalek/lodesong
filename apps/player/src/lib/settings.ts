@@ -26,6 +26,7 @@ export interface Settings {
   eqOn: boolean;
   eqGains: number[];
   look: string;
+  language: "auto" | "en" | "fr";
 }
 
 export const SYNCED = [
@@ -57,21 +58,24 @@ const DEFAULTS: Settings = {
   queueSync: true,
   followOtherDevices: false,
   crossfade: 0,
-  streamQuality: "original",
+  streamQuality: "auto",
   normalization: "auto",
   preamp: 0,
   eqOn: false,
   eqGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   look: "",
+  language: "auto",
 };
 
 const NORMALIZATIONS = ["off", "track", "album", "auto"];
+const LANGUAGE_CHOICES = ["auto", "en", "fr"];
 
 export function sanitize<K extends keyof Settings>(key: K, value: unknown): Settings[K] | undefined {
   const fallback = DEFAULTS[key];
   if (typeof value !== typeof fallback) return undefined;
   if (key === "toasts") return ((TOAST_LEVELS as readonly unknown[]).includes(value) ? value : undefined) as Settings[K] | undefined;
   if (key === "normalization") return (NORMALIZATIONS.includes(value as string) ? value : undefined) as Settings[K] | undefined;
+  if (key === "language") return (LANGUAGE_CHOICES.includes(value as string) ? value : undefined) as Settings[K] | undefined;
   if (key === "look") return String(value).slice(0, 64) as Settings[K];
   if (key === "crossfade") return Math.max(0, Math.min(12, Number(value) || 0)) as Settings[K];
   if (key === "preamp") return Math.max(-12, Math.min(12, Number(value) || 0)) as Settings[K];

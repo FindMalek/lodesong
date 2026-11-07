@@ -4,7 +4,7 @@
   "categories": {
     "correctness": "off"
   },
-  "jsPlugins": ["@shadcn/lint", "./scripts/lint/comments.mjs"],
+  "jsPlugins": ["@shadcn/lint", "./scripts/lint/comments.mjs", "./scripts/lint/i18n.mjs"],
   "settings": {
     "shadcn": {
       "ui": "@lodesong/ui/components"
@@ -27,6 +27,7 @@
     "shadcn/no-unknown-classes": "error",
     "shadcn/require-static-classes": "error",
     "keep/comment-budget": "error",
+    "i18n/no-literal-text": "error",
     "shadcn/no-arbitrary-values": [
       "error",
       {

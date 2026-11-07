@@ -17,7 +17,7 @@ boot with a message naming the variable.
 | `LRCLIB_URL` | `https://lrclib.net` | Where lyrics Navidrome doesn't have are looked up. Empty turns LRCLIB off. |
 | `LYRICS_BACKFILL` | `on` | `on`: walk the library in the background (about one song a second) to fetch lyrics nobody opened yet. `off` to disable. |
 | `LYRICS_WRITE_LRC` | `off` | `on`: lyrics found on LRCLIB are also saved as `<track>.lrc` next to the audio file, so other clients get them. Needs `MUSIC_DIR` and Navidrome's "Report Real Path". Never overwrites; undo from the lyrics page. |
-| `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page. Empty: the import page asks for a Spotify export file instead. |
+| `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced. |
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org` | Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off. |
 | `RELEASES_AUTO_GET` | `off` | `on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over. |
@@ -33,6 +33,7 @@ boot with a message naming the variable.
 | `INDEX_USER` | — | Navidrome account for background jobs (search index, lyrics backfill). Unset: the admin who signed in most recently. |
 | `INDEX_PASSWORD` | — | Password for `INDEX_USER`. |
 | `DEMO_SEED` | `off` | `on`: fill `INDEX_USER`'s history with months of generated listening, once (for demos and previews, see docs/previews.md). Needs `INDEX_USER`. |
+| `PUBLIC_DEMO` | `off` | `on`: a public demo (docs/public-demo.md). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted. |
 | `REDIS_URL` | — | `redis://…`: keep computed answers (made for you) in Redis, shared by several instances. Unset: in memory, which is all one instance needs. |
 | `TRUST_PROXY` | `false` | `true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits). |
 | `UPDATE_CHECK` | `off` | `on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`), new releases (`MUSICBRAINZ_URL`) and Groq when `GROQ_API_KEY` is set. |

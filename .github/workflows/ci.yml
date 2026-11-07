@@ -36,7 +36,13 @@ jobs:
       - run: cd packages/ui && bun run cn-tables && git diff --exit-code src/lib/cn-tables.ts
       - run: bun run colors
       - run: bun run test
-      - run: bun run size
+      - run: SIZE_REPORT=perf-trend/size.json bun run size
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: perf-trend-size
+          path: perf-trend
+          retention-days: 90
       - run: bun scripts/config-docs.ts --check
       - run: bun scripts/shortcuts-docs.ts --check
       # The site (apps/web): a broken Next build fails here, not at deploy.
@@ -61,10 +67,12 @@ jobs:
       - run: npm install --global bun@1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run e2e --project=chromium --shard=${{ matrix.shard }}/4
-      # Safari's engine on one shard: the app must render there too.
+      # Safari's engine and an iPhone (WebKit, touch) on a subset of the specs, one project per shard to keep the run short.
       - if: matrix.shard == 1
         run: bun run e2e --project=webkit
-      - uses: actions/upload-artifact@v4
+      - if: matrix.shard == 2
+        run: bun run e2e --project=phone
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -100,7 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -133,7 +141,15 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
+      # One artifact per release: first-screen size and the Lighthouse desktop and mobile numbers.
+      - run: SIZE_REPORT=perf-trend/size.json bun run size
       - run: bun run e2e --project=lighthouse --no-deps
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: perf-trend-${{ needs.release.outputs.version || github.ref_name }}
+          path: perf-trend
+          retention-days: 365
 
   # The iPhone app, built on a macOS runner and attached to the release as an unsigned IPA (docs/ios.md).
   ios:
@@ -142,6 +158,26 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/ios.yml
+    with:
+      tag: v${{ needs.release.outputs.version }}
+
+  # The Android app: an APK attached to the release (docs/android.md).
+  android:
+    needs: [check, e2e, release]
+    if: ${{ !cancelled() && !failure() && needs.release.outputs.created == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/android.yml
+    with:
+      tag: v${{ needs.release.outputs.version }}
+
+  # The Linux and Windows desktop app: installers attached to the release (docs/desktop.md).
+  desktop:
+    needs: [check, e2e, release]
+    if: ${{ !cancelled() && !failure() && needs.release.outputs.created == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop.yml
     with:
       tag: v${{ needs.release.outputs.version }}
 
@@ -170,13 +206,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/findmalek/lodesong
           tags: |
@@ -188,7 +224,7 @@ jobs:
             type=raw,value=latest,enable=${{ needs.release.outputs.created == 'true' }}
             type=sha
       - id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -199,7 +235,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/findmalek/lodesong
           subject-digest: ${{ steps.push.outputs.digest }}

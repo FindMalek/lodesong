@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { MAX_DEVICE_MESSAGE_BYTES } from "@lodesong/shared/devices";
 import { LEVELS_WORKLET_SOURCE } from "@lodesong/shared/levels-worklet";
 import { createApi } from "./api";
+import { ArtistGenres } from "./artist-genres";
 import { syncFeatures } from "./audiomuse";
 import { LyricsBackfill, serviceAccount } from "./backfill";
 import { createCache } from "./cache";
@@ -11,6 +12,7 @@ import { CoverCache } from "./covers";
 import { createCspReporter } from "./csp-report";
 import { openLibraryDb } from "./db";
 import { DeviceHub } from "./devices";
+import { FollowSync } from "./follow-sync";
 import { font } from "./fonts";
 import { HealthCheck, UpdateCheck, VERSION } from "./health";
 import { LrcWriter } from "./lrc-writer";
@@ -67,13 +69,17 @@ const backfills = new Map(
     : [],
 );
 for (const backfill of backfills.values()) backfill.start();
-const releases = config.musicbrainzUrl
-  ? new ReleaseWatch(library, new MusicBrainz(config.musicbrainzUrl), {
+const musicbrainz = config.musicbrainzUrl ? new MusicBrainz(config.musicbrainzUrl) : null;
+const artistGenres = musicbrainz ? new ArtistGenres(library, musicbrainz) : null;
+const releases = musicbrainz
+  ? new ReleaseWatch(library, musicbrainz, {
       autoGet: config.releasesAutoGet,
       handOff: config.lyterion ? lyterionHandOff(config.lyterion) : null,
     })
   : null;
 releases?.start();
+const followSync = config.lyterion ? new FollowSync(library, config.lyterion, () => sessions.adminAccounts()) : null;
+followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
 const api = createApi({
   upstreams: config.upstreams,
@@ -85,12 +91,15 @@ const api = createApi({
   limiter: new LoginLimiter(),
   idleSeconds,
   trustProxy: config.trustProxy,
+  publicDemo: config.publicDemo,
   updates: new UpdateCheck(config.updateCheck),
   backfills,
   lrc,
   uploadDir: config.uploadDir,
   lyterion: config.lyterion,
   releases,
+  artistGenres,
+  followSync,
   devices: config.oneSession ? new DeviceHub() : null,
   groq: config.groq,
   audiomuseUrl: config.audiomuseUrl,
@@ -126,6 +135,7 @@ const server = Bun.serve({
     "/auth/api-token": { POST: api.apiToken },
     "/rest/*": api.proxy,
     "/cover/:id/:size": api.cover,
+    "/release-cover/:id": api.releaseCover,
     "/api/listen": { POST: api.listenCreate },
     "/api/listen/:code": { GET: api.listenSocket },
     "/api/devices": { GET: api.devicesSocket },

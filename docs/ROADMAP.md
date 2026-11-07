@@ -4,60 +4,80 @@ The plan for making lodesong the best self-hosted music player. Every item is a 
 sub-issues. Run [`scripts/setup-project.sh`](../scripts/setup-project.sh) once to put them all on a GitHub Project
 board with a `Phase` and `Priority` field.
 
-**Where it stands (31 Oct 2026):** the web player, the Mac app, the iPhone shell (compiles in CI, waiting for a device
-test), previews, the demo library, the landing page and the API are in. This page lists what is left, after a full pass
-that ran every route on a real Navidrome at desktop and phone sizes and measured the bundles.
+**Where it stands (3 Nov 2026, 1.13):** the web player, the Mac app, the iPhone shell, an Android shell, a Linux and
+Windows shell, previews, the landing page and the API are in. This round shipped: start radio as a page, a following
+page with a releases feed (grouped by week, filtered by type, mark seen), the Spotify follow sync through Lyterion,
+an inferred-genres fallback, AI-filled upload tags, stats without recharts (111 KB to 4 KB gzip), phone polish, a
+security pass (CodeQL, audit, CSP reports), mobile performance budgets, a screen-reader-ready a11y suite, scrobbling
+state in settings, the i18n groundwork and the repo side of a public demo.
+
+**What the rest needs.** Nearly everything left is not code: it needs a real device, a server only the owner can set
+up, or a change in Lyterion. They are listed that way below, so nothing looks done that has not been tried.
 
 ## What is left
 
 Priorities: **P0** blocks people or hides a bug class, **P1** the next thing worth doing, **P2** good and not urgent,
-**P3** ideas. Sizes: S under a day, M a few days, L a week or more. Every row is a GitHub issue or says why it isn't.
+**P3** ideas. Sizes: S under a day, M a few days, L a week or more.
 
-### Phones and apps
-
-| | what | pri | size |
-|---|---|---|---|
-| [#410](https://github.com/FindMalek/lodesong/issues/410) | run the iPhone checklist on a real device (silent switch, lock screen, AirPods, interruptions) and fix what it finds | P0 | M |
-| [#412](https://github.com/FindMalek/lodesong/issues/412) | e2e on WebKit and an iPhone viewport: Safari, the Mac app and the iPhone shell run WebKit and nothing tests it | P0 | M |
-| [#411](https://github.com/FindMalek/lodesong/issues/411) | Android app: Kotlin shell with a foreground media service, APK on every release | P1 | L |
-| [#413](https://github.com/FindMalek/lodesong/issues/413) | an AltStore / SideStore source, so the iPhone app updates itself instead of expiring after 7 days | P1 | S |
-| [#415](https://github.com/FindMalek/lodesong/issues/415) | phone polish: collapse the albums filters, the lyrics-coverage and doctor tables, the A-Z strip | P1 | S |
-| [#319](https://github.com/FindMalek/lodesong/issues/319) | native Now Playing and remote commands in the iPhone shell, only if WebKit's lock screen proves flaky | P2 | M |
-| [#309](https://github.com/FindMalek/lodesong/issues/309) | Linux and Windows desktop apps (Tauri) | P2 | L |
-| | offline downloads inside the shells (iOS evicts web storage; native files don't) | P2 | L |
-| | Widgets, CarPlay and Android Auto: need native code and, on iOS, a paid developer account | P3 | L |
-
-### The player
+### Needs a device
 
 | | what | pri | size |
 |---|---|---|---|
-| [#414](https://github.com/FindMalek/lodesong/issues/414) | stats: finish the redesign and replace recharts (111 KB gzip for one bar chart) | P1 | M |
-| [#420](https://github.com/FindMalek/lodesong/issues/420) | scrobbling state in settings (Last.fm, ListenBrainz) and the i18n groundwork | P2 | M |
+| [#410](https://github.com/FindMalek/lodesong/issues/410) | run [the iPhone checklist](ios-device-checklist.md) on a real phone (silent switch, lock screen, AirPods, interruptions) | P0 | M |
+| [#412](https://github.com/FindMalek/lodesong/issues/412) | install the AltStore / SideStore source on a phone and see an update arrive | P1 | S |
+| [#411](https://github.com/FindMalek/lodesong/issues/411) | Android: screen-off playback, lock-screen controls, Bluetooth buttons, battery optimisation ([checklist](android.md)) | P1 | M |
+| [#309](https://github.com/FindMalek/lodesong/issues/309) | Linux and Windows: audio on WebKitGTK, a tray, close to tray, an updater, signing (the Tauri shell is minimal) | P2 | L |
+| [#418](https://github.com/FindMalek/lodesong/issues/418) | the VoiceOver and NVDA pass ([checklist](accessibility.md)); axe already covers every page | P1 | M |
+| [#319](https://github.com/FindMalek/lodesong/issues/319) | native Now Playing and remote commands in the iPhone shell, only if WebKit's lock screen proves flaky | P3 | M |
+
+### Needs the owner
+
+| | what | pri | size |
+|---|---|---|---|
+| [#416](https://github.com/FindMalek/lodesong/issues/416) | host the public demo: a public host and DNS, `PUBLIC_DEMO_HOST`, `DEMO_URL` on Vercel ([steps](public-demo.md)) | P1 | S |
+| | turn on the Dependency graph in the repo settings, then bring the dependency review job back | P1 | S |
+| | the French strings of the i18n groundwork need a native read | P2 | S |
+| [#413](https://github.com/FindMalek/lodesong/issues/413) | WebKit and phone e2e projects: merge needs a token with the `workflow` scope | P0 | S |
+
+### Needs Lyterion
+
+| | what | pri | size |
+|---|---|---|---|
+| [#435](https://github.com/FindMalek/lodesong/issues/435) | the followed-artists endpoint ([lyterion#192](https://github.com/FindMalek/lyterion/issues/192)); lodesong's side is done and retries until it exists | P1 | M |
+| [#437](https://github.com/FindMalek/lodesong/issues/437) | backfill `GENRE` on files Lyterion did not write; lodesong shows an honest state and inferred genres meanwhile | P1 | M |
+| [#183](https://github.com/FindMalek/lodesong/issues/183) | finding and fetching missing artists belongs to Lyterion; lodesong fills tags into a sidecar, writing them into the files needs a tag writer | P3 | L |
+
+### Code, next
+
+| | what | pri | size |
+|---|---|---|---|
+| | `browse.e2e.ts` fails on WebKit (the genre filter never shows "N of M"): probably a real Safari bug | P1 | S |
+| | cover art on the release cards (a Cover Art Archive proxy) instead of the generated tile | P2 | M |
+| [#420](https://github.com/FindMalek/lodesong/issues/420) | convert the other pages to `t()` (history is the template); Last.fm and ListenBrainz connection state | P2 | M |
+| [#417](https://github.com/FindMalek/lodesong/issues/417) | lazy-load the player-bar menus, AVIF covers, a gate that compares with the last release | P2 | M |
 | | settings search: a filter box in the dialog now that it has nine tabs | P2 | S |
 | | a "what's new" in the web app, as the Mac app has | P2 | S |
-| | gapless and crossfade verified per format (flac, opus, mp3 with and without gapless tags) with an automated listening test | P2 | M |
+| | gapless and crossfade verified per format with an automated listening test | P2 | M |
 | | drag a playlist track to reorder on touch screens | P2 | M |
-| [#183](https://github.com/FindMalek/lodesong/issues/183) | import music with AI-filled metadata | P3 | L |
-
-### Quality, speed and trust
-
-| | what | pri | size |
-|---|---|---|---|
-| [#417](https://github.com/FindMalek/lodesong/issues/417) | performance budgets in CI: mobile Lighthouse, interaction traces, the first-screen JS trend (160.2 of 161 KB) | P1 | M |
-| [#418](https://github.com/FindMalek/lodesong/issues/418) | a screen-reader pass (VoiceOver, NVDA) and the fixes it finds | P1 | M |
-| [#419](https://github.com/FindMalek/lodesong/issues/419) | security: CodeQL, dependency audit, a CSP report endpoint, token scopes | P1 | M |
-| | visual regression for the key pages in dark, light and phone, so a layout bug like a one-word-per-line dialog fails CI | P2 | M |
+| | visual regression for the key pages in dark, light and phone | P2 | M |
+| | offline downloads inside the shells (iOS evicts web storage; native files don't) | P2 | L |
 | | client error reports, opt in, into the server's log | P3 | S |
+| | Widgets, CarPlay and Android Auto: need native code and, on iOS, a paid developer account | P3 | L |
 
-### The site, the brand and the community
+### The site and the community
 
 | | what | pri | size |
 |---|---|---|---|
-| [#416](https://github.com/FindMalek/lodesong/issues/416) | a permanent, read-only, nightly-reset live demo, linked from the hero and the README | P1 | M |
 | | the promo video (`apps/video`) on the landing page, with captions | P2 | S |
 | | comparison and "migrate from Spotify" pages for search, with real screenshots | P2 | M |
-| | a docs version switcher and a "last updated" per page | P3 | S |
-| [#320](https://github.com/FindMalek/lodesong/issues/320) | a hosted lodesong against your own Navidrome | P3 | L |
+| | a docs version switcher | P3 | S |
+| [#320](https://github.com/FindMalek/lodesong/issues/320) | a hosted lodesong against your own Navidrome ([design](design/hosted.md)) | P3 | L |
+
+## Next version
+
+This is a **2.0**, not 1.x: the apps and the release feed change what lodesong is. 2.0 ships when the three device
+rows (iPhone, Android, screen reader) have been run and the demo is public. Everything under "Code, next" can land in
+1.x releases meanwhile.
 
 ### Housekeeping that bit this time
 

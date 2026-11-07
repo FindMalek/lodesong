@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { greyPng } from "../../../test/mock/png";
-import { CoverCache, snapCoverSize } from "./covers";
+import { CoverCache, gate, snapCoverSize } from "./covers";
 
 const dir = () => `${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`;
 const png = () => new Response(greyPng(300, 80), { headers: { "content-type": "image/png" } });
@@ -36,4 +36,19 @@ test("the least recently used covers go first when the cache is full", async () 
   await cache.get("new", 64, async () => png(), "new");
   expect(await Bun.file(keep as string).exists()).toBe(true);
   expect(await Bun.file(drop as string).exists()).toBe(false);
+});
+
+test("a gate runs at most its limit at once and still finishes every task", async () => {
+  const run = gate(2);
+  let active = 0;
+  let peak = 0;
+  const task = async () => {
+    peak = Math.max(peak, ++active);
+    await Bun.sleep(5);
+    active--;
+    return 1;
+  };
+  const done = await Promise.all(Array.from({ length: 7 }, () => run(task)));
+  expect(done.length).toBe(7);
+  expect(peak).toBe(2);
 });

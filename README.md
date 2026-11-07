@@ -28,6 +28,9 @@
 </picture>
 </p>
 
+**Try it:** a public [live demo](docs/public-demo.md) (sign in with `demo` / `demo`, resets every night) is set up in the
+repo and waits for its host; the page says what is left.
+
 > A monochrome web player for your [Navidrome](https://www.navidrome.org) library. Square covers, hairline borders,
 > synced lyrics, a queue you can see, mixes made from what you play, and one session across all your devices.
 
@@ -97,6 +100,8 @@ output to expect, and a closing checklist, so the agent can tell you what it did
   with `⇧F`, `[` `]` fix the timing per song. [lyrics](docs/lyrics.md)
 - **Playback** that doesn't stutter: two decks for gapless handover, ReplayGain, the next songs precached by a service
   worker (instant seeks, plays offline), stalls recovered in place, crossfade and a ten-band equalizer.
+- **Stream quality** per device: *auto* plays songs kept offline as they are and streams the rest as Opus 192, or
+  pick original, mp3 320, Opus 192 or Opus 96. [devices](docs/devices.md#stream-quality)
 - **Queue** you can see and steer: your queue apart from the album it came from, balanced shuffle, undo, stop after
   this song, sleep timer.
 
@@ -109,7 +114,10 @@ output to expect, and a closing checklist, so the agent can tell you what it did
   builds the list from songs you own. Review it, make it again, save.
 - **Recap**: your month or year as a reel: minutes, top artists and songs, your listening hours, your biggest day,
   and your top songs played back or saved.
-- **Stats**, history, forgotten favourites, and a radio that learns what you skip.
+- **Stats**, history, forgotten favourites, and a radio that learns what you skip. Radio opens as a page.
+- **Following**: the artists you play most are followed for you, you can follow, pin or unfollow others, and their new
+  albums, EPs and singles land on a page grouped by week. With Lyterion your Spotify follows come over too.
+  [new from artists you follow](docs/mixes.md#new-from-artists-you-follow)
 
 **Everywhere** · [devices](docs/devices.md)
 
@@ -119,6 +127,11 @@ output to expect, and a closing checklist, so the agent can tell you what it did
   plays are the server's, so every app agrees. [sync](docs/sync.md)
 - **A Mac app** with the song around the notch: cover and bars while it plays, controls on hover, lyrics and the
   queue on click. [macOS](apps/macos/README.md)
+- **Phone and desktop apps**: an [iPhone app](docs/ios.md) (sideload with a free Apple ID, or an AltStore source), an
+  [Android app](docs/android.md) (an APK from the releases) and a [Linux and Windows app](docs/desktop.md). Each is a
+  small shell around the same page, with media controls and playback in the background.
+- **Scrobbling** through Navidrome (Last.fm, ListenBrainz): settings say whether it is on for you and how many plays
+  were sent today.
 - **Now playing in your terminal**: the song, its lyric line and ⏮ ⏸ ⏭ above the prompt in Claude Code and OpenCode.
 - **Listen together** with friends on the same server. [listen together](docs/listen-together.md)
 
@@ -169,8 +182,8 @@ engine of Safari) on every pull request.
 | pick the output device (speakers, headphones) | ✓ | — | ✓ |
 | install as an app | ✓ | ✓ (File → Add to Dock) | — |
 
-Phones: the layout works down to 320 px, but a Subsonic app (Arpeggi, Substreamer, Symfonium) plays better in your
-pocket; the queue hands off between them. [sync](docs/sync.md)
+Phones: the layout works down to 320 px, and there are [iPhone](docs/ios.md) and [Android](docs/android.md) apps; a
+Subsonic app (Arpeggi, Substreamer, Symfonium) works too, and the queue hands off between them. [sync](docs/sync.md)
 
 ## With Lyterion
 
@@ -189,19 +202,20 @@ Setting them up together: [lyterion](docs/lyterion.md).
 | [configuration](docs/configuration.md) | every setting (generated from the code) |
 | [deploy](docs/deploy/README.md) | Traefik, Caddy, nginx, Dokploy, image tags, health |
 | [devices](docs/devices.md) · [sync](docs/sync.md) · [listen together](docs/listen-together.md) | one session, your phone, friends |
+| [iPhone](docs/ios.md) · [Android](docs/android.md) · [Linux and Windows](docs/desktop.md) | the apps |
 | [mixes](docs/mixes.md) · [search](docs/search.md) · [lyrics](docs/lyrics.md) · [shortcuts](docs/shortcuts.md) | how they work |
-| [lyterion](docs/lyterion.md) · [spotify import](docs/spotify-import.md) | bringing a Spotify library over |
+| [genres](docs/genres.md) · [lyterion](docs/lyterion.md) · [spotify import](docs/spotify-import.md) | bringing a Spotify library over |
 | [API](docs/api.md) | the typed API, its reference at `/api`, tokens for your own integrations |
 | [architecture](docs/architecture.md) · [security](docs/security.md) | how it's built, what's protected |
-| [demo library](docs/demo-library.md) · [previews](docs/previews.md) | the generated library, per-PR previews |
+| [demo library](docs/demo-library.md) · [previews](docs/previews.md) · [public demo](docs/public-demo.md) | the generated library, per-PR previews, the permanent demo |
 | [troubleshooting](docs/troubleshooting.md) | when something's off |
 | [contributing](CONTRIBUTING.md) · [roadmap](docs/ROADMAP.md) | working on it |
 
 ## FAQ
 
 **Does it work on a phone?** Yes: the layout follows the window down to 320 px, and it installs as an app from the
-browser's menu. There is also an [iPhone app](docs/ios.md) you can sideload with a free Apple ID (music keeps playing
-with the screen locked). A Subsonic app (Arpeggi, Substreamer, Symfonium…) works too; the queue hands off between them.
+browser's menu. There are also an [iPhone app](docs/ios.md) you can sideload with a free Apple ID (music keeps playing
+with the screen locked) and an [Android app](docs/android.md) (an APK from the releases). A Subsonic app (Arpeggi, Substreamer, Symfonium…) works too; the queue hands off between them.
 
 **Can I try it without my own music?** Yes: `bun run demo:library ./demo-music` generates a library and
 [`compose.demo.yaml`](compose.demo.yaml) serves it from a Navidrome. See [demo library](docs/demo-library.md).

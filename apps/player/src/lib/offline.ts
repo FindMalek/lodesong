@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Message, Status } from "../sw";
-import { onAccountChange } from "./subsonic";
+import { lookUpKept, onAccountChange } from "./subsonic";
 
 let status: Status = { type: "status", ids: [], bytes: 0, cap: 0, pinned: {} };
 let cached = new Set<string>();
@@ -37,6 +37,8 @@ const subscribe = (listener: () => void) => {
 export function isCached(id: string): boolean {
   return cached.has(id);
 }
+
+lookUpKept(isCached);
 
 export function controlled(): boolean {
   return !!navigator.serviceWorker?.controller;
