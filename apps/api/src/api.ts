@@ -20,6 +20,7 @@ import type { GroqConfig } from "./groq";
 import { UpdateCheck, VERSION } from "./health";
 import { matchTrack } from "./import-match";
 import { FIELDS, isAudio, readTags, suggestTags, type Tags, writeSidecar } from "./import-metadata";
+import { likedIds } from "./likes";
 import { ListenRooms, type Peer } from "./listen";
 import type { LyricsService } from "./lyrics";
 import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-coverage";
@@ -37,6 +38,8 @@ import { MAX_UPLOAD_BYTES, saveUpload, uploadPath } from "./upload";
 
 const COOKIE = "kp_session";
 const FOLDERS_TTL_MS = 10 * 60_000;
+const LIKES_TIMEOUT_MS = 2_000;
+const LIKES_RETRY_MS = 60_000;
 const REMOTE_AGENT = "terminal · now playing";
 const API_AGENT = "api token";
 /** Requests that change or read data must carry this header. Cross-site pages can't set it without a CORS preflight. */
@@ -263,14 +266,14 @@ export function createApi({
     return secured(await rpcHandler.http(request, session?.agent === REMOTE_AGENT ? null : session));
   }
 
-  const likesCache = new Map<string, { liked: Set<string>; at: number }>();
-  async function likesFor(session: Session, upstream: Upstream): Promise<Set<string>> {
+  const likesCache = new Map<string, { liked: Set<string> | null; at: number }>();
+  /** Null when Navidrome didn't answer in time and nothing older is known; the last answer is kept meanwhile, and asked again in a minute. */
+  async function likesFor(session: Session, upstream: Upstream): Promise<Set<string> | null> {
     const cached = likesCache.get(session.id);
     if (cached && Date.now() - cached.at < FOLDERS_TTL_MS) return cached.liked;
-    const result = await subsonic<{ starred2: Record<string, { id: string }[] | undefined> }>(upstream, session, "getStarred2");
-    if (!result) return new Set();
-    const liked = new Set(Object.values(result.starred2 ?? {}).flatMap((items) => (items ?? []).map((item) => item.id)));
-    likesCache.set(session.id, { liked, at: Date.now() });
+    const result = await subsonic<{ starred2?: unknown }>(upstream, session, "getStarred2", {}, LIKES_TIMEOUT_MS);
+    const liked = result ? likedIds(result.starred2) : (cached?.liked ?? null);
+    likesCache.set(session.id, { liked, at: result ? Date.now() : Date.now() - FOLDERS_TTL_MS + LIKES_RETRY_MS });
     return liked;
   }
 
@@ -887,7 +890,7 @@ export function createApi({
     const [folders, liked] = await Promise.all([foldersFor(session, upstream), likesFor(session, upstream)]);
     const moments = /\b(moment:|is:moment)/i.test(query) ? momentNotes(library, dataAccount(session)) : undefined;
     const features = /\b(bpm|energy|mood):/i.test(query) ? featuresFor(library, upstream.id) : undefined;
-    return json(search(library, upstream.id, query, { folders, liked, moments, features }, limit), 200, {
+    return json(search(library, upstream.id, query, { folders, liked: liked ?? new Set(), moments, features }, limit), 200, {
       "cache-control": "private, no-cache",
     });
   }

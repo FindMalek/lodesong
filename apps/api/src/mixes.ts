@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
 import { type Features, featuresFor } from "./audiomuse";
 import { discoveryLane, familiarShare } from "./mix-discovery";
-import { ARTIST_CAP, artistPool, roundRobin } from "./mix-pool";
+import { ARTIST_CAP, artistPool, closest, roundRobin } from "./mix-pool";
 import { rankByTaste, type Signal } from "./mix-scoring";
 import { readPrefs } from "./prefs";
 import type { StatsSong as Song } from "./stats";
@@ -13,7 +13,6 @@ const MIXES = 6;
 const PER_MIX = 50;
 const MIN_PLAYS = 5;
 const SESSION_MS = 2 * 3_600_000;
-const NEIGHBOURS = 4;
 const MEMORY_DAYS = 3;
 const KEEP_DAYS = 14;
 const DISCOVER_SIZE = 30;
@@ -102,24 +101,31 @@ export function listening(db: Database, server: string, account: string, now: nu
       .songs.filter((pref) => pref.never)
       .map((pref) => pref.id),
   );
+  const library = db
+    .query<{ data: string }, [string]>("select data from idx_items where server = ? and kind = 'song'")
+    .all(server)
+    .map((row) => JSON.parse(row.data) as Song);
+  const neverKeys = new Set(library.filter((song) => never.has(song.id)).map(keyOf));
+  const liked = new Set(library.filter((song) => likedIds.has(song.id)).map(keyOf));
+  const added = (song: Song) => Date.parse(typeof song.created === "string" ? song.created : "") || 0;
+  const newest = new Map<string, Song>();
+  for (const song of library) {
+    const key = keyOf(song);
+    if (!song.artist || neverKeys.has(key)) continue;
+    const kept = newest.get(key);
+    if (!kept || added(song) > added(kept)) newest.set(key, song);
+  }
   const byArtist = new Map<string, Song[]>();
-  const seen = new Set<string>();
-  const liked = new Set<string>();
   const sounds = new Map<string, { song: Song; key: string; features: Features }[]>();
   const analysed = featuresFor(db, server);
-  for (const row of db.query<{ data: string }, [string]>("select data from idx_items where server = ? and kind = 'song'").all(server)) {
-    const song = JSON.parse(row.data) as Song;
-    if (never.has(song.id) || !song.artist) continue;
-    const key = keyOf(song);
-    if (likedIds.has(song.id)) liked.add(key);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const artist = normalize(song.artist);
+  for (const song of newest.values()) {
+    const artist = normalize(song.artist ?? "");
     const features = analysed.get(song.id);
     if (features) {
       const entries = sounds.get(artist);
-      if (entries) entries.push({ song, key, features });
-      else sounds.set(artist, [{ song, key, features }]);
+      const entry = { song, key: keyOf(song), features };
+      if (entries) entries.push(entry);
+      else sounds.set(artist, [entry]);
     }
     const songs = byArtist.get(artist);
     if (songs) songs.push(song);
@@ -186,7 +192,7 @@ export function blend(
       ),
     );
   const [known, unknown] = [queues(true), queues(false)];
-  const cap = Math.max(1, Math.ceil(size * ARTIST_CAP));
+  const cap = Math.ceil(size * ARTIST_CAP);
   const taken = artists.map(() => 0);
   const familiar = roundRobin(known, Math.round(size * familiarShare(l)), cap, taken);
   const found = lane ? discoveryLane(l, artists, size - familiar.length, cap, keyOf, avoid, random) : [];
@@ -201,13 +207,6 @@ const artistNames = (l: Listening, artists: string[]) =>
     .slice(0, 3)
     .map((artist) => l.byArtist.get(artist)?.[0]?.artist ?? artist)
     .join(", ");
-
-const topNeighbours = (l: Listening, artist: string, count: number) =>
-  [...(l.together.get(artist) ?? new Map<string, number>()).entries()]
-    .filter(([other]) => l.byArtist.has(other))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, count)
-    .map(([other]) => other);
 
 export function createMixTables(db: Database): void {
   db.run(`create table if not exists mix_days (
@@ -289,7 +288,7 @@ function fromStored(l: Listening, rows: Stored[]): Mix[] {
     .filter((mix) => mix.songs.length > 0);
 }
 
-function daily(db: Database, l: Listening, account: string, day: number): Mix[] {
+function daily(db: Database, l: Listening, account: string, day: number, keep = true): Mix[] {
   const stored = fromStored(l, remembered(db, account, day, day));
   if (stored.length >= MIXES) return stored;
   const avoid = new Set(remembered(db, account, day - MEMORY_DAYS, day - 1).flatMap((row) => row.keys));
@@ -298,7 +297,7 @@ function daily(db: Database, l: Listening, account: string, day: number): Mix[] 
   for (const seed of seedsFor(l, account, day)) {
     if (mixes.length === MIXES) break;
     if (used.has(seed)) continue;
-    for (const artist of [seed, ...topNeighbours(l, seed, NEIGHBOURS)]) used.add(artist);
+    for (const artist of [seed, ...closest(l, seed)]) used.add(artist);
     const artists = artistPool(l, seed);
     mixes.push({
       id: `daily-${mixes.length + 1}`,
@@ -308,7 +307,7 @@ function daily(db: Database, l: Listening, account: string, day: number): Mix[] 
     });
   }
   if (stored.length >= mixes.length) return stored;
-  remember(db, account, day, mixes);
+  if (keep) remember(db, account, day, mixes);
   return fromStored(
     l,
     mixes.map((mix) => ({ id: mix.id, description: mix.description, keys: [...new Set(mix.songs.map(keyOf))] })),
@@ -411,12 +410,12 @@ export function madeForYou(
   { day, hour, tzMinutes }: { day: number; hour: number; tzMinutes: number },
   now = Date.now(),
   boosted: Set<string> = new Set(),
-  liked: Set<string> = new Set(),
+  liked: Set<string> | null = new Set(),
 ): Mix[] {
-  const l = listening(db, server, account, now, liked);
+  const l = listening(db, server, account, now, liked ?? new Set());
   if (!l) return [];
   return [
-    ...daily(db, l, account, day),
+    ...daily(db, l, account, day, liked !== null),
     discover(l, account, lastFriday(day), boosted),
     releaseRadar(l, now),
     onThisDay(db, l, account, now),
@@ -448,8 +447,8 @@ export function dailyMixes(
   account: string,
   day: number,
   now = Date.now(),
-  liked: Set<string> = new Set(),
+  liked: Set<string> | null = new Set(),
 ): Mix[] {
-  const l = listening(db, server, account, now, liked);
-  return l ? daily(db, l, account, day) : [];
+  const l = listening(db, server, account, now, liked ?? new Set());
+  return l ? daily(db, l, account, day, liked !== null) : [];
 }
