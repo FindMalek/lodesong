@@ -38,3 +38,22 @@ test("rejects a huge or malformed body", async () => {
   expect((await report(new Request("http://x", { method: "POST", body: "{".repeat(9000) }))).status).toBe(413);
   expect((await report(new Request("http://x", { method: "POST", body: "nope" }))).status).toBe(400);
 });
+
+test("a page address is logged without its query or fragment, which can hold a share token", async () => {
+  const lines: string[] = [];
+  const report = createCspReporter((line) => lines.push(line));
+  await report(
+    post({
+      "csp-report": {
+        "violated-directive": "img-src",
+        "blocked-uri": "https://cdn.test/a.png?k=1",
+        "document-uri": "https://x/album/1?s=SECRET#top",
+      },
+    }),
+  );
+  await report(post([{ body: { effectiveDirective: "script-src", blockedURL: "inline", documentURL: "https://x/song/2?s=SECRET" } }]));
+  expect(lines).toEqual([
+    "csp violation: img-src blocked https://cdn.test/a.png on https://x/album/1",
+    "csp violation: script-src blocked inline on https://x/song/2",
+  ]);
+});

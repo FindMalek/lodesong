@@ -1,61 +1,70 @@
-import { layoutOf } from "./card-layout";
-import { CardImages, pictureUri, rasterize } from "./card-png";
+import { Busy, CardImages, type Drawn, pictureUri, rasterize } from "./card-image";
 import { cardSvg } from "./card-svg";
+import { clean } from "./card-text";
 import type { Upstream } from "./config";
 import type { CoverCache } from "./covers";
-import type { Session } from "./sessions";
 import { type CardData, cardOf, type Entity, GENERIC_TEXT, ID, textOf } from "./share-card";
 import type { SharedCards } from "./share-store";
 import type { ShareKind, ShareTokens } from "./share-token";
-import { subsonic, upstreamQuery } from "./subsonic";
+import { type Credentials, subsonic, upstreamQuery } from "./subsonic";
 
 export type { ShareKind };
 
 export interface Access {
-  session: Session;
+  session: Credentials;
   upstream: Upstream;
 }
 
 type Loader = (cover: string, size: number) => Promise<Uint8Array | null>;
 
+export type Created = { path: string; share: string } | "missing" | "full";
+
 const ENDPOINT = { album: "getAlbum", artist: "getArtist", playlist: "getPlaylist", song: "getSong" } as const;
 // The page waits on this lookup, so a slow Navidrome must not hold up the app.
 const LOOKUP_MS = 2000;
 const ONE_DAY = "public, max-age=86400";
+const ONE_HOUR = "public, max-age=3600";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 
-function origin(request: Request): string {
-  const url = new URL(request.url);
-  return request.headers.get("x-forwarded-proto") === "https" ? `https://${url.host}` : url.origin;
-}
-
 function tags(shown: { title: string; description: string }, image: string, url?: string): string {
+  const title = clean(shown.title, 100);
+  const description = clean(shown.description, 200);
   const pairs: [string, string, string][] = [
     ["property", "og:site_name", "lodesong"],
     ["property", "og:type", "website"],
-    ["property", "og:title", shown.title],
-    ["property", "og:description", shown.description],
+    ["property", "og:title", title],
+    ["property", "og:description", description],
     ["property", "og:image", image],
+    ["property", "og:image:type", "image/jpeg"],
     ["property", "og:image:width", "1200"],
     ["property", "og:image:height", "630"],
-    ["property", "og:image:alt", shown.title],
+    ["property", "og:image:alt", title],
     ["name", "twitter:card", "summary_large_image"],
-    ["name", "twitter:title", shown.title],
-    ["name", "twitter:description", shown.description],
+    ["name", "twitter:title", title],
+    ["name", "twitter:description", description],
     ["name", "twitter:image", image],
   ];
   if (url) pairs.splice(2, 0, ["property", "og:url", url]);
   return pairs.map(([attribute, name, value]) => `<meta ${attribute}="${name}" content="${escapeHtml(value)}" />`).join("\n    ");
 }
 
+interface ShareOptions {
+  upstreams: Upstream[];
+  covers: CoverCache;
+  tokens: ShareTokens;
+  cards: SharedCards;
+  origin: (request: Request) => string;
+  credentials: (server: string, user: string) => Credentials | null;
+}
+
 /** Link previews: the player's own links say nothing about the library unless the viewer is signed in or holds a signed link. */
 export class ShareCards {
   private readonly images = new CardImages();
 
-  constructor(private readonly options: { upstreams: Upstream[]; covers: CoverCache; tokens: ShareTokens; cards: SharedCards }) {}
+  constructor(private readonly options: ShareOptions) {}
 
   private async lookup(kind: ShareKind, id: string, access: Access): Promise<CardData | null> {
     if (!ID.test(id)) return null;
@@ -85,58 +94,75 @@ export class ShareCards {
     };
   }
 
-  private async draw(card: CardData | null, load: Loader): Promise<Uint8Array> {
+  private async draw(card: CardData | null, load: Loader): Promise<Drawn> {
     const size = (card?.covers.length ?? 0) > 1 ? 256 : 512;
     const found = await Promise.all((card?.covers ?? []).map((cover) => load(cover, size)));
     const covers = found.filter((bytes): bytes is Uint8Array => !!bytes);
     const images = (await Promise.all(covers.map((bytes) => pictureUri(bytes)))).filter((uri): uri is string => !!uri);
     const backdrop = covers[0] ? await pictureUri(covers[0], 5) : null;
-    return rasterize(await cardSvg(card ? layoutOf(card) : null, images, backdrop ?? undefined));
+    const bytes = await rasterize(await cardSvg(card, images, backdrop ?? undefined));
+    return { bytes, complete: images.length === (card?.covers.length ?? 0) };
+  }
+
+  private shared(request: Request, kind: ShareKind, id: string, scope: "page" | "image") {
+    if (!ID.test(id)) return null;
+    const share = this.options.tokens.verify(new URL(request.url).searchParams.get("s"), kind, id, scope);
+    const found = share ? this.options.cards.find(share) : null;
+    return found;
   }
 
   async tags(request: Request, kind: ShareKind, id: string, access: Access | null): Promise<string> {
-    const base = origin(request);
-    const { tokens, cards } = this.options;
+    const base = this.options.origin(request);
+    const { tokens } = this.options;
     if (access) {
       const card = await this.lookup(kind, id, access);
-      if (card) return tags(textOf(card), `${base}/og/${kind}/${id}.png`, base + new URL(request.url).pathname);
-    } else if (ID.test(id) && tokens.verify(new URL(request.url).searchParams.get("s"), kind, id, "page")) {
-      const shared = cards.find(kind, id);
+      if (card) return tags(textOf(card), `${base}/og/${kind}/${id}.jpg`, base + new URL(request.url).pathname);
+    } else {
+      const shared = this.shared(request, kind, id, "page");
       // No og:url: a canonical address without the token would send crawlers to the generic card.
-      if (shared) return tags(textOf(shared.card), `${base}/og/${kind}/${id}.png?s=${tokens.sign(kind, id, "image")}`);
+      if (shared) return tags(textOf(shared.card), `${base}/og/${kind}/${id}.jpg?s=${tokens.sign(kind, id, shared.id, "image")}`);
     }
-    return tags(GENERIC_TEXT, `${base}/og.png`, base + new URL(request.url).pathname);
+    return tags(GENERIC_TEXT, `${base}/og.jpg`, base + new URL(request.url).pathname);
   }
 
   async image(request: Request, kind: ShareKind, id: string, access: Access | null): Promise<Response> {
-    const { tokens, cards } = this.options;
     let card: CardData | null = null;
+    let server = "";
     let load: Loader = this.loader("", null);
     let cache = ONE_DAY;
     if (access) {
       card = await this.lookup(kind, id, access);
-      load = this.loader(access.upstream.id, access);
+      server = access.upstream.id;
+      load = this.loader(server, access);
       cache = "private, max-age=300";
-    } else if (ID.test(id) && tokens.verify(new URL(request.url).searchParams.get("s"), kind, id, "image")) {
-      const shared = cards.find(kind, id);
+    } else {
+      const shared = this.shared(request, kind, id, "image");
       if (shared) {
+        const upstream = this.options.upstreams.find((item) => item.id === shared.server);
+        const session = this.options.credentials(shared.server, shared.user);
         card = shared.card;
-        load = this.loader(shared.server, null);
+        server = shared.server;
+        load = this.loader(server, upstream && session ? { upstream, session } : null);
+        cache = ONE_HOUR;
       }
     }
-    const bytes = await this.images.get(card ? JSON.stringify(card) : "generic", () => this.draw(card, load));
-    return new Response(bytes as Uint8Array<ArrayBuffer>, {
-      headers: { "content-type": "image/png", "cache-control": cache, "x-content-type-options": "nosniff" },
-    });
+    const headers = { "content-type": "image/jpeg", vary: "cookie", "x-content-type-options": "nosniff" };
+    try {
+      const drawn = await this.images.get(card ? `${server}\n${JSON.stringify(card)}` : "generic", () => this.draw(card, load));
+      return new Response(drawn.bytes as Uint8Array<ArrayBuffer>, {
+        headers: { ...headers, "cache-control": drawn.complete ? cache : "private, no-store" },
+      });
+    } catch (error) {
+      if (!(error instanceof Busy)) throw error;
+      return new Response(null, { status: 503, headers: { "retry-after": "5", "cache-control": "no-store", vary: "cookie" } });
+    }
   }
 
-  async create(access: Access, kind: ShareKind, id: string): Promise<string | null> {
+  async create(access: Access, kind: ShareKind, id: string): Promise<Created> {
     const card = await this.lookup(kind, id, access);
-    if (!card) return null;
-    this.options.cards.save(access.upstream.id, kind, id, card);
-    const load = this.loader(access.upstream.id, access);
-    const size = card.covers.length > 1 ? 256 : 512;
-    await Promise.all(card.covers.map((cover) => load(cover, size)));
-    return `/${kind}/${encodeURIComponent(id)}?s=${this.options.tokens.sign(kind, id)}`;
+    if (!card) return "missing";
+    const saved = this.options.cards.save({ server: access.upstream.id, user: access.session.user }, kind, id, card);
+    if (!saved) return "full";
+    return { share: saved.id, path: `/${kind}/${encodeURIComponent(id)}?s=${this.options.tokens.sign(kind, id, saved.id)}` };
   }
 }

@@ -1,14 +1,10 @@
-import satori from "satori";
-import { cardFonts, MONO, SANS } from "./card-fonts";
-import { CARD_HEIGHT, CARD_WIDTH, type CardLayout, TEXT_WIDTH } from "./card-layout";
+import { cardFonts, covered, MONO, SANS } from "./card-fonts";
+import { CARD_HEIGHT, CARD_WIDTH, type CardLayout, layoutOf, TEXT_WIDTH } from "./card-layout";
+import type { CardData } from "./share-card";
 
 // The player's palette (packages/ui theme.css, dark): near black, light grey, one hairline.
-const BG = "#101010";
-const FG = "#ebebeb";
-const SOFT = "#b3b3b3";
-const MUTED = "#8f8f8f";
-const LINE = "#2a2a2a";
-const PANEL = "#181818";
+export const PALETTE = { BG: "#101010", FG: "#ebebeb", SOFT: "#b3b3b3", MUTED: "#939393", LINE: "#262626", PANEL: "#191919" } as const;
+const { BG, FG, SOFT, MUTED, LINE, PANEL } = PALETTE;
 const PAD = 72;
 const ART = CARD_HEIGHT - PAD * 2;
 const GAP = 4;
@@ -72,7 +68,7 @@ function cardTree(layout: CardLayout, images: string[]): Node {
     ),
     layout.subtitle &&
       text({ fontFamily: SANS, fontWeight: 400, fontSize: 32, lineHeight: 1.2, color: SOFT, lineClamp: 2 }, layout.subtitle),
-    layout.stats && box({ fontFamily: MONO, fontWeight: 500, fontSize: 24, color: MUTED, marginTop: 14 }, layout.stats),
+    layout.stats && box({ fontFamily: MONO, fontWeight: 500, fontSize: 30, color: MUTED, marginTop: 14 }, layout.stats),
   );
   return box(
     { width: CARD_WIDTH, height: CARD_HEIGHT, padding: PAD },
@@ -85,7 +81,7 @@ function cardTree(layout: CardLayout, images: string[]): Node {
           gap: 12,
           fontFamily: MONO,
           fontWeight: 500,
-          fontSize: 22,
+          fontSize: 28,
           letterSpacing: 4,
           color: SOFT,
           textTransform: "uppercase",
@@ -134,7 +130,9 @@ function withBackdrop(svg: string, backdrop?: string): string {
 }
 
 /** The card as SVG with its text turned into outlines, so rasterising it needs no fonts. Every string is escaped by satori. */
-export async function cardSvg(layout: CardLayout | null, images: string[], backdrop?: string): Promise<string> {
+export async function cardSvg(card: CardData | null, images: string[], backdrop?: string): Promise<string> {
+  const { default: satori } = await import("satori");
+  const layout = card ? layoutOf(card, await covered()) : null;
   const tree = layout ? cardTree(layout, images) : genericTree();
   const svg = await satori(tree as unknown as Parameters<typeof satori>[0], {
     width: CARD_WIDTH,

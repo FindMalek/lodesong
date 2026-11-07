@@ -146,6 +146,12 @@ const SETTINGS = [
     description: "`true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits).",
   },
   {
+    name: "PUBLIC_URL",
+    fallback: "",
+    description:
+      "The address people reach the player at, e.g. `https://music.example.com`. Link previews (`og:image`, `og:url`) point there. Unset: taken from the request, and from the proxy's `X-Forwarded-*` headers when `TRUST_PROXY` is on.",
+  },
+  {
     name: "UPDATE_CHECK",
     fallback: "off",
     description:
@@ -180,6 +186,7 @@ export interface Config {
   publicDemo: boolean;
   redisUrl?: string;
   trustProxy: boolean;
+  publicUrl: string | null;
   updateCheck: boolean;
 }
 
@@ -238,6 +245,9 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
   if (lyterionUrl && !isUrl(lyterionUrl)) errors.push(`LYTERION_URL must be http(s)://host or empty, got "${lyterionUrl}"`);
   const audiomuseUrl = get("AUDIOMUSE_URL").replace(/\/+$/, "");
   if (audiomuseUrl && !isUrl(audiomuseUrl)) errors.push(`AUDIOMUSE_URL must be http(s)://host or empty, got "${audiomuseUrl}"`);
+  const publicUrl = get("PUBLIC_URL").replace(/\/+$/, "");
+  if (publicUrl && !/^https?:\/\/[^\s/?#]+$/.test(publicUrl))
+    errors.push(`PUBLIC_URL must be http(s)://host[:port] with no path, got "${publicUrl}"`);
   if (!!lyterionUrl !== !!lyterionToken) errors.push("LYTERION_URL and LYTERION_TOKEN go together: set both or neither");
   if (!!get("FEEDBACK_GITHUB_TOKEN") !== !!get("FEEDBACK_REPO"))
     errors.push("FEEDBACK_GITHUB_TOKEN and FEEDBACK_REPO go together: set both or neither");
@@ -274,6 +284,7 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     demoSeed,
     publicDemo: flag("PUBLIC_DEMO", ["on"], ["off"]),
     redisUrl: get("REDIS_URL") || undefined,
+    publicUrl: publicUrl || null,
     trustProxy: flag("TRUST_PROXY", ["1", "true", "yes", "on"], ["0", "false", "no", "off", ""]),
     updateCheck: flag("UPDATE_CHECK", ["on"], ["off"]),
   };

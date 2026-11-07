@@ -1,4 +1,5 @@
-import { type CardData, printable } from "./share-card";
+import { drawable, hasLetters } from "./card-text";
+import type { CardData } from "./share-card";
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -14,8 +15,8 @@ export interface CardLayout {
   art: "single" | "mosaic" | "none";
 }
 
-const SIZES = [84, 70, 58, 48, 40];
-const EM = 0.54;
+const SIZES = [84, 72, 60, 52, 44];
+const EM = 0.58;
 
 /** The largest size at which the title takes at most two lines; longer ones get the smallest and an ellipsis. */
 export function titleSize(title: string): number {
@@ -27,21 +28,27 @@ export function titleSize(title: string): number {
   return fits ?? (SIZES.at(-1) as number);
 }
 
-/** Dropping unprintable parts can leave a dangling separator ("· Cafe"): keep only the parts that are left. */
-const parts = (text: string | undefined): string =>
-  printable(text ?? "")
-    .split(/\s*·\s*/)
-    .filter(Boolean)
-    .join(" · ");
+type Covered = (code: number) => boolean;
 
-export function layoutOf(card: CardData): CardLayout {
-  const title = printable(card.title) || `untitled ${card.kind}`;
+const parts = (text: string | undefined, covered: Covered): string[] =>
+  drawable(text ?? "", covered)
+    .split(/\s*·\s*/)
+    .filter(Boolean);
+
+/** A title the fonts cannot draw falls back to the first part of the subtitle that they can, then to the kind. */
+export function layoutOf(card: CardData, covered: Covered): CardLayout {
+  const title = drawable(card.title, covered);
+  const rest = parts(card.subtitle, covered);
+  const readable = (text: string): boolean => hasLetters(text.replaceAll("…", ""));
+  const stand = readable(title) ? -1 : rest.findIndex(readable);
+  const shown =
+    stand >= 0 ? (rest.splice(stand, 1)[0] as string) : readable(title) ? title : `${/^[aeiou]/.test(card.kind) ? "an" : "a"} ${card.kind}`;
   return {
     label: card.kind,
-    title,
-    titleSize: titleSize(title),
-    subtitle: parts(card.subtitle) || undefined,
-    stats: parts(card.stats),
+    title: shown,
+    titleSize: titleSize(shown),
+    subtitle: rest.join(" · ") || undefined,
+    stats: parts(card.stats, covered).join(" · "),
     art: card.covers.length > 1 ? "mosaic" : card.covers.length === 1 ? "single" : "none",
   };
 }

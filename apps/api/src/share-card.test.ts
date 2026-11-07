@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { covered as coveredCodes } from "./card-fonts";
 import { layoutOf, titleSize } from "./card-layout";
 import { cardSvg } from "./card-svg";
 import { cardOf, clock, hours } from "./share-card";
@@ -49,22 +50,52 @@ test("an item without a name has no card", () => {
   expect(cardOf("album", { name: "  " })).toBeNull();
 });
 
-test("text the fonts cannot draw is dropped, with no dangling separator, and long titles shrink", () => {
-  const layout = layoutOf({ kind: "album", title: "夜に駆ける", subtitle: "YOASOBI 🎵 · 夜 · 2020", stats: "5 songs", covers: [] });
-  expect(layout.title).toBe("untitled album");
-  expect(layout.subtitle).toBe("YOASOBI · 2020");
+const covered = await coveredCodes();
+const layout = (title: string, subtitle = "", kind: "album" | "artist" = "album") =>
+  layoutOf({ kind, title, subtitle, stats: "5 songs", covers: [] }, covered);
+
+test("letters the fonts lack show as an ellipsis, never vanish, and emoji drop quietly", () => {
+  expect(layout("Café 夜に駆ける (Live)").title).toBe("Café … (Live)");
+  expect(layout("Chill 🔥 Mix").title).toBe("Chill Mix");
+  expect(layout("Sơn Tùng · Nhạc Việt Nam buồn").title).toBe("Sơn Tùng · Nhạc Việt Nam buồn");
+  expect(layout("Bjo\u0308rk Cafe\u0301".normalize("NFC")).title).toBe("Björk Café");
+});
+
+test("a title with nothing drawable is replaced by the artist, then by the kind", () => {
+  expect(layout("夜に駆ける", "YOASOBI · 2020")).toMatchObject({ title: "YOASOBI", subtitle: "2020" });
+  expect(layout("夜に駆ける", "夜 · 2020")).toMatchObject({ title: "2020", subtitle: "…" });
+  expect(layout("שלום", "", "artist").title).toBe("an artist");
+  expect(layout("🎵🎵").title).toBe("an album");
+});
+
+test("long titles shrink and the longest word must fit the column", () => {
+  expect(titleSize("Midnight Static Sessions Live")).toBeLessThanOrEqual(60);
   expect(titleSize("Late night drive")).toBeGreaterThan(
     titleSize("The Extraordinarily Long Title of an Album That Wraps Around Several Lines"),
   );
-  expect(layoutOf({ kind: "song", title: "Çok güzel Привет", stats: "", covers: ["a", "b"] })).toMatchObject({
+  expect(layoutOf({ kind: "song", title: "Çok güzel Привет", stats: "", covers: ["a", "b"] }, covered)).toMatchObject({
     title: "Çok güzel Привет",
     art: "mosaic",
   });
 });
 
+test("text kept on a card is cleaned and capped, and a playlist cover id must be a plain id", () => {
+  const card = cardOf("playlist", {
+    name: `Night\u202e\u0000 ${"y".repeat(500)}`,
+    songCount: 2,
+    entry: [{ coverArt: "ok-1" }, { coverArt: "../etc" }, { coverArt: "x".repeat(200) }],
+  });
+  expect(card?.title.length).toBeLessThanOrEqual(120);
+  expect(card?.title).not.toMatch(/[\p{Cc}\p{Cf}]/u);
+  expect(card?.covers).toEqual(["ok-1"]);
+  expect(cardOf("playlist", { name: "P", coverArt: "../x" })?.covers).toEqual([]);
+  expect(cardOf("album", { name: "A", artist: "Cafe\u0301" })?.subtitle).toBe("Café");
+  expect(cardOf("album", { name: "\u200b\u202e" })).toBeNull();
+});
+
 test("markup in a title is drawn as text, never as elements", async () => {
   const hostile = `"><script>alert(1)</script> & 'x'`;
-  const svg = await cardSvg(layoutOf({ kind: "playlist", title: hostile, subtitle: "<b>x</b>", stats: "3 songs", covers: [] }), []);
+  const svg = await cardSvg({ kind: "playlist", title: hostile, subtitle: "<b>x</b>", stats: "3 songs", covers: [] }, []);
   expect(svg).not.toContain("<script");
   expect(svg).not.toContain("<b>");
   expect(svg.startsWith("<svg")).toBe(true);
