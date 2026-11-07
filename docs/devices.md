@@ -28,7 +28,7 @@ Settings → playback → **stream quality** picks what this browser asks Navidr
 
 | | plays |
 |---|---|
-| **auto** (the default) | songs kept on this device (**keep offline**, or already in the offline cache) as they are; every other song as Opus 192 |
+| **auto** (the default) | songs kept on this device (**keep offline**, or already in the offline cache) as they are; every other song as Opus 192 (MP3 320 in a browser that can't play Opus) |
 | **original** | the file as it is, never transcoded |
 | **mp3 320** | an MP3 at up to 320 kbps |
 | **opus 192** | Opus at up to 192 kbps |

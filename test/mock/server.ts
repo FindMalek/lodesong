@@ -247,7 +247,7 @@ function transcoded(song: Song, format: string, request: Request): Response {
 
 function stream(song: Song, request: Request): Response {
   const format = new URL(request.url).searchParams.get("format") ?? "raw";
-  if (format in TONES) return transcoded(song, format, request);
+  if (Object.hasOwn(TONES, format)) return transcoded(song, format, request);
   const body = wav(song.duration ?? 180);
   const entry = { id: song.id, aborted: false, finished: false };
   streamLog.push(entry);

@@ -50,31 +50,41 @@ test("a browser that can't play opus is sent mp3 on auto", async ({ page, signed
   expect(mp3.length).toBeGreaterThan(0);
 });
 
-test("opus that arrives broken is retried once as mp3 and still plays", async ({ page, signedIn }) => {
-  const song = await firstSongOf("al-7");
-  await breakStream(song, "opus");
-  try {
-    await cannotPlay(page, /ogg|opus/);
-    await useQuality(page, "opus-192");
-    const mp3 = streamsOf(page, "mp3");
-    await signedIn.goto("/album/al-7");
-    await page.getByRole("button", { name: "play", exact: true }).first().click();
-    await expect(page.getByText(/plays transcoded/)).toBeVisible({ timeout: 8000 });
-    await expect.poll(() => outputLevel(page), { timeout: 8000 }).toBeGreaterThan(0.02);
-    expect(mp3.some((url) => url.includes(`id=${song}`))).toBe(true);
-  } finally {
-    await breakStream(song, "opus", "off");
-  }
-});
+// The mock's faults are global: each project breaks songs of its own albums so parallel projects never share one.
+const albumFor = (n: number): string => `al-${n + (test.info().project.name === "webkit" ? 1 : 0)}`;
+
+for (const [claims, n, says] of [
+  ["says it can't play opus", 7, true],
+  ["says it can play opus and fails", 11, false],
+] as const) {
+  test(`opus that arrives broken in a browser that ${claims} is retried once as mp3 and still plays`, async ({ page, signedIn }) => {
+    const album = albumFor(n);
+    const song = await firstSongOf(album);
+    await breakStream(song, "opus");
+    try {
+      if (says) await cannotPlay(page, /ogg|opus/);
+      await useQuality(page, "opus-192");
+      const mp3 = streamsOf(page, "mp3");
+      await signedIn.goto(`/album/${album}`);
+      await page.getByRole("button", { name: "play", exact: true }).first().click();
+      await expect(page.getByText(/plays transcoded/)).toBeVisible({ timeout: 8000 });
+      await expect.poll(() => outputLevel(page), { timeout: 8000 }).toBeGreaterThan(0.02);
+      expect(mp3.some((url) => url.includes(`id=${song}`))).toBe(true);
+    } finally {
+      await breakStream(song, "opus", "off");
+    }
+  });
+}
 
 test("a song that can't be played even as mp3 is skipped, not retried forever", async ({ page, signedIn }) => {
-  const song = await firstSongOf("al-9");
+  const album = albumFor(9);
+  const song = await firstSongOf(album);
   await breakStream(song, "mp3");
   try {
     await cannotPlay(page, /mpeg/);
     await useQuality(page, "mp3-320");
     const mp3 = streamsOf(page, "mp3");
-    await signedIn.goto("/album/al-9");
+    await signedIn.goto(`/album/${album}`);
     await page.getByRole("button", { name: "play", exact: true }).first().click();
     await expect(page.getByText(/skipped/)).toBeVisible({ timeout: 8000 });
     const forSong = () => mp3.filter((url) => url.includes(`id=${song}`)).length;

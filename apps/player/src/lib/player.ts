@@ -267,10 +267,13 @@ async function onMediaError(): Promise<void> {
   if (!song || code === null) return;
   if (code === MediaError.MEDIA_ERR_DECODE) return unplayable(song, "the file can't be decoded");
   if (code === MediaError.MEDIA_ERR_NETWORK) return recover();
-  const { verdict, type } = await probe(streamUrl(song.id));
-  if (song !== current()) return;
+  const url = streamUrl(song.id);
+  const { verdict, type } = await probe(url);
+  if (song !== current() || url !== streamUrl(song.id)) return;
+  const refusedTranscode = code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && qualityOf(song.id).startsWith("opus");
   if (verdict === "missing") skipBroken("the server doesn't have the file");
-  else if (verdict === "ok" && type && decks.element.canPlayType(type) === "") unplayable(song, "it's in a format this browser can't play");
+  else if (verdict === "ok" && type && (decks.element.canPlayType(type) === "" || refusedTranscode))
+    unplayable(song, "it's in a format this browser can't play");
   else recover();
 }
 

@@ -16,10 +16,10 @@ describe("stream quality", () => {
     expect(isStreamQuality(undefined)).toBe(false);
   });
   test("auto keeps kept songs original and streams the rest light; a fixed choice is never overridden", () => {
-    expect(resolveQuality("auto", true)).toBe("original");
-    expect(resolveQuality("auto", false)).toBe("opus-192");
-    expect(resolveQuality("opus-96", true)).toBe("opus-96");
-    expect(resolveQuality("original", false)).toBe("original");
+    expect(resolveQuality("auto", true, true)).toBe("original");
+    expect(resolveQuality("auto", false, true)).toBe("opus-192");
+    expect(resolveQuality("opus-96", true, true)).toBe("opus-96");
+    expect(resolveQuality("original", false, true)).toBe("original");
   });
   test("auto streams mp3 where the browser can't play opus; a fixed choice stays", () => {
     expect(resolveQuality("auto", false, false)).toBe("mp3-320");
