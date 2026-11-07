@@ -25,12 +25,13 @@ async function emptyPlaylist(page: Page, name: string): Promise<void> {
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name.split(" / ").at(-1) as string);
 }
 
-async function folderWithPlaylist(page: Page, name: string, playlistId: string): Promise<void> {
+async function folderWithPlaylist(page: Page, name: string, playlistId: string): Promise<string> {
   const headers = { "x-lodesong": "1" };
   const made = await page.request.post("/api/folders", { headers, data: { name, parentId: null } });
   const folder = (await made.json()) as { id: string };
   const placed = await page.request.put(`/api/playlists/${playlistId}/folder`, { headers, data: { folderId: folder.id } });
   expect(placed.ok()).toBe(true);
+  return folder.id;
 }
 
 test("a real folder takes a dragged playlist, keeps its name, remembers it is open, and gives the playlist back when deleted", async ({
@@ -170,4 +171,23 @@ test("the sidebar waits for the folders instead of showing every playlist flat, 
   await expect(sidebar.getByRole("button", { name: folder, exact: true })).toBeVisible();
   await expect(sidebar.getByRole("link", { name: playlist })).toHaveCount(0);
   await fresh.close();
+});
+
+test("a folder stays open when the saved folder list is older than the folder", async ({ page, signedIn }) => {
+  const stamp = Date.now();
+  const [playlist, folder] = [`Old list ${stamp}`, `Old list shelf ${stamp}`];
+  const sidebar = page.getByRole("navigation", { name: "sidebar" });
+  await signedIn.goto("/");
+  await emptyPlaylist(page, playlist);
+  await page.waitForTimeout(1500);
+  const id = await folderWithPlaylist(page, folder, page.url().split("/").at(-1) as string);
+  await page.evaluate((open) => localStorage.setItem("lodesong:folders-open", JSON.stringify([open])), id);
+  await page.route("**/api/folders", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.reload();
+  await expect(sidebar.getByRole("button", { name: folder, exact: true })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: playlist })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("lodesong:folders-open"))).toContain(id);
 });

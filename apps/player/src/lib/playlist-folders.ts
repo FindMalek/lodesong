@@ -66,8 +66,9 @@ export function forgetOpen(id: string): void {
 /** Which sidebar folders are open (kept on this device). Real folders that no longer exist are dropped from it. */
 export function useOpenFolders(): [Set<string>, (key: string, next: boolean) => void] {
   const [open, setOpen] = useState(readOpen);
-  const { data, isFetchedAfterMount } = useQuery(foldersQuery());
-  const folders = isFetchedAfterMount ? data?.folders : undefined;
+  const [mountedAt] = useState(Date.now);
+  const { data, dataUpdatedAt } = useQuery(foldersQuery());
+  const folders = dataUpdatedAt >= mountedAt ? data?.folders : undefined;
   useEffect(() => {
     if (!folders) return;
     const real = new Set(folders.map((folder) => folder.id));
