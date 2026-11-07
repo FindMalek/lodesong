@@ -15,5 +15,6 @@
   "fit.fast": "fast",
   "fit.slow": "slow",
   "fit.bright": "bright",
-  "fit.dark": "dark"
+  "fit.dark": "dark",
+  "fit.mood": "fits the mood"
 }

@@ -15,6 +15,27 @@ const CONCURRENCY = 8;
 const BUDGET_MS = 5_000;
 const MAX_PLAYLISTS = 2_000;
 const MAX_SONGS = 2_000;
+const MAX_TRIES = 3;
+const GIVE_UP_MS = 10 * 60_000;
+
+/** A playlist that failed to read this many times is left out for a while, so one broken playlist can't keep the answer incomplete. */
+export function createFailures(now: () => number = Date.now) {
+  const seen = new Map<string, { tries: number; at: number }>();
+  return {
+    gaveUp(key: string): boolean {
+      const failure = seen.get(key);
+      if (failure && now() - failure.at >= GIVE_UP_MS) seen.delete(key);
+      return (seen.get(key)?.tries ?? 0) >= MAX_TRIES;
+    },
+    failed(key: string): boolean {
+      const tries = (seen.get(key)?.tries ?? 0) + 1;
+      seen.set(key, { tries, at: now() });
+      return tries >= MAX_TRIES;
+    },
+  };
+}
+
+export type Failures = ReturnType<typeof createFailures>;
 
 export function createPlaylistTables(db: Database): void {
   db.run(`create table if not exists playlist_songs (
@@ -52,6 +73,7 @@ export async function syncPlaylistSongs(
   account: string,
   playlists: PlaylistRef[],
   budgetMs = BUDGET_MS,
+  failures: Failures = createFailures(),
 ): Promise<boolean> {
   const stored = new Map(
     db
@@ -65,9 +87,10 @@ export async function syncPlaylistSongs(
   const forget = db.query("delete from playlist_songs where account = ? and playlist_id = ?");
   for (const id of stored.keys()) if (!current.has(id)) forget.run(account, id);
 
+  const attempt = (playlist: PlaylistRef) => `${account}:${playlist.id}:${playlist.changed}`;
   const todo = playlists.filter((playlist) => {
     const have = stored.get(playlist.id);
-    return !have || have.changed !== playlist.changed || have.count !== playlist.songs;
+    return (!have || have.changed !== playlist.changed || have.count !== playlist.songs) && !failures.gaveUp(attempt(playlist));
   });
   const save = db.query("insert or replace into playlist_songs (account, playlist_id, changed, count, songs) values (?, ?, ?, ?, ?)");
   const deadline = Date.now() + budgetMs;
@@ -78,7 +101,7 @@ export async function syncPlaylistSongs(
       if (!playlist) return;
       const found = await subsonic<{ playlist?: Raw }>(upstream, credentials, "getPlaylist", { id: playlist.id });
       if (!found) {
-        failed = true;
+        if (!failures.failed(attempt(playlist))) failed = true;
         continue;
       }
       const ids = (found.playlist?.entry ?? []).flatMap((entry) => (typeof entry.id === "string" ? [entry.id] : []));

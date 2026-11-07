@@ -45,15 +45,19 @@ playlist, `Train` is still a band), and a half typed word needs 6 letters (`mela
 Playlists are ranked by how their songs sound, plus their name. Each mood is a profile of AudioMuse-AI features (gym is
 energy 0.7+ and 110+ bpm, melancholy is low energy and low valence). A song fits when every feature the profile
 cares about is in range, fading to nothing over a small margin outside it; a playlist's score is the average over its
-analysed songs. It is listed when the score is at least 0.65 and at least half of its songs (and 3 of them) are
-analysed, or when its name fits, and a name match counts for 0.5 on top. Each playlist says why in its second line:
-`name fits, loud, fast`. The words come from the playlist's averages (`loud` or `quiet`, `fast` or `slow`, `bright` or
-`dark`, `steady`). Without AudioMuse-AI only the name counts and the line says `name fits`.
+analysed songs. It is listed when the score is at least 0.65 and at least half of its songs (and at least 3, or all of
+them in a playlist shorter than 3) are analysed, or when its name fits. Its rank is the score times the share of its
+songs that are analysed (a playlist with 5 of 10 analysed counts half), plus 0.5 for a name match; ties go by name, then
+id. Each playlist says why in its second line: `name fits, loud, fast`. The words come from the playlist's averages
+(`loud` or `quiet`, `fast` or `slow`, `bright` or `dark`, `steady`); a playlist that fits without any of them says
+`fits the mood`. Without AudioMuse-AI only the name counts and the line says `name fits`.
 
-The server does the ranking (`GET /api/playlists/mood?mood=gym`, at most 8 playlists, from the ones you can see in Navidrome). It
+The server does the ranking (`GET /api/playlists/mood?mood=gym`, at most 8 playlists, from the ones you can see in Navidrome, and the palette shows the first 4 of them). It
 reads each playlist's songs from Navidrome once and again only when Navidrome says the playlist changed (a playlist
 over 2000 songs counts its first 2000). The first search after a lot of new playlists can take a few seconds while they
-are read; the palette shows the name matches meanwhile and fills in the ranking as it arrives. The answer is cached for
+are read; the palette shows the name matches meanwhile and fills in the ranking as it arrives, asking again every 3
+seconds up to 5 times. A playlist Navidrome fails to give 3 times in a row is left out for 10 minutes so it can't hold
+the answer back. The answer is cached for
 10 minutes per account and mood, and refreshed sooner when your playlists change or AudioMuse-AI analyses songs.
 
 The mix uses the `bpm:` / `energy:` / `mood:` filters above when AudioMuse-AI has analysed your songs (gym is high energy

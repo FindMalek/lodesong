@@ -3,7 +3,7 @@ import { type FitReason, fitsSound, playlistFit, type Sound } from "@lodesong/sh
 import { fitsPlaylist, type Vibe, vibeOf } from "@lodesong/shared/vibes";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
-import { listPlaylists, type PlaylistRef, syncPlaylistSongs } from "./playlist-songs";
+import { createFailures, type Failures, listPlaylists, type PlaylistRef, syncPlaylistSongs } from "./playlist-songs";
 import type { Session } from "./sessions";
 
 // The playlists that suit a mood: their songs' AudioMuse features against the mood's profile, plus the name.
@@ -59,10 +59,10 @@ function rankPlaylists(vibe: Vibe, playlists: PlaylistRef[], sounds: Map<string,
       fit: sounding ? Math.round(fit.score * 100) / 100 : null,
       analysed: heard.length,
     };
-    return [{ found, rank: (sounding ? fit.score : 0) + (named ? NAME_BONUS : 0) }];
+    return [{ found, rank: (sounding ? fit.score * (heard.length / playlist.songs) : 0) + (named ? NAME_BONUS : 0) }];
   });
   return ranked
-    .sort((a, b) => b.rank - a.rank || a.found.name.localeCompare(b.found.name))
+    .sort((a, b) => b.rank - a.rank || a.found.name.localeCompare(b.found.name) || a.found.id.localeCompare(b.found.id))
     .slice(0, MAX_RESULTS)
     .map(({ found }) => found);
 }
@@ -73,7 +73,7 @@ const featuresVersion = (db: Database): number =>
 
 const playlistsVersion = (playlists: PlaylistRef[]): string => Bun.hash(JSON.stringify(playlists)).toString(36);
 
-export function createMoodPlaylists(db: Database, cache: Cache) {
+export function createMoodPlaylists(db: Database, cache: Cache, failures: Failures = createFailures()) {
   const reading = new Map<string, Promise<boolean>>();
   return async (upstream: Upstream, session: Session, words: string): Promise<MoodPlaylists | null> => {
     const vibe = vibeOf(words);
@@ -81,13 +81,15 @@ export function createMoodPlaylists(db: Database, cache: Cache) {
     const playlists = await listPlaylists(upstream, session);
     if (!playlists) return null;
     const account = `${session.server}:${session.user}`;
-    const key = `mood:${account}:${vibe.label}:${playlistsVersion(playlists)}:${featuresVersion(db)}`;
+    const version = playlistsVersion(playlists);
+    const key = `mood:${account}:${vibe.label}:${version}:${featuresVersion(db)}`;
     const cached = await cache.get<MoodPlaylists>(key);
     if (cached) return cached;
-    // Typing fires several requests at once: they share one read of the playlists.
-    const pending = reading.get(account) ?? syncPlaylistSongs(db, upstream, session, account, playlists);
-    reading.set(account, pending);
-    const complete = await pending.finally(() => reading.delete(account));
+    // Typing fires several requests at once: those that saw the same playlists share one read of them.
+    const sharing = `${account}:${version}`;
+    const pending = reading.get(sharing) ?? syncPlaylistSongs(db, upstream, session, account, playlists, undefined, failures);
+    reading.set(sharing, pending);
+    const complete = await pending.finally(() => reading.delete(sharing));
     const result = { mood: vibe.label, playlists: rankPlaylists(vibe, playlists, soundsOf(db, session.server, account)), complete };
     if (complete) await cache.set(key, result, TTL_MS);
     return result;

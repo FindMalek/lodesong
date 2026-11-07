@@ -2,7 +2,7 @@ import { afterAll, beforeEach, expect, test } from "bun:test";
 import { memoryCache } from "./cache";
 import { openLibraryDb } from "./db";
 import { createMoodPlaylists } from "./playlist-mood";
-import { listPlaylists, syncPlaylistSongs } from "./playlist-songs";
+import { createFailures, listPlaylists, syncPlaylistSongs } from "./playlist-songs";
 import type { Session } from "./sessions";
 
 interface Fake {
@@ -56,6 +56,7 @@ let db = openLibraryDb(":memory:");
 let ask = createMoodPlaylists(
   db,
   memoryCache(() => clock),
+  createFailures(() => clock),
 );
 
 beforeEach(() => {
@@ -70,6 +71,7 @@ beforeEach(() => {
   ask = createMoodPlaylists(
     db,
     memoryCache(() => clock),
+    createFailures(() => clock),
   );
 });
 
@@ -215,6 +217,94 @@ test("a playlist that can't be read yet is left out, the rest answers, and the n
   expect(whole).toMatchObject({ complete: true });
   expect(shape(whole)?.map(([id]) => id)).toEqual(["a", "b"]);
   expect(calls.one - callsBefore).toBe(1);
+});
+
+async function giveUp(): Promise<void> {
+  playlists.alice = [make("a", "Alpha", 5, [0.9, 0.5, 130]), make("b", "Beta", 5, [0.9, 0.5, 130])];
+  broken.add("b");
+  expect(await ask(upstream, alice, "gym")).toMatchObject({ complete: false });
+  expect(await ask(upstream, alice, "gym")).toMatchObject({ complete: false });
+  expect(calls.one).toBe(3);
+  const done = await ask(upstream, alice, "gym");
+  expect(done).toMatchObject({ complete: true });
+  expect(shape(done)?.map(([id]) => id)).toEqual(["a"]);
+  expect(calls.one).toBe(4);
+  await ask(upstream, alice, "rainy");
+  expect(calls.one).toBe(4);
+}
+
+test("a playlist that never reads is given up on after three tries, for that account and that version of the playlist", async () => {
+  await giveUp();
+  playlists.bob = [make("b", "Beta", 5, [0.9, 0.5, 130], 5, "bob")];
+  expect(await ask(upstream, bob, "gym")).toMatchObject({ complete: false });
+  expect(calls.one).toBe(5);
+  (playlists.alice?.[1] as Fake).changed = "t1";
+  expect(await ask(upstream, alice, "gym")).toMatchObject({ complete: false });
+  expect(calls.one).toBe(6);
+});
+
+test("a playlist that was given up on is tried again after ten minutes", async () => {
+  await giveUp();
+  clock = 5 * 60_000;
+  await ask(upstream, alice, "focus");
+  expect(calls.one).toBe(4);
+  clock = 11 * 60_000;
+  expect(await ask(upstream, alice, "gym")).toMatchObject({ complete: false });
+  expect(calls.one).toBe(5);
+});
+
+test("a playlist edited while the first read is still going is not answered from its old songs", async () => {
+  delayMs = 60;
+  playlists.alice = Array.from({ length: 9 }, (_, index) => make(`p${index}`, `List ${index}`, 4, [0.9, 0.5, 130]));
+  const first = ask(upstream, alice, "gym");
+  await Bun.sleep(90);
+  const edited = playlists.alice[0] as Fake;
+  edited.changed = "t1";
+  edited.songs = edited.songs.map((song) => `${song}-quiet`);
+  for (const song of edited.songs) analyse(song, 0.2, 0.5, 70);
+  const second = ask(upstream, alice, "gym");
+  const ids = (found: Awaited<typeof second>) => shape(found)?.map(([id]) => id);
+  const fresh = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+  expect(ids(await second)).toEqual(fresh);
+  await first;
+  delayMs = 0;
+  expect(ids(await ask(upstream, alice, "gym"))).toEqual(fresh);
+});
+
+test("listing order never decides: equal playlists come in the same order whichever way they arrive", async () => {
+  playlists.alice = [make("y", "Same", 5, [0.9, 0.5, 130]), make("x", "Same", 5, [0.9, 0.5, 130])];
+  expect(shape(await ask(upstream, alice, "gym"))?.map(([id]) => id)).toEqual(["x", "y"]);
+  playlists.alice.reverse();
+  expect(shape(await ask(upstream, alice, "gym"))?.map(([id]) => id)).toEqual(["x", "y"]);
+  playlists.alice = [make("m", "Zebra", 5, [0.9, 0.5, 130]), make("n", "Apple", 5, [0.9, 0.5, 130])];
+  expect(shape(await ask(upstream, alice, "gym"))?.map(([id]) => id)).toEqual(["n", "m"]);
+});
+
+test("a playlist that is only partly analysed ranks below one that is fully analysed with the same sound", async () => {
+  playlists.alice = [
+    make("part", "Alpha", 10, [0.9, 0.5, 130], 5),
+    make("whole", "Zulu", 10, [0.9, 0.5, 130]),
+    make("weaker", "Weaker", 10, [0.9, 0.5, 130], 10, "w"),
+  ];
+  for (const song of ["w-0", "w-1", "w-2"]) analyse(song, 0, 0.5, 50);
+  const found = shape(await ask(upstream, alice, "gym"));
+  expect(found?.map(([id, , fit]) => [id, fit])).toEqual([
+    ["whole", 1],
+    ["weaker", 0.7],
+    ["part", 1],
+  ]);
+});
+
+test("a name match adds enough to beat a better sound, but a name alone doesn't beat a perfect sound", async () => {
+  const seventy = (id: string, name: string) => {
+    const list = make(id, name, 10, [0.9, 0.5, 130]);
+    for (const song of list.songs.slice(0, 3)) analyse(song, 0, 0.5, 50);
+    return list;
+  };
+  playlists.alice = [make("fine", "Alpha", 10, [0.9, 0.5, 130]), seventy("named", "Zed gym")];
+  expect(shape(await ask(upstream, alice, "gym"))?.map(([id]) => id)).toEqual(["named", "fine"]);
+  playlists.alice = [make("perfect", "Zulu", 10, [0.9, 0.5, 130], 10, "q"), make("bare", "Gym a", 10, [0.9, 0.5, 130], 2, "r")];
+  expect(shape(await ask(upstream, alice, "gym"))?.map(([id]) => id)).toEqual(["perfect", "bare"]);
 });
 
 test("asking at once reads the playlists once, and never more than 8 at a time", async () => {

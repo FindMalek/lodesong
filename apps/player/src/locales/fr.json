@@ -15,5 +15,6 @@
   "fit.fast": "rapide",
   "fit.slow": "lent",
   "fit.bright": "lumineux",
-  "fit.dark": "sombre"
+  "fit.dark": "sombre",
+  "fit.mood": "colle à l'ambiance"
 }
