@@ -3,8 +3,10 @@ import { createKeepClient } from "@lodesong/orpc/client";
 import { createApi } from "./api";
 import { CoverCache } from "./covers";
 import { openLibraryDb } from "./db";
+import { recordPlay } from "./history";
 import { LyricsService } from "./lyrics";
 import { LoginLimiter } from "./rate-limit";
+import { createIndexTables } from "./search-index";
 import { SessionStore } from "./sessions";
 
 const upstream = Bun.serve({ port: 0, fetch: () => Response.json({ "subsonic-response": { status: "ok" } }) });
@@ -84,4 +86,46 @@ test("an integration lifts a radio ban with the song id in the path", async () =
   const lifted = await call("DELETE", "/api/radio/bans/so-1");
   expect(lifted.status).toBe(200);
   expect(await lifted.json()).toEqual({ songs: [] });
+});
+
+test("the songs you like in navidrome lead your daily mix", async () => {
+  const liked = Array.from({ length: 50 }, (_, i) => ({ id: `Hurt-${i}` }));
+  const navidrome = Bun.serve({
+    port: 0,
+    fetch: () => Response.json({ "subsonic-response": { status: "ok", starred2: { song: liked } } }),
+  });
+  const library = openLibraryDb(":memory:");
+  createIndexTables(library);
+  const now = Date.now();
+  for (let i = 0; i < 100; i++) {
+    const item = { id: `Hurt-${i}`, artist: "Hurt", title: `Hurt ${i}` };
+    library
+      .query(
+        "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('default', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+      )
+      .run(item.id, JSON.stringify(item));
+    const daysAgo = i < 50 ? 3 : 60;
+    recordPlay(library, "default:demo", "", { song: item, started: now - daysAgo * 86_400_000, listened: 200, finished: true });
+  }
+  const own = new SessionStore(":memory:", "secret", 60_000);
+  const withLikes = createApi({
+    upstreams: [{ id: "default", url: `http://127.0.0.1:${navidrome.port}` }],
+    indexes: new Map(),
+    library,
+    lyrics: new LyricsService(openLibraryDb(":memory:"), ""),
+    covers: new CoverCache(`${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`, 1_000_000),
+    sessions: own,
+    limiter: new LoginLimiter(),
+    idleSeconds: 60,
+    trustProxy: false,
+  });
+  const session = own.create({ server: "default", user: "demo", token: "t", salt: "s", agent: "" });
+  const rpc = createKeepClient("http://app/api/rpc", { "x-lodesong": "1", cookie: `kp_session=${session}` }, (request) =>
+    withLikes.rpc(request),
+  );
+  const { mixes } = await rpc.mixes({ day: Math.floor(now / 86_400_000), hour: 9, tz: 0 });
+  const daily = mixes.find((mix) => mix.id === "daily-1");
+  expect(daily?.songs).toHaveLength(50);
+  expect(daily?.songs.every((item) => liked.some((like) => like.id === item.id))).toBe(true);
+  navidrome.stop();
 });

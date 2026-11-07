@@ -230,6 +230,7 @@ export function createApi({
     fetcher,
     upstreamFor,
     foldersFor,
+    likesFor,
     cache,
     lyrics,
     releases,
@@ -268,7 +269,7 @@ export function createApi({
     if (cached && Date.now() - cached.at < FOLDERS_TTL_MS) return cached.liked;
     const result = await subsonic<{ starred2: Record<string, { id: string }[] | undefined> }>(upstream, session, "getStarred2");
     if (!result) return new Set();
-    const liked = new Set(Object.values(result.starred2).flatMap((items) => (items ?? []).map((item) => item.id)));
+    const liked = new Set(Object.values(result.starred2 ?? {}).flatMap((items) => (items ?? []).map((item) => item.id)));
     likesCache.set(session.id, { liked, at: Date.now() });
     return liked;
   }
