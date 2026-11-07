@@ -21,7 +21,7 @@ import { openMiniPlayer, setAutoMiniPlayer, useMiniWindow } from "@/lib/mini-pla
 import { notify } from "@/lib/notify";
 import { PageScrollContext } from "@/lib/page-scroll";
 import { currentSong, player, usePlayer } from "@/lib/player";
-import { openPlaylistDialog, usePlaylistDialog } from "@/lib/playlist-dialogs";
+import { openPlaylistDialog, playlistDialogKey, usePlaylistDialog } from "@/lib/playlist-dialogs";
 import { loadPrefs } from "@/lib/prefs";
 import { prefetchHome } from "@/lib/queries";
 import { useReachability } from "@/lib/reachability";
@@ -51,6 +51,7 @@ import {
   ListenPage,
   LyricsPage,
   MomentsPage,
+  PlaylistFolderPage,
   PlaylistPage,
   preloadAllRoutes,
   RadioPage,
@@ -138,6 +139,8 @@ function Page({ path }: { path: string }) {
       return <FoldersPage key={param ?? "root"} id={param} />;
     case "playlist":
       return param ? <PlaylistPage key={param} id={param} /> : null;
+    case "playlist-folder":
+      return param ? <PlaylistFolderPage key={param} id={param} /> : null;
     case "search":
       return <SearchPage />;
     case "history":
@@ -304,10 +307,7 @@ export function App() {
       <TopProgress />
       {playlistDialog && (
         <Suspense>
-          <PlaylistDialogs
-            key={playlistDialog.kind === "new" ? `new:${playlistDialog.folder ?? ""}` : `folder:${playlistDialog.path}`}
-            dialog={playlistDialog}
-          />
+          <PlaylistDialogs key={playlistDialogKey(playlistDialog)} dialog={playlistDialog} />
         </Suspense>
       )}
       {miniWindow && (

@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { contract } from "@lodesong/orpc";
+import { type FolderReason, MAX_DEMO_FOLDERS, MAX_FOLDERS } from "@lodesong/shared/playlist-folders";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { implement, ORPCError } from "@orpc/server";
@@ -9,6 +10,7 @@ import { appearsOn } from "./appears-on";
 import { type ArtistGenres, reportGenres } from "./artist-genres";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
+import { readCover } from "./folder-cover";
 import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
@@ -16,6 +18,17 @@ import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
+import {
+  createFolder,
+  type FolderResult,
+  importFolders,
+  listFolders,
+  type PlaceResult,
+  placePlaylist,
+  removeFolder,
+  updateFolder,
+} from "./playlist-folders";
+import { playlistsExist } from "./playlist-lookup";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
 import {
@@ -46,6 +59,7 @@ export interface RpcDeps {
   releases?: ReleaseWatch | null;
   artistGenres?: ArtistGenres | null;
   followSync?: FollowSync | null;
+  publicDemo?: boolean;
 }
 
 type Context = { session: Session | null; client: string };
@@ -55,6 +69,27 @@ export const accountOf = (session: Session) => `${session.server}:${session.user
 const MIXES_TTL_MS = 60 * 60_000;
 const GROQ_MISS_TTL_MS = 2 * 60_000;
 const OK = { ok: true } as const;
+
+const refusal = (reason: FolderReason) => new ORPCError(reason === "missing" ? "NOT_FOUND" : "BAD_REQUEST", { message: reason });
+
+function folderOrThrow(result: FolderResult) {
+  if ("folder" in result) return result.folder;
+  throw refusal(result.error);
+}
+
+function okOrThrow(result: PlaceResult) {
+  if ("error" in result) throw refusal(result.error);
+  return OK;
+}
+
+const DEMO_REFUSED = new ORPCError("FORBIDDEN", { message: "not in the public demo" });
+
+async function requirePlaylists(upstream: Upstream, session: Session, ids: string[]): Promise<void> {
+  const found = await playlistsExist(upstream, session, ids).catch(() => {
+    throw new ORPCError("BAD_GATEWAY", { message: "navidrome didn't answer" });
+  });
+  if (!found) throw new ORPCError("NOT_FOUND", { message: "missing" });
+}
 
 function readSettings(db: Database, account: string) {
   const row = db
@@ -81,7 +116,14 @@ export function createRpc({
   releases = null,
   artistGenres = null,
   followSync = null,
+  publicDemo = false,
 }: RpcDeps) {
+  const folderLimit = publicDemo ? MAX_DEMO_FOLDERS : MAX_FOLDERS;
+  const upstreamOf = (session: Session): Upstream => {
+    const upstream = upstreamFor(session.server);
+    if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
+    return upstream;
+  };
   const os = implement(contract).$context<Context>();
   const signedIn = os.use(({ context, next }) => {
     if (!context.session) throw new ORPCError("UNAUTHORIZED", { message: "signed out" });
@@ -248,6 +290,33 @@ export function createRpc({
           )
           .run(context.account, input.id, input.songId);
         return { songs: hiddenIn(library, context.account, input.id) };
+      }),
+    },
+    folders: {
+      list: signedIn.folders.list.handler(({ context }) => listFolders(library, context.account)),
+      create: signedIn.folders.create.handler(({ context, input }) => {
+        return folderOrThrow(createFolder(library, context.account, input.name, input.parentId, folderLimit));
+      }),
+      update: signedIn.folders.update.handler(async ({ context, input }) => {
+        const { id, cover, ...change } = input;
+        if (publicDemo) throw DEMO_REFUSED;
+        const picture = typeof cover === "string" ? await readCover(cover) : cover;
+        if (picture === null && typeof cover === "string") throw new ORPCError("BAD_REQUEST", { message: "bad picture" });
+        return folderOrThrow(updateFolder(library, context.account, id, { ...change, cover: picture }));
+      }),
+      remove: signedIn.folders.remove.handler(({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        if (!removeFolder(library, context.account, input.id)) throw new ORPCError("NOT_FOUND", { message: "missing" });
+        return OK;
+      }),
+      place: signedIn.folders.place.handler(async ({ context, input }) => {
+        if (input.folderId !== null) await requirePlaylists(upstreamOf(context.session), context.session, [input.id]);
+        return okOrThrow(placePlaylist(library, context.account, input.id, input.folderId));
+      }),
+      import: signedIn.folders.import.handler(async ({ context, input }) => {
+        const ids = input.folders.flatMap((folder) => folder.playlists);
+        await requirePlaylists(upstreamOf(context.session), context.session, ids);
+        return okOrThrow(importFolders(library, context.account, input, folderLimit));
       }),
     },
     lyrics: {
