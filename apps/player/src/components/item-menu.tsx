@@ -22,6 +22,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   FolderIcon,
+  FolderInputIcon,
   HeartIcon,
   HeartOffIcon,
   ImageDownIcon,
@@ -122,6 +123,11 @@ export function ItemActions({ target }: { target: MenuTarget }) {
       {like && (
         <DropdownMenuItem onClick={run(() => setLiked(like.kind, like.id, !liked, like.label))}>
           {liked ? <HeartOffIcon /> : <HeartIcon />} {liked ? "unlike" : "like"}
+        </DropdownMenuItem>
+      )}
+      {target.kind === "playlist" && (
+        <DropdownMenuItem onClick={run(() => openPlaylistDialog({ kind: "folder-move", playlistId: target.playlist.id }))}>
+          <FolderInputIcon /> move to folder…
         </DropdownMenuItem>
       )}
       {target.kind === "playlist" && (

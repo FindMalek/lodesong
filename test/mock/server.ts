@@ -553,15 +553,19 @@ const server = Bun.serve({
       const offset = Number(url.searchParams.get("offset") ?? 0);
       const limit = Math.min(Number(url.searchParams.get("limit") ?? 500), 500);
       return Response.json(
-        library.songs.slice(offset, offset + limit).map((song, index) => ({
-          item_id: song.id,
-          tempo: 80 + ((offset + index) % 100),
-          key: ["C", "G", "D", "A", "E"][(offset + index) % 5],
-          scale: (offset + index) % 2 ? "minor" : "major",
-          energy: ((offset + index) % 10) / 10,
-          valence: ((offset + index) % 7) / 7,
-          danceability: ((offset + index) % 5) / 5,
-        })),
+        library.songs.slice(offset, offset + limit).map((song, index) => {
+          const at = offset + index;
+          const loud = at >= 80 && at < 175;
+          return {
+            item_id: song.id,
+            tempo: loud ? 130 + (at % 10) : 80 + (at % 100),
+            key: ["C", "G", "D", "A", "E"][at % 5],
+            scale: at % 2 ? "minor" : "major",
+            energy: loud ? 0.8 + (at % 3) / 20 : (at % 10) / 10,
+            valence: (at % 7) / 7,
+            danceability: (at % 5) / 5,
+          };
+        }),
       );
     }
     if (url.pathname === "/audiomuse/api/similar_tracks") {

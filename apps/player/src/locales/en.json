@@ -7,5 +7,14 @@
   "history.playAgain": "play again",
   "history.songs.one": "{count} song",
   "history.songs.other": "{count} songs",
-  "history.skipped": "{count} skipped"
+  "history.skipped": "{count} skipped",
+  "fit.name": "name fits",
+  "fit.loud": "loud",
+  "fit.quiet": "quiet",
+  "fit.steady": "steady",
+  "fit.fast": "fast",
+  "fit.slow": "slow",
+  "fit.bright": "bright",
+  "fit.dark": "dark",
+  "fit.mood": "fits the mood"
 }
