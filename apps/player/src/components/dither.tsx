@@ -3,10 +3,10 @@ import { useEffect, useRef } from "react";
 import { colors } from "@/components/aura";
 import { subscribeTheme } from "@/lib/theme";
 
-const COLS = 48;
-const FRAME_MS = 120;
+const CELL_PX = 4;
+const FRAME_MS = 500;
 
-/** A dithered cover seeded by `id`. It drifts slowly while on screen, and holds one still frame under reduced motion. */
+/** Dithered ink dots over whatever is behind, seeded by `id`. They drift slowly while on screen and hold one frame under reduced motion. */
 export function Dither({ id, className }: { id: string; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
 
@@ -17,57 +17,52 @@ export function Dither({ id, className }: { id: string; className?: string }) {
     const seed = ditherSeed(id);
     const still = matchMedia("(prefers-reduced-motion: reduce)");
     let visible = true;
-    let frame = 0;
-    let last = 0;
-    const paint = (time: number) => {
-      const rows = Math.max(1, Math.round((COLS * element.clientHeight) / Math.max(1, element.clientWidth)));
-      if (element.width !== COLS || element.height !== rows) {
-        element.width = COLS;
-        element.height = rows;
+    let timer = 0;
+    const paint = () => {
+      const scale = window.devicePixelRatio || 1;
+      const width = Math.max(1, Math.round(element.clientWidth * scale));
+      const height = Math.max(1, Math.round(element.clientHeight * scale));
+      if (element.width !== width || element.height !== height) {
+        element.width = width;
+        element.height = height;
       }
-      const { ink, paper } = colors();
-      const cells = ditherCells(COLS, rows, seed, time);
-      context.globalAlpha = 1;
-      context.fillStyle = paper;
-      context.fillRect(0, 0, COLS, rows);
-      context.fillStyle = ink;
+      const cell = Math.max(1, Math.round(CELL_PX * scale));
+      const cols = Math.ceil(width / cell);
+      const rows = Math.ceil(height / cell);
+      const cells = ditherCells(cols, rows, seed, still.matches ? 0 : performance.now() / 1000);
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = colors().ink;
       context.globalAlpha = 0.3;
       for (let index = 0; index < cells.length; index += 1) {
-        if (cells[index]) context.fillRect(index % COLS, Math.floor(index / COLS), 1, 1);
+        if (cells[index]) context.fillRect((index % cols) * cell, Math.floor(index / cols) * cell, cell, cell);
       }
     };
-    const tick = (now: number) => {
-      frame = 0;
-      if (visible && !document.hidden && now - last >= FRAME_MS) {
-        last = now;
-        paint(now / 1000);
-      }
-      if (visible && !still.matches) frame = requestAnimationFrame(tick);
-    };
-    const restart = () => {
-      cancelAnimationFrame(frame);
-      frame = 0;
-      paint(0);
-      if (visible && !still.matches) frame = requestAnimationFrame(tick);
+    const sync = () => {
+      clearInterval(timer);
+      timer = 0;
+      paint();
+      if (visible && !document.hidden && !still.matches) timer = window.setInterval(paint, FRAME_MS);
     };
     const watch = new IntersectionObserver(([entry]) => {
       visible = entry?.isIntersecting ?? true;
-      restart();
+      sync();
     });
     watch.observe(element);
-    const resize = new ResizeObserver(() => paint(0));
+    const resize = new ResizeObserver(paint);
     resize.observe(element);
-    still.addEventListener("change", restart);
-    const unsubscribe = subscribeTheme(() => paint(0));
-    restart();
+    still.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
+    const unsubscribe = subscribeTheme(paint);
+    sync();
     return () => {
-      cancelAnimationFrame(frame);
+      clearInterval(timer);
       watch.disconnect();
       resize.disconnect();
-      still.removeEventListener("change", restart);
+      still.removeEventListener("change", sync);
+      document.removeEventListener("visibilitychange", sync);
       unsubscribe();
     };
   }, [id]);
 
-  return <canvas ref={canvas} aria-hidden className={className} style={{ imageRendering: "pixelated" }} />;
+  return <canvas ref={canvas} aria-hidden className={className} />;
 }

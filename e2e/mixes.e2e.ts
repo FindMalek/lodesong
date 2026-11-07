@@ -23,16 +23,28 @@ async function playOneArtist(page: Page): Promise<void> {
 
 test("mix covers are dithered and drift, and hold one frame under reduced motion", async ({ page, signedIn }) => {
   await playOneArtist(page);
-  const cover = () => page.getByRole("list", { name: "made for you" }).locator("canvas").first();
+  const cover = () => page.getByRole("list", { name: "made for you" }).locator("canvas").nth(1);
   const snapshot = () => cover().evaluate((element: HTMLCanvasElement) => element.toDataURL());
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signedIn.goto("/");
   await expect(cover()).toBeAttached();
+  const inked = await cover().evaluate((element: HTMLCanvasElement) => {
+    const pixels = element.getContext("2d")?.getImageData(0, 0, element.width, element.height).data ?? [];
+    let on = 0;
+    for (let index = 3; index < pixels.length; index += 4) if (pixels[index]) on += 1;
+    return on / (pixels.length / 4);
+  });
+  expect(inked).toBeGreaterThan(0.05);
+  expect(inked).toBeLessThan(0.7);
   const still = await snapshot();
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(1_200);
   expect(await snapshot()).toBe(still);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await expect.poll(snapshot).not.toBe(still);
+  await expect.poll(snapshot, { timeout: 10_000 }).not.toBe(still);
+  const moved = await snapshot();
+  await expect.poll(snapshot, { timeout: 10_000 }).not.toBe(moved);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect.poll(snapshot, { timeout: 10_000 }).toBe(still);
 });
 
 test("songs you play become daily mixes on home, saved as navidrome playlists too", async ({ page, signedIn }) => {
