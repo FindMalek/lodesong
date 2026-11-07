@@ -15,7 +15,7 @@ export const foldersQuery = () =>
       if (!response.ok) throw new Error(`folders: ${response.status}`);
       return (await response.json()) as PlaylistFolders;
     },
-    staleTime: 0,
+    staleTime: 60_000,
   });
 
 /** The sidebar and the folder page share one tree: real folders, then the old "Chill / Night" naming. */
