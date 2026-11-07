@@ -3,7 +3,7 @@ import { Button } from "@lodesong/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { PlayIcon } from "lucide-react";
 import { useEffect } from "react";
-import { Aura } from "@/components/aura";
+import { Dither } from "@/components/dither";
 import { Section } from "@/components/library";
 import { Link } from "@/components/link";
 import { player } from "@/lib/player";
@@ -106,7 +106,7 @@ export function MixRow() {
           const href = playlist ? `/playlist/${playlist.id}` : undefined;
           const cover = (
             <span className="relative block aspect-square w-full overflow-hidden border">
-              <Aura id={`${mix.id}-${day}`} songs={mix.songs} className="size-full" />
+              <Dither id={`${mix.id}-${day}`} className="size-full" />
               <span className="absolute inset-0 flex items-end p-2 font-medium font-mono text-sm">{mix.name}</span>
             </span>
           );
