@@ -5,6 +5,7 @@ import { createMomentTables } from "./moments";
 import { createPrefTables } from "./prefs";
 import { createRadioTables } from "./radio";
 import { createReleaseTables } from "./releases";
+import { createShareTables } from "./share-store";
 
 // Separate from sessions.db so it can be deleted and rebuilt without signing anyone out.
 export function openLibraryDb(path: string): Database {
@@ -30,6 +31,7 @@ export function openLibraryDb(path: string): Database {
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);
+  createShareTables(db);
   // Songs you keep in a playlist but don't want to hear from it (#46): per user, the playlist itself is untouched.
   db.run(`create table if not exists playlist_hidden (
     account text not null,

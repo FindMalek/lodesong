@@ -34,6 +34,7 @@ import {
   PlusIcon,
   RadioIcon,
   ScissorsIcon,
+  Share2Icon,
   ShuffleIcon,
   UserIcon,
 } from "lucide-react";
@@ -47,6 +48,7 @@ import { addToPlaylist, canEdit, leafOf } from "@/lib/playlists";
 import { albumPref, songPref, usePrefsVersion } from "@/lib/prefs";
 import { queries } from "@/lib/queries";
 import { go } from "@/lib/router";
+import { copyShareLink, type ShareKind } from "@/lib/share-link";
 import { type MenuTarget, songsOf, sourceOf } from "@/lib/targets";
 
 export type { MenuTarget };
@@ -60,6 +62,13 @@ function linkOf(target: MenuTarget): string | null {
   if (target.kind === "playlist") return `/playlist/${target.playlist.id}`;
   const song = target.songs.length === 1 ? target.songs[0] : undefined;
   return song?.albumId ? `/album/${song.albumId}` : null;
+}
+
+function shareOf(target: MenuTarget): { kind: ShareKind; id: string } | null {
+  if (target.kind === "album") return { kind: "album", id: target.album.id };
+  if (target.kind === "artist") return { kind: "artist", id: target.artist.id };
+  if (target.kind === "playlist") return { kind: "playlist", id: target.playlist.id };
+  return target.songs.length === 1 && target.songs[0] ? { kind: "song", id: target.songs[0].id } : null;
 }
 
 function likeOf(target: MenuTarget): { kind: LikeKind; id: string; label: string } | null {
@@ -79,6 +88,7 @@ export function ItemActions({ target }: { target: MenuTarget }) {
   const source = sourceOf(target);
   const link = linkOf(target);
   const like = likeOf(target);
+  const share = shareOf(target);
   const liked = like ? isLiked(like.id) : false;
   const song = target.kind === "songs" && target.songs.length === 1 ? target.songs[0] : undefined;
   const count = target.kind === "songs" && target.songs.length > 1 ? `${target.songs.length} songs` : null;
@@ -233,6 +243,11 @@ export function ItemActions({ target }: { target: MenuTarget }) {
           })}
         >
           <LinkIcon /> copy link
+        </DropdownMenuItem>
+      )}
+      {share && (
+        <DropdownMenuItem onClick={run(() => copyShareLink(share.kind, share.id))}>
+          <Share2Icon /> copy share link
         </DropdownMenuItem>
       )}
       {song && player.getState().queue.current?.song.id === song.id && player.getPosition() >= 1 && (

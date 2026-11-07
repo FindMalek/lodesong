@@ -25,7 +25,7 @@ import type { LyricsService } from "./lyrics";
 import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-coverage";
 import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
-import { type ShareKind, shareTags } from "./og";
+import { ShareCards, type ShareKind } from "./og";
 import type { LoginLimiter } from "./rate-limit";
 import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
@@ -33,6 +33,8 @@ import { createRpc, accountOf as dataAccount } from "./rpc";
 import { search } from "./search";
 import type { IndexSync } from "./search-index";
 import type { Session, SessionStore } from "./sessions";
+import { SharedCards } from "./share-store";
+import { SHARE_KINDS, ShareTokens } from "./share-token";
 import { subsonic, upstreamQuery } from "./subsonic";
 import { MAX_UPLOAD_BYTES, saveUpload, uploadPath } from "./upload";
 
@@ -159,6 +161,7 @@ export interface ApiOptions {
   groq?: GroqConfig | null;
   audiomuseUrl?: string | null;
   fetcher?: typeof fetch;
+  shareSecret?: string;
 }
 
 interface ListenSocketData {
@@ -208,7 +211,9 @@ export function createApi({
   feedback = null,
   cache,
   fetcher = fetch,
+  shareSecret = randomBytes(32).toString("hex"),
 }: ApiOptions) {
+  const shares = new ShareCards({ upstreams, covers, tokens: new ShareTokens(shareSecret), cards: new SharedCards(library) });
   const upstreamFor = (id: string) => upstreams.find((upstream) => upstream.id === id);
 
   // Asked as that user, so Navidrome decides which music folders they see. Ten minutes.
@@ -427,11 +432,37 @@ export function createApi({
     return new Response(response.body, { status: response.status, headers: out });
   }
 
-  /** `<head>` tags for a shared link: the real name and cover for a signed-in browser, a generic card for anyone else. */
-  async function shareHead(request: Request & { params: { id: string } }, kind: ShareKind): Promise<string> {
+  const accessOf = (request: Request) => {
     const session = browserSession(request);
     const upstream = session ? upstreamFor(session.server) : undefined;
-    return shareTags(request, kind, request.params.id, session && upstream ? { session, upstream } : null);
+    return session && upstream ? { session, upstream } : null;
+  };
+
+  /** `<head>` tags for a shared link: real details for a signed-in browser or a valid signed link, a generic card otherwise. */
+  async function shareHead(request: Request & { params: { id: string } }, kind: ShareKind): Promise<string> {
+    return shares.tags(request, kind, request.params.id, accessOf(request));
+  }
+
+  /** `/og/<kind>/<id>.png`: the card image, under the same rule as the tags. */
+  async function ogImage(request: Request & { params: { kind: string; file: string } }): Promise<Response> {
+    const kind = SHARE_KINDS.find((item) => item === request.params.kind);
+    const id = request.params.file.endsWith(".png") ? request.params.file.slice(0, -4) : "";
+    if (!kind || !id) return json({ error: "not found" }, 404);
+    return shares.image(request, kind, id, accessOf(request));
+  }
+
+  const genericCard = (request: Request) => shares.image(request, "album", "", null);
+
+  /** A signed link for one item the caller can see. It lets the holder see that item's card, nothing else. */
+  async function shareCreate(request: Request): Promise<Response> {
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    const access = accessOf(request);
+    if (!access) return json({ error: "signed out" }, 401);
+    const body = (await request.json().catch(() => null)) as { kind?: unknown; id?: unknown } | null;
+    const kind = SHARE_KINDS.find((item) => item === body?.kind);
+    if (!kind || typeof body?.id !== "string") return json({ error: "bad request" }, 400);
+    const path = await shares.create(access, kind, body.id);
+    return path ? json({ path }) : json({ error: "not found" }, 404);
   }
 
   /** Navidrome's cover ids change when the art does, which is what makes `immutable` safe. */
@@ -965,6 +996,9 @@ export function createApi({
     proxy,
     cover,
     shareHead,
+    ogImage,
+    genericCard,
+    shareCreate,
     releaseCover,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,

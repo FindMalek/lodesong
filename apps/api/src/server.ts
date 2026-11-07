@@ -17,7 +17,7 @@ import { font } from "./fonts";
 import { HealthCheck, UpdateCheck, VERSION } from "./health";
 import { LrcWriter } from "./lrc-writer";
 import { LyricsService } from "./lyrics";
-import { cardImage, type ShareKind } from "./og";
+import type { ShareKind } from "./og";
 import { pwaRoutes } from "./pwa";
 import { LoginLimiter } from "./rate-limit";
 import { lyterionHandOff, MusicBrainz, ReleaseWatch } from "./releases";
@@ -89,6 +89,7 @@ const api = createApi({
   indexes,
   library,
   sessions,
+  shareSecret: config.sessionSecret,
   limiter: new LoginLimiter(),
   idleSeconds,
   trustProxy: config.trustProxy,
@@ -133,7 +134,9 @@ const server = Bun.serve({
     "/healthz": () => new Response("ok"),
     "/worklets/levels.js": () =>
       new Response(LEVELS_WORKLET_SOURCE, { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=86400" } }),
-    "/og.png": cardImage,
+    "/og.png": api.genericCard,
+    "/og/:kind/:file": api.ogImage,
+    "/api/share": { POST: api.shareCreate },
     "/api/csp-report": { POST: cspReport },
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
