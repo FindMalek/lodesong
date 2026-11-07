@@ -13,3 +13,5 @@ async function serviceWorker(): Promise<Response> {
 }
 
 export const webRoutes = { "/sw.js": serviceWorker, "/*": index };
+
+export const pageWith = null;

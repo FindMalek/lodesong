@@ -45,3 +45,21 @@ export function greyPng(size: number, shade: number): Uint8Array<ArrayBuffer> {
   }
   return out;
 }
+
+/** A square of random colour noise as a PNG: the worst case for compression, standing in for a grainy photo cover. */
+export function noisePng(size: number): Uint8Array<ArrayBuffer> {
+  const header = new Uint8Array(13);
+  new DataView(header.buffer).setUint32(0, size);
+  new DataView(header.buffer).setUint32(4, size);
+  header.set([8, 2, 0, 0, 0], 8);
+  const row = size * 3 + 1;
+  const rows = new Uint8Array(size * row);
+  for (let y = 0; y < size; y += 1) crypto.getRandomValues(rows.subarray(y * row + 1, (y + 1) * row));
+  const parts = [
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(rows)),
+    chunk("IEND", new Uint8Array()),
+  ];
+  return Uint8Array.from(parts.flatMap((part) => [...part]));
+}

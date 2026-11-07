@@ -8,6 +8,8 @@ interface Violation {
 }
 
 const text = (value: unknown): string => (typeof value === "string" ? value.slice(0, 200) : "");
+/** The address without its query or fragment: a page address can carry a share token. */
+const address = (value: unknown): string => text(value).replace(/[?#].*$/s, "");
 
 /** Both report formats: the legacy `{ "csp-report": {...} }` and the Reporting API's `[{ type, body }]`. */
 function violationsOf(payload: unknown): Violation[] {
@@ -19,8 +21,8 @@ function violationsOf(payload: unknown): Violation[] {
     return [
       {
         directive: text(body["violated-directive"] ?? body.effectiveDirective),
-        blocked: text(body["blocked-uri"] ?? body.blockedURL),
-        page: text(body["document-uri"] ?? body.documentURL),
+        blocked: address(body["blocked-uri"] ?? body.blockedURL),
+        page: address(body["document-uri"] ?? body.documentURL),
       },
     ];
   });

@@ -129,6 +129,19 @@ export class SessionStore {
     return this.db.query("delete from sessions where server = ? and user = ? and hash like ?").run(server, user, `${id}%`).changes > 0;
   }
 
+  /** The Navidrome login of the account's most recently used browser, if one is still signed in. */
+  credentials(server: string, user: string): { user: string; token: string; salt: string } | null {
+    const row = this.db
+      .query<RowData, [string, string, number]>(
+        "select * from sessions where server = ? and user = ? and seen > ? order by seen desc limit 1",
+      )
+      .get(server, user, this.now() - this.idleMs);
+    const secret = row && this.open(row.secret);
+    if (!row || !secret) return null;
+    const { token, salt } = JSON.parse(secret) as { token: string; salt: string };
+    return { user: row.user, token, salt };
+  }
+
   adminCredentials(server: string): { user: string; token: string; salt: string } | null {
     const row = this.db
       .query<RowData, [string, number]>("select * from sessions where server = ? and admin = 1 and seen > ? order by seen desc limit 1")

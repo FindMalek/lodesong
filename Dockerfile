@@ -20,6 +20,7 @@ RUN BUN_TARGET="bun-linux-$([ "$TARGETARCH" = arm64 ] && echo arm64 || echo x64)
 FROM alpine:3.24
 RUN apk add --no-cache libstdc++ libgcc && adduser -D -H -u 1000 app && mkdir /data && chown app /data
 COPY --from=build /app/dist/lodesong /usr/local/bin/lodesong
+COPY --from=build /app/LICENSE /app/THIRD-PARTY-NOTICES.md /usr/share/licenses/lodesong/
 USER app
 ENV NODE_ENV=production PORT=8080 DATA_DIR=/data
 # Sessions, the search and lyrics index, history and the cover cache. Everything else can be read only.

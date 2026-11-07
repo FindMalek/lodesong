@@ -25,6 +25,8 @@ import type { LyricsService } from "./lyrics";
 import { forgetMisses, lyricsCoverageReport, missingLyrics } from "./lyrics-coverage";
 import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
+import { ShareCards, type ShareKind } from "./og";
+import { originOf } from "./origin-of";
 import type { LoginLimiter } from "./rate-limit";
 import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
@@ -32,6 +34,9 @@ import { createRpc, accountOf as dataAccount } from "./rpc";
 import { search } from "./search";
 import type { IndexSync } from "./search-index";
 import type { Session, SessionStore } from "./sessions";
+import { RateLimit } from "./share-limit";
+import { SharedCards } from "./share-store";
+import { SHARE_KINDS, SHARE_LIFE_MS, ShareTokens } from "./share-token";
 import { subsonic, upstreamQuery } from "./subsonic";
 import { MAX_UPLOAD_BYTES, saveUpload, uploadPath } from "./upload";
 
@@ -41,6 +46,7 @@ const REMOTE_AGENT = "terminal · now playing";
 const API_AGENT = "api token";
 /** Requests that change or read data must carry this header. Cross-site pages can't set it without a CORS preflight. */
 const CSRF_HEADER = "x-lodesong";
+const SHARE_RATE = 30;
 const CLIENT_HEADER = "x-keep-client";
 
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
@@ -158,6 +164,9 @@ export interface ApiOptions {
   groq?: GroqConfig | null;
   audiomuseUrl?: string | null;
   fetcher?: typeof fetch;
+  shareSecret?: string;
+  publicUrl?: string | null;
+  shareMax?: number;
 }
 
 interface ListenSocketData {
@@ -207,7 +216,20 @@ export function createApi({
   feedback = null,
   cache,
   fetcher = fetch,
+  shareSecret = randomBytes(32).toString("hex"),
+  publicUrl = null,
+  shareMax,
 }: ApiOptions) {
+  const shareCards = new SharedCards(library, Date.now, SHARE_LIFE_MS, shareMax);
+  const shareRate = new RateLimit(SHARE_RATE, 60_000);
+  const shares = new ShareCards({
+    upstreams,
+    covers,
+    tokens: new ShareTokens(shareSecret),
+    cards: shareCards,
+    origin: (request) => originOf(request, { publicUrl, trustProxy }),
+    credentials: (server, user) => sessions.credentials(server, user),
+  });
   const upstreamFor = (id: string) => upstreams.find((upstream) => upstream.id === id);
 
   // Asked as that user, so Navidrome decides which music folders they see. Ten minutes.
@@ -424,6 +446,69 @@ export function createApi({
     out.set("server-timing", `upstream;dur=${(performance.now() - started).toFixed(1)}`);
     if (endpoint === "star" || endpoint === "unstar") likesCache.delete(session.id);
     return new Response(response.body, { status: response.status, headers: out });
+  }
+
+  const accessOf = (request: Request) => {
+    const session = browserSession(request);
+    const upstream = session ? upstreamFor(session.server) : undefined;
+    return session && upstream ? { session, upstream } : null;
+  };
+
+  /** `<head>` tags for a shared link: real details for a signed-in browser or a valid signed link, a generic card otherwise. */
+  async function shareHead(request: Request & { params: { id: string } }, kind: ShareKind): Promise<string> {
+    return shares.tags(request, kind, request.params.id, accessOf(request));
+  }
+
+  /** `/og/<kind>/<id>.jpg`: the card image, under the same rule as the tags. */
+  async function ogImage(request: Request & { params: { kind: string; file: string } }): Promise<Response> {
+    const kind = SHARE_KINDS.find((item) => item === request.params.kind);
+    const id = request.params.file.endsWith(".jpg") ? request.params.file.slice(0, -4) : "";
+    if (!kind || !id) return json({ error: "not found" }, 404);
+    return shares.image(request, kind, id, accessOf(request));
+  }
+
+  const genericCard = (request: Request) => shares.image(request, "album", "", null);
+
+  const ownerOf = (access: { session: Session }) => ({ server: access.session.server, user: access.session.user });
+
+  /** A signed link for one item the caller can see. It lets the holder see that item's card, nothing else. */
+  async function shareCreate(request: Request): Promise<Response> {
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    if (publicDemo) return json({ error: "not in the public demo" }, 403);
+    const access = accessOf(request);
+    if (!access) return json({ error: "signed out" }, 401);
+    const wait = shareRate.take(`${access.session.server}:${access.session.user}`);
+    if (wait) return json({ error: "too many share links, try again soon" }, 429, { "retry-after": String(wait) });
+    const body = (await request.json().catch(() => null)) as { kind?: unknown; id?: unknown } | null;
+    const kind = SHARE_KINDS.find((item) => item === body?.kind);
+    if (!kind || typeof body?.id !== "string") return json({ error: "bad request" }, 400);
+    const created = await shares.create(access, kind, body.id);
+    if (created === "missing") return json({ error: "not found" }, 404);
+    if (created === "full") return json({ error: "too many shared links, remove some first" }, 409);
+    return json(created);
+  }
+
+  /** What this account shares right now: no tokens, just enough to name each link and stop it. */
+  function shareList(request: Request): Response {
+    const access = accessOf(request);
+    if (!access) return json({ error: "signed out" }, 401);
+    const items = shareCards.list(ownerOf(access)).map(({ id, kind, item, card, created, expires }) => ({
+      id,
+      kind,
+      item,
+      title: card.title,
+      created,
+      expires,
+    }));
+    return json({ shares: items });
+  }
+
+  /** Unsharing deletes the row, which ends every link made from it. Only the account that shared can do it. */
+  function shareRemove(request: Request & { params: { id: string } }): Response {
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    const access = accessOf(request);
+    if (!access) return json({ error: "signed out" }, 401);
+    return shareCards.remove(ownerOf(access), request.params.id) ? json({ ok: true }) : json({ error: "not found" }, 404);
   }
 
   /** Navidrome's cover ids change when the art does, which is what makes `immutable` safe. */
@@ -956,6 +1041,12 @@ export function createApi({
     revokeSession,
     proxy,
     cover,
+    shareHead,
+    ogImage,
+    genericCard,
+    shareCreate,
+    shareList,
+    shareRemove,
     releaseCover,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,
