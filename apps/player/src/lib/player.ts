@@ -10,6 +10,7 @@ import { isHidden, songPref } from "./prefs";
 import { queries, queryClient } from "./queries";
 import * as Q from "./queue";
 import { getSetting, subscribeSettings } from "./settings";
+import { FALLBACK } from "./stream-quality";
 import { api, coverUrl, fallBackToTranscode, onAccountChange, preloadCover, qualityOf, scrobble, streamUrl } from "./subsonic";
 import type { Song } from "./types";
 import { done, record } from "./undo";
@@ -273,9 +274,10 @@ async function onMediaError(): Promise<void> {
   else recover();
 }
 
-// A song this browser can't play (ALAC in Firefox) is retried as a transcode before it is skipped.
+// A song this browser can't play (ALAC in Firefox, Ogg Opus in an older Safari) is retried as an mp3 transcode before it
+// is skipped.
 function unplayable(song: Song, reason: string): void {
-  if (qualityOf(song.id) !== "original") {
+  if (qualityOf(song.id) === FALLBACK) {
     skipBroken(reason);
     return;
   }

@@ -16,9 +16,10 @@ export function isStreamQuality(value: unknown): value is StreamQuality {
 }
 
 /** Auto: songs kept on this device play as they are (they come from the offline cache), the rest as a light transcode. */
-export function resolveQuality(setting: StreamQuality, kept: boolean): Playing {
+export function resolveQuality(setting: StreamQuality, kept: boolean, opusOk = true): Playing {
   if (setting !== "auto") return setting;
-  return kept ? "original" : "opus-192";
+  if (kept) return "original";
+  return opusOk ? "opus-192" : FALLBACK;
 }
 
 export function streamParams(quality: Playing): Record<string, string> {

@@ -21,4 +21,9 @@ describe("stream quality", () => {
     expect(resolveQuality("opus-96", true)).toBe("opus-96");
     expect(resolveQuality("original", false)).toBe("original");
   });
+  test("auto streams mp3 where the browser can't play opus; a fixed choice stays", () => {
+    expect(resolveQuality("auto", false, false)).toBe("mp3-320");
+    expect(resolveQuality("auto", true, false)).toBe("original");
+    expect(resolveQuality("opus-96", false, false)).toBe("opus-96");
+  });
 });
