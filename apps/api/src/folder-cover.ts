@@ -30,7 +30,8 @@ export async function readCover(dataUrl: string): Promise<Cover | null> {
 export function coverResponse(request: Request, cover: Cover | null, headers: Record<string, string>): Response {
   if (!cover) return new Response(null, { status: 404, headers: { ...headers, "cache-control": "private, no-store" } });
   const etag = `"${cover.hash}"`;
-  const shared = { ...headers, etag, "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
-  if (request.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: shared });
+  const shared = { ...headers, etag, "cache-control": "private, max-age=3600" };
+  const seen = (request.headers.get("if-none-match") ?? "").split(",").map((tag) => tag.trim().replace(/^W\//, ""));
+  if (seen.includes(etag) || seen.includes("*")) return new Response(null, { status: 304, headers: shared });
   return new Response(cover.bytes, { headers: { ...shared, "content-type": cover.type } });
 }

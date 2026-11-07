@@ -190,6 +190,8 @@ class Refused extends Error {
 /** Makes a whole tree of folders (and puts playlists in them) in one go: either all of it, or none. */
 export function importFolders(db: Database, account: string, request: FolderImport, limit = MAX_FOLDERS): PlaceResult {
   const made: string[] = [];
+  const placed = new Set(listFolders(db, account).items.map((item) => item.playlistId));
+  const put = db.query("insert or replace into playlist_folder_items (account, playlist_id, folder_id) values (?, ?, ?)");
   try {
     db.transaction(() => {
       request.folders.forEach((entry, index) => {
@@ -199,8 +201,9 @@ export function importFolders(db: Database, account: string, request: FolderImpo
         if ("error" in result) throw new Refused(result.error);
         made.push(result.folder.id);
         for (const playlistId of entry.playlists) {
-          const placed = placePlaylist(db, account, playlistId, result.folder.id);
-          if ("error" in placed) throw new Refused(placed.error);
+          if (!placed.has(playlistId) && placed.size >= MAX_FOLDER_ITEMS) throw new Refused("too many");
+          placed.add(playlistId);
+          put.run(account, playlistId, result.folder.id);
         }
       });
     })();

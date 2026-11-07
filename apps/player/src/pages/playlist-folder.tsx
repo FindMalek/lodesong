@@ -25,7 +25,16 @@ export function PlaylistFolderPage({ id }: { id: string }) {
       <>
         <PageHeader title="folder" />
         <Content>
-          <EmptyState>{loaded.isPending ? "loading…" : "that folder isn't here any more"}</EmptyState>
+          {loaded.isError ? (
+            <EmptyState>
+              couldn't load your folders
+              <Button variant="outline" size="sm" className="ml-3" onClick={() => loaded.refetch()}>
+                try again
+              </Button>
+            </EmptyState>
+          ) : (
+            <EmptyState>{loaded.isPending ? "loading…" : "that folder isn't here any more"}</EmptyState>
+          )}
         </Content>
       </>
     );

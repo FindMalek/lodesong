@@ -173,6 +173,21 @@ test("the sidebar waits for the folders instead of showing every playlist flat, 
   await fresh.close();
 });
 
+test("a folder page says it couldn't load the folders, instead of calling the folder gone", async ({ browser, context, signedIn }) => {
+  await signedIn.goto("/");
+  const fresh = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: await context.storageState() });
+  const cold = await fresh.newPage();
+  await cold.addInitScript(() => localStorage.setItem("keep-player:onboarded", "test"));
+  await cold.route("**/api/folders", (route) => route.abort());
+  await cold.goto("/playlist-folder/nope");
+  await expect(cold.getByText("couldn't load your folders")).toBeVisible();
+  await expect(cold.getByText("that folder isn't here any more")).toHaveCount(0);
+  await cold.unroute("**/api/folders");
+  await cold.getByRole("button", { name: "try again" }).click();
+  await expect(cold.getByText("that folder isn't here any more")).toBeVisible();
+  await fresh.close();
+});
+
 test("a folder stays open when the saved folder list is older than the folder", async ({ page, signedIn }) => {
   const stamp = Date.now();
   const [playlist, folder] = [`Old list ${stamp}`, `Old list shelf ${stamp}`];

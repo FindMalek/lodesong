@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { coverSchema, importSchema } from "@lodesong/shared/playlist-folders";
 import { openLibraryDb } from "./db";
 import {
   createFolder,
@@ -162,4 +163,35 @@ test("import: a tree lands in one go, and a refused entry leaves nothing behind"
   expect(importFolders(db, ME, { parentId: null, folders: [{ parent: null, name: "cap", playlists: [] }] }, 1)).toEqual({
     error: "too many",
   });
+});
+
+test("import: a playlist counts once however often it is listed, and the account cap holds for the whole tree", () => {
+  const { db, made } = setup();
+  const mine = made("mine");
+  const fill = db.query("insert into playlist_folder_items (account, playlist_id, folder_id) values (?, ?, ?)");
+  for (let at = 0; at < 1999; at += 1) fill.run(ME, `fill-${at}`, mine);
+  const tree = (...lists: string[][]) => ({
+    parentId: null,
+    folders: lists.map((playlists, at) => ({ parent: null, name: `t${at}`, playlists })),
+  });
+  expect(importFolders(db, ME, tree(["new-1"], ["new-2"]))).toEqual({ error: "too many" });
+  expect(listFolders(db, ME).items).toHaveLength(1999);
+  expect(importFolders(db, ME, tree(["fill-0", "fill-0", "new-1"], ["new-1", "new-1"]))).toEqual({ ok: true });
+  expect(listFolders(db, ME).items).toHaveLength(2000);
+  const before = listFolders(db, ME);
+  expect(importFolders(db, ME, tree(["new-2"]))).toEqual({ error: "too many" });
+  expect(listFolders(db, ME)).toEqual(before);
+});
+
+test("import: the request is bounded as a whole, not only per folder", () => {
+  const entry = (count: number) => ({ parent: null, name: "x", playlists: Array.from({ length: count }, (_, at) => `p${at}`) });
+  expect(importSchema.safeParse({ parentId: null, folders: [entry(1000), entry(1000)] }).success).toBe(true);
+  expect(importSchema.safeParse({ parentId: null, folders: [entry(1000), entry(1001)] }).success).toBe(false);
+  expect(importSchema.safeParse({ parentId: null, folders: [entry(2001)] }).success).toBe(false);
+});
+
+test("a picture's data url is capped before it is decoded", () => {
+  const url = (length: number) => `data:image/png;base64,${"A".repeat(length - "data:image/png;base64,".length)}`;
+  expect(coverSchema.safeParse(url(80_000)).success).toBe(true);
+  expect(coverSchema.safeParse(url(80_001)).success).toBe(false);
 });

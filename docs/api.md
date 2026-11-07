@@ -27,10 +27,10 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | `GET /api/releases`, `POST /api/releases/{id}/get` | new releases by artists you follow; hand one to Lyterion |
 | `GET /api/genres/inferred?genre` | songs with no genre tag, and genres of their artists from MusicBrainz ([genres](genres.md)) |
 | `GET /api/folders`, `POST /api/folders` | your playlist folders (picture versions, not the pictures) and the playlist each holds; make one |
-| `PATCH /api/folders/{id}`, `DELETE /api/folders/{id}` | rename, move or set the picture of a folder (png, jpeg or webp, 56 KB and 1024 px at most; not in the public demo); delete one, what is inside moves up |
+| `PATCH /api/folders/{id}`, `DELETE /api/folders/{id}` | rename, move or set the picture of a folder (png, jpeg or webp, 56 KB and 1024 px at most); delete one, what is inside moves up. Neither is allowed in the public demo |
 | `GET /api/folders/{id}/cover` | a folder's picture, with an `ETag` (`304` when you have it); `404` when it has none or isn't yours |
 | `PUT /api/playlists/{id}/folder` | put a playlist in a folder, or back at the top with `folderId: null` |
-| `POST /api/folders/import` | make a nested set of folders and fill them with playlists, all or nothing |
+| `POST /api/folders/import` | make a nested set of folders and fill them with playlists (2000 in all), all or nothing |
 | `GET /api/artists/{id}/appears-on` | albums by others an artist appears on |
 | `GET /api/remote/now`, `POST /api/remote/toggle·next·previous` | what's playing, and play/pause/skip ([devices](devices.md)) |
 

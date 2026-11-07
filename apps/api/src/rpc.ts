@@ -84,6 +84,13 @@ function okOrThrow(result: PlaceResult) {
 
 const DEMO_REFUSED = new ORPCError("FORBIDDEN", { message: "not in the public demo" });
 
+async function requirePlaylists(upstream: Upstream, session: Session, ids: string[]): Promise<void> {
+  const found = await playlistsExist(upstream, session, ids).catch(() => {
+    throw new ORPCError("BAD_GATEWAY", { message: "navidrome didn't answer" });
+  });
+  if (!found) throw new ORPCError("NOT_FOUND", { message: "missing" });
+}
+
 function readSettings(db: Database, account: string) {
   const row = db
     .query<{ body: string; updated: number }, [string]>("select body, updated from user_settings where account = ?")
@@ -291,24 +298,23 @@ export function createRpc({
       }),
       update: signedIn.folders.update.handler(async ({ context, input }) => {
         const { id, cover, ...change } = input;
-        if (cover !== undefined && publicDemo) throw DEMO_REFUSED;
+        if (publicDemo) throw DEMO_REFUSED;
         const picture = typeof cover === "string" ? await readCover(cover) : cover;
         if (picture === null && typeof cover === "string") throw new ORPCError("BAD_REQUEST", { message: "bad picture" });
         return folderOrThrow(updateFolder(library, context.account, id, { ...change, cover: picture }));
       }),
       remove: signedIn.folders.remove.handler(({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
         if (!removeFolder(library, context.account, input.id)) throw new ORPCError("NOT_FOUND", { message: "missing" });
         return OK;
       }),
       place: signedIn.folders.place.handler(async ({ context, input }) => {
-        if (input.folderId !== null && !(await playlistsExist(upstreamOf(context.session), context.session, [input.id])))
-          throw new ORPCError("NOT_FOUND", { message: "missing" });
+        if (input.folderId !== null) await requirePlaylists(upstreamOf(context.session), context.session, [input.id]);
         return okOrThrow(placePlaylist(library, context.account, input.id, input.folderId));
       }),
       import: signedIn.folders.import.handler(async ({ context, input }) => {
         const ids = input.folders.flatMap((folder) => folder.playlists);
-        if (!(await playlistsExist(upstreamOf(context.session), context.session, ids)))
-          throw new ORPCError("NOT_FOUND", { message: "missing" });
+        await requirePlaylists(upstreamOf(context.session), context.session, ids);
         return okOrThrow(importFolders(library, context.account, input, folderLimit));
       }),
     },

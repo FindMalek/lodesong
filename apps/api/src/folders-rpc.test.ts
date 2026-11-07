@@ -8,10 +8,14 @@ import { LoginLimiter } from "./rate-limit";
 import { SessionStore } from "./sessions";
 
 const KNOWN = ["pl-1", "pl-2", "pl-3"];
+let navidromeDown = false;
+let navidromeRefuses = false;
 const upstream = Bun.serve({
   port: 0,
   fetch: (request) => {
     const url = new URL(request.url);
+    if (navidromeDown) return new Response("down", { status: 503 });
+    if (navidromeRefuses) return Response.json({ "subsonic-response": { status: "failed" } });
     const ok = { "subsonic-response": { status: "ok" } };
     if (url.pathname.includes("getPlaylists"))
       return Response.json({ "subsonic-response": { status: "ok", playlists: { playlist: KNOWN.map((id) => ({ id })) } } });
@@ -117,8 +121,12 @@ test("a picture is checked for real, kept out of the list, and served to its own
   const response = await picture(folder.id);
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toBe("image/jpeg");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   const etag = response.headers.get("etag") ?? "";
   expect((await picture(folder.id, { "if-none-match": etag })).status).toBe(304);
+  expect((await picture(folder.id, { "if-none-match": `W/${etag}` })).status).toBe(304);
+  expect((await picture(folder.id, { "if-none-match": `"zzz", ${etag}` })).status).toBe(304);
+  expect((await picture(folder.id, { "if-none-match": '"zzz"' })).status).toBe(200);
   expect((await picture("nope")).status).toBe(404);
   expect((await as("other").picture(folder.id)).status).toBe(404);
   expect((await signedOut(folder.id)).status).toBe(401);
@@ -145,13 +153,15 @@ test("the picture is yours alone to fetch: another account, a terminal token and
   expect((await fetchWith("nope")).status).toBe(401);
 });
 
-test("the public demo takes folders but no pictures, and only a few", async () => {
+test("the public demo takes new folders, and only a few, but nobody edits or deletes the shared ones", async () => {
   const { as } = setup(true);
   const { rpc } = as("demo");
   const folder = await rpc.folders.create({ name: "first", parentId: null });
   await expect(rpc.folders.update({ id: folder.id, cover: await dataUrl("png") })).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(rpc.folders.update({ id: folder.id, cover: null })).rejects.toMatchObject({ code: "FORBIDDEN" });
-  expect((await rpc.folders.update({ id: folder.id, name: "renamed" })).name).toBe("renamed");
+  await expect(rpc.folders.update({ id: folder.id, name: "renamed" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(rpc.folders.remove({ id: folder.id })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  expect((await rpc.folders.list()).folders.map((one) => one.name)).toEqual(["first"]);
   for (let at = 1; at < 10; at += 1) await rpc.folders.create({ name: `f${at}`, parentId: null });
   await expect(rpc.folders.create({ name: "eleventh", parentId: null })).rejects.toMatchObject({ message: "too many" });
 });
@@ -175,6 +185,31 @@ test("import makes the whole tree or nothing, and refuses playlists that are not
   await expect(rpc.folders.import({ parentId: null, folders: [{ parent: 3, name: "x", playlists: [] }] })).rejects.toMatchObject({
     message: "invalid",
   });
+});
+
+test("when Navidrome can't be asked, place and import say so instead of calling the playlist missing", async () => {
+  const { as } = setup();
+  const { rpc } = as("me");
+  const folder = await rpc.folders.create({ name: "Shelf", parentId: null });
+  navidromeDown = true;
+  try {
+    await expect(rpc.folders.place({ id: "pl-1", folderId: folder.id })).rejects.toMatchObject({ code: "BAD_GATEWAY" });
+    await expect(
+      rpc.folders.import({ parentId: null, folders: [{ parent: null, name: "x", playlists: ["pl-1", "pl-2"] }] }),
+    ).rejects.toMatchObject({
+      code: "BAD_GATEWAY",
+    });
+    expect(await rpc.folders.place({ id: "pl-1", folderId: null })).toEqual({ ok: true });
+    navidromeDown = false;
+    navidromeRefuses = true;
+    await expect(
+      rpc.folders.import({ parentId: null, folders: [{ parent: null, name: "x", playlists: ["pl-1", "pl-2"] }] }),
+    ).rejects.toMatchObject({ code: "BAD_GATEWAY" });
+  } finally {
+    navidromeDown = false;
+    navidromeRefuses = false;
+  }
+  expect((await rpc.folders.list()).folders).toHaveLength(1);
 });
 
 test("deleting a playlist through lodesong drops its folder placement, for that account only", async () => {

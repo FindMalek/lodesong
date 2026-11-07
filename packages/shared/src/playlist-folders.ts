@@ -36,19 +36,24 @@ export const coverSchema = z
   .max(MAX_COVER_LENGTH)
   .regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/);
 
-export const importSchema = z.object({
-  parentId: idSchema.nullable(),
-  folders: z
-    .array(
-      z.object({
-        parent: z.number().int().min(0).nullable().describe("Index of an earlier entry in this list; null puts it under parentId"),
-        name: nameSchema,
-        playlists: z.array(idSchema).max(MAX_FOLDER_ITEMS),
-      }),
-    )
-    .min(1)
-    .max(MAX_FOLDERS),
-});
+export const importSchema = z
+  .object({
+    parentId: idSchema.nullable(),
+    folders: z
+      .array(
+        z.object({
+          parent: z.number().int().min(0).nullable().describe("Index of an earlier entry in this list; null puts it under parentId"),
+          name: nameSchema,
+          playlists: z.array(idSchema).max(MAX_FOLDER_ITEMS),
+        }),
+      )
+      .min(1)
+      .max(MAX_FOLDERS),
+  })
+  .refine((request) => request.folders.reduce((total, entry) => total + entry.playlists.length, 0) <= MAX_FOLDER_ITEMS, {
+    message: "too many playlists",
+    path: ["folders"],
+  });
 
 export type FolderImport = z.infer<typeof importSchema>;
 
