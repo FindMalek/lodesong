@@ -8,6 +8,14 @@ interface OutputProbe {
 
 /** Taps what is wired to a context's speakers: `outputLevel` is the loudest recent RMS, `outputStates` every context's state. */
 export function tapOutput(): void {
+  // No sound card in CI: render to no device (Chrome), and keep the app from switching back to the default one.
+  const Native = window.AudioContext;
+  window.AudioContext = class extends Native {
+    constructor(options?: AudioContextOptions) {
+      super({ ...options, sinkId: { type: "none" } } as AudioContextOptions);
+    }
+    setSinkId = async (): Promise<void> => undefined;
+  };
   const contexts = new Set<BaseAudioContext>();
   const analysers = new Map<BaseAudioContext, AnalyserNode>();
   const connect = AudioNode.prototype.connect as (this: AudioNode, ...args: unknown[]) => unknown;
