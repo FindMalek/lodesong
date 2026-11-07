@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { clampSidebarWidth, SIDEBAR_DEFAULT } from "./sidebar-width";
+import { SIDEBAR_DEFAULT } from "./sidebar-width";
 import type { StreamQuality } from "./stream-quality";
 
 // Prefs in SYNCED follow you to every browser through the server (settings-sync.ts); the rest belong to this device.
@@ -80,7 +80,6 @@ export function sanitize<K extends keyof Settings>(key: K, value: unknown): Sett
   if (key === "normalization") return (NORMALIZATIONS.includes(value as string) ? value : undefined) as Settings[K] | undefined;
   if (key === "language") return (LANGUAGE_CHOICES.includes(value as string) ? value : undefined) as Settings[K] | undefined;
   if (key === "look") return String(value).slice(0, 64) as Settings[K];
-  if (key === "sidebarWidth") return clampSidebarWidth(Number(value)) as Settings[K];
   if (key === "crossfade") return Math.max(0, Math.min(12, Number(value) || 0)) as Settings[K];
   if (key === "preamp") return Math.max(-12, Math.min(12, Number(value) || 0)) as Settings[K];
   if (key === "eqGains")

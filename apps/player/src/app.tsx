@@ -29,7 +29,7 @@ import { startRecentSources } from "@/lib/recent-sources";
 import { go, replace, usePath } from "@/lib/router";
 import { useSetting } from "@/lib/settings";
 import { installShortcuts, useShortcuts } from "@/lib/shortcuts";
-import { clampSidebarWidth } from "@/lib/sidebar-width";
+import { clampSidebarWidth, sidebarCss } from "@/lib/sidebar-width";
 import { useCheckingSession, useUser } from "@/lib/subsonic";
 import { isOnboarded, welcomeTip } from "@/lib/tips";
 import { loadTooltips } from "@/lib/tooltips";
@@ -327,7 +327,7 @@ export function App() {
         >
           skip to content
         </a>
-        <SidebarProvider className="min-h-0 flex-1" style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
+        <SidebarProvider className="min-h-0 flex-1" style={{ "--sidebar-width": sidebarCss(sidebarWidth) } as CSSProperties}>
           <AppSidebar path={path} />
           <SidebarInset className="min-h-0 min-w-0">
             <MobileBar onSearch={() => setSearching(true)} onShortcuts={() => setCheatSheet(true)} />

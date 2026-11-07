@@ -1,49 +1,74 @@
-import { type KeyboardEvent, type PointerEvent, useRef } from "react";
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef } from "react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { setSetting, useSetting } from "@/lib/settings";
-import { clampSidebarWidth, SIDEBAR_COLLAPSE_BELOW, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, sidebarKeyWidth } from "@/lib/sidebar-width";
+import {
+  clampSidebarWidth,
+  SIDEBAR_DEFAULT,
+  SIDEBAR_MAX,
+  SIDEBAR_MIN,
+  shouldCollapseSidebar,
+  sidebarCss,
+  sidebarKeyWidth,
+  visibleSidebarWidth,
+} from "@/lib/sidebar-width";
 
 interface Drag {
+  wrapper: HTMLElement | null;
+  stored: string;
   startX: number;
   startWidth: number;
   raw: number;
   zoom: number;
 }
 
-const wrapperOf = (target: EventTarget): HTMLElement | null => (target as HTMLElement).closest("[data-slot=sidebar-wrapper]");
-const show = (target: EventTarget, width: number) => wrapperOf(target)?.style.setProperty("--sidebar-width", `${width}px`);
+const currentZoom = (): number => Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom")) || 1;
+const show = (drag: Drag, css: string) => drag.wrapper?.style.setProperty("--sidebar-width", css);
 
 export function SidebarResizer() {
   const { setOpen, state, isMobile } = useSidebar();
   const dragging = useRef<Drag | null>(null);
   const width = clampSidebarWidth(useSetting("sidebarWidth"));
+  const hidden = isMobile || state === "collapsed";
 
-  const move = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    dragging.current.raw = dragging.current.startWidth + (event.clientX - dragging.current.startX) / dragging.current.zoom;
-    show(event.currentTarget, clampSidebarWidth(dragging.current.raw));
+  const cancel = () => {
+    const drag = dragging.current;
+    dragging.current = null;
+    if (drag) show(drag, drag.stored);
   };
 
-  const end = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragging.current) return;
-    const { raw } = dragging.current;
-    dragging.current = null;
-    if (raw < SIDEBAR_COLLAPSE_BELOW) {
-      show(event.currentTarget, width);
+  // The handle is gone by then, so no pointerup or cancel will come to undo the live width.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: cancel only reads a ref
+  useEffect(() => {
+    if (hidden) cancel();
+  }, [hidden]);
+
+  const move = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragging.current;
+    if (!drag) return;
+    drag.raw = drag.startWidth + (event.clientX - drag.startX) / drag.zoom;
+    show(drag, sidebarCss(clampSidebarWidth(drag.raw)));
+  };
+
+  const end = () => {
+    const drag = dragging.current;
+    if (!drag) return;
+    if (shouldCollapseSidebar(drag.raw)) {
+      cancel();
       setOpen(false);
       return;
     }
-    setSetting("sidebarWidth", clampSidebarWidth(raw));
+    dragging.current = null;
+    setSetting("sidebarWidth", clampSidebarWidth(drag.raw));
   };
 
   const keys = (event: KeyboardEvent<HTMLDivElement>) => {
-    const next = sidebarKeyWidth(event.key, width, event.shiftKey);
+    const next = sidebarKeyWidth(event.key, visibleSidebarWidth(width, window.innerWidth, currentZoom()), event.shiftKey);
     if (next === null) return;
     event.preventDefault();
     setSetting("sidebarWidth", next);
   };
 
-  if (isMobile || state === "collapsed") return null;
+  if (hidden) return null;
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: a window splitter is a focusable separator, <hr> cannot take focus or a value
@@ -62,12 +87,20 @@ export function SidebarResizer() {
         event.preventDefault();
         event.currentTarget.focus();
         event.currentTarget.setPointerCapture(event.pointerId);
-        const zoom = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom")) || 1;
-        dragging.current = { startX: event.clientX, startWidth: width, raw: width, zoom };
+        const zoom = currentZoom();
+        const startWidth = visibleSidebarWidth(width, window.innerWidth, zoom);
+        dragging.current = {
+          wrapper: event.currentTarget.closest<HTMLElement>("[data-slot=sidebar-wrapper]"),
+          stored: sidebarCss(width),
+          startX: event.clientX,
+          startWidth,
+          raw: startWidth,
+          zoom,
+        };
       }}
       onPointerMove={move}
       onPointerUp={end}
-      onPointerCancel={end}
+      onPointerCancel={cancel}
       onDoubleClick={() => setSetting("sidebarWidth", SIDEBAR_DEFAULT)}
       onKeyDown={keys}
     />

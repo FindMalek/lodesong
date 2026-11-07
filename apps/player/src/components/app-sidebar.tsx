@@ -17,7 +17,6 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { SidebarResizer } from "@/components/sidebar-resizer";
 import {
   Sidebar,
   SidebarContent,
@@ -48,6 +47,7 @@ import { Link } from "./link";
 
 const ElsewhereBadge = lazy(() => import("./elsewhere-badge").then((module) => ({ default: module.ElsewhereBadge })));
 // Right-clicking a playlist loads the shared item menu then (menus stay off the first screen).
+const SidebarResizer = lazy(() => import("./sidebar-resizer").then((module) => ({ default: module.SidebarResizer })));
 const PointMenu = lazy(() => import("./item-menu").then((module) => ({ default: module.PointMenu })));
 
 const LIBRARY = [
@@ -255,7 +255,9 @@ export function AppSidebar({ path }: { path: string }) {
             </Suspense>
           )}
         </SidebarFooter>
-        <SidebarResizer />
+        <Suspense>
+          <SidebarResizer />
+        </Suspense>
       </nav>
     </Sidebar>
   );
