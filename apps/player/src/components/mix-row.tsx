@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PlayIcon } from "lucide-react";
 import { useEffect } from "react";
 import { Aura } from "@/components/aura";
+import { Dither } from "@/components/dither";
 import { Section } from "@/components/library";
 import { Link } from "@/components/link";
 import { player } from "@/lib/player";
@@ -107,7 +108,10 @@ export function MixRow() {
           const cover = (
             <span className="relative block aspect-square w-full overflow-hidden border">
               <Aura id={`${mix.id}-${day}`} songs={mix.songs} className="size-full" />
-              <span className="absolute inset-0 flex items-end p-2 font-medium font-mono text-sm">{mix.name}</span>
+              <Dither id={`${mix.id}-${day}`} className="absolute inset-0 size-full" />
+              <span className="absolute inset-0 flex items-end p-2 font-medium font-mono text-sm">
+                <span className="bg-background/70 px-1">{mix.name}</span>
+              </span>
             </span>
           );
           return (

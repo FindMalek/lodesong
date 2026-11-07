@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { ditherCells, ditherPath, ditherSeed } from "@lodesong/shared/dither";
 import { ImageResponse } from "next/og";
 
 /** Share images (Open Graph, Twitter): the site's black and white, the brand mark, a big title. */
@@ -10,6 +11,16 @@ const font = (name: string) => readFile(new URL(`../../assets/fonts/${name}`, im
 // The bundled fonts are latin only: key symbols in a title or description are spelled out instead.
 const KEYS: Record<string, string> = { "⌘": "cmd ", "⇧": "shift ", "⌥": "option ", "⌃": "ctrl ", "↵": "enter", "←": "left", "→": "right" };
 const plain = (text?: string) => text?.replace(/[⌘⇧⌥⌃↵←→]/g, (key) => KEYS[key] ?? "").replace(/ {2,}/g, " ");
+
+const DITHER_CELL = 10;
+
+function ditherBackdrop(seed: string): string {
+  const cols = OG_SIZE.width / DITHER_CELL;
+  const rows = OG_SIZE.height / DITHER_CELL;
+  const path = ditherPath(ditherCells(cols, rows, ditherSeed(seed)), cols, DITHER_CELL);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_SIZE.width}" height="${OG_SIZE.height}"><path fill="#2a2a2a" d="${path}"/></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
 
 export async function ogImage(input: { eyebrow: string; title: string; subtitle?: string }) {
   const title = plain(input.title) ?? "";
@@ -23,6 +34,7 @@ export async function ogImage(input: { eyebrow: string; title: string; subtitle?
   return new ImageResponse(
     <div
       style={{
+        position: "relative",
         width: "100%",
         height: "100%",
         display: "flex",
@@ -34,6 +46,16 @@ export async function ogImage(input: { eyebrow: string; title: string; subtitle?
         fontFamily: "Plex",
       }}
     >
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: OG_SIZE.width,
+          height: OG_SIZE.height,
+          backgroundImage: `url(${ditherBackdrop(title)})`,
+        }}
+      />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, fontFamily: "JetBrains", fontSize: 30 }}>
           <div style={{ width: 22, height: 22, background: "#ebebeb" }} />
