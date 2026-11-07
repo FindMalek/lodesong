@@ -19,11 +19,12 @@ export async function subsonic<T>(
   credentials: Credentials,
   endpoint: string,
   params: Record<string, string | number> = {},
+  timeoutMs = 15_000,
 ): Promise<T | null> {
   const query = upstreamQuery(credentials);
   query.set("f", "json");
   for (const [key, value] of Object.entries(params)) query.set(key, String(value));
-  const response = await fetch(`${upstream.url}/rest/${endpoint}?${query}`, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+  const response = await fetch(`${upstream.url}/rest/${endpoint}?${query}`, { signal: AbortSignal.timeout(timeoutMs) }).catch(() => null);
   if (!response?.ok) return null;
   const body = (await response.json().catch(() => null)) as { "subsonic-response"?: T & { status?: string } } | null;
   const result = body?.["subsonic-response"];
