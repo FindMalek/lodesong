@@ -4,29 +4,32 @@ import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
 import { enableTailwind } from "@remotion/tailwind-v4";
 import { beat, FPS } from "../src/design/beat";
-import { type Box, type Measure, PROBE_TAG } from "../src/design/probe";
-import { CUES, HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "../src/scenes/open-timeline";
 
-// bun scripts/check.ts stills [frames...] [--docs]   bundle once, render stills, fail on the legibility and furniture rules
-// bun scripts/check.ts onsets <file.mp4>             find audio onsets in a rendered file and compare them to the cue table
+import { type Box, type Measure, PROBE_TAG } from "../src/design/probe";
+import { CUES } from "../src/scenes/open-timeline";
+import { STILLS, type StillPlan } from "../src/scenes/stills";
+
+// bun scripts/check.ts stills <composition> [frames...] [--docs]   bundle once, render stills, fail on the legibility and furniture rules
+// bun scripts/check.ts stills all                                  every composition in one bundle
+// bun scripts/check.ts onsets <file.mp4>                           find audio onsets in a rendered file and compare them to the cue table
 const FLOOR_PX = 28;
 const MIN_OPACITY = 0.6;
 const SAFE = 56;
-const FRAME = { w: 1920, h: 1080 };
-const ID = "scene-open";
+let frameSize = { w: 1920, h: 1080 };
 
 const hits = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-const inside = (a: Box): boolean => a.x >= SAFE && a.y >= SAFE && a.x + a.w <= FRAME.w - SAFE && a.y + a.h <= FRAME.h - SAFE;
+const inside = (a: Box): boolean =>
+  a.x >= SAFE && a.y >= SAFE && a.x + a.w <= frameSize.w - SAFE && a.y + a.h <= frameSize.h - SAFE;
 
-function judge(m: Measure): string[] {
+function judge(m: Measure, plan: StillPlan): string[] {
   const problems: string[] = [];
-  if (HERO_FRAMES.includes(m.frame) && m.legible.length === 0) problems.push("hero frame has no legible UI text");
+  if (plan.hero.includes(m.frame) && m.legible.length === 0) problems.push("hero frame has no legible text");
   for (const item of m.legible) {
     if (item.px < FLOOR_PX) problems.push(`"${item.text}" is ${item.px.toFixed(1)} px, floor ${FLOOR_PX}`);
     if (item.opacity < MIN_OPACITY)
       problems.push(`"${item.text}" is at ${(item.opacity * 100).toFixed(0)}% opacity, floor ${MIN_OPACITY * 100}`);
   }
-  if (SETTLED_FRAMES.includes(m.frame)) {
+  if (plan.settled.includes(m.frame)) {
     if (m.panels.length === 0) problems.push("settled frame has no panels");
     for (const panel of m.panels) {
       if (!inside(panel)) problems.push(`panel ${JSON.stringify(panel)} leaves the ${SAFE} px safe area`);
@@ -36,26 +39,25 @@ function judge(m: Measure): string[] {
   return problems;
 }
 
-async function stills(args: string[]): Promise<number> {
-  const docs = args.includes("--docs");
-  const picked = args.filter((arg) => !arg.startsWith("--")).map(Number);
-  const frames = picked.length > 0 ? picked : [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b);
-  const started = performance.now();
-  const serveUrl = await bundle({ entryPoint: resolve("src/index.ts"), webpackOverride: enableTailwind });
-  console.log(`bundle ${((performance.now() - started) / 1000).toFixed(1)} s`);
+async function stillsOf(serveUrl: string, id: string, picked: number[], docs: boolean): Promise<number> {
+  const plan = STILLS[id];
+  if (!plan) {
+    console.error(`no still plan for ${id}`);
+    return 1;
+  }
+  const frames = picked.length > 0 ? picked : plan.frames;
   const measures = new Map<number, Measure>();
   const inputProps = { probe: true };
-  const composition = await selectComposition({ serveUrl, id: ID, inputProps });
-  mkdirSync(docs ? "docs-stills" : "out/stills", { recursive: true });
+  const composition = await selectComposition({ serveUrl, id, inputProps });
+  frameSize = { w: composition.width, h: composition.height };
   for (const frame of frames) {
-    const output = docs ? `docs-stills/open-f${frame}.jpg` : `out/stills/f${frame}.png`;
     await renderStill({
       composition,
       serveUrl,
-      output,
+      output: docs ? `docs-stills/${id}-f${frame}.jpg` : `out/stills/${id}-f${frame}.png`,
       frame,
       inputProps,
-      ...(docs ? { imageFormat: "jpeg" as const, jpegQuality: 88 } : { imageFormat: "png" as const }),
+      ...(docs ? { imageFormat: "jpeg" as const, jpegQuality: 86 } : { imageFormat: "png" as const }),
       overwrite: true,
       onBrowserLog: (log) => {
         if (log.text.startsWith(PROBE_TAG)) measures.set(frame, JSON.parse(log.text.slice(PROBE_TAG.length)));
@@ -66,19 +68,33 @@ async function stills(args: string[]): Promise<number> {
   for (const frame of frames) {
     const m = measures.get(frame);
     if (!m) {
-      console.error(`f${frame}: probe returned nothing`);
+      console.error(`${id} f${frame}: probe returned nothing`);
       failures += 1;
       continue;
     }
-    const problems = judge(m);
+    const problems = judge(m, plan);
     const smallest = m.legible.reduce((min, item) => Math.min(min, item.px), Number.POSITIVE_INFINITY);
     console.log(
-      `f${frame}: ${problems.length === 0 ? "ok" : "FAIL"}${m.legible.length ? ` smallest hero text ${smallest.toFixed(1)} px` : ""}`,
+      `${id} f${frame}: ${problems.length === 0 ? "ok" : "FAIL"}${m.legible.length ? ` smallest tagged text ${smallest.toFixed(1)} px` : ""}`,
     );
     for (const problem of problems) console.error(`  ${problem}`);
     failures += problems.length;
   }
-  console.log(`${frames.length} stills in ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  return failures;
+}
+
+async function stills(args: string[]): Promise<number> {
+  const docs = args.includes("--docs");
+  const [id, ...rest] = args.filter((arg) => !arg.startsWith("--"));
+  const picked = rest.map(Number);
+  const started = performance.now();
+  const serveUrl = await bundle({ entryPoint: resolve("src/index.ts"), webpackOverride: enableTailwind });
+  console.log(`bundle ${((performance.now() - started) / 1000).toFixed(1)} s`);
+  mkdirSync(docs ? "docs-stills" : "out/stills", { recursive: true });
+  const ids = id === "all" ? Object.keys(STILLS) : [id ?? "scene-open"];
+  let failures = 0;
+  for (const one of ids) failures += await stillsOf(serveUrl, one, picked, docs);
+  console.log(`stills in ${((performance.now() - started) / 1000).toFixed(1)} s`);
   return failures;
 }
 

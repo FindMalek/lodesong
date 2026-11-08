@@ -30,7 +30,7 @@ function opacityOf(element: HTMLElement): number {
 }
 
 function measure(frame: number): Measure {
-  const legible = [...document.querySelectorAll<HTMLElement>("[data-legible]")].map((element) => ({
+  const legible = [...document.querySelectorAll<HTMLElement>("[data-legible]")].filter((element) => opacityOf(element) >= 0.02).map((element) => ({
     text: element.textContent ?? "",
     px: Number.parseFloat(getComputedStyle(element).fontSize) * (element.getBoundingClientRect().height / element.offsetHeight),
     opacity: opacityOf(element),
