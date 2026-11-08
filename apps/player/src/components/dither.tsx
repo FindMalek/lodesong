@@ -1,10 +1,10 @@
 import { ditherCells, ditherSeed } from "@lodesong/shared/dither";
 import { useEffect, useRef } from "react";
 import { colors } from "@/components/aura";
+import { onDriftFrame } from "@/lib/drift-clock";
 import { subscribeTheme } from "@/lib/theme";
 
 const CELL_PX = 4;
-const FRAME_MS = 500;
 
 /** Dithered ink dots over whatever is behind, seeded by `id`. They drift slowly while on screen and hold one frame under reduced motion. */
 export function Dither({ id, className }: { id: string; className?: string }) {
@@ -16,12 +16,15 @@ export function Dither({ id, className }: { id: string; className?: string }) {
     if (!element || !context) return;
     const seed = ditherSeed(id);
     const still = matchMedia("(prefers-reduced-motion: reduce)");
-    let visible = true;
-    let timer = 0;
+    let visible = false;
+    let size: { width: number; height: number } | null = null;
+    let ink: string | null = null;
+    let stopDrift: (() => void) | null = null;
     const paint = () => {
+      if (!size) return;
       const scale = window.devicePixelRatio || 1;
-      const width = Math.max(1, Math.round(element.clientWidth * scale));
-      const height = Math.max(1, Math.round(element.clientHeight * scale));
+      const width = Math.max(1, Math.round(size.width * scale));
+      const height = Math.max(1, Math.round(size.height * scale));
       if (element.width !== width || element.height !== height) {
         element.width = width;
         element.height = height;
@@ -30,32 +33,40 @@ export function Dither({ id, className }: { id: string; className?: string }) {
       const cols = Math.ceil(width / cell);
       const rows = Math.ceil(height / cell);
       const cells = ditherCells(cols, rows, seed, still.matches ? 0 : performance.now() / 1000);
+      ink ??= colors().ink;
       context.clearRect(0, 0, width, height);
-      context.fillStyle = colors().ink;
+      context.fillStyle = ink;
       context.globalAlpha = 0.3;
       for (let index = 0; index < cells.length; index += 1) {
         if (cells[index]) context.fillRect((index % cols) * cell, Math.floor(index / cols) * cell, cell, cell);
       }
     };
     const sync = () => {
-      clearInterval(timer);
-      timer = 0;
+      stopDrift?.();
+      stopDrift = null;
+      if (!visible) return;
       paint();
-      if (visible && !document.hidden && !still.matches) timer = window.setInterval(paint, FRAME_MS);
+      if (!document.hidden && !still.matches) stopDrift = onDriftFrame(paint);
     };
     const watch = new IntersectionObserver(([entry]) => {
       visible = entry?.isIntersecting ?? true;
       sync();
     });
     watch.observe(element);
-    const resize = new ResizeObserver(paint);
+    const resize = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      size = { width: entry.contentRect.width, height: entry.contentRect.height };
+      if (visible) paint();
+    });
     resize.observe(element);
     still.addEventListener("change", sync);
     document.addEventListener("visibilitychange", sync);
-    const unsubscribe = subscribeTheme(paint);
-    sync();
+    const unsubscribe = subscribeTheme(() => {
+      ink = null;
+      if (visible) paint();
+    });
     return () => {
-      clearInterval(timer);
+      stopDrift?.();
       watch.disconnect();
       resize.disconnect();
       still.removeEventListener("change", sync);
