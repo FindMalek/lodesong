@@ -47,6 +47,9 @@ jobs:
       - name: Run the player in the app's WKWebView
         if: inputs.tag == ''
         timeout-minutes: 10
+        env:
+          # XCTest buffers its output when it is not a terminal: a hung run would print nothing before the timeout.
+          NSUnbufferedIO: "YES"
         run: |
           bun install --frozen-lockfile
           bun scripts/build.ts

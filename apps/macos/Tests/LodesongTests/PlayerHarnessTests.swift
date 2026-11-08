@@ -30,18 +30,23 @@ import XCTest
         return opened
     }
 
-    /// A context only reaches `running` with an output device. Without one the audio checks are skipped locally and
-    /// fail in CI, where a silent skip would leave a green job that proved nothing.
-    private func requireRunningContext(_ page: PlayerPage) async throws {
-        let running = await page.until(20) { await page.states().contains("running") }
-        if running { return }
-        let states = await page.states()
-        if !hasDefaultOutputDevice() {
-            let message = "no audio output device on this machine: the AudioContext stays \(states), so sound can't be measured"
-            if ProcessInfo.processInfo.environment["CI"] != nil { return XCTFail(message) }
-            throw XCTSkip(message)
+    /// A context only reaches `running` with an output device, even when the page is muted. Without one the audio
+    /// checks are skipped locally and fail in CI, where a silent skip would leave a green job that proved nothing.
+    /// Checked first, so a machine with no device fails in seconds and not after every wait has run out.
+    private func requireOutputDevice() throws {
+        if hasDefaultOutputDevice() { return }
+        let message = "no audio output device on this machine: the AudioContext never runs, so sound can't be measured"
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            XCTFail(message)
+            throw HarnessError(message)
         }
-        XCTFail("an output device exists but the AudioContext is \(states)")
+        throw XCTSkip(message)
+    }
+
+    private func requireRunningContext(_ page: PlayerPage) async throws {
+        try requireOutputDevice()
+        let running = await page.until(20) { await page.states().contains("running") }
+        if !running { XCTFail("an output device exists but the AudioContext is \(await page.states())") }
     }
 
     private func expectAudible(_ page: PlayerPage, _ what: String) async throws {
@@ -107,6 +112,7 @@ import XCTest
     /// The island, menu bar and media keys: the app calls `window.keepNative` with no DOM tap behind it. WebKit treats
     /// that script as user-activated, which the test pins so it can't be read as an activation-free start.
     func testAudibleWhenStartedByTheNativeBridgeWithNoDomTap() async throws {
+        try requireOutputDevice()
         let page = open()
         try await page.playAlbum("al-3")
         let playing = await page.until { page.nowPlaying.playing }
@@ -130,6 +136,7 @@ import XCTest
     /// The real activation-free start: a fresh web view on the saved queue, where a page timer presses play with no
     /// event and no script from the app, so `navigator.userActivation` is false. Only the app's media policy lets that play.
     func testAudibleWhenStartedWithNoUserActivationAtAll() async throws {
+        try requireOutputDevice()
         let signedIn = open()
         try await signedIn.playAlbum("al-3")
         let playing = await signedIn.until { signedIn.nowPlaying.playing }
@@ -150,6 +157,7 @@ import XCTest
     }
 
     func testOriginalMp3AndOpusAreAudible() async throws {
+        try requireOutputDevice()
         for quality in ["original", "mp3-320", "opus-192"] {
             let page = open(quality)
             try await page.playAlbum("al-3")
