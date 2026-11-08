@@ -34,21 +34,28 @@ macOS 14 or later. On managed Macs, `apps/macos/pkg.sh` builds a pkg that instal
 
 ## No sound?
 
-Play a song so it is running (the report needs one), then pick **Help > Copy Audio Diagnostics** and paste the result
-into the issue or message you were asked to answer. It is a JSON report of what the app and the page see:
+Pick **Help > Copy Audio Diagnostics** and paste the result into the issue or message you were asked to answer. Play a
+song first: it is recommended, not required (with nothing playing you get a report that says so). The menu item reads
+"Copying..." while it works (up to about 12 s) and a message lists what it found. The report is JSON with `findings`
+first, in words, then what the app and the page see:
 
-- the app, macOS and WebKit versions and the Mac's default output device;
-- the song, the stream quality the player chose and the stream's address with every token, cookie and the server's own
-  address removed (`/rest/stream?id=...&format=opus`);
+- the app, macOS and WebKit versions and the Mac's default output device (its name, sample rate, mute and volume);
+- the song (id, title, duration and ReplayGain tags), the stream quality the player chose and the stream's address
+  reduced to its path and the audio params (`/rest/stream?id=<id>&format=opus`): no server address, token or cookie;
 - both decks: `readyState`, `networkState`, error, `currentTime`, `duration` (`"Infinity"` is a stream with no length),
   muted, volume and gain;
 - the audio context (state, sample rate, latency), the master and per-deck gains, the normalization in effect and the
   loudest sample leaving the audio graph over 0.6 s (`graphPeak`: 0 while the song plays is silence inside the page);
-- the last 20 media events and errors, whether the levels worklet loads, the service worker's state and the settings
-  that touch sound;
-- `probe`: what the server answers to a `Range: bytes=0-1` request for the stream (status, `Content-Type`,
-  `Content-Length`, `Accept-Ranges`, `Content-Range`);
-- `findings`: the checks above that failed, in words.
+- the last 20 media events and errors (one line each), whether the levels worklet loads, the service worker's state and
+  the settings that touch sound (stream quality, normalization, pre-amp, crossfade, equalizer);
+- `probe`: what lodesong's own server answers to a `Range: bytes=0-1` request for the stream (status, `Content-Type`,
+  `Content-Length`, `Accept-Ranges`, `Content-Range`). It goes through lodesong, so a missing length can come from your
+  music server or from a proxy in front of lodesong. It can make Navidrome start a second transcode for a moment: the
+  request is cancelled as soon as the headers arrive.
+
+The report names your song, your output device (a Bluetooth device often carries your name), your macOS version and
+your audio settings, and it holds no password, cookie, token or server address. Read it before you paste it.
+A part that can't be read is named in `findings` and the rest still arrives.
 
 To look at the page itself in Safari's Web Inspector, turn it on once and relaunch the app:
 
@@ -56,7 +63,9 @@ To look at the page itself in Safari's Web Inspector, turn it on once and relaun
 defaults write engineer.findmalek.lodesong inspectable -bool YES
 ```
 
-The app then shows up under Safari's **Develop** menu, named after your Mac. `-bool NO` (or `defaults delete`) turns it off.
+In Safari, turn on **Settings > Advanced > Show features for web developers**. The app then shows up under Safari's
+**Develop** menu, named after your Mac. `-bool NO` (or `defaults delete engineer.findmalek.lodesong inspectable`) turns it
+off.
 
 ## Build
 

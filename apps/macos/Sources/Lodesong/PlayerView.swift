@@ -38,7 +38,7 @@ import WebKit
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         // `defaults write engineer.findmalek.lodesong inspectable -bool YES`, read at launch: Safari's Develop menu can then inspect the page.
-        webView.isInspectable = UserDefaults.standard.bool(forKey: "inspectable")
+        webView.isInspectable = Diagnostics.inspectable()
         // Until the page paints, the window's own background shows (dark in dark mode) instead of a white flash.
         webView.setValue(false, forKey: "drawsBackground")
         nowPlaying.bridge = self
@@ -97,9 +97,52 @@ import WebKit
             "return window.keepNative ? await window.keepNative.\(js) : null", contentWorld: .page)
     }
 
-    /// The report Help > Copy Audio Diagnostics copies: the page's, with the app's details added.
-    func audioDiagnostics() async -> String {
-        Diagnostics.report(page: await callAsync("diagnostics()") as? String)
+    var reportSeconds = 12
+
+    /// The report Help > Copy Audio Diagnostics copies: the page's, with the app's details added. A page that is
+    /// missing its bridge, throws or takes more than `reportSeconds` still gets a report that says so.
+    func audioDiagnostics() async -> (text: String, findings: [String]) {
+        let output = await Task.detached { Diagnostics.defaultOutput() }.value
+        let page = await firstPageAnswer()
+        let app = Diagnostics.app(inspectable: webView.isInspectable, output: output)
+        return Diagnostics.report(page: page, app: app, findings: output.findings)
+    }
+
+    @MainActor private final class Race {
+        var finished = false
+    }
+
+    /// The page's answer or the timeout, whichever comes first: a script that never returns can't be cancelled.
+    private func firstPageAnswer() async -> Diagnostics.Page {
+        let race = Race()
+        return await withCheckedContinuation { continuation in
+            let finish: @MainActor (Diagnostics.Page) -> Void = { page in
+                guard !race.finished else { return }
+                race.finished = true
+                continuation.resume(returning: page)
+            }
+            Task { @MainActor in finish(await self.pageReport()) }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(reportSeconds) * 1_000_000_000)
+                finish(.timeout(seconds: reportSeconds))
+            }
+        }
+    }
+
+    private func pageReport() async -> Diagnostics.Page {
+        let script = """
+        if (!window.keepNative || typeof window.keepNative.diagnostics !== "function") return { missing: true };
+        try { return { text: await window.keepNative.diagnostics() }; }
+        catch (error) { return { error: String((error && error.name) || "Error").replace(/[^\\w.-]/g, "").slice(0, 40) }; }
+        """
+        do {
+            let answer = try await webView.callAsyncJavaScript(script, contentWorld: .page) as? [String: Any]
+            if let text = answer?["text"] as? String { return .text(text) }
+            if let name = answer?["error"] as? String { return .error(name) }
+            return .missing
+        } catch {
+            return .error("ScriptError")
+        }
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {

@@ -188,11 +188,13 @@ import XCTest
         let page = open("opus-192")
         try await page.playAlbum("al-3")
         try await expectAudible(page, "opus-192")
-        let text = await page.player.audioDiagnostics()
+        let text = await page.player.audioDiagnostics().text
+        XCTAssertTrue(text.hasPrefix("{\n  \"findings\""), "the findings come first: \(text.prefix(80))")
         let report = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any], "not JSON: \(text.prefix(300))")
         let app = try XCTUnwrap(report["app"] as? [String: Any])
         XCTAssertNotNil(app["webKit"])
         XCTAssertNotNil(app["output"])
+        XCTAssertEqual(app["inspectable"] as? Bool, page.web.isInspectable, "the report states the default, not the web view")
         XCTAssertEqual(try XCTUnwrap(report["stream"] as? [String: Any])["playing"] as? String, "opus-192")
         XCTAssertEqual((report["context"] as? [String: Any])?["state"] as? String, "running")
         let decks = try XCTUnwrap(report["decks"] as? [[String: Any]])
@@ -200,15 +202,67 @@ import XCTest
         XCTAssertTrue((active["src"] as? String)?.hasPrefix("/rest/stream?id=") == true, "the stream is named without its origin: \(active["src"] ?? "nil")")
         XCTAssertGreaterThan(report["graphPeak"] as? Double ?? 0, Self.audible, "the report says nothing leaves the graph while the tap hears it")
         XCTAssertNotNil((report["probe"] as? [String: Any])?["status"], "the range probe answered nothing")
-        XCTAssertEqual(report["findings"] as? [String], [], "a healthy playback has findings")
+        let findings = (report["findings"] as? [String] ?? []).filter { !$0.hasPrefix("the Mac") }
+        XCTAssertEqual(findings, [], "a healthy playback has findings")
         XCTAssertFalse(text.contains(Servers.app.host ?? "127.0.0.1"), "the report names the server")
         XCTAssertFalse(text.lowercased().contains("cookie"), "the report mentions cookies")
     }
 
-    func testAPageThatDoesNotAnswerStillGivesAReport() {
-        let report = Diagnostics.report(page: nil, app: ["version": "1.2.3"])
-        XCTAssertTrue(report.contains("\"version\" : \"1.2.3\""))
-        XCTAssertTrue(report.contains("did not answer"))
+    func testAReportSaysWhatTheAppAskedWhenThePageGaveNoReport() {
+        let app: [String: Any] = ["version": "1.2.3"]
+        let cases: [(Diagnostics.Page, String)] = [
+            (.missing, "no audio bridge"), (.error("TypeError"), "threw TypeError"), (.timeout(seconds: 12), "did not answer within 12 s"),
+        ]
+        for (page, expected) in cases {
+            let report = Diagnostics.report(page: page, app: app, findings: ["the Mac's output is muted"])
+            XCTAssertTrue(report.text.contains("\"version\" : \"1.2.3\""))
+            XCTAssertTrue(report.findings[0].contains(expected), "\(report.findings)")
+            XCTAssertEqual(report.findings.last, "the Mac's output is muted")
+            XCTAssertTrue(report.text.hasPrefix("{\n  \"findings\""))
+        }
+    }
+
+    func testAPageReportKeepsItsFindingsOnceAndFirst() throws {
+        let page = #"{"findings":["the master gain is 0"],"song":{"title":"Ember"}}"#
+        let report = Diagnostics.report(page: .text(page), app: ["version": "1"], findings: ["the Mac's output volume is 0"])
+        XCTAssertEqual(report.findings, ["the master gain is 0", "the Mac's output volume is 0"])
+        XCTAssertEqual(report.text.components(separatedBy: "\"findings\"").count, 2, "findings appear once")
+        let parsed = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(report.text.utf8)) as? [String: Any])
+        XCTAssertNotNil(parsed["song"])
+    }
+
+    func testTheInspectorFollowsTheDefault() throws {
+        let suite = "lodesong-harness-\(getpid())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertFalse(Diagnostics.inspectable(defaults), "the inspector is off unless asked for")
+        defaults.set(true, forKey: "inspectable")
+        XCTAssertTrue(Diagnostics.inspectable(defaults))
+        UserDefaults.standard.set(true, forKey: "inspectable")
+        defer { UserDefaults.standard.removeObject(forKey: "inspectable") }
+        let view = PlayerView(server: Servers.app, nowPlaying: NowPlaying())
+        Silence.mute(view.webView)
+        XCTAssertTrue(view.webView.isInspectable, "PlayerView ignores the default")
+        view.webView.loadHTMLString("", baseURL: nil)
+    }
+
+    func testAPageThatThrowsHangsOrHasNoBridgeStillGivesAReport() async throws {
+        let page = open()
+        let loaded = await page.until { (try? await page.js("return !!document.querySelector('#root')")) as? Bool == true }
+        XCTAssertTrue(loaded, "the player did not load")
+        page.player.reportSeconds = 1
+        let canary = "canary-s3cr3t"
+        let setups = [
+            ("window.keepNative = { diagnostics: async () => { throw new TypeError('\(canary)'); } }", "threw TypeError"),
+            ("window.keepNative = { diagnostics: () => new Promise((resolve) => setTimeout(() => resolve('{}'), 4000)) }", "did not answer within 1 s"),
+            ("delete window.keepNative", "no audio bridge"),
+        ]
+        for (setup, expected) in setups {
+            try await page.js(setup)
+            let report = await page.player.audioDiagnostics()
+            XCTAssertTrue(report.findings[0].contains(expected), "\(setup): \(report.findings)")
+            XCTAssertFalse(report.text.contains(canary), "the error's message reached the report")
+        }
     }
 
     func testNativeCommandsReachThePage() async throws {
