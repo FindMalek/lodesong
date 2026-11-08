@@ -25,7 +25,7 @@ const navidromeAt = (shade: number) =>
         return new Response(body, { headers: { "content-type": "image/png" } });
       }
       mock.lookups += 1;
-      if (id === "al-slow") await Bun.sleep(2600);
+      if (id === "al-slow") await Bun.sleep(2250);
       const hidden = id === "al-priv" && user?.toLowerCase() !== "alice";
       const album = {
         name: id.startsWith("al-q") ? `${mock.name} ${id}` : mock.name,

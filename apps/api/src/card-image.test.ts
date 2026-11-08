@@ -104,7 +104,7 @@ test("a render gets 20 seconds by default", async () => {
 test("by default 8 cards may wait at once and the 9th is refused", async () => {
   const images = new CardImages(48, undefined, 30);
   const waiting = Array.from({ length: 8 }, (_, index) => images.get(`w${index}`, never).catch((error) => error));
-  await expect(images.get("w8", never)).rejects.toBeInstanceOf(Busy);
+  await expect(images.get("w8", never)).rejects.toThrow("render queue full");
   expect((await Promise.all(waiting)).every((error) => error instanceof Busy)).toBe(true);
 });
 
