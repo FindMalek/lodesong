@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { tapOutput } from "./audio";
 import { expect, fakeMediaClock, onPhone, test } from "./fixtures";
 
 const SIZES: [number, number][] = [
@@ -123,6 +124,25 @@ test("on a narrow window the queue takes the window instead of squeezing the pag
   await panel.getByRole("button", { name: "close queue" }).click();
   await expect(panel).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Late night" })).toBeVisible();
+});
+
+test("a press that is under way when the tooltip code arrives still lands as a click", async ({ signedIn: page }) => {
+  await tapOutput(page);
+  await page.goto("/album/al-3");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  await page.reload();
+  const queue = page.getByRole("contentinfo").getByRole("button", { name: "queue" });
+  await expect(queue).toBeVisible();
+  // Slow code, so it lands while the button is held (WebKit drops the click when the pressed button is swapped out).
+  await page.route(/chunk-.*\.js/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.continue();
+  });
+  await queue.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(1200);
+  await page.mouse.up();
+  await expect(page.getByRole("complementary", { name: "queue" })).toBeVisible();
 });
 
 test("on a phone the cover sits at the top of an album's header, beside the title, not at its bottom", async ({ signedIn: page }) => {
