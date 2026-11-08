@@ -65,12 +65,13 @@ A service worker (`apps/player/src/sw.ts`, built to `/sw.js`) keeps the app shel
 downloads the next three songs into an LRU audio cache it serves Range requests from (`lib/offline.ts` is the page
 side). Albums and playlists can be kept offline (pinned, never evicted).
 
-Pages are separate chunks (`apps/player/src/routes.tsx`), preloaded when a link is hovered or focused and all fetched once the
-browser is idle. The first screen is budgeted (`bun run size`) and the home page must score ≥ 93 on Lighthouse
+Pages are separate chunks (`apps/player/src/routes.tsx`), preloaded when a link is hovered or focused. The likely next pages, then the rest, are fetched once the page has been
+quiet for 2 s (loaded, nothing tapped or typed, no file arriving; never on data saver or 2g), never alongside the first screen or a tap. The first screen is budgeted (`bun run size`) and the home page must score ≥ 93 on Lighthouse
 desktop and ≥ 70 on mobile (slow 4G, 4x CPU; `e2e/lighthouse.e2e.ts`). `e2e/interactions.e2e.ts` budgets the slowest input
 event while a 10k-song list is opened, scrolled and played. `bun run size` also fails when `recharts` or `cmdk` reach the
 first screen. Every CI run uploads the first-screen sizes (`perf-trend-size`), and a release also uploads Lighthouse
-desktop and mobile numbers (`perf-trend-<version>`) to compare release to release.
+desktop and mobile numbers (`perf-trend-<version>`) to compare release to release. Label a pull request `lighthouse`
+before pushing to run that job on it too.
 
 ## Deploys
 

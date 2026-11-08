@@ -34,6 +34,7 @@ import { useCheckingSession, useUser } from "@/lib/subsonic";
 import { isOnboarded, welcomeTip } from "@/lib/tips";
 import { loadTooltips } from "@/lib/tooltips";
 import { redo, undo } from "@/lib/undo";
+import { whenQuiet } from "@/lib/when-quiet";
 import {
   AlbumPage,
   AlbumsPage,
@@ -54,6 +55,7 @@ import {
   PlaylistFolderPage,
   PlaylistPage,
   preloadAllRoutes,
+  preloadNextPages,
   RadioPage,
   SearchPage,
   SettingsPage,
@@ -270,22 +272,22 @@ export function App() {
     return () => clearTimeout(id);
   }, [user, firstRun]);
 
+  // The likely next pages, then the rest and the tooltips, each once the page has gone quiet (never alongside the first screen or a tap).
   useEffect(() => {
-    if (user)
-      preloadAllRoutes([
-        SplitView.preload,
-        QueuePanel.preload,
-        InfoPanel.preload,
-        LyricsPanel.preload,
-        () => import("@/components/user-menu"),
-        () => import("@/components/now-playing-details"),
-        () => import("@/components/artist-card"),
-      ]);
-    // Safari has no requestIdleCallback, and `?.` doesn't guard a global that isn't declared at all.
-    if (user) {
-      if ("requestIdleCallback" in window) requestIdleCallback(loadTooltips, { timeout: 4000 });
-      else setTimeout(loadTooltips, 1000);
-    }
+    if (!user) return;
+    return whenQuiet([
+      () => preloadNextPages([QueuePanel.preload, InfoPanel.preload]),
+      () => {
+        preloadAllRoutes([
+          SplitView.preload,
+          LyricsPanel.preload,
+          () => import("@/components/user-menu"),
+          () => import("@/components/now-playing-details"),
+          () => import("@/components/artist-card"),
+        ]);
+        loadTooltips();
+      },
+    ]);
   }, [user]);
 
   useEffect(() => {
