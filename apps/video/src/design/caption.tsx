@@ -18,7 +18,12 @@ export function Caption({ lines, from, out, font, style }: CaptionProps) {
       style={{ position: "absolute", fontSize: font, fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.04, ...style }}
     >
       {lines.map((line, index) => (
-        <MaskLine key={line} from={from + beat(0.25) * index} out={out} style={index > 0 ? { color: "var(--muted-foreground)" } : undefined}>
+        <MaskLine
+          key={line}
+          from={from + beat(0.25) * index}
+          out={out}
+          style={index > 0 ? { color: "var(--muted-foreground)" } : undefined}
+        >
           {line}
         </MaskLine>
       ))}

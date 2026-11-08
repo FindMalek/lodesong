@@ -67,7 +67,7 @@ export const OPEN: { wide: OpenTimeline; tall: OpenTimeline } = {
   },
 };
 
-export const KEYS = { chord: 1, type: 1.25, enter: 3, cut: 4, caption: 4, sheet: 5, rows: 5.25, end: 10 } as const;
+export const KEYS = { chord: 1, type: 1.25, enter: 3, cut: 4.75, caption: 4.75, sheet: 5, rows: 5.25, end: 10 } as const;
 
 export const MIXES = { cover: 0, merge: 2, mergeEnd: 3, caption: 4, chip: 3, row: 5, rowEnd: 7, ignite: 9, end: 10 } as const;
 

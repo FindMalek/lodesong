@@ -20,17 +20,30 @@ const TITLE = FIXTURE.tracks[0][0].toLowerCase();
 
 const GEOM = {
   wide: {
-    win: { x: 140, y: 100, w: 1180, h: 660, cover: 340, coverX: 56, coverY: 56, textX: 436, title: 48, scrubY: 300, ctlY: 400, scrubW: 688 },
+    win: {
+      x: 140,
+      y: 100,
+      w: 1180,
+      h: 660,
+      cover: 340,
+      coverX: 56,
+      coverY: 56,
+      textX: 436,
+      title: 48,
+      scrubY: 300,
+      ctlY: 400,
+      scrubW: 688,
+    },
     phone: { x: 1400, y: 150, w: 380, h: 720, cover: 300, coverY: 96, title: 32, scrubY: 510, ctlY: 574, noteY: 640 },
     caption: { left: 148, top: 800, font: 96 },
     chips: { right: 140, top: 922 },
     pop: { right: 36, bottom: 40 },
   },
   tall: {
-    win: { x: 90, y: 560, w: 900, h: 400, cover: 250, coverX: 32, coverY: 32, textX: 312, title: 42, scrubY: 190, ctlY: 258, scrubW: 560 },
-    phone: { x: 560, y: 900, w: 380, h: 650, cover: 230, coverY: 84, title: 32, scrubY: 380, ctlY: 440, noteY: 560 },
+    win: { x: 90, y: 520, w: 900, h: 380, cover: 250, coverX: 32, coverY: 32, textX: 312, title: 42, scrubY: 190, ctlY: 252, scrubW: 560 },
+    phone: { x: 600, y: 940, w: 380, h: 610, cover: 220, coverY: 80, title: 32, scrubY: 396, ctlY: 456, noteY: 540 },
     caption: { left: 90, top: 270, font: 120 },
-    chips: { right: 90, top: 1120 },
+    chips: { right: 90, top: 1000 },
     pop: { right: 20, bottom: 24 },
   },
 } as const;
@@ -43,9 +56,20 @@ function Scrub({ x, y, w, position }: { x: number; y: number; w: number; positio
     <div style={{ position: "absolute", left: x, top: y, width: w }}>
       <div style={{ position: "relative", height: 4, background: "var(--border)" }}>
         <div style={{ position: "absolute", inset: "0 auto 0 0", width: `${p * 100}%`, background: "var(--foreground)" }} />
-        <div style={{ position: "absolute", top: -7, left: `calc(${p * 100}% - 9px)`, width: 18, height: 18, background: "var(--foreground)" }} />
+        <div
+          style={{ position: "absolute", top: -7, left: `calc(${p * 100}% - 9px)`, width: 18, height: 18, background: "var(--foreground)" }}
+        />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18, fontFamily: "var(--font-mono)", fontSize: 26, color: "var(--muted-foreground)" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: 18,
+          fontFamily: "var(--font-mono)",
+          fontSize: 26,
+          color: "var(--muted-foreground)",
+        }}
+      >
         <span>{clock(position)}</span>
         <span>{clock(TRACK)}</span>
       </div>
@@ -138,14 +162,37 @@ export function SessionShot() {
         <Layer z={0}>
           <div style={{ position: "absolute", inset: 0, ...reveal(winIn) }}>
             <Window width={win.w} height={win.h} title={FILM.session.devices[0]} style={{ left: win.x, top: win.y }}>
-              <div style={{ position: "absolute", left: win.coverX - 90, top: win.coverY - 90, width: win.cover + 180, height: win.cover + 180, background: glowOf(deskGold, 28) }} />
+              <div
+                style={{
+                  position: "absolute",
+                  left: win.coverX - 90,
+                  top: win.coverY - 90,
+                  width: win.cover + 180,
+                  height: win.cover + 180,
+                  background: glowOf(deskGold, 28),
+                }}
+              />
               <div style={{ position: "absolute", left: win.coverX, top: win.coverY }}>
                 <DitherCover id="quiet-hours-ii" size={win.cover} time={time * 0.5} color={gold(deskGold)} />
               </div>
-              <div data-legible="" style={{ position: "absolute", left: win.textX, top: 56, fontSize: win.title, fontWeight: 500, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
+              <div
+                data-legible=""
+                style={{
+                  position: "absolute",
+                  left: win.textX,
+                  top: 56,
+                  fontSize: win.title,
+                  fontWeight: 500,
+                  letterSpacing: "-0.03em",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {TITLE}
               </div>
-              <div data-legible="" style={{ position: "absolute", left: win.textX, top: 56 + win.title * 1.4, fontSize: 30, color: "var(--muted-foreground)" }}>
+              <div
+                data-legible=""
+                style={{ position: "absolute", left: win.textX, top: 56 + win.title * 1.4, fontSize: 30, color: "var(--muted-foreground)" }}
+              >
                 {FIXTURE.album.artist.toLowerCase()}
               </div>
               <Scrub x={win.textX} y={win.scrubY} w={win.scrubW} position={position} />
@@ -212,12 +259,29 @@ export function SessionShot() {
           <div style={{ position: "absolute", inset: 0, ...reveal(phoneIn) }}>
             <Phone width={ph.w} height={ph.h} style={{ left: ph.x, top: ph.y }}>
               <div style={{ position: "absolute", left: (ph.w - ph.cover) / 2 - 2, top: ph.coverY, opacity: 1 }}>
-                <div style={{ position: "absolute", left: -70, top: -70, width: ph.cover + 140, height: ph.cover + 140, background: glowOf(phoneGold, 30 + pulse * 20) }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: -70,
+                    top: -70,
+                    width: ph.cover + 140,
+                    height: ph.cover + 140,
+                    background: glowOf(phoneGold, 30 + pulse * 20),
+                  }}
+                />
                 <DitherCover id="quiet-hours-ii" size={ph.cover} time={time * 0.5} color={gold(phoneGold)} />
               </div>
               <div
                 data-legible=""
-                style={{ position: "absolute", left: 38, top: ph.coverY + ph.cover + 28, fontSize: ph.title, fontWeight: 500, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}
+                style={{
+                  position: "absolute",
+                  left: 38,
+                  top: ph.coverY + ph.cover + 28,
+                  fontSize: ph.title,
+                  fontWeight: 500,
+                  letterSpacing: "-0.03em",
+                  whiteSpace: "nowrap",
+                }}
               >
                 {TITLE}
               </div>
@@ -259,7 +323,12 @@ export function SessionShot() {
         </Layer>
 
         <Layer z={60}>
-          <Caption lines={FILM.session.caption} from={beat(T.caption)} font={g.caption.font} style={{ left: g.caption.left, top: g.caption.top }} />
+          <Caption
+            lines={FILM.session.caption}
+            from={beat(T.caption)}
+            font={g.caption.font}
+            style={{ left: g.caption.left, top: g.caption.top }}
+          />
           <div
             style={{
               position: "absolute",
@@ -267,7 +336,7 @@ export function SessionShot() {
               gap: 14,
               ...(layout === "wide"
                 ? { right: g.chips.right, top: g.chips.top }
-                : { left: 90, top: 1120, flexDirection: "column", alignItems: "flex-start" }),
+                : { left: 90, top: g.chips.top, flexDirection: "column", alignItems: "flex-start" }),
             }}
           >
             {FILM.session.chips.map((chip, index) => (

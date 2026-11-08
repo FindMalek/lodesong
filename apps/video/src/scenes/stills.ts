@@ -13,13 +13,17 @@ export interface StillPlan {
 const at = (...beats: number[]): number[] => beats.map((n) => beat(n));
 
 export const STILLS: Record<string, StillPlan> = {
-  "scene-open": { frames: [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b), hero: HERO_FRAMES, settled: SETTLED_FRAMES },
-  "scene-mixes": { frames: at(1, 2.5, 4, 5.5, 7, 8.5, 9.9), hero: at(8, 9.9), settled: [] },
-  "scene-session": { frames: at(1, 2.5, 4, 5.5, 6.5, 8, 10.9), hero: at(4, 10.9), settled: [] },
-  "scene-keys": { frames: at(0.5, 2, 3.5, 5, 6, 7.9), hero: at(3, 7.9), settled: [] },
+  "scene-open": {
+    frames: [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b),
+    hero: HERO_FRAMES,
+    settled: SETTLED_FRAMES,
+  },
+  "scene-keys": { frames: at(0.5, 2, 3.5, 5, 7.5, 9.9), hero: at(3, 9.9), settled: [] },
+  "scene-mixes": { frames: at(1, 2.5, 3.5, 5.5, 7, 8.5, 9.9), hero: at(8, 9.9), settled: [] },
+  "scene-session": { frames: at(0.75, 2.5, 3.5, 5, 6, 7.5, 9.9), hero: at(5, 9.9), settled: [] },
   "scene-terminal": { frames: at(0.5, 2, 3.5, 5, 7.9), hero: at(2.5, 7.9), settled: [] },
-  "scene-end": { frames: at(0.5, 1.5, 2.5, 4, 7.9), hero: at(4, 7.9), settled: [] },
-  hero: { frames: at(8, 20, 28, 40, 48, 54, 59.9), hero: [], settled: [] },
-  "cutdown-vertical": { frames: at(2, 6, 9, 12, 15, 19, 22, 26, 29.9), hero: [], settled: [] },
-  "loop-readme": { frames: at(0.5, 4, 8, 12, 16, 19.9), hero: [], settled: [] },
+  "scene-end": { frames: at(0.5, 1.5, 2.5, 3.5, 5.9), hero: at(4, 5.9), settled: [] },
+  hero: { frames: at(2, 4.5, 8, 10, 13, 17, 19, 21, 27, 30, 33, 37, 39.5, 42, 47, 50, 55, 59.9), hero: [], settled: [] },
+  "cutdown-vertical": { frames: at(2, 4.5, 6, 8, 10, 12, 15, 17.5, 19, 21, 24, 26, 27.5, 29.9), hero: [], settled: [] },
+  "loop-readme": { frames: at(0.5, 2, 4, 8, 12, 16, 19.5), hero: [], settled: [] },
 };

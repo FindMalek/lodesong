@@ -140,7 +140,15 @@ export function MixesShot() {
             }}
           />
           <div
-            style={{ position: "absolute", left: heroX - heroSize / 2, top: heroY - heroSize / 2, width: heroSize, height: heroSize, background: "var(--card)", opacity: merge }}
+            style={{
+              position: "absolute",
+              left: heroX - heroSize / 2,
+              top: heroY - heroSize / 2,
+              width: heroSize,
+              height: heroSize,
+              background: "var(--card)",
+              opacity: merge,
+            }}
           />
           {SOURCES.map((id, index) => {
             const sx = SOURCE.xs[index] ?? 0;

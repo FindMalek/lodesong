@@ -34,7 +34,6 @@ function fly(frame: number, spec: Fly) {
 
 const layer = { position: "absolute", inset: 0, transformStyle: "preserve-3d" } as const;
 
-
 /** The opening shot: the line, the lyrics close-up with the one gold moment, and (wide only) the pull back to the real app. */
 export function OpenShot({ tl }: { tl?: OpenTimeline }) {
   const frame = useCurrentFrame();
@@ -54,7 +53,7 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
 
   const end = beat(T.end);
   const wideT = ramp(frame, cut, end - cut, ease.inOut);
-  const scale = lerp(1, 1.06, wideT);
+  const scale = lerp(1.1, 1.16, wideT);
   const rotateY = lerp(-7, -4, wideT);
   const rotateX = lerp(5, 2, wideT);
   const dim = ramp(frame, beat(T.lift), beat(1), ease.inOut);
@@ -137,7 +136,9 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
             <div style={{ ...layer, ...fly(frame, { x: 0, y: 70, z: -500, from: cut }), opacity: stageFade(cut) }}>
               <Main develop={1} time={time * 0.5} bars={bars} coverColor="var(--ignite)" />
             </div>
-            <div style={{ ...layer, ...fly(frame, { x: -300, y: 0, z: -260, from: cut + beat(0.25) }), opacity: stageFade(cut + beat(0.25)) }}>
+            <div
+              style={{ ...layer, ...fly(frame, { x: -300, y: 0, z: -260, from: cut + beat(0.25) }), opacity: stageFade(cut + beat(0.25)) }}
+            >
               <Sidebar />
             </div>
             <div style={{ ...layer, ...fly(frame, { x: 0, y: 240, z: -160, from: cut + beat(0.5) }), opacity: stageFade(cut + beat(0.5)) }}>

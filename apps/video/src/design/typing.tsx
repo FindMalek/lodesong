@@ -16,7 +16,17 @@ export function typingFrames(text: string, from: number, salt = 0): number[] {
 export const typedCount = (frame: number, landings: readonly number[]): number => landings.filter((at) => frame >= at).length;
 
 /** Block caret: solid while typing, then about 1 Hz. */
-export function Caret({ frame, typing, size, color = "var(--foreground)" }: { frame: number; typing: boolean; size: number; color?: string }) {
+export function Caret({
+  frame,
+  typing,
+  size,
+  color = "var(--foreground)",
+}: {
+  frame: number;
+  typing: boolean;
+  size: number;
+  color?: string;
+}) {
   const on = typing || Math.floor(frame / 30) % 2 === 0;
   return (
     <span

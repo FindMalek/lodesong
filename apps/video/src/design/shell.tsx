@@ -8,12 +8,12 @@ import { Label, VOID } from "./kinetic";
 import { MARK } from "./layout";
 import { Probe } from "./probe";
 
-export function timecode(frame: number): string {
+function timecode(frame: number): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `00:00:${pad(Math.floor(frame / FPS))}:${pad(frame % FPS)}`;
 }
 
-export function Marks() {
+function Marks() {
   const arm = 28;
   const line = { position: "absolute", background: "var(--muted-foreground)", opacity: 0.6 } as const;
   return (

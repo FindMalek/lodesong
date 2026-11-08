@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
@@ -16,8 +16,7 @@ const SAFE = 56;
 let frameSize = { w: 1920, h: 1080 };
 
 const hits = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-const inside = (a: Box): boolean =>
-  a.x >= SAFE && a.y >= SAFE && a.x + a.w <= frameSize.w - SAFE && a.y + a.h <= frameSize.h - SAFE;
+const inside = (a: Box): boolean => a.x >= SAFE && a.y >= SAFE && a.x + a.w <= frameSize.w - SAFE && a.y + a.h <= frameSize.h - SAFE;
 
 function judge(m: Measure, plan: StillPlan): string[] {
   const problems: string[] = [];
@@ -96,11 +95,47 @@ async function stills(args: string[]): Promise<number> {
   return failures;
 }
 
+async function sheet(id: string): Promise<number> {
+  const frameOf = (name: string): number => Number(name.slice(id.length + 2, -4));
+  const files = readdirSync("out/stills")
+    .filter((name) => name.startsWith(`${id}-f`) && name.endsWith(".png"))
+    .sort((a, b) => frameOf(a) - frameOf(b));
+  if (files.length === 0) return 1;
+  const tall = id.includes("vertical");
+  const cols = tall ? 7 : 4;
+  const list = files.map((name) => `file '${resolve("out/stills", name)}'\nduration 1`).join("\n");
+  writeFileSync("out/stills/sheet-list.txt", list);
+  mkdirSync("out/sheets", { recursive: true });
+  const filter = `scale=${tall ? 270 : 480}:-1,tile=${cols}x${Math.ceil(files.length / cols)}:padding=6:color=0x202020`;
+  const run = Bun.spawn(
+    [
+      "ffmpeg",
+      "-y",
+      "-v",
+      "error",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      "out/stills/sheet-list.txt",
+      "-vf",
+      filter,
+      "-frames:v",
+      "1",
+      `out/sheets/${id}.png`,
+    ],
+    { stdout: "inherit", stderr: "inherit" },
+  );
+  return (await run.exited) === 0 ? 0 : 1;
+}
+
 const [command, ...rest] = process.argv.slice(2);
 const filmOf = (name: string | undefined, file?: string): Film =>
   name === "cutdown" || (!name && file?.includes("cutdown")) ? "cutdown" : "hero";
 let failed = 1;
 if (command === "stills") failed = await stills(rest);
+else if (command === "sheet" && rest[0]) failed = await sheet(rest[0]);
 else if (command === "audio") failed = await audio(rest[0] ? [filmOf(rest[0])] : ["hero", "cutdown"]);
 else if (command === "onsets" && rest[0]) failed = await onsets(rest[0], filmOf(rest[1], rest[0]));
 else console.error("usage: check.ts stills <composition|all> [frames...] [--docs] | audio [hero|cutdown] | onsets <file> [hero|cutdown]");

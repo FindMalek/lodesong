@@ -10,7 +10,6 @@ interface DitherCoverProps {
   /** Seconds fed to the glow drift, so the picture breathes with the frame clock. */
   time?: number;
   color?: string;
-  /** no card behind the dots, so covers can be stacked and their dots add up */
   bare?: boolean;
   opacity?: number;
 }
@@ -18,7 +17,15 @@ interface DitherCoverProps {
 const CELL = 4;
 
 /** The app's own generated cover look: the shared ordered-dither glow, drawn as one SVG path, deterministic per frame. */
-export function DitherCover({ id, size, develop = 1, time = 0, color = "var(--foreground)", bare = false, opacity = 0.85 }: DitherCoverProps) {
+export function DitherCover({
+  id,
+  size,
+  develop = 1,
+  time = 0,
+  color = "var(--foreground)",
+  bare = false,
+  opacity = 0.85,
+}: DitherCoverProps) {
   const cols = Math.ceil(size / CELL);
   const seed = ditherSeed(id);
   const path = useMemo(() => {

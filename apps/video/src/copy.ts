@@ -90,4 +90,4 @@ export const FILM = {
   },
 } as const;
 
-export const ALBUM_MINUTES =Math.round(FIXTURE.tracks.reduce((sum, [, seconds]) => sum + seconds, 0) / 60);
+export const ALBUM_MINUTES = Math.round(FIXTURE.tracks.reduce((sum, [, seconds]) => sum + seconds, 0) / 60);

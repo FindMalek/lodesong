@@ -14,7 +14,7 @@ export interface CamKey extends Partial<Cam> {
   at: number;
 }
 
-export const CAM0: Cam = { x: 0, y: 0, scale: 1, rx: 0, ry: 0 };
+const CAM0: Cam = { x: 0, y: 0, scale: 1, rx: 0, ry: 0 };
 
 const FIELDS = ["x", "y", "scale", "rx", "ry"] as const;
 
@@ -38,7 +38,7 @@ export function camAt(frame: number, keys: readonly CamKey[], easing: (t: number
   return cam;
 }
 
-export const PERSPECTIVE = 2200;
+const PERSPECTIVE = 2200;
 
 /** Where to draw something on a layer at depth z so it appears at screen point (ax, ay) once perspective has scaled it. */
 export function atDepth(ax: number, ay: number, z: number, cx: number, cy: number): { x: number; y: number; k: number } {

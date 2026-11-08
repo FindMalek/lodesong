@@ -37,7 +37,9 @@ function Palette({ frame }: { frame: number }) {
         ...reveal(open),
       }}
     >
-      <div style={{ height: 104, display: "flex", alignItems: "center", gap: 22, padding: "0 32px", borderBottom: "1px solid var(--border)" }}>
+      <div
+        style={{ height: 104, display: "flex", alignItems: "center", gap: 22, padding: "0 32px", borderBottom: "1px solid var(--border)" }}
+      >
         <SearchIcon size={40} style={{ opacity: 0.6 }} />
         <div data-legible="" style={{ fontSize: 46, fontWeight: 500, letterSpacing: "-0.02em" }}>
           {typed}
@@ -70,7 +72,9 @@ function Palette({ frame }: { frame: number }) {
               {row.line.split(FILM.keys.query).map((part, i, all) => (
                 <span key={part + String(i)}>
                   {part}
-                  {i < all.length - 1 ? <span style={{ textDecoration: "underline", textUnderlineOffset: 8 }}>{FILM.keys.query}</span> : null}
+                  {i < all.length - 1 ? (
+                    <span style={{ textDecoration: "underline", textUnderlineOffset: 8 }}>{FILM.keys.query}</span>
+                  ) : null}
                 </span>
               ))}
             </div>
@@ -176,7 +180,7 @@ export function KeysShot() {
                 <Keycap label="k" size={150} press={chord} bright />
               </div>
               <div style={{ position: "absolute", left: 200, top: 620, opacity: ramp(frame, CHORD_AT, beat(0.5)) }}>
-                <Label style={{ color: "var(--foreground)" }}>search, by title or lyric</Label>
+                <Label style={{ color: "var(--foreground)" }}>search</Label>
               </div>
             </Layer>
             <Layer z={40}>
@@ -195,4 +199,3 @@ export function KeysShot() {
     </AbsoluteFill>
   );
 }
-

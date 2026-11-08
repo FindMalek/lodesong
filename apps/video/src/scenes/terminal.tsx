@@ -1,21 +1,23 @@
 import { PauseIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { SHEET } from "../audio-cues";
 import { clock, FILM, FIXTURE } from "../copy";
 import { beat, FPS } from "../design/beat";
 import { Camera, camAt, Layer } from "../design/camera";
 import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
 import { gold } from "../design/gold";
-import { useLayout } from "../design/layout";
 import { ease, ramp } from "../design/motion";
-import { Caret, typedCount, typingFrames } from "../design/typing";
+import { Caret, typedCount } from "../design/typing";
 import { DitherCover } from "../ui/dither-cover";
 import { Window } from "../ui/frames";
-import { TERMINAL } from "./timelines";
+import { HERO_SHOTS, starts, TERMINAL } from "./timelines";
 
 const COMMAND = FILM.terminal.command;
-const LANDINGS = typingFrames(COMMAND, beat(TERMINAL.type), 5);
+const SHOT_START = starts(HERO_SHOTS).terminal ?? 0;
+const STRUCK = SHEET.filter((cue) => cue.film === "hero" && cue.style === "typed").map((cue) => cue.frame - SHOT_START);
+const LANDINGS = [...COMMAND].map((_, i) => STRUCK[i] ?? (STRUCK.at(-1) ?? 0) + 5 * (i - STRUCK.length + 1));
 const ENTER = beat(TERMINAL.enter);
 const MONO = "var(--font-mono)";
 
@@ -27,9 +29,13 @@ interface Now {
 }
 const TRACK_SECONDS = [FIXTURE.tracks[0][1], FIXTURE.tracks[1][1]] as const;
 
-const GEOM = {
-  wide: { win: { x: 190, y: 430, w: 1540, h: 550 }, cover: 112, font: 36, pad: 40, bar: 640, caption: { left: 190, top: 110, font: 120 } },
-  tall: { win: { x: 90, y: 560, w: 900, h: 760 }, cover: 120, font: 34, pad: 32, bar: 520, caption: { left: 90, top: 270, font: 120 } },
+const G = {
+  win: { x: 190, y: 430, w: 1540, h: 550 },
+  cover: 112,
+  font: 36,
+  pad: 40,
+  bar: 640,
+  caption: { left: 190, top: 110, font: 120 },
 } as const;
 
 function Swap({ frame, height, a, b }: { frame: number; height: number; a: ReactNode; b: ReactNode }) {
@@ -44,9 +50,7 @@ function Swap({ frame, height, a, b }: { frame: number; height: number; a: React
 
 export function TerminalShot() {
   const frame = useCurrentFrame();
-  const { layout } = useLayout();
-  const g = GEOM[layout];
-  const tall = layout === "tall";
+  const g = G;
   const time = frame / FPS;
   const typed = frame < ENTER ? COMMAND.slice(0, typedCount(frame, LANDINGS)) : "";
   const [one, two]: readonly Now[] = FILM.terminal.now;
@@ -55,19 +59,11 @@ export function TerminalShot() {
   const position = stage === 0 ? (one?.at ?? 0) + time : (two?.at ?? 0) + sinceEnter;
   const length = TRACK_SECONDS[stage];
   const flash = ramp(frame, ENTER, beat(0.125)) - ramp(frame, ENTER + beat(0.25), beat(0.25));
-  const open = ramp(frame, 0, beat(1));
-  const cam = camAt(
-    frame,
-    tall
-      ? [
-          { at: 0, scale: 1.0, y: 20 },
-          { at: TERMINAL.end, scale: 1.04, y: -10 },
-        ]
-      : [
-          { at: 0, scale: 1.0, ry: -3, x: -10 },
-          { at: TERMINAL.end, scale: 1.03, ry: 2, x: 10 },
-        ],
-  );
+  const open = ramp(frame, 0, beat(0.5));
+  const cam = camAt(frame, [
+    { at: 0, scale: 1.0, ry: -3, x: -10 },
+    { at: TERMINAL.end, scale: 1.03, ry: 2, x: 10 },
+  ]);
   const row = (now: Now, id: string, develop: number) => (
     <div style={{ position: "absolute", inset: 0, display: "flex", gap: 28 }}>
       <div style={{ width: g.cover, height: g.cover, flexShrink: 0 }}>
@@ -98,7 +94,12 @@ export function TerminalShot() {
           </AbsoluteFill>
         </Layer>
         <Layer z={0}>
-          <Caption lines={FILM.terminal.caption} from={beat(TERMINAL.caption)} font={g.caption.font} style={{ left: g.caption.left, top: g.caption.top }} />
+          <Caption
+            lines={FILM.terminal.caption}
+            from={beat(TERMINAL.caption)}
+            font={g.caption.font}
+            style={{ left: g.caption.left, top: g.caption.top }}
+          />
         </Layer>
         <Layer z={0}>
           <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 ${(1 - open) * 100}% 0)` }}>
@@ -110,14 +111,39 @@ export function TerminalShot() {
                   a={row(one ?? FILM.terminal.now[0], "quiet-hours-ii", 1)}
                   b={row(two ?? FILM.terminal.now[1], "static-echo-at-night", ramp(frame, ENTER + beat(0.25), beat(1.5), ease.inOut))}
                 />
-                <div style={{ display: "flex", alignItems: "center", gap: 22, marginTop: 34, fontSize: g.font - 6, color: "var(--muted-foreground)" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 22,
+                    marginTop: 34,
+                    fontSize: g.font - 6,
+                    color: "var(--muted-foreground)",
+                  }}
+                >
                   <span>{clock(position)}</span>
                   <div style={{ position: "relative", width: g.bar, height: 4, background: "var(--border)" }}>
-                    <div style={{ position: "absolute", inset: "0 auto 0 0", width: `${(position / length) * 100}%`, background: "var(--foreground)" }} />
-                    <div style={{ position: "absolute", top: -8, left: `calc(${(position / length) * 100}% - 10px)`, width: 20, height: 20, background: "var(--foreground)" }} />
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: "0 auto 0 0",
+                        width: `${(position / length) * 100}%`,
+                        background: "var(--foreground)",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: -8,
+                        left: `calc(${(position / length) * 100}% - 10px)`,
+                        width: 20,
+                        height: 20,
+                        background: "var(--foreground)",
+                      }}
+                    />
                   </div>
                   <span>{clock(length)}</span>
-                  {tall ? null : (
+                  {
                     <div style={{ display: "flex", gap: 16, marginLeft: "auto", color: "var(--foreground)" }}>
                       {icons.map((Icon, index) => {
                         const hit = index === 2 ? flash : 0;
@@ -140,7 +166,7 @@ export function TerminalShot() {
                         );
                       })}
                     </div>
-                  )}
+                  }
                 </div>
                 <div style={{ marginTop: 26 }}>
                   <Swap frame={frame} height={g.font * 1.4} a={lyric(one?.line ?? "")} b={lyric(two?.line ?? "")} />

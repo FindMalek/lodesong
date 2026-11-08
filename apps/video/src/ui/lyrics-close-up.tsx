@@ -5,8 +5,32 @@ import type { Layout } from "../design/layout";
 import { DitherCover } from "./dither-cover";
 
 const GEOM = {
-  wide: { line: 150, font: 92, textLeft: 168, textW: 1060, cover: 440, coverX: 1312, coverY: 270, chipX: 1312, chipY: 900, mid: 540, span: 1080 },
-  tall: { line: 124, font: 78, textLeft: 90, textW: 900, cover: 520, coverX: 280, coverY: 330, chipX: 90, chipY: 250, mid: 1260, span: 620 },
+  wide: {
+    line: 150,
+    font: 92,
+    textLeft: 168,
+    textW: 1060,
+    cover: 440,
+    coverX: 1312,
+    coverY: 270,
+    chipX: 1312,
+    chipY: 900,
+    mid: 540,
+    span: 1080,
+  },
+  tall: {
+    line: 124,
+    font: 78,
+    textLeft: 90,
+    textW: 900,
+    cover: 520,
+    coverX: 280,
+    coverY: 330,
+    chipX: 90,
+    chipY: 250,
+    mid: 1260,
+    span: 620,
+  },
 } as const;
 
 export interface CloseUpState {

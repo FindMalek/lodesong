@@ -14,15 +14,34 @@ const VEIN = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
 const QUICK = beat(0.5);
 
 const GEOM = {
-  wide: { orb: { x: 1230, y: 250, size: 520 }, mark: { x: 168, y: 150, font: 150 }, tag: { x: 168, y: 350, font: 92 }, box: { x: 168, y: 640, w: 1010 }, url: { x: 168, y: 868 } },
-  tall: { orb: { x: 280, y: 330, size: 520 }, mark: { x: 90, y: 940, font: 120 }, tag: { x: 90, y: 1110, font: 100 }, box: { x: 90, y: 1260, w: 900 }, url: { x: 90, y: 1360 } },
+  wide: {
+    orb: { x: 1230, y: 250, size: 520 },
+    mark: { x: 168, y: 150, font: 150 },
+    tag: { x: 168, y: 350, font: 92 },
+    box: { x: 168, y: 640, w: 1010 },
+    url: { x: 168, y: 868 },
+  },
+  tall: {
+    orb: { x: 280, y: 330, size: 520 },
+    mark: { x: 90, y: 940, font: 120 },
+    tag: { x: 90, y: 1110, font: 100 },
+    box: { x: 90, y: 1260, w: 900 },
+    url: { x: 90, y: 1360 },
+  },
 } as const;
 
 function Wordmark({ font, lode, song }: { font: number; lode: number; song: number }) {
   return (
     <div
       data-legible=""
-      style={{ display: "flex", fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: font, letterSpacing: "-0.04em", lineHeight: 1.1 }}
+      style={{
+        display: "flex",
+        fontFamily: "var(--font-mono)",
+        fontWeight: 500,
+        fontSize: font,
+        letterSpacing: "-0.04em",
+        lineHeight: 1.1,
+      }}
     >
       <MaskLine from={lode} length={QUICK}>
         <div style={{ display: "flex", alignItems: "center", gap: font * 0.28 }}>
@@ -84,7 +103,15 @@ export function EndShot() {
           </div>
           <div
             data-legible=""
-            style={{ position: "absolute", left: g.tag.x, top: g.tag.y, fontSize: g.tag.font, fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.04 }}
+            style={{
+              position: "absolute",
+              left: g.tag.x,
+              top: g.tag.y,
+              fontSize: g.tag.font,
+              fontWeight: 500,
+              letterSpacing: "-0.045em",
+              lineHeight: 1.04,
+            }}
           >
             <MaskLine from={beat(T.tagline)} length={QUICK}>
               {COPY.headline[0]}
@@ -117,7 +144,7 @@ export function EndShot() {
               ))}
             </div>
           ) : null}
-          <div style={{ position: "absolute", left: g.url.x, top: g.url.y, opacity: ramp(frame, beat(T.url), beat(0.5)) }}>
+          <div style={{ position: "absolute", left: g.url.x, top: g.url.y, opacity: ramp(frame, beat(T.url), beat(0.25)) }}>
             <Label legible style={{ fontSize: 32, color: "var(--foreground)", textTransform: "none", letterSpacing: "0.02em" }}>
               {FILM.end.url}
             </Label>
