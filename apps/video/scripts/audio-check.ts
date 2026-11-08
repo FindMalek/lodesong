@@ -21,6 +21,7 @@ const REFERENCE_DB = [6, 6, 3, 0, -4, -8, -13, -20];
 const BAND_TOLERANCE_DB = 10;
 const DENSE = new Set(["drop", "wide app", "queue", "mixes", "session", "lyrics", "strip"]);
 const FRAME_SECONDS = 1 / FPS;
+const TAIL_FRAMES = 24;
 const OUT = "out/audio-qa";
 
 const db = (x: number): number => 20 * Math.log10(Math.max(x, 1e-9));
@@ -192,7 +193,7 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
   const quiet = new Map<string, number[]>();
   let checked = 0;
   let worst = 0;
-  for (const cue of AUDIO_CUES.filter((c) => c.film === film && c.frame < maxFrame - FPS / 2)) {
+  for (const cue of AUDIO_CUES.filter((c) => c.film === film && c.frame + Math.max(c.length ?? 0, FPS / 2) + TAIL_FRAMES <= maxFrame)) {
     const sample = Math.round(secondsOf(cue.frame) * RATE);
     const group = groupOf(cue.kind);
     const source = cue.kind === "kick" ? stems.music : stems.sfx;

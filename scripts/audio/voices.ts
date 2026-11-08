@@ -242,7 +242,7 @@ const LEVEL: Record<SheetCue["kind"], number> = {
   impact: 0.3,
   ping: 0.05,
   tick: 0.07,
-  key: 0.1,
+  key: 0.15,
   whoosh: 0.07,
   riser: 0.1,
   swell: 0.07,
