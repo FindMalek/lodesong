@@ -2,7 +2,7 @@ import { greyscalePng } from "./png";
 import { random } from "./random";
 
 /** 8x8 Bayer matrix, values 0..63. */
-const BAYER = [
+export const BAYER = [
   [0, 32, 8, 40, 2, 34, 10, 42],
   [48, 16, 56, 24, 50, 18, 58, 26],
   [12, 44, 4, 36, 14, 46, 6, 38],
@@ -14,7 +14,7 @@ const BAYER = [
 ] as const;
 
 /** A smooth field in 0..1 chosen by the seed: rings, a lit sphere, diagonal waves or a horizon fade. */
-function field(kind: number, seed: number): (x: number, y: number) => number {
+export function field(kind: number, seed: number): (x: number, y: number) => number {
   const next = random(seed);
   const cx = 0.25 + next() * 0.5;
   const cy = 0.25 + next() * 0.5;
