@@ -2,7 +2,7 @@
 
 Written 2026-11-08 against Remotion 4.0.541, revised after an independent review. Everything marked **[built]** exists in `apps/video` and was rendered. Everything marked **[spec]** is the plan. Claims carry a source URL; claims with no URL are analysis or were measured on this Mac.
 
-What is proven: an agent working from this file built and checked one 8 s scene (`scene-open`) with executable checks (hold times, beat grid, rendered text size, safe area, audio onsets). What is not proven: that an agent can build scenes S2 to S6 from the tables in section 13 without a human art director, or that the result is a premium commercial. The first scene is a good template, not finished art (see section 12). Section 16 lists confidence and open risks.
+What is proven: an agent working from this file built and checked one 8 s scene (`scene-open`), then the whole film: the 30 s hero (`hero`), the 15 s vertical cutdown (`cutdown-vertical`), the silent README loop (`loop-readme`) and one `scene-*` composition per shot, all with executable checks (hold times, beat grid, rendered text size, UI floor, audio against the score). Section 17 is what that second pass built and learned, and where it deviates from the section 13 tables (shots now follow the score's sections). What is not proven: that the result is a premium commercial; no human art director has judged it and nobody has watched it on a phone. Section 16 lists confidence and open risks.
 
 Not published to the docs site on purpose (`docs/*.md` is). Do not move it there.
 
@@ -135,12 +135,15 @@ Existing **[built]** in `src/`:
 | copy and fixtures | `copy.ts` | every string on screen, plus the fake album, tracks and lyrics |
 | scene | `scenes/open.tsx`, `scenes/open-timeline.ts` | the timeline holds all events in beats (visuals, score, checks read it); the camera rig is still inline |
 
-To build **[spec]**, in this order (each gets its own Composition in Studio so it can be reviewed alone):
+**[built]** in the second pass (every shot is also its own `scene-*` Composition in Studio):
 
-1. `Camera` component: keyframed `{x, y, scale, rotateX, rotateY, focus}` with named presets (`push`, `settle`, `whip`) so scenes stop hand-rolling transforms. Aspect-aware: takes a focal point per ratio.
-2. `Scene` shell: `FontGate` + void + `Vignette` + chrome + `Grain` + audio, so a scene is only its content.
-3. `Chrome`: crop marks and timecode extracted from `open.tsx`.
-4. `QueuePanel`, `MixGrid` (dither covers), `DeviceFrame` (macOS window, iPhone, Android, terminal), `Terminal` (typing at irregular 60-110 ms/char, block caret about 1 Hz), `KeyChip` (square hairline keycap pressing 2-4 px for 3-4 f; show the keystroke that triggers the feature, as Raycast-style films do).
+1. `Camera` (`design/camera.tsx`): `camAt(frame, keys)` interpolates `{x, y, scale, rx, ry}` between beat-keyed values; `<Camera>` is a CSS perspective rig and `<Layer z>` puts content at depth, so a drift or a small turn moves layers against each other. `atDepth()` converts a screen point to layer coordinates so a flying element can cross layers. Named presets (`whip`) were not needed.
+2. `Shell` (`design/shell.tsx`): fonts gate, void, dark theme, vignette, grain, one `<Audio>` (the prototype's crop marks and timecode were removed, see section 17). `DitherWipe` (`design/dither-wipe.tsx`) is the cut: an ordered-dither mask sweeping left to right.
+3. `Window` and `Phone` (`ui/frames.tsx`), `Keycap` and `pressAt` (`ui/keycap.tsx`), `Caret` and typing landings (`design/typing.tsx`, the terminal reads its landings from the score's typed key cues), `Caption`, `gold()`.
+4. The mix grid, session handoff, palette, cheat sheet, terminal and end card are shot components in `scenes/`, not reusable kit. A queue panel was not built.
+
+Still **[spec]**:
+
 5. `Cursor`: bezier path, ease-out with 3-8 px arc, 3-6 f hesitation before a click, ring ripple 12-18 f. Default is **no cursor**; use keycaps.
 6. `BeatPulse`: reads `beats.json` (emitted by the audio script) and exposes `pulse(frame)` for hits.
 7. Props via zod or inline `defaultProps` so copy lives in one `copy.ts` and Studio can edit it (Studio infers controls from inline defaultProps since 4.0.516, [schemas](https://www.remotion.dev/docs/schemas.md)).
@@ -165,7 +168,8 @@ To build **[spec]**, in this order (each gets its own Composition in Studio so i
 bun install                                   # repo root
 bun run --cwd apps/video audio                # writes public/audio/hero.wav, cutdown.wav, open.wav and stems/ (git-ignored, generated from src/audio-cues.ts)
 bun run --cwd apps/video dev                  # runs audio first, then Remotion Studio; add --no-open --port=3917 for headless
-bun run --cwd apps/video stills               # ALL keyframes, one bundle, plus the legibility and safe-area checks
+bun run --cwd apps/video stills               # every keyframe of every composition (or: stills scene-mixes), plus the legibility checks
+bun run --cwd apps/video render:hero          # out/hero-16x9.mp4 (also render:cutdown, render:loop)
 bun run --cwd apps/video still -- scene-open out/f300.png --frame=300   # one frame
 bun run --cwd apps/video render               # out/open.mp4, h264 crf16, 1080p60, bt709
 bun run --cwd apps/video onsets               # audio onsets of out/open.mp4 against the cue table
@@ -330,7 +334,7 @@ Never deliver an unverified render. For every scene:
    ```bash
    bun run --cwd apps/video stills          # out/stills/f<frame>.png, exits 1 on a failed rule
    ```
-   It also fails when tagged UI text renders under 28 px or 60% opacity at a hero frame, when a settled panel leaves the 56 px safe area or crosses the timecode. Then **Read each image** and describe it as a stranger would. Anything that needs explaining is a P0.
+   It also fails when tagged UI text renders under 28 px or 60% opacity at a hero frame, when tagged text leaves the safe area (the prototype's panel and timecode checks are gone with the chrome). Then **Read each image** and describe it as a stranger would. Anything that needs explaining is a P0.
 2. **Contact sheet** of a full render:
    ```bash
    ffmpeg -i out/open.mp4 -vf "fps=2,scale=480:-1,tile=4x3" -frames:v 1 out/sheet.png
@@ -504,3 +508,37 @@ A scene is two files plus copy: `scenes/<id>-timeline.ts` (pure: `FRAMES`, the e
 - **Not measured**: motion quality of the gold ignite and the cut (stills only, nobody has watched the render), banding on a phone, GitHub README autoplay, X upload acceptance of 1080p, per-platform loudness.
 - **Risks**: Remotion licence terms change in 5.0; the gold accent breaks the product's own "no colour" rule; naming Spotify in a comparison is a legal question; a 30 s film of five product features may be the wrong film for the audience (owner call).
 - **Owner questions** (section 14): tagline and voice, the three lead features, music taste or commissioning, naming Spotify in a comparison, primary channel, the gold accent, Remotion eligibility.
+
+## 17. The full film (second pass, measured)
+
+Decisions taken by the delegate (owner defaults): tagline `your music. your server.`, lead features synced lyrics (the hero close-up), daily mixes and one session across devices, plus a keyboard-first montage and the terminal now-playing; no competitor names; own score; the one gold accent stays on the playing cover.
+
+**Shots and where they sit** (`scenes/timelines.ts`; they follow the sections of the score in `src/audio-cues.ts`, so every hard cut lands on a sound and `timelines.test.ts` says so):
+
+| Composition | Beats | What it is |
+| --- | --- | --- |
+| `hero` (1920x1080, 60 fps, 1800 f) | 0-16 `open`, 16-26 `keys`, 26-36 `mixes`, 36-46 `session`, 46-54 `terminal`, 54-60 `end` | the 30 s film with `audio/hero.wav` |
+| `cutdown-vertical` (1080x1920, 900 f) | 0-18 `open` (headline, then the lyrics close-up laid out for 9:16, five lines scrolling on the score's pings), 18-25 `session` (tall layout: caption, window, phone, chips), 25-30 `end` (no install block) | the 15 s cut with `audio/cutdown.wav`; mixes, keys and terminal are not in it |
+| `loop-readme` (1920x1080, 600 f, no grain, no chrome, muted) | 20 beats | the lyrics close-up built from nothing and taken back to nothing; render at `--scale=0.5`, then ffmpeg to 30 fps: 0.5 MB, 10.0 s |
+| `scene-open`, `scene-keys`, `scene-mixes`, `scene-session`, `scene-terminal`, `scene-end` | | each shot alone |
+
+Deviations from section 13: the open ends on the app itself, full frame, flat and bright (`ui/app-stage.tsx`, the 1280x800 window scaled 1.5 to 1.62 and pushed in, no tilt, no dimming), and the gold cover shrinks into its album slot. The queue shot (S2) became `keys`: the same app framing stays behind a veil, `⌘k` opens a palette (typed `lights on`, a lyric hit, `play from this line`), then the `?` cheat sheet from `docs/shortcuts.md`; there is no queue panel. S4 is `session` (device picker, the same gold cover flying from the laptop to the phone, platform chips one per beat); S5 is `terminal` (typed `/lodesong next` on the score's own key cues, then a second beat: `/lodesong pause` freezes the playhead and dims the song just before the silence); the end card is complete after about 2.5 of its 6 beats, so it holds about 1.75 s (tall cutdown: about 0.9 s, its URL lands on the score's last note). Crop marks and the timecode overlay are gone: they read as making-of.
+
+**The gold thread**: the playing cover is one object across the cuts. It leaves the lyrics close-up and lands in the app's album slot; the mix hero cover flies into the laptop window; the phone's cover flies into the terminal's now-playing slot; that one grows into the end card orb (`ui/gold-transit.tsx`). Each shot starts from where the previous one ended it, within a few pixels (camera moves differ), and keeps its own cover hidden until it lands. The keys to mixes cut has no thread.
+
+**One clock**: every shot that shows the playing song reads `useSongSeconds()` (`design/song-clock.tsx`, 65 s plus film time), so the app, the session windows and the terminal agree (1:11 in the app, 1:23 to 1:28 in the session, 1:28 to 1:33 in the terminal, the palette's `play from this line` at 1:14).
+
+**Checks** (all executable): `bun run --cwd apps/video stills` renders every keyframe of every composition (77 stills, about 50 s warm) and fails when text tagged `data-legible` renders under 28 px, under 60% opacity or outside the safe area (40 px from the edge on wide, the 60 to 1020 by 200 to 1600 box on tall). Only the tagged message text is asserted: the app mock-up, the small mono labels and the dither are judged by eye; `stills <id>` does one; `bun scripts/check.ts sheet <id>` tiles the stills; `bun run --cwd apps/video docs:stills` cuts the small jpgs in `docs-stills/` from the final renders (names `hero-NN-*`, `cutdown-NN-*`, `loop-01`); `test` covers hold times, the quarter-beat grid, odd-beat UI hits and the cuts against the score; `audio:check` and `onsets <mp4> hero|cutdown` check the score and the encode. Studio was also loaded in a real browser (Playwright against `remotion studio --no-open`): all compositions, no page error, no failed request (the audio range request is aborted by design), both brand fonts `loaded`.
+
+**Learned**:
+
+- A perspective camera pushes elements near the edge outward by 5 to 10%. Keep copy 100+ px from the edge in layout coordinates, then let the stills confirm.
+- A `clip-path` wrapper on an absolute child needs `position: absolute; inset: 0`, or it clips everything.
+- A positioned element paints above a static sibling: stack covers with `isolation: isolate` and a negative z-index for the card behind.
+- `interpolate` throws on a zero-length range; `ramp()` now returns a step.
+- Stacking three bare dither covers makes a believable "mix" cover with no extra art (the union of their dots).
+- Typing speed from the score: the terminal reads the 12 typed key cues, so the visible characters land on the sounds.
+- `remotion render` took 2 min for the 30 s hero (about 15 fps) on a loaded M-series Mac; the vertical 41 s; the loop 11 s.
+- Chrome Headless Shell for 4.0.541 is 147 MB and the CLI download can time out; fetching the zip with curl into `node_modules/.remotion/chrome-headless-shell/mac-arm64` with a `VERSION` file works.
+
+**Honest read**: the film is clean, legible and on the grid, with a real thread (one gold cover across lyrics, mix, session, terminal, end card), but it is still a dark minimal house style. The app shot is now big and bright but it is a re-creation from the real UI primitives, not a real capture; the keyboard cheat sheet is static after its entrance; the 9:16 cut has no keys or terminal moment (its beats are locked to the score); and nobody has watched the render on a phone. Art, in the sense of a moment you would rewatch: the gold ignite, the three covers merging into one mix, the cover crossing from laptop to phone. Merely good: everything else.

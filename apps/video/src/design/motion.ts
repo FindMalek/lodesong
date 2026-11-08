@@ -8,6 +8,7 @@ export const ease = {
 };
 
 export function ramp(frame: number, from: number, duration: number, easing: (t: number) => number = ease.out): number {
+  if (duration <= 0) return frame >= from ? 1 : 0;
   return interpolate(frame, [from, from + duration], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
