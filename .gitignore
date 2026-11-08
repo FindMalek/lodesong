@@ -1,5 +1,11 @@
 node_modules
 .DS_Store
+
+# third-party agent skills installed locally
+.claude/skills/
+.agents/
+skills-lock.json
+
 .deploy.env
 test-results
 perf-trend
