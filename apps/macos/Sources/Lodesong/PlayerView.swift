@@ -37,6 +37,8 @@ import WebKit
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        // `defaults write engineer.findmalek.lodesong inspectable -bool YES`, read at launch: Safari's Develop menu can then inspect the page.
+        webView.isInspectable = UserDefaults.standard.bool(forKey: "inspectable")
         // Until the page paints, the window's own background shows (dark in dark mode) instead of a white flash.
         webView.setValue(false, forKey: "drawsBackground")
         nowPlaying.bridge = self
@@ -93,6 +95,11 @@ import WebKit
     func callAsync(_ js: String) async -> Any? {
         try? await webView.callAsyncJavaScript(
             "return window.keepNative ? await window.keepNative.\(js) : null", contentWorld: .page)
+    }
+
+    /// The report Help > Copy Audio Diagnostics copies: the page's, with the app's details added.
+    func audioDiagnostics() async -> String {
+        Diagnostics.report(page: await callAsync("diagnostics()") as? String)
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {

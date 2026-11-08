@@ -32,6 +32,32 @@ unzip, move **lodesong** to Applications. It isn't signed by Apple yet: the firs
 macOS 14 or later. On managed Macs, `apps/macos/pkg.sh` builds a pkg that installs through Fleet or any MDM: see
 [the Fleet guide](../../docs/macos/fleet.md).
 
+## No sound?
+
+Play a song so it is running (the report needs one), then pick **Help > Copy Audio Diagnostics** and paste the result
+into the issue or message you were asked to answer. It is a JSON report of what the app and the page see:
+
+- the app, macOS and WebKit versions and the Mac's default output device;
+- the song, the stream quality the player chose and the stream's address with every token, cookie and the server's own
+  address removed (`/rest/stream?id=...&format=opus`);
+- both decks: `readyState`, `networkState`, error, `currentTime`, `duration` (`"Infinity"` is a stream with no length),
+  muted, volume and gain;
+- the audio context (state, sample rate, latency), the master and per-deck gains, the normalization in effect and the
+  loudest sample leaving the audio graph over 0.6 s (`graphPeak`: 0 while the song plays is silence inside the page);
+- the last 20 media events and errors, whether the levels worklet loads, the service worker's state and the settings
+  that touch sound;
+- `probe`: what the server answers to a `Range: bytes=0-1` request for the stream (status, `Content-Type`,
+  `Content-Length`, `Accept-Ranges`, `Content-Range`);
+- `findings`: the checks above that failed, in words.
+
+To look at the page itself in Safari's Web Inspector, turn it on once and relaunch the app:
+
+```sh
+defaults write engineer.findmalek.lodesong inspectable -bool YES
+```
+
+The app then shows up under Safari's **Develop** menu, named after your Mac. `-bool NO` (or `defaults delete`) turns it off.
+
 ## Build
 
 ```sh

@@ -174,6 +174,43 @@ import XCTest
         }
     }
 
+    /// WebKit plays a stream with no length and hands Web Audio silence: the player downloads it whole instead.
+    func testAnOpusStreamWithNoContentLengthIsAudible() async throws {
+        try requireOutputDevice()
+        await Servers.unsize("so-35")
+        let page = open("opus-192")
+        try await page.playAlbum("al-3")
+        try await expectAudible(page, "an opus stream with no Content-Length")
+        await Servers.unsize("so-35", on: false)
+    }
+
+    func testAudioDiagnosticsAnswerThroughTheBridgeWithoutSecrets() async throws {
+        let page = open("opus-192")
+        try await page.playAlbum("al-3")
+        try await expectAudible(page, "opus-192")
+        let text = await page.player.audioDiagnostics()
+        let report = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any], "not JSON: \(text.prefix(300))")
+        let app = try XCTUnwrap(report["app"] as? [String: Any])
+        XCTAssertNotNil(app["webKit"])
+        XCTAssertNotNil(app["output"])
+        XCTAssertEqual(try XCTUnwrap(report["stream"] as? [String: Any])["playing"] as? String, "opus-192")
+        XCTAssertEqual((report["context"] as? [String: Any])?["state"] as? String, "running")
+        let decks = try XCTUnwrap(report["decks"] as? [[String: Any]])
+        let active = try XCTUnwrap(decks.first { $0["active"] as? Bool == true })
+        XCTAssertTrue((active["src"] as? String)?.hasPrefix("/rest/stream?id=") == true, "the stream is named without its origin: \(active["src"] ?? "nil")")
+        XCTAssertGreaterThan(report["graphPeak"] as? Double ?? 0, Self.audible, "the report says nothing leaves the graph while the tap hears it")
+        XCTAssertNotNil((report["probe"] as? [String: Any])?["status"], "the range probe answered nothing")
+        XCTAssertEqual(report["findings"] as? [String], [], "a healthy playback has findings")
+        XCTAssertFalse(text.contains(Servers.app.host ?? "127.0.0.1"), "the report names the server")
+        XCTAssertFalse(text.lowercased().contains("cookie"), "the report mentions cookies")
+    }
+
+    func testAPageThatDoesNotAnswerStillGivesAReport() {
+        let report = Diagnostics.report(page: nil, app: ["version": "1.2.3"])
+        XCTAssertTrue(report.contains("\"version\" : \"1.2.3\""))
+        XCTAssertTrue(report.contains("did not answer"))
+    }
+
     func testNativeCommandsReachThePage() async throws {
         let page = open()
         try await page.playAlbum("al-3")

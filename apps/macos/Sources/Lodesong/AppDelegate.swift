@@ -174,6 +174,15 @@ import SwiftUI
         LevelMeter.shared.want("mini", true)
     }
 
+    @objc func copyAudioDiagnostics() {
+        Task {
+            let report = await player?.audioDiagnostics() ?? Diagnostics.report(page: nil)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(report, forType: .string)
+            Updater.tell("Audio diagnostics copied", "Paste them where you were asked for them. They hold no password, cookie or server address.")
+        }
+    }
+
     @objc func changeServer() { askForServer() }
     @objc func togglePlay() { nowPlaying.toggle() }
     @objc func nextSong() { nowPlaying.next() }
@@ -230,7 +239,9 @@ import SwiftUI
             item("Close", #selector(NSWindow.performClose(_:)), "w"),
         ]
         submenu("Window", windows)
-        NSApp.mainMenu = main
         NSApp.windowsMenu = main.items.last?.submenu
+        submenu("Help", [item("Copy Audio Diagnostics", #selector(copyAudioDiagnostics))])
+        NSApp.helpMenu = main.items.last?.submenu
+        NSApp.mainMenu = main
     }
 }
