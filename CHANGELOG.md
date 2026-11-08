@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/FindMalek/lodesong/compare/v1.16.0...v1.16.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **player:** reset a dead output device ([#504](https://github.com/FindMalek/lodesong/issues/504)) ([5ea2e67](https://github.com/FindMalek/lodesong/commit/5ea2e6793093331c55cc442cb1c2d9d255f74833)), closes [#492](https://github.com/FindMalek/lodesong/issues/492)
+
 ## [1.16.0](https://github.com/FindMalek/lodesong/compare/v1.15.0...v1.16.0) (2026-11-08)
 
 
