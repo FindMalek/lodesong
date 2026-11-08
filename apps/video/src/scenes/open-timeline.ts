@@ -20,7 +20,7 @@ export const T = {
 const SETTLE = 1;
 export const LABEL_FADE = 0.5;
 
-export type Voice = "tick" | "kick" | "hat" | "sub" | "whoosh" | "riser" | "click" | "bloom" | "soft";
+type Voice = "tick" | "kick" | "hat" | "sub" | "whoosh" | "riser" | "click" | "bloom" | "soft";
 
 export interface Cue {
   at: number;
