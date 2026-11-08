@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Aura } from "./aura";
+import { Dither } from "./dither";
 
 const NO_SONGS: never[] = [];
 
@@ -8,11 +9,14 @@ const NO_SONGS: never[] = [];
 export function FolderCover({ id, cover, className }: { id: string; cover: string | null; className?: string }) {
   const [broken, setBroken] = useState<string | null>(null);
   return (
-    <div className={cn("overflow-hidden bg-card", className)}>
+    <div className={cn("relative overflow-hidden bg-card", className)}>
       {cover && broken !== cover ? (
         <img src={cover} alt="" className="size-full object-cover" onError={() => setBroken(cover)} />
       ) : (
-        <Aura id={`folder:${id}`} songs={NO_SONGS} className="size-full" />
+        <>
+          <Aura id={`folder:${id}`} songs={NO_SONGS} className="size-full" />
+          <Dither id={`folder:${id}`} className="absolute inset-0 size-full" />
+        </>
       )}
     </div>
   );
