@@ -1,12 +1,5 @@
 import { Easing, interpolate } from "remotion";
 
-export const FPS = 60;
-const BPM = 120;
-const BEAT = (FPS * 60) / BPM;
-
-/** Frame of the nth beat (fractions allowed: 0.5 is the off-beat). */
-export const beat = (count: number): number => Math.round(count * BEAT);
-
 /** One signature curve for entrances (expo-out feel), one for exits, one for camera drift. Nothing bounces. */
 export const ease = {
   out: Easing.bezier(0.16, 1, 0.3, 1),

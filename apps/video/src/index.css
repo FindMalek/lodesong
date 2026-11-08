@@ -2,6 +2,10 @@
 @import "../../../packages/ui/src/styles/theme.css";
 @source "../../../packages/ui/src";
 
+:root {
+  --ignite: oklch(0.84 0.15 82);
+}
+
 @layer base {
   * {
     border-color: var(--border);

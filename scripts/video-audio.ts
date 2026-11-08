@@ -1,9 +1,10 @@
 import { mkdirSync } from "node:fs";
+import { BPM, FPS } from "../apps/video/src/design/beat";
+import { CUES, FRAMES, type Voice } from "../apps/video/src/scenes/open-timeline";
 
-// Placeholder score for the opening scene: bun scripts/video-audio.ts. 120 BPM, 6 s, 48 kHz stereo, no samples, no licence needed.
+// Placeholder score for the opening scene: bun scripts/video-audio.ts. Every hit is read from the scene's own cue table.
 const RATE = 48_000;
-const BPM = 120;
-const SECONDS = 6;
+const SECONDS = FRAMES / FPS;
 const BEAT = 60 / BPM;
 const OUT = "apps/video/public/audio/open.wav";
 
@@ -40,20 +41,28 @@ const riser =
     noise() * (t / length) ** 2.2 * Math.min(1, (length - t) / 0.02);
 const whoosh = (t: number): number => noise() * Math.sin(Math.PI * Math.min(1, t / 0.5)) ** 2;
 
-add(0, 0.05, tick, 0.5);
-add(0, 6, pad, 0.07);
-add(BEAT * 1, 0.1, tick, 0.4);
-add(BEAT * 2, 0.1, tick, 0.4);
-add(BEAT * 2.5, BEAT * 1.5, riser(BEAT * 1.5), 0.22);
-for (let n = 3; n < 12; n += 1) add(BEAT * (n + 0.5), 0.08, hat, 0.12, n % 2 ? 0.3 : -0.3);
-for (let n = 4; n < 12; n += 1) add(BEAT * n, 0.5, kick, 0.7);
-add(BEAT * 4, 2.2, sub, 0.65);
-add(BEAT * 4, 0.5, whoosh, 0.18);
-add(BEAT * 5.5, 0.05, click, 0.5);
-add(BEAT * 7, 0.05, click, 0.35);
-add(BEAT * 9, 0.05, click, 0.35);
+const bloom = (t: number): number =>
+  [440, 660, 880].reduce((sum, hz, i) => sum + Math.sin(2 * Math.PI * hz * t) / (i + 1), 0) * Math.min(1, t / 0.03) * Math.exp(-t * 2.6);
+const soft = (t: number): number => Math.sin(2 * Math.PI * 1760 * t) * Math.exp(-t * 40);
 
-const peak = Math.max(...left.map(Math.abs), ...right.map(Math.abs));
+type Hit = (at: number, length: number, pan: number) => void;
+
+const HITS: Record<Voice, Hit> = {
+  tick: (at) => add(at, 0.1, tick, 0.45),
+  kick: (at) => add(at, 0.5, kick, 0.7),
+  hat: (at, _length, pan) => add(at, 0.08, hat, 0.12, pan),
+  sub: (at) => add(at, 2.2, sub, 0.65),
+  whoosh: (at) => add(at, 0.5, whoosh, 0.18),
+  riser: (at, length) => add(at, length, riser(length), 0.22),
+  click: (at) => add(at, 0.05, click, 0.45),
+  bloom: (at) => add(at, 1.6, bloom, 0.22),
+  soft: (at) => add(at, 0.3, soft, 0.2),
+};
+
+add(0, SECONDS, pad, 0.07);
+for (const [index, cue] of CUES.entries()) HITS[cue.voice](cue.at * BEAT, (cue.length ?? 1) * BEAT, index % 2 ? 0.3 : -0.3);
+
+const peak = [left, right].reduce((top, channel) => channel.reduce((max, sample) => Math.max(max, Math.abs(sample)), top), 0);
 const scale = 0.85 / peak;
 const fade = Math.floor(RATE * 0.4);
 const bytes = new DataView(new ArrayBuffer(44 + frames * 4));

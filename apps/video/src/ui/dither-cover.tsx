@@ -9,12 +9,13 @@ interface DitherCoverProps {
   develop?: number;
   /** Seconds fed to the glow drift, so the picture breathes with the frame clock. */
   time?: number;
+  color?: string;
 }
 
 const CELL = 4;
 
 /** The app's own generated cover look: the shared ordered-dither glow, drawn as one SVG path, deterministic per frame. */
-export function DitherCover({ id, size, develop = 1, time = 0 }: DitherCoverProps) {
+export function DitherCover({ id, size, develop = 1, time = 0, color = "var(--foreground)" }: DitherCoverProps) {
   const cols = Math.ceil(size / CELL);
   const seed = ditherSeed(id);
   const path = useMemo(() => {
@@ -32,7 +33,7 @@ export function DitherCover({ id, size, develop = 1, time = 0 }: DitherCoverProp
       viewBox={`0 0 ${cols * CELL} ${cols * CELL}`}
       style={{ display: "block", background: "var(--card)" }}
     >
-      <path d={path} fill="var(--foreground)" fillOpacity={0.85} />
+      <path d={path} fill={color} fillOpacity={0.85} />
     </svg>
   );
 }

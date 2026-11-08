@@ -4,4 +4,5 @@ import { enableTailwind } from "@remotion/tailwind-v4";
 Config.setVideoImageFormat("png");
 Config.setOverwriteOutput(true);
 Config.setPixelFormat("yuv420p");
-Config.overrideWebpackConfig(enableTailwind);
+Config.setColorSpace("bt709");
+Config.overrideBundlerConfig(enableTailwind);

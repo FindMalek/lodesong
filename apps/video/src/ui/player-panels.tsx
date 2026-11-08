@@ -21,69 +21,49 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { BrandMark } from "../../../player/src/components/brand";
+import { ALBUM_MINUTES, COPY, clock, FIXTURE } from "../copy";
 import { DitherCover } from "./dither-cover";
 
 export const STAGE = { width: 1280, height: 800 };
+const TRACK_SECONDS = FIXTURE.tracks[0][1];
 const BAR = 72;
 const SIDE = 224;
 const LYRICS = 320;
-
-const NAV = [
-  [HomeIcon, "home"],
-  [DiscIcon, "albums"],
-  [UsersIcon, "artists"],
-  [MusicIcon, "songs"],
-  [HeartIcon, "liked songs"],
-  [HistoryIcon, "history"],
-  [FolderIcon, "folders"],
-] as const;
-
-const PLAYLISTS = ["daily mix 1", "daily mix 2", "daily mix 3", "discover weekly", "daylist", "late night drive"];
-
-const TRACKS = [
-  ["Signal Violet Pt. 2", "0:20"],
-  ["Static Echo at Night", "0:20"],
-  ["Morning Lantern (Reprise)", "0:20"],
-  ["North Echo (Reprise)", "0:20"],
-  ["Silver Atlas Again", "0:20"],
-  ["Neon Atlas", "0:20"],
-  ["Fever Ember", "0:20"],
-  ["Morning Violet (Reprise)", "0:20"],
-] as const;
-
-const LYRIC_LINES = [
-  "I count the satellites",
-  "say it slowly orbit",
-  "the quiet between neon",
-  "I keep the lights on for ocean",
-  "say it slowly summer",
-  "hold the signal violet",
-  "static echo at night",
-  "we were never lost",
-  "just out of range",
-];
 const LINE_STEP = 52;
+const NAV_ICONS = [HomeIcon, DiscIcon, UsersIcon, MusicIcon, HeartIcon, HistoryIcon, FolderIcon];
+const BAR_IDS = ["a", "b", "c", "d"] as const;
 
-const panel: CSSProperties = { position: "absolute", background: "var(--background)", overflow: "hidden" };
+const panel: CSSProperties = {
+  position: "absolute",
+  background: "var(--background)",
+  overflow: "hidden",
+  boxShadow: "0 40px 120px rgb(0 0 0 / calc(0.55 * var(--float, 0)))",
+};
 
 export function Sidebar() {
   return (
-    <div style={{ ...panel, left: 0, top: 0, width: SIDE, height: STAGE.height - BAR, borderRight: "1px solid var(--border)" }}>
+    <div
+      data-panel="sidebar"
+      style={{ ...panel, left: 0, top: 0, width: SIDE, height: STAGE.height - BAR, borderRight: "1px solid var(--border)" }}
+    >
       <div className="flex h-11 items-center px-5">
         <BrandMark />
       </div>
       <div className="px-5 pt-4 pb-2 font-mono text-label text-faint">library</div>
       <div className="flex flex-col gap-0.5 px-2">
-        {NAV.map(([Icon, name]) => (
-          <div key={name} className="flex h-8 items-center gap-3 px-3 font-mono text-small text-foreground">
-            <Icon className="size-4 text-muted-foreground" />
-            {name}
-          </div>
-        ))}
+        {FIXTURE.nav.map((name, index) => {
+          const Icon = NAV_ICONS[index] ?? HomeIcon;
+          return (
+            <div key={name} className="flex h-8 items-center gap-3 px-3 font-mono text-small text-foreground">
+              <Icon className="size-4 text-muted-foreground" />
+              {name}
+            </div>
+          );
+        })}
       </div>
       <div className="px-5 pt-6 pb-2 font-mono text-label text-faint">playlists</div>
       <div className="flex flex-col gap-0.5 px-2">
-        {PLAYLISTS.map((name) => (
+        {FIXTURE.playlists.map((name) => (
           <div key={name} className="flex h-8 items-center px-3 font-mono text-small text-muted-foreground">
             {name}
           </div>
@@ -97,11 +77,13 @@ interface MainProps {
   develop: number;
   time: number;
   bars: readonly number[];
+  coverColor: string;
 }
 
-export function Main({ develop, time, bars }: MainProps) {
+export function Main({ develop, time, bars, coverColor }: MainProps) {
   return (
     <div
+      data-panel="main"
       style={{
         ...panel,
         left: SIDE,
@@ -121,14 +103,16 @@ export function Main({ develop, time, bars }: MainProps) {
       </div>
       <div className="flex gap-5 border-b p-5">
         <div className="outline outline-muted">
-          <DitherCover id="quiet-hours-ii" size={128} develop={develop} time={time} />
+          <DitherCover id="quiet-hours-ii" size={128} develop={develop} time={time} color={coverColor} />
         </div>
         <div className="flex flex-col justify-between">
           <div>
             <Badge variant="outline">album</Badge>
-            <div className="mt-2 font-medium text-title leading-none">Quiet Hours II</div>
-            <div className="mt-1.5 font-medium text-lead">Satellite Garden</div>
-            <div className="mt-0.5 text-muted-foreground text-small">2015 · 8 tracks · 3 min · FLAC</div>
+            <div className="mt-2 font-medium text-title leading-none">{FIXTURE.album.title}</div>
+            <div className="mt-1.5 font-medium text-lead">{FIXTURE.album.artist}</div>
+            <div className="mt-0.5 text-muted-foreground text-small">
+              {FIXTURE.album.year} · {FIXTURE.tracks.length} tracks · {ALBUM_MINUTES} min · {FIXTURE.album.format}
+            </div>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary">play</Button>
@@ -143,7 +127,7 @@ export function Main({ develop, time, bars }: MainProps) {
           <span className="flex-1">title</span>
           <span>time</span>
         </div>
-        {TRACKS.map(([title, length], index) => (
+        {FIXTURE.tracks.map(([title, seconds], index) => (
           <div
             key={title}
             className="flex h-9 items-center border-b text-body"
@@ -152,8 +136,8 @@ export function Main({ develop, time, bars }: MainProps) {
             <span className="w-8 font-mono text-small">
               {index === 0 ? (
                 <span className="flex h-4 items-end gap-0.5">
-                  {bars.map((height) => (
-                    <i key={height} className="block w-0.5 bg-foreground" style={{ height: `${height * 100}%` }} />
+                  {BAR_IDS.map((id, bar) => (
+                    <i key={id} className="block w-0.5 bg-foreground" style={{ height: `${(bars[bar] ?? 0) * 100}%` }} />
                   ))}
                 </span>
               ) : (
@@ -163,7 +147,7 @@ export function Main({ develop, time, bars }: MainProps) {
             <span className="flex-1" style={{ fontWeight: index === 0 ? 500 : 400 }}>
               {title}
             </span>
-            <span className="font-mono text-small">{length}</span>
+            <span className="font-mono text-small">{clock(seconds)}</span>
           </div>
         ))}
       </div>
@@ -173,14 +157,14 @@ export function Main({ develop, time, bars }: MainProps) {
 
 export function Lyrics({ focus }: { focus: number }) {
   return (
-    <div style={{ ...panel, left: STAGE.width - LYRICS, top: 0, width: LYRICS, height: STAGE.height - BAR }}>
+    <div data-panel="lyrics" style={{ ...panel, left: STAGE.width - LYRICS, top: 0, width: LYRICS, height: STAGE.height - BAR }}>
       <div className="flex h-11 items-center border-b px-5 font-mono text-small">lyrics</div>
       <div
         className="absolute inset-x-0 top-11 bottom-0 overflow-hidden"
         style={{ maskImage: "linear-gradient(to bottom, transparent, black 18%, black 70%, transparent)" }}
       >
         <div className="flex flex-col gap-6 p-6" style={{ transform: `translateY(${60 - focus * LINE_STEP}px)` }}>
-          {LYRIC_LINES.map((line, index) => {
+          {COPY.lyrics.map((line, index) => {
             const weight = Math.max(0, 1 - Math.abs(index - focus));
             return (
               <div
@@ -198,17 +182,21 @@ export function Lyrics({ focus }: { focus: number }) {
   );
 }
 
-export function PlayerBar({ progress, clock }: { progress: number; clock: string }) {
+export function PlayerBar({ position, coverColor }: { position: number; coverColor: string }) {
+  const progress = Math.min(1, position / TRACK_SECONDS);
   return (
-    <div style={{ ...panel, left: 0, top: STAGE.height - BAR, width: STAGE.width, height: BAR, borderTop: "1px solid var(--border)" }}>
+    <div
+      data-panel="bar"
+      style={{ ...panel, left: 0, top: STAGE.height - BAR, width: STAGE.width, height: BAR, borderTop: "1px solid var(--border)" }}
+    >
       <div className="flex h-full items-center px-5">
         <div className="flex w-72 items-center gap-3">
           <div className="outline outline-muted">
-            <DitherCover id="quiet-hours-ii" size={44} />
+            <DitherCover id="quiet-hours-ii" size={44} color={coverColor} />
           </div>
           <div>
-            <div className="font-medium text-body">Signal Violet Pt. 2</div>
-            <div className="text-muted-foreground text-small">Satellite Garden</div>
+            <div className="font-medium text-body">{FIXTURE.tracks[0][0]}</div>
+            <div className="text-muted-foreground text-small">{FIXTURE.album.artist}</div>
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center gap-1.5">
@@ -230,16 +218,16 @@ export function PlayerBar({ progress, clock }: { progress: number; clock: string
             </Button>
           </div>
           <div className="flex w-[420px] items-center gap-3 font-mono text-faint text-meta">
-            <span>{clock}</span>
+            <span>{clock(position)}</span>
             <div className="relative h-0.5 flex-1 bg-border">
               <div className="absolute inset-y-0 left-0 bg-foreground" style={{ width: `${progress * 100}%` }} />
               <div className="absolute -top-1 size-2.5 bg-foreground" style={{ left: `calc(${progress * 100}% - 5px)` }} />
             </div>
-            <span>0:20</span>
+            <span>{clock(TRACK_SECONDS)}</span>
           </div>
         </div>
         <div className="flex w-72 items-center justify-end gap-3 text-muted-foreground">
-          <span className="font-mono text-meta">FLAC</span>
+          <span className="font-mono text-meta">{FIXTURE.album.format}</span>
           <MicVocalIcon className="size-4 text-foreground" />
           <ListMusicIcon className="size-4" />
           <Volume2Icon className="size-4" />
