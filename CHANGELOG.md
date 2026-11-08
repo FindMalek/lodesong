@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0](https://github.com/FindMalek/lodesong/compare/v1.15.0...v1.16.0) (2026-11-08)
+
+
+### Features
+
+* **folders:** dithered aura covers ([#501](https://github.com/FindMalek/lodesong/issues/501)) ([8a438e1](https://github.com/FindMalek/lodesong/commit/8a438e1d6390060564b8b46a6cc76ed48fb9444e))
+* **video:** remotion toolchain and playbook ([#507](https://github.com/FindMalek/lodesong/issues/507)) ([6e2e54a](https://github.com/FindMalek/lodesong/commit/6e2e54a2834f34c13910db53abd7e536e221870a)), closes [#503](https://github.com/FindMalek/lodesong/issues/503)
+
+
+### Performance Improvements
+
+* **player:** defer page warm-up ([#508](https://github.com/FindMalek/lodesong/issues/508)) ([db19c2d](https://github.com/FindMalek/lodesong/commit/db19c2da466726fef19bff340bbdf14bea9a2789)), closes [#502](https://github.com/FindMalek/lodesong/issues/502)
+
 ## [1.15.0](https://github.com/FindMalek/lodesong/compare/v1.14.0...v1.15.0) (2026-11-08)
 
 
