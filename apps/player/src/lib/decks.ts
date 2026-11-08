@@ -20,6 +20,36 @@ export function markPlaybackSession(nav: object = navigator): void {
   }
 }
 
+/** WebKit plays a stream of unknown length (a transcode relayed without Content-Length) but sends it through Web Audio as silence. */
+export function silencesUnsized(ua: string): boolean {
+  return /AppleWebKit/.test(ua) && !/Chrome\/|Chromium\/|Edg\/|OPR\//.test(ua);
+}
+
+const BLOB_TYPES: Record<string, string> = { opus: "audio/ogg", mp3: "audio/mpeg" };
+const LOGGED = [
+  "loadstart",
+  "loadedmetadata",
+  "durationchange",
+  "canplay",
+  "playing",
+  "pause",
+  "waiting",
+  "stalled",
+  "emptied",
+  "abort",
+  "error",
+  "ended",
+];
+const LOG_SIZE = 20;
+export const finite = (value: number, fallback = 1): number => (Number.isFinite(value) ? value : fallback);
+
+export interface MediaEvent {
+  ms: number;
+  deck: number;
+  name: string;
+  detail?: string;
+}
+
 export interface DeckEvents {
   playing: () => void;
   pause: () => void;
@@ -40,6 +70,8 @@ interface Deck {
   songId: string | null;
   factor: number;
   fade: number;
+  object: string | null;
+  sized: string | null;
 }
 
 /** The levels worklet (packages/shared/src/levels-worklet.ts), served by our server: the CSP allows no blob: scripts. */
@@ -65,14 +97,29 @@ export class Decks {
   private armed: Deck | null = null;
   private fadesSkips = false;
 
+  private readonly log: MediaEvent[] = [];
+
   constructor(private readonly events: DeckEvents) {
-    this.decks = [this.createDeck(), this.createDeck()];
+    this.decks = [this.createDeck(0), this.createDeck(1)];
   }
 
-  private createDeck(): Deck {
+  private createDeck(index: number): Deck {
     const element = new Audio();
     element.preload = "auto";
-    const deck: Deck = { element, gain: null, songId: null, factor: 1, fade: 0 };
+    const deck: Deck = { element, gain: null, songId: null, factor: 1, fade: 0, object: null, sized: null };
+    for (const name of LOGGED)
+      element.addEventListener(name, () => {
+        const error = element.error;
+        const detail =
+          name === "error"
+            ? `code ${error?.code ?? "?"} ${error?.message ?? ""}`.trim()
+            : name === "durationchange"
+              ? String(element.duration)
+              : undefined;
+        this.log.push({ ms: Math.round(performance.now()), deck: index, name, detail });
+        if (this.log.length > LOG_SIZE) this.log.shift();
+      });
+    element.addEventListener("durationchange", () => void this.size(deck));
     const on = (name: string, handler: () => void) =>
       element.addEventListener(name, () => {
         if (this.playing.element === element) handler();
@@ -184,7 +231,45 @@ export class Decks {
   private setGain(deck: Deck, value: number): void {
     if (!deck.gain) return;
     deck.gain.gain.cancelScheduledValues(0);
-    deck.gain.gain.value = value;
+    deck.gain.gain.value = finite(value);
+  }
+
+  private source(deck: Deck, url: string): void {
+    this.release(deck);
+    deck.sized = null;
+    deck.element.src = url;
+  }
+
+  private release(deck: Deck): void {
+    if (deck.object) URL.revokeObjectURL(deck.object);
+    deck.object = null;
+  }
+
+  // A stream of unknown length, in an engine that mutes those: downloaded whole (the server's own length is unknown
+  // too), then played from a blob, which has a length.
+  private async size(deck: Deck): Promise<void> {
+    const { element, songId } = deck;
+    const url = element.getAttribute("src");
+    if (element.duration !== Number.POSITIVE_INFINITY || !url || url === deck.sized || !silencesUnsized(navigator.userAgent)) return;
+    if (new URL(url, location.href).pathname !== "/rest/stream") return;
+    const at = element.currentTime;
+    const resume = !element.paused && deck === this.playing;
+    deck.sized = url;
+    element.removeAttribute("src");
+    element.load();
+    const blob = await fetch(url)
+      .then((response) => (response.ok ? response.blob() : null))
+      .catch(() => null);
+    if (element.getAttribute("src") !== null || deck.songId !== songId) return;
+    if (!blob) {
+      element.setAttribute("src", url);
+      return;
+    }
+    const format = new URL(url, location.href).searchParams.get("format") ?? "";
+    deck.object = URL.createObjectURL(new Blob([blob], { type: BLOB_TYPES[format] ?? blob.type }));
+    element.src = deck.object;
+    if (at) element.addEventListener("loadedmetadata", () => (element.currentTime = at), { once: true });
+    if (resume) void element.play().catch((error) => this.rejected(error));
   }
 
   setFadesSkips(on: boolean): void {
@@ -230,8 +315,8 @@ export class Decks {
   }
 
   setFactor(factor: number): void {
-    this.playing.factor = factor;
-    this.setGain(this.playing, factor);
+    this.playing.factor = finite(factor);
+    this.setGain(this.playing, this.playing.factor);
   }
 
   async setSink(id: string): Promise<void> {
@@ -244,7 +329,8 @@ export class Decks {
       );
   }
 
-  load(songId: string, url: string, factor: number, startAt: number, autoplay: boolean): void {
+  load(songId: string, url: string, requested: number, startAt: number, autoplay: boolean): void {
+    const factor = finite(requested);
     clearTimeout(this.timer);
     this.armed = null;
     let faded = false;
@@ -265,7 +351,7 @@ export class Decks {
     } else {
       this.playing.element.pause();
       this.playing.songId = songId;
-      this.playing.element.src = url;
+      this.source(this.playing, url);
     }
     const deck = this.playing;
     deck.factor = factor;
@@ -289,7 +375,7 @@ export class Decks {
     }
     const idle = this.idle;
     if (idle.songId === songId) {
-      idle.factor = factor;
+      idle.factor = finite(factor);
       idle.fade = fade;
       return;
     }
@@ -297,18 +383,21 @@ export class Decks {
     this.armed = null;
     idle.element.pause();
     idle.songId = songId;
-    idle.factor = factor;
+    idle.factor = finite(factor);
     idle.fade = fade;
     if (url) {
-      idle.element.src = url;
+      this.source(idle, url);
       idle.element.load();
       if (startAt) idle.element.addEventListener("loadedmetadata", () => (idle.element.currentTime = startAt), { once: true });
-    } else idle.element.removeAttribute("src");
+    } else {
+      this.release(idle);
+      idle.element.removeAttribute("src");
+    }
   }
 
   reload(url: string, startAt: number): void {
     const deck = this.playing;
-    deck.element.src = url;
+    this.source(deck, url);
     deck.element.addEventListener("loadedmetadata", () => (deck.element.currentTime = startAt), { once: true });
     void this.play().catch((error) => this.rejected(error));
   }
@@ -364,6 +453,7 @@ export class Decks {
     clearTimeout(this.timer);
     for (const deck of this.decks) {
       deck.element.pause();
+      this.release(deck);
       deck.element.removeAttribute("src");
       deck.songId = null;
     }
@@ -451,5 +541,65 @@ export class Decks {
 
   get preloadedId(): string | null {
     return this.idle.songId;
+  }
+
+  snapshot() {
+    const context = this.context as (AudioContext & { outputLatency?: number }) | null;
+    return {
+      decks: this.decks.map((deck, index) => {
+        const { element } = deck;
+        return {
+          index,
+          active: deck === this.playing,
+          songId: deck.songId,
+          src: element.getAttribute("src"),
+          fromBlob: !!deck.object,
+          sizedFrom: deck.sized,
+          readyState: element.readyState,
+          networkState: element.networkState,
+          error: element.error ? { code: element.error.code, message: element.error.message } : null,
+          currentTime: element.currentTime,
+          duration: element.duration,
+          paused: element.paused,
+          muted: element.muted,
+          volume: element.volume,
+          gain: deck.gain?.gain.value ?? null,
+          factor: deck.factor,
+        };
+      }),
+      context: context && {
+        state: context.state,
+        sampleRate: context.sampleRate,
+        baseLatency: context.baseLatency,
+        outputLatency: context.outputLatency ?? null,
+        sinkId: this.sinkId,
+        hasSetSinkId: "setSinkId" in context,
+      },
+      master: this.master?.gain.value ?? null,
+      volume: this.volume,
+      levels: this.meter ? "running" : this.onLevels ? "starting" : "off",
+      events: [...this.log],
+    };
+  }
+
+  /** The loudest sample leaving the graph (before the master gain) over `milliseconds`; null without a graph. */
+  async outputPeak(milliseconds: number): Promise<number | null> {
+    const context = this.context;
+    const out = this.paths?.out;
+    if (!context || !out) return null;
+    const analyser = context.createAnalyser();
+    const mute = context.createGain();
+    mute.gain.value = 0;
+    out.connect(analyser).connect(mute).connect(context.destination);
+    const samples = new Float32Array(analyser.fftSize);
+    let peak = 0;
+    for (const end = performance.now() + milliseconds; performance.now() < end; ) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      analyser.getFloatTimeDomainData(samples);
+      for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+    }
+    out.disconnect(analyser);
+    mute.disconnect();
+    return peak;
   }
 }

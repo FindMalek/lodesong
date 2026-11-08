@@ -1,5 +1,27 @@
 import { describe, expect, test } from "bun:test";
-import { BANDS, clampGains, FLAT, fromDb, headroom, PRESETS, presetOf } from "./eq";
+import { BANDS, clampGains, FLAT, fromDb, headroom, PRESETS, presetOf, replayGainFactor } from "./eq";
+
+describe("replay gain", () => {
+  test("tags give the track or album gain, held under the peak", () => {
+    expect(replayGainFactor({ trackGain: -6, albumGain: -3 }, false)).toBeCloseTo(0.501, 3);
+    expect(replayGainFactor({ trackGain: -6, albumGain: -3 }, true)).toBeCloseTo(0.708, 3);
+    expect(replayGainFactor({ trackGain: 6, trackPeak: 1 }, false)).toBe(1);
+  });
+  test("a tag that is no number or no sane value never silences a song or blasts it", () => {
+    const bad = [
+      { trackGain: "abc" },
+      { trackGain: null },
+      { trackGain: Number.NaN },
+      { trackGain: Number.POSITIVE_INFINITY },
+      {},
+    ] as never[];
+    expect(bad.map((tags) => replayGainFactor(tags, false))).toEqual([1, 1, 1, 1, 1]);
+    expect(replayGainFactor({ trackGain: 200 }, false)).toBeCloseTo(fromDb(24), 6);
+    expect(replayGainFactor({ trackGain: -200 }, false)).toBeCloseTo(fromDb(-24), 6);
+    expect(replayGainFactor({ trackGain: 0, trackPeak: 1e9 }, false)).toBeGreaterThanOrEqual(0.125);
+    expect(replayGainFactor({ trackGain: -6, trackPeak: -1 }, false)).toBeGreaterThan(0);
+  });
+});
 
 describe("equalizer maths", () => {
   test("every preset has one value per band, within ±12", () => {

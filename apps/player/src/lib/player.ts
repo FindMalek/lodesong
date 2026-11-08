@@ -3,7 +3,7 @@ import { useRef, useSyncExternalStore } from "react";
 import type { FrameSource } from "./audio/types";
 import { fadeBetween } from "./crossfade";
 import { Decks } from "./decks";
-import { fromDb } from "./eq";
+import { fromDb, replayGainFactor } from "./eq";
 import { notify } from "./notify";
 import { controlled, dropPrecache, isCached, onCacheChange, pausePrecache, precache } from "./offline";
 import { isHidden, songPref } from "./prefs";
@@ -162,21 +162,11 @@ function edit(queue: Q.Queue): void {
   preloadNext();
 }
 
-function replayGainFactor(song: Song | undefined, album: boolean): number {
-  const rg = song?.replayGain;
-  if (!rg) return 1;
-  const db = album ? (rg.albumGain ?? rg.trackGain) : (rg.trackGain ?? rg.albumGain);
-  const peak = album ? (rg.albumPeak ?? rg.trackPeak) : (rg.trackPeak ?? rg.albumPeak);
-  if (db === undefined) return 1;
-  const factor = 10 ** (db / 20);
-  return peak ? Math.min(factor, 1 / peak) : factor;
-}
-
 function gainFactor(song: Song | undefined, album: boolean): number {
   const mode = getSetting("normalization");
   const preamp = fromDb(getSetting("preamp"));
   if (mode === "off") return preamp;
-  return replayGainFactor(song, mode === "album" ? true : mode === "track" ? false : album) * preamp;
+  return replayGainFactor(song?.replayGain, mode === "album" ? true : mode === "track" ? false : album) * preamp;
 }
 
 export function appliedGain(): { mode: "album" | "track" | "off"; db: number } | null {
@@ -639,6 +629,8 @@ export const player = {
   getBuffered: (): number => decks.buffered(),
   element: (): HTMLAudioElement => decks.element,
   levels: (listener: ((levels: number[]) => void) | null): Promise<void> => decks.levels(listener),
+  audioSnapshot: () => decks.snapshot(),
+  outputPeak: (milliseconds: number): Promise<number | null> => decks.outputPeak(milliseconds),
   setSleep(option: number | "track" | "album" | null): void {
     const sleep: Sleep =
       option === null ? null : typeof option === "number" ? { kind: "time", until: Date.now() + option * 60_000 } : { kind: option };

@@ -67,6 +67,10 @@ export async function breakStream(songId: string, format: "mp3" | "opus", mode: 
   await fetch(`${MOCK()}/mock/fault?id=${songId}&format=${format}&mode=${mode}`, { method: "POST" });
 }
 
+export async function unsizeStream(songId: string, on = true): Promise<void> {
+  await fetch(`${MOCK()}/mock/unsized?id=${songId}&mode=${on ? "on" : "off"}`, { method: "POST" });
+}
+
 /** A browser that can't play these types: `canPlayType` answers "". */
 export async function cannotPlay(page: Page, pattern: RegExp): Promise<void> {
   await page.addInitScript((source) => {

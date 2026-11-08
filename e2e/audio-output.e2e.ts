@@ -1,4 +1,14 @@
-import { breakStream, cannotPlay, firstSongOf, outputLevel, outputStates, silencedElement, tapOutput, useQuality } from "./audio";
+import {
+  breakStream,
+  cannotPlay,
+  firstSongOf,
+  outputLevel,
+  outputStates,
+  silencedElement,
+  tapOutput,
+  unsizeStream,
+  useQuality,
+} from "./audio";
 import { expect, test } from "./fixtures";
 
 // "Playing" in the UI is not sound: these read the signal that reaches the speakers.
@@ -81,6 +91,21 @@ for (const [claims, n, says] of [
     }
   });
 }
+
+// Navidrome's transcodes have no Range and no Content-Length: WebKit plays them but gives Web Audio silence.
+test("a transcode that arrives without a length is audible", async ({ page, signedIn }) => {
+  const album = albumFor(4);
+  const song = await firstSongOf(album);
+  await unsizeStream(song);
+  try {
+    await useQuality(page, "opus-192");
+    await signedIn.goto(`/album/${album}`);
+    await page.getByRole("button", { name: "play", exact: true }).first().click();
+    await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  } finally {
+    await unsizeStream(song, false);
+  }
+});
 
 test("a song that can't be played even as mp3 is skipped and the next one plays", async ({ page, signedIn }) => {
   const album = albumFor(9);
