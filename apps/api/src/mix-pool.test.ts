@@ -8,6 +8,11 @@ const listeningOf = (rows: Record<string, [string, number][]>, library: string[]
   counts: new Map(),
   playedKeys: new Set(),
   together: new Map(Object.entries(rows).map(([artist, row]) => [artist, new Map(row)])),
+  signals: new Map(),
+  liked: new Set(),
+  sounds: new Map(),
+  familiar: 0.6,
+  now: 0,
 });
 
 test("equal weights are broken alphabetically, and artists missing from the library never take a slot", () => {

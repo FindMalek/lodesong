@@ -14,6 +14,7 @@ import { readCover } from "./folder-cover";
 import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
 import { readPlays, recordPlay } from "./history";
+import { likesKey } from "./likes";
 import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
@@ -55,6 +56,7 @@ export interface RpcDeps {
   fetcher: typeof fetch;
   upstreamFor(id: string): Upstream | undefined;
   foldersFor(session: Session, upstream: Upstream): Promise<string[]>;
+  likesFor?(session: Session, upstream: Upstream): Promise<Set<string> | null>;
   cache?: Cache;
   lyrics: LyricsService;
   releases?: ReleaseWatch | null;
@@ -112,6 +114,7 @@ export function createRpc({
   fetcher,
   upstreamFor,
   foldersFor,
+  likesFor,
   cache = memoryCache(),
   lyrics,
   releases = null,
@@ -149,8 +152,10 @@ export function createRpc({
       const { session } = context;
       const account = accountOf(session);
       const day = nearToday(input.day, Date.now());
-      // ~30 ms with 10k songs, and the same answer until the slot, a play, the index or a "never" pref changes.
-      const key = `mixes:${account}:${day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}`;
+      const upstream = upstreamFor(session.server);
+      const liked = upstream && likesFor ? await likesFor(session, upstream) : new Set<string>();
+      // ~30 ms with 10k songs, and the same answer until the slot, a play, the index, a like or a "never" pref changes.
+      const key = `mixes:${account}:${day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}:${likesKey(liked)}`;
       const cached = await cache.get<{ day: number; mixes: Awaited<ReturnType<typeof madeForYou>> }>(key);
       if (cached) return cached;
       const made = madeForYou(
@@ -160,8 +165,9 @@ export function createRpc({
         { day, hour: input.hour, tzMinutes: input.tz },
         Date.now(),
         artistsWithReleases(library, account, Date.now()),
+        liked,
       );
-      const heard = groq ? listening(library, session.server, account, Date.now()) : null;
+      const heard = groq ? listening(library, session.server, account, Date.now(), liked ?? new Set()) : null;
       const moods = await moodMixes(library, groq, account, day, heard, fetcher);
       const weekly = await weeklyPlaylists(library, groq, account, day, heard, fetcher);
       const result = { day, mixes: [...made, ...moods, ...weekly] };

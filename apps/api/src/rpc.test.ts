@@ -1,10 +1,12 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { createKeepClient } from "@lodesong/orpc/client";
 import { createApi } from "./api";
 import { CoverCache } from "./covers";
 import { openLibraryDb } from "./db";
+import { recordPlay } from "./history";
 import { LyricsService } from "./lyrics";
 import { LoginLimiter } from "./rate-limit";
+import { createIndexTables } from "./search-index";
 import { SessionStore } from "./sessions";
 
 const upstream = Bun.serve({ port: 0, fetch: () => Response.json({ "subsonic-response": { status: "ok" } }) });
@@ -84,6 +86,136 @@ test("an integration lifts a radio ban with the song id in the path", async () =
   const lifted = await call("DELETE", "/api/radio/bans/so-1");
   expect(lifted.status).toBe(200);
   expect(await lifted.json()).toEqual({ songs: [] });
+});
+
+const DAY_MS = 86_400_000;
+
+/** A library of 100 Hurt songs played in the morning, a fake navidrome whose likes `answer` decides, and a client per user. */
+function withNavidrome(answer: (user: string, calls: number) => Response | Promise<Response>, users = ["demo"]) {
+  let calls = 0;
+  const navidrome = Bun.serve({
+    port: 0,
+    idleTimeout: 30,
+    fetch: (request) => answer(new URL(request.url).searchParams.get("u") ?? "", ++calls),
+  });
+  const library = openLibraryDb(":memory:");
+  createIndexTables(library);
+  const now = Date.now();
+  const morning = now - (now % DAY_MS) + 9 * 3_600_000 - DAY_MS;
+  for (let i = 0; i < 100; i++) {
+    const item = { id: `Hurt-${i}`, artist: "Hurt", title: `Hurt ${i}` };
+    library
+      .query(
+        "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('default', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+      )
+      .run(item.id, JSON.stringify(item));
+    for (const user of users)
+      recordPlay(library, `default:${user}`, "", {
+        song: item,
+        started: morning - (i < 50 ? 3 : 60) * DAY_MS,
+        listened: 200,
+        finished: true,
+      });
+  }
+  const own = new SessionStore(":memory:", "secret", 10 * DAY_MS);
+  const made = createApi({
+    upstreams: [{ id: "default", url: `http://127.0.0.1:${navidrome.port}` }],
+    indexes: new Map(),
+    library,
+    lyrics: new LyricsService(openLibraryDb(":memory:"), ""),
+    covers: new CoverCache(`${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`, 1_000_000),
+    sessions: own,
+    limiter: new LoginLimiter(),
+    idleSeconds: 60,
+    trustProxy: false,
+  });
+  const client = (user: string) => {
+    const session = own.create({ server: "default", user, token: "t", salt: "s", agent: "" });
+    const rpc = createKeepClient("http://app/api/rpc", { "x-lodesong": "1", cookie: `kp_session=${session}` }, (request) =>
+      made.rpc(request),
+    );
+    return () => rpc.mixes({ day: Math.floor(Date.now() / DAY_MS), hour: 9, tz: 0 });
+  };
+  const stored = () => library.query<{ n: number }, []>("select count(*) as n from mix_days").get()?.n;
+  return { client, stored, calls: () => calls, stop: () => navidrome.stop(true) };
+}
+
+const starred = (...ids: unknown[]) => Response.json({ "subsonic-response": { status: "ok", starred2: { song: ids } } });
+const likes = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => ({ id: `Hurt-${from + i}` }));
+const idsOf = (result: { mixes: { id: string; songs: { id: string }[] }[] }, mix: string) =>
+  result.mixes.find((item) => item.id === mix)?.songs.map((item) => item.id) ?? [];
+
+test("the songs you like in navidrome lead your daily mix", async () => {
+  const liked = likes(0, 50);
+  const navidrome = withNavidrome(() => starred(...liked));
+  const mixes = navidrome.client("demo");
+  const daily = (await mixes()).mixes.find((mix) => mix.id === "daily-1");
+  await mixes();
+  expect(navidrome.calls()).toBe(1);
+  expect(daily?.songs).toHaveLength(50);
+  expect(daily?.songs.every((item) => liked.some((like) => like.id === item.id))).toBe(true);
+  navidrome.stop();
+});
+
+test("a day made while navidrome's likes failed isn't kept, so the likes lead it once they are back", async () => {
+  const navidrome = withNavidrome((_, calls) => (calls === 1 ? new Response("down", { status: 500 }) : starred(...likes(0, 50))));
+  const mixes = navidrome.client("demo");
+  const first = await mixes();
+  expect(idsOf(first, "daily-1")).toHaveLength(50);
+  expect(navidrome.stored()).toBe(0);
+  await mixes();
+  expect(navidrome.calls()).toBe(1);
+  setSystemTime(Date.now() + 3 * 60_000);
+  try {
+    expect(idsOf(await mixes(), "daily-1").every((id) => Number(id.split("-")[1]) < 50)).toBe(true);
+    expect(navidrome.stored()).toBeGreaterThan(0);
+  } finally {
+    setSystemTime();
+  }
+  navidrome.stop();
+});
+
+test("a hung navidrome holds the mixes for a couple of seconds, not for the whole upstream timeout", async () => {
+  const navidrome = withNavidrome(() => new Promise<Response>(() => {}));
+  const started = Date.now();
+  expect(idsOf(await navidrome.client("demo")(), "daily-1")).toHaveLength(50);
+  expect(Date.now() - started).toBeLessThan(4_000);
+  navidrome.stop();
+});
+
+test("a malformed starred entry degrades to the entries that are fine", async () => {
+  const navidrome = withNavidrome(() => starred(null, {}, { id: 5 }, "x", ...likes(0, 50)));
+  const daily = idsOf(await navidrome.client("demo")(), "daily-1");
+  expect(daily.every((id) => Number(id.split("-")[1]) < 50)).toBe(true);
+  navidrome.stop();
+});
+
+test("a like added or removed shows in the next mixes, per account, and a failing navidrome keeps the last likes", async () => {
+  let down = false;
+  const answers: Record<string, ReturnType<typeof likes>> = { demo: likes(0, 40), other: likes(60, 100) };
+  const navidrome = withNavidrome(
+    (user) => (down ? new Response("down", { status: 500 }) : starred(...(answers[user] ?? []))),
+    ["demo", "other"],
+  );
+  const [demo, other] = [navidrome.client("demo"), navidrome.client("other")];
+  const daylist = async (mixes: typeof demo) => new Set(idsOf(await mixes(), "daylist"));
+  const before = [await daylist(demo), await daylist(other)];
+  expect([...(before[0] as Set<string>)].filter((id) => Number(id.split("-")[1]) < 40).length).toBeGreaterThan(30);
+  expect([...(before[1] as Set<string>)].filter((id) => Number(id.split("-")[1]) >= 60).length).toBeGreaterThan(30);
+
+  try {
+    setSystemTime(Date.now() + 11 * 60_000);
+    answers.demo = likes(60, 100);
+    const after = await daylist(demo);
+    expect([...after].filter((id) => Number(id.split("-")[1]) >= 60).length).toBeGreaterThan(30);
+
+    setSystemTime(Date.now() + 11 * 60_000);
+    down = true;
+    expect(await daylist(demo)).toEqual(after);
+  } finally {
+    setSystemTime();
+  }
+  navidrome.stop();
 });
 
 test("playlists for a mood: signed in only, the words are bounded, and plain HTTP reaches it", async () => {
