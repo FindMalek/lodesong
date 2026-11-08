@@ -103,22 +103,28 @@ function startTicker(): void {
 
 document.addEventListener("visibilitychange", () => !document.hidden && startTicker());
 
-let persistQueued = false;
+let persistQueued: "idle" | "soon" | null = null;
+
+let restored = false;
 
 function writeSnapshot(): void {
-  persistQueued = false;
+  persistQueued = null;
+  if (!restored && !state.queue.current) return;
   const { queue, volume, muted, outputDevice } = state;
   void setStored(STORAGE_KEY, { queue, position, volume, muted, outputDevice }).catch(() => undefined);
 }
 
-function persist(): void {
-  if (persistQueued) return;
-  persistQueued = true;
-  if ("requestIdleCallback" in window) requestIdleCallback(writeSnapshot, { timeout: 2000 });
+// A queue change is written at once (a reload right after must find it); the position and volume wait for an idle moment.
+function persist(soon = false): void {
+  if (persistQueued === "soon" || (persistQueued && !soon)) return;
+  persistQueued = soon ? "soon" : "idle";
+  if (soon) setTimeout(writeSnapshot, 0);
+  else if ("requestIdleCallback" in window) requestIdleCallback(writeSnapshot, { timeout: 2000 });
   else setTimeout(writeSnapshot, 500);
 }
 
 window.addEventListener("pagehide", writeSnapshot);
+document.addEventListener("visibilitychange", () => document.hidden && writeSnapshot());
 
 type Snapshot = Pick<PlayerState, "queue" | "volume" | "muted" | "outputDevice"> & { position: number };
 
@@ -135,12 +141,13 @@ void get<Snapshot>(STORAGE_KEY)
     });
     for (const listener of positionListeners) listener();
   })
-  .catch(() => undefined);
+  .catch(() => undefined)
+  .finally(() => {
+    restored = true;
+  });
 try {
   localStorage.removeItem("keep-player:state");
-} catch {
-  // Nothing to clean up.
-}
+} catch {}
 
 // Another account (or logout): its queue isn't yours.
 onAccountChange(async () => {
@@ -154,7 +161,7 @@ function current(): Song | undefined {
 
 function setQueue(queue: Q.Queue): void {
   set({ queue });
-  persist();
+  persist(true);
 }
 
 function edit(queue: Q.Queue): void {
@@ -459,7 +466,7 @@ function started(song: Song | undefined): void {
   set({ duration: song?.duration ?? 0, error: null });
   applyVolume();
   updateMediaSession();
-  persist();
+  persist(true);
   if (song && !remote) scrobble(song.id, false);
   preloadNext();
   // Lyrics for this song and the next two; also the current song when it was loaded paused.
@@ -821,7 +828,7 @@ export const player = {
     decks.stop();
     set({ queue: { ...Q.EMPTY_QUEUE, shuffle: state.queue.shuffle, repeat: state.queue.repeat }, playing: false, duration: 0 });
     setPosition(0);
-    persist();
+    persist(true);
   },
 };
 

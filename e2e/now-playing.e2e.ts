@@ -1,4 +1,14 @@
+import { tapOutput } from "./audio";
 import { expect, fakeMediaClock, test, trackTitles } from "./fixtures";
+
+test("a song started a moment ago is still in the bar after a reload", async ({ page, signedIn }) => {
+  await tapOutput(page);
+  await signedIn.goto("/album/al-3");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  await expect(page.getByRole("contentinfo").getByRole("button", { name: "pause" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("contentinfo").getByRole("button", { name: "play" })).toBeVisible();
+});
 
 test("i opens everything about the song, down to its folder", async ({ page, signedIn }) => {
   await signedIn.goto("/album/al-23");
