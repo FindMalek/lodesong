@@ -48,13 +48,13 @@ export function kick(gain: number): Voice {
 
 export function hat(gain: number, open: boolean, pan: number, seed: number): Voice {
   const length = samples(open ? 0.32 : 0.1);
-  const noise = highpass(bandpass(noiseBuffer(length, seed), 9500, 0.7), 6500);
+  const noise = lowpass(highpass(bandpass(noiseBuffer(length, seed), 8000, 0.8), 6000), 9500);
   const tau = open ? 0.09 : 0.02;
   return {
     audio: panned(
       gated(noise, (t) => decay(t, tau) * attack(t, 0.0006)),
       pan,
-      gain * 0.5,
+      gain * 0.22,
     ),
     verb: 0.12,
     echo: 0,
@@ -95,10 +95,10 @@ function chordBloom(notes: number[], tau: number, length: number, level: number)
 
 const BELL: readonly [number, number, number][] = [
   [1, 1, 1.8],
-  [2.01, 0.5, 1.1],
-  [3.02, 0.22, 0.65],
-  [4.18, 0.12, 0.4],
-  [5.43, 0.06, 0.25],
+  [2.01, 0.5, 0.5],
+  [3.02, 0.22, 0.25],
+  [4.18, 0.12, 0.12],
+  [5.43, 0.06, 0.07],
 ];
 
 function bell(hz: number, length: number, seed: number): Float32Array {
@@ -107,7 +107,7 @@ function bell(hz: number, length: number, seed: number): Float32Array {
     (t) =>
       BELL.reduce((acc, [ratio, amp, tau]) => acc + Math.sin(2 * Math.PI * hz * ratio * t) * amp * decay(t, tau), 0) * attack(t, 0.0015),
   );
-  const click = gated(highpass(noiseBuffer(length, seed), 5000), (t) => decay(t, 0.002) * 0.12);
+  const click = gated(highpass(noiseBuffer(length, seed), 5000), (t) => decay(t, 0.002) * 0.06);
   return sum(body, click);
 }
 
@@ -127,7 +127,7 @@ export function ping(note: number, gain: number, pan: number, seed: number): Voi
 }
 
 export function tick(note: number, gain: number, pan: number, seed: number): Voice {
-  const hz = midiHz(note);
+  const hz = midiHz(note) * 2;
   const length = samples(0.09);
   const body = tone(
     length,
@@ -153,7 +153,7 @@ export function key(style: SheetCue["style"], gain: number, seed: number): Voice
     gated(bandpass(noise, 2300 * jitter, 2.2), (t) => decay(t, 0.0035) * 1.2),
     gated(bandpass(noise, 5200 * jitter, 3), (t) => decay(t, 0.002) * 0.5),
   );
-  const releaseAt = typed ? 0.055 : 0.078;
+  const releaseAt = typed ? Number.POSITIVE_INFINITY : 0.078;
   const release = gated(bandpass(noise, 3200, 2.5), (t) => (t >= releaseAt ? decay(t - releaseAt, 0.0025) * 0.38 : 0));
   const thock = tone(length, (t) => (t >= releaseAt ? Math.sin(2 * Math.PI * 260 * t) * decay(t - releaseAt, 0.014) * 0.18 : 0));
   return { audio: panned(sum(body, clack, release, thock), 0, gain * 0.5), verb: 0.1, echo: 0 };
@@ -162,7 +162,7 @@ export function key(style: SheetCue["style"], gain: number, seed: number): Voice
 export function whoosh(length: number, gain: number, seed: number): Voice {
   const n = samples(length / 60);
   const noise = noiseBuffer(n, seed);
-  const sweep = bandpass(noise, (i) => 350 * (5200 / 350) ** (Math.sin((Math.PI * i) / n / 2) ** 1.5), 1.1);
+  const sweep = bandpass(noise, (i) => 350 * (4200 / 350) ** (Math.sin((Math.PI * i) / n / 2) ** 1.5), 1.1);
   const shaped = sweep.map((x, i) => x * Math.sin((Math.PI * i) / n) ** 2);
   const out = stereo(n);
   for (let i = 0; i < n; i += 1) {
@@ -182,7 +182,7 @@ export function riser(length: number, style: SheetCue["style"], gain: number, se
   const n = samples(length / 60);
   const quiet = style === "quiet";
   const noise = noiseBuffer(n, seed);
-  const air = bandpass(noise, (i) => 300 * (8200 / 300) ** (i / n), 2.4);
+  const air = bandpass(noise, (i) => 300 * (6500 / 300) ** (i / n), 2.4);
   const rate = (u: number): number => 4 + 20 * u * u;
   let gatePhase = 0;
   const shaped = air.map((x, i) => {
@@ -236,28 +236,61 @@ export function swell(style: SheetCue["style"], length: number, gain: number, se
   return { audio: panned(shaped, 0, gain * 0.9), verb: 0.1, echo: 0 };
 }
 
-export function render(cue: SheetCue, index: number): Voice {
-  const seed = seedOf(`${cue.id}:${index}`);
+const LEVEL: Record<SheetCue["kind"], number> = {
+  kick: 0.4,
+  hit: 0.3,
+  impact: 0.3,
+  ping: 0.05,
+  tick: 0.07,
+  key: 0.1,
+  whoosh: 0.07,
+  riser: 0.1,
+  swell: 0.07,
+};
+
+function loudest(audio: Stereo): number {
+  const window = Math.round(0.03 * RATE);
+  let top = 1e-9;
+  for (let start = 0; start < audio.l.length; start += window >> 1) {
+    let sum = 0;
+    const stop = Math.min(audio.l.length, start + window);
+    for (let i = start; i < stop; i += 1) sum += ((audio.l[i] ?? 0) ** 2 + (audio.r[i] ?? 0) ** 2) / 2;
+    top = Math.max(top, Math.sqrt(sum / window));
+  }
+  return top;
+}
+
+function build(cue: SheetCue, seed: number): Voice {
   const note = cue.note ?? 81;
   const length = cue.length ?? 30;
   switch (cue.kind) {
     case "kick":
-      return kick(cue.gain);
+      return kick(1);
     case "hit":
-      return hit(cue.style, cue.gain, seed);
+      return hit(cue.style, 1, seed);
     case "impact":
-      return impact(cue.style, cue.gain, seed);
+      return impact(cue.style, 1, seed);
     case "ping":
-      return ping(note, cue.gain, cue.pan, seed);
+      return ping(note, 1, cue.pan, seed);
     case "tick":
-      return tick(note, cue.gain, cue.pan, seed);
+      return tick(note, 1, cue.pan, seed);
     case "key":
-      return key(cue.style, cue.gain, seed);
+      return key(cue.style, 1, seed);
     case "whoosh":
-      return whoosh(length, cue.gain, seed);
+      return whoosh(length, 1, seed);
     case "riser":
-      return riser(length, cue.style, cue.gain, seed);
+      return riser(length, cue.style, 1, seed);
     case "swell":
-      return swell(cue.style, length, cue.gain, seed);
+      return swell(cue.style, length, 1, seed);
   }
+}
+
+export function render(cue: SheetCue, index: number): Voice {
+  const voice = build(cue, seedOf(`${cue.id}:${index}`));
+  const scale = (LEVEL[cue.kind] * cue.gain) / loudest(voice.audio);
+  for (let i = 0; i < voice.audio.l.length; i += 1) {
+    voice.audio.l[i] = (voice.audio.l[i] ?? 0) * scale;
+    voice.audio.r[i] = (voice.audio.r[i] ?? 0) * scale;
+  }
+  return voice;
 }

@@ -91,14 +91,15 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 54.5, to: 60, chord: "am9" },
     ],
     pad: [
-      [0, 0.3],
-      [4, 0.4],
-      [6, 0.8],
-      [36, 0.95],
+      [0, 0.12],
+      [4, 0.22],
+      [5.75, 0.3],
+      [6, 0.7],
+      [36, 0.85],
       [45.9, 0.9],
-      [46, 0.45],
-      [52, 0.5],
-      [54, 0.75],
+      [46, 0.3],
+      [52, 0.4],
+      [54, 0.7],
       [54.5, 0.95],
       [58, 0.7],
       [60, 0],
@@ -106,23 +107,23 @@ export const BEDS: Record<Film, BedSpec> = {
     cut: [
       [0, 380],
       [4, 520],
-      [5.75, 1100],
-      [6, 3000],
-      [36, 3600],
-      [45.9, 3600],
-      [46, 650],
-      [52, 700],
-      [54, 2600],
-      [54.5, 2300],
-      [60, 900],
+      [5.75, 1000],
+      [6, 2200],
+      [36, 2600],
+      [45.9, 2600],
+      [46, 600],
+      [52, 650],
+      [54, 2000],
+      [54.5, 1900],
+      [60, 800],
     ],
     tex: [
-      [0, 0.7],
-      [5.9, 0.9],
-      [6, 0.35],
-      [46, 0.6],
-      [54, 0.6],
-      [54.5, 0.3],
+      [0, 0.5],
+      [5.9, 0.7],
+      [6, 0.3],
+      [46, 0.5],
+      [54, 0.5],
+      [54.5, 0.25],
       [60, 0.1],
     ],
     hats: [
@@ -134,21 +135,21 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 26, to: 31, mode: "off", level: 0.65 },
       { from: 31, to: 36, mode: "off", level: 0.8, open: true },
       { from: 31, to: 36, mode: "ghost", level: 0.5 },
-      { from: 36, to: 46, mode: "eighth", level: 0.85, open: true },
+      { from: 36, to: 46, mode: "eighth", level: 1, open: true },
       { from: 36, to: 46, mode: "ghost", level: 0.55 },
       { from: 52, to: 54, mode: "eighth", level: 0.45 },
     ],
     arp: [
       { from: 8, to: 12, level: 0.55, sparse: true },
       { from: 12, to: 36, level: 0.75 },
-      { from: 36, to: 46, level: 0.9, octave: true },
-      { from: 50, to: 54, level: 0.45, sparse: true },
+      { from: 36, to: 46, level: 1.1, octave: true },
+      { from: 50, to: 54, level: 0.35, sparse: true },
     ],
     bass: [
-      { from: 2, to: 6, mode: "drone", level: 0.35 },
-      { from: 6, to: 30, mode: "drone", level: 0.75 },
-      { from: 30, to: 46, mode: "line", level: 0.8 },
-      { from: 46, to: 54, mode: "drone", level: 0.45 },
+      { from: 2, to: 6, mode: "drone", level: 0.1 },
+      { from: 6, to: 30, mode: "drone", level: 0.3 },
+      { from: 30, to: 46, mode: "line", level: 0.4 },
+      { from: 46, to: 54, mode: "drone", level: 0.2 },
     ],
     gates: [[54, 54.5]],
   },
@@ -164,10 +165,10 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 26, to: 30, chord: "am9" },
     ],
     pad: [
-      [0, 0.45],
-      [3, 0.55],
-      [5, 0.85],
-      [18, 0.95],
+      [0, 0.3],
+      [3, 0.4],
+      [5, 0.7],
+      [18, 0.85],
       [25, 0.8],
       [26, 0.95],
       [28, 0.7],
@@ -200,9 +201,9 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 18, to: 25, level: 0.9, octave: true },
     ],
     bass: [
-      { from: 1, to: 5, mode: "drone", level: 0.45 },
-      { from: 5, to: 9, mode: "drone", level: 0.75 },
-      { from: 9, to: 25, mode: "line", level: 0.8 },
+      { from: 1, to: 5, mode: "drone", level: 0.2 },
+      { from: 5, to: 9, mode: "drone", level: 0.3 },
+      { from: 9, to: 25, mode: "line", level: 0.4 },
     ],
     gates: [[25, 26]],
   },
@@ -244,14 +245,14 @@ export function renderPad(spec: BedSpec, length: number): Stereo {
         l += (sawBlep(p[0] as number, dt) + sawBlep(p[1] as number, dt) * 0.5) * weight;
         r += (sawBlep(p[2] as number, dt) + sawBlep(p[1] as number, dt) * 0.5) * weight;
       }
-      left[i] = (left[i] ?? 0) + l * env * 0.06;
-      right[i] = (right[i] ?? 0) + r * env * 0.06;
+      left[i] = (left[i] ?? 0) + l * env * 0.09;
+      right[i] = (right[i] ?? 0) + r * env * 0.09;
     }
   }
   const cut = (i: number): number => curveAt(spec.cut, beatOf(i));
   const level = (i: number): number => curveAt(spec.pad, beatOf(i));
-  const l = lowpass(left, cut, 0.9);
-  const r = lowpass(right, cut, 0.9);
+  const l = highpass(lowpass(left, cut, 0.9), 140);
+  const r = highpass(lowpass(right, cut, 0.9), 140);
   for (let i = 0; i < length; i += 1) {
     l[i] = (l[i] ?? 0) * level(i);
     r[i] = (r[i] ?? 0) * level(i);
@@ -262,7 +263,7 @@ export function renderPad(spec: BedSpec, length: number): Stereo {
 export function renderTexture(spec: BedSpec, length: number, seed: number): Stereo {
   const next = rng(seed + 5);
   const body = highpass(lowpass(noiseBuffer(length, seed), 5200), 220);
-  const air = highpass(noiseBuffer(length, seed + 1), 7000);
+  const air = lowpass(highpass(noiseBuffer(length, seed + 1), 3500), 9000);
   const crackle = new Float32Array(length);
   for (let i = 0; i < length; i += 1) if (next() < 5 / RATE) crackle[i] = (next() * 2 - 1) * (0.2 + next() * 0.8);
   const pops = highpass(crackle, 1800);
@@ -270,7 +271,7 @@ export function renderTexture(spec: BedSpec, length: number, seed: number): Ster
   for (let i = 0; i < length; i += 1) {
     const seconds = i / RATE;
     const breath = 0.65 + 0.35 * Math.sin(2 * Math.PI * 0.11 * seconds);
-    out[i] = (body[i] ?? 0) * 0.02 * breath + (air[i] ?? 0) * 0.012 * (1.2 - breath * 0.5) + (pops[i] ?? 0) * 0.5;
+    out[i] = (body[i] ?? 0) * 0.02 * breath + (air[i] ?? 0) * 0.007 * (1.2 - breath * 0.5) + (pops[i] ?? 0) * 0.5;
     out[i] = (out[i] ?? 0) * curveAt(spec.tex, beatOf(i));
   }
   const shifted = new Float32Array(length);

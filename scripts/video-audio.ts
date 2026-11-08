@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { FILM_FRAMES, type Film, SHEET, type SheetCue } from "../apps/video/src/audio-cues";
 import { FPS } from "../apps/video/src/design/beat";
 import { BEDS, type BedSpec, renderArp, renderBass, renderHats, renderPad, renderTexture, sampleOf } from "./audio/bed";
-import { addStereo, dbGain, highpass, limit, peakOf, RATE, type Stereo, seedOf, stereo, wavBytes } from "./audio/dsp";
+import { addStereo, dbGain, highpass, limit, lowpass, peakOf, RATE, type Stereo, seedOf, stereo, wavBytes } from "./audio/dsp";
 import { measureLoudness } from "./audio/loudness";
 import { reverbReturn } from "./audio/rig";
 import { render } from "./audio/voices";
@@ -45,7 +45,7 @@ function duckEnvelope(cues: readonly SheetCue[], length: number): Float32Array {
 
 function ducked(audio: Stereo, env: Float32Array, depth: number): void {
   for (let i = 0; i < env.length; i += 1) {
-    const gain = 1 - depth * (env[i] ?? 0);
+    const gain = Math.max(0, 1 - depth * (env[i] ?? 0));
     audio.l[i] = (audio.l[i] ?? 0) * gain;
     audio.r[i] = (audio.r[i] ?? 0) * gain;
   }
@@ -74,7 +74,7 @@ function renderRigs(film: Film, spec: BedSpec): { bed: Stereo; sfx: Stereo } {
 
   const bassMono = renderBass(spec, length);
   const bass = { l: bassMono, r: Float32Array.from(bassMono) };
-  ducked(bass, env, 0.85);
+  ducked(bass, env, 1.6);
   feed(bed, bass, 0, 0, 0);
 
   const arp = renderArp(spec, length);
@@ -114,10 +114,13 @@ function gateAndFade(audio: Stereo, spec: BedSpec): void {
 
 function monoLowEnd(audio: Stereo): void {
   const side = Float32Array.from(audio.l, (l, i) => (l - (audio.r[i] ?? 0)) / 2);
-  const cleaned = highpass(side, 150);
-  const left = highpass(
-    Float32Array.from(audio.l, (l, i) => (l + (audio.r[i] ?? 0)) / 2),
-    24,
+  const cleaned = lowpass(highpass(side, 150), 15500);
+  const left = lowpass(
+    highpass(
+      Float32Array.from(audio.l, (l, i) => (l + (audio.r[i] ?? 0)) / 2),
+      24,
+    ),
+    15500,
   );
   for (let i = 0; i < left.length; i += 1) {
     audio.l[i] = (left[i] ?? 0) + (cleaned[i] ?? 0);
@@ -174,7 +177,7 @@ async function masterFilm(film: Film): Promise<{ lufs: number; peak: number; lra
     await write("open.wav", open);
   }
   console.log(
-    `${film}: ${stats.lufs.toFixed(1)} LUFS, true peak ${stats.peak.toFixed(2)} dBTP, LRA ${stats.lra.toFixed(1)} LU, sample peak ${(20 * Math.log10(peakOf(master))).toFixed(2)} dBFS`,
+    `${film}: gain ${gainDb.toFixed(1)} dB, ${stats.lufs.toFixed(1)} LUFS, true peak ${stats.peak.toFixed(2)} dBTP, LRA ${stats.lra.toFixed(1)} LU, sample peak ${(20 * Math.log10(peakOf(master))).toFixed(2)} dBFS`,
   );
   return stats;
 }

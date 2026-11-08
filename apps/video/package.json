@@ -11,6 +11,7 @@
     "render": "bun run audio && remotion render src/index.ts scene-open out/open.mp4 --codec=h264 --crf=16",
     "render:gif": "bun run audio && remotion render src/index.ts scene-open out/open.gif --every-nth-frame=3 --scale=0.5",
     "onsets": "bun scripts/check.ts onsets out/open.mp4",
+    "audio:check": "bun scripts/check.ts audio",
     "test": "bun test src",
     "typecheck": "tsc --noEmit -p ."
   },

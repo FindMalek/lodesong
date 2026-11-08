@@ -7,7 +7,7 @@ export interface SendRig {
 }
 
 export function reverbReturn(rig: SendRig): Stereo {
-  const wet = reverb(rig.verb, 2.8, 0.5, 0.02);
+  const wet = reverb(rig.verb, 2.8, 0.28, 0.02);
   const echo = pingPong(rig.echo, 0.375, 0.45, 0.45);
   const length = rig.dry.l.length;
   const out = { l: new Float32Array(length), r: new Float32Array(length) };
