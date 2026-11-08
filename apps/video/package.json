@@ -11,7 +11,7 @@
     "render": "bun run audio && remotion render src/index.ts scene-open out/open.mp4 --codec=h264 --crf=16",
     "render:hero": "bun run audio && remotion render src/index.ts hero out/hero-16x9.mp4 --codec=h264 --crf=16 --x264-preset=slow",
     "render:cutdown": "bun run audio && remotion render src/index.ts cutdown-vertical out/cutdown-9x16.mp4 --codec=h264 --crf=16 --x264-preset=slow",
-    "render:loop": "remotion render src/index.ts loop-readme out/loop-60.mp4 --crf=16 --scale=0.5 --muted && ffmpeg -y -v error -i out/loop-60.mp4 -r 30 -frames:v 300 -c:v libx264 -crf 22 -pix_fmt yuv420p -an -movflags +faststart out/loop-readme.mp4",
+    "render:loop": "remotion render src/index.ts loop-readme out/loop-60.mp4 --crf=16 --scale=0.5 --muted && bun scripts/encode-loop.ts",
     "sheet": "bun scripts/check.ts sheet",
     "render:gif": "bun run audio && remotion render src/index.ts scene-open out/open.gif --every-nth-frame=3 --scale=0.5",
     "onsets": "bun scripts/check.ts onsets out/open.mp4",
