@@ -1,24 +1,30 @@
 import { mkdirSync } from "node:fs";
+import { BEDS } from "../../../scripts/audio/bed";
 import { highpass, lowpass, RATE, type Stereo } from "../../../scripts/audio/dsp";
 import { measureLoudness } from "../../../scripts/audio/loudness";
-import { AUDIO_CUES, FILM_FRAMES, type Film, SECTIONS } from "../src/audio-cues";
-import { beat, FPS } from "../src/design/beat";
+import { AUDIO_CUES, FILM_BEATS, FILM_FRAMES, type Film, SECTIONS } from "../src/audio-cues";
+import { BPM, beat, FPS } from "../src/design/beat";
 
 const TARGET_LUFS = -14;
 const TRUE_PEAK_CEILING = -1.5;
 const MAX_LRA = 12;
 const BANDS: readonly [number, number][] = [
-  [20, 60],
+  [0, 60],
   [60, 120],
   [120, 300],
   [300, 800],
   [800, 2000],
   [2000, 5000],
   [5000, 10000],
-  [10000, 20000],
+  [10000, 24000],
 ];
-const REFERENCE_DB = [6, 6, 3, 0, -4, -8, -13, -20];
+const REFERENCE_DB = [3, 0, 2, 0, -4, -8, -13, -20];
 const BAND_TOLERANCE_DB = 10;
+const LOW_SHARE_HZ = 150;
+const MAX_LOW_SHARE = 0.65;
+const MAX_HIGHPASS_GAP_LU = 4;
+const FLAT_LU = 2;
+const FLAT_SECONDS = 10;
 const DENSE = new Set(["drop", "wide app", "queue", "mixes", "session", "lyrics", "strip"]);
 const FRAME_SECONDS = 1 / FPS;
 const TAIL_FRAMES = 24;
@@ -71,7 +77,7 @@ function fft(re: Float64Array, im: Float64Array): void {
   }
 }
 
-function bandPowers(mono: Float32Array, from: number, to: number): number[] {
+function bandPowers(mono: Float32Array, from: number, to: number): { bands: number[]; lowShare: number } {
   const size = 4096;
   const window = Float64Array.from({ length: size }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size));
   const power = new Float64Array(size / 2);
@@ -81,11 +87,17 @@ function bandPowers(mono: Float32Array, from: number, to: number): number[] {
     fft(re, im);
     for (let k = 0; k < size / 2; k += 1) power[k] = (power[k] ?? 0) + (re[k] ?? 0) ** 2 + (im[k] ?? 0) ** 2;
   }
-  return BANDS.map(([lo, hi]) => {
-    let sum = 0;
-    for (let k = Math.ceil((lo * size) / RATE); k < Math.floor((hi * size) / RATE); k += 1) sum += power[k] ?? 0;
-    return sum;
-  });
+  const bands = BANDS.map(() => 0);
+  let total = 0;
+  let low = 0;
+  for (let k = 1; k < size / 2; k += 1) {
+    const hz = (k * RATE) / size;
+    const index = BANDS.findLastIndex(([lo]) => hz >= lo);
+    bands[Math.max(0, index)] = (bands[Math.max(0, index)] ?? 0) + (power[k] ?? 0);
+    total += power[k] ?? 0;
+    if (hz < LOW_SHARE_HZ) low += power[k] ?? 0;
+  }
+  return { bands, lowShare: low / Math.max(total, 1e-18) };
 }
 
 function stats(audio: Stereo, from: number, to: number): { rms: number; peak: number } {
@@ -114,7 +126,7 @@ function envelope(signal: Float32Array, window: number): Float32Array {
 type Group = "low" | "mid" | "high" | "wide";
 
 const TRANSIENT_KINDS = new Set(["kick", "hit", "impact", "key", "tick", "ping"]);
-const MIN_AUDIBLE_DB = -9;
+const MIN_AUDIBLE_DB: Record<string, number> = { tick: 0, key: 3, ping: 3, hit: 0, whoosh: 3, riser: 0, swell: -4, impact: 3 };
 
 const groupOf = (kind: string): Group =>
   kind === "kick" || kind === "hit" || kind === "impact"
@@ -206,7 +218,7 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
       else worst = Math.max(worst, Math.abs(delta));
     } else if (
       cue.kind === "riser" &&
-      source.energy(group, sample + span * 0.7, sample + span) <= source.energy(group, sample, sample + span * 0.3) * 2
+      source.energy("high", sample + span * 0.7, sample + span) <= source.energy("high", sample, sample + span * 0.3) * 2
     ) {
       failures.push(`${cue.id} (${cue.label}): the riser does not rise`);
     }
@@ -217,7 +229,8 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
       const heard: Group = cue.kind === "hit" || cue.kind === "impact" ? "wide" : group;
       const ratio = 10 * Math.log10((stems.sfx.energy(heard, from, to) + 1e-14) / (stems.music.energy(heard, from, to) + 1e-14));
       quiet.set(cue.kind, [...(quiet.get(cue.kind) ?? []), ratio]);
-      if (ratio < MIN_AUDIBLE_DB) failures.push(`${cue.id} (${cue.label}): ${ratio.toFixed(1)} dB against the bed, masked`);
+      const minimum = MIN_AUDIBLE_DB[cue.kind] ?? 0;
+      if (ratio < minimum) failures.push(`${cue.id} (${cue.label}): ${ratio.toFixed(1)} dB against the bed, needs ${minimum}`);
     }
   }
   for (const failure of failures) console.error(`  FAIL ${failure}`);
@@ -268,6 +281,44 @@ function renderPictures(file: string, film: Film): void {
   console.log(`  pictures: ${wave} ${spectrum}`);
 }
 
+function correlation(a: Float32Array, b: Float32Array, from: number, to: number): number {
+  let ab = 0;
+  let aa = 0;
+  let bb = 0;
+  for (let i = from; i < to; i += 1) {
+    ab += (a[i] ?? 0) * (b[i] ?? 0);
+    aa += (a[i] ?? 0) ** 2;
+    bb += (b[i] ?? 0) ** 2;
+  }
+  return ab / Math.max(Math.sqrt(aa * bb), 1e-18);
+}
+
+function clicks(audio: Stereo, film: Film): string[] {
+  const exempt = AUDIO_CUES.filter((c) => c.film === film).map((c): [number, number] => [
+    c.frame * (RATE / FPS),
+    c.kind === "key" ? 0.09 : 0.012,
+  ]);
+  const near = (n: number): boolean => exempt.some(([at, tail]) => n >= at - 0.002 * RATE && n <= at + tail * RATE);
+  const found: number[] = [];
+  const radius = 240;
+  for (const channel of [audio.l, audio.r]) {
+    const d2 = Float32Array.from(channel, (x, n) => (channel[n + 1] ?? 0) - 2 * x + (channel[n - 1] ?? 0));
+    const prefix = new Float64Array(d2.length + 1);
+    for (let n = 0; n < d2.length; n += 1) prefix[n + 1] = (prefix[n] ?? 0) + Math.abs(d2[n] ?? 0);
+    for (let n = radius; n < d2.length - radius; n += 1) {
+      const step = Math.abs(d2[n] ?? 0);
+      if (step < 0.03) continue;
+      const around = (prefix[n + radius] ?? 0) - (prefix[n - radius] ?? 0) - ((prefix[n + 16] ?? 0) - (prefix[n - 16] ?? 0));
+      const local = around / (2 * radius - 32);
+      if (step <= 12 * local || near(n) || (found.at(-1) !== undefined && n - (found.at(-1) as number) <= 0.005 * RATE)) continue;
+      let neighbour = 0;
+      for (let k = n - 960; k < n + 960; k += 1) if (Math.abs(k - n) > 24) neighbour = Math.max(neighbour, Math.abs(d2[k] ?? 0));
+      if (step > 2 * neighbour) found.push(n);
+    }
+  }
+  return found.sort((a, b) => a - b).map((n) => `${(n / RATE).toFixed(3)}s`);
+}
+
 async function auditFilm(film: Film): Promise<number> {
   const file = `public/audio/${film}.wav`;
   const audio = await decode(file);
@@ -295,13 +346,42 @@ async function auditFilm(film: Film): Promise<number> {
   if (clipped > 0) fail("clipped samples");
   if (dc.some((x) => Math.abs(x) > 0.002)) fail("dc offset");
 
+  const share = bandPowers(
+    Float32Array.from(audio.l, (l, i) => (l + (audio.r[i] ?? 0)) / 2),
+    0,
+    audio.l.length,
+  ).lowShare;
+  const highpassed = await measureLoudness(file, undefined, undefined, "highpass=f=150:poles=2,highpass=f=150:poles=2,");
+  console.log(
+    `  energy below ${LOW_SHARE_HZ} Hz ${(share * 100).toFixed(0)}%, loudness through a 150 Hz high-pass ${highpassed.lufs.toFixed(1)} LUFS (${(loud.lufs - highpassed.lufs).toFixed(1)} LU under full range)`,
+  );
+  if (share > MAX_LOW_SHARE) fail(`${(share * 100).toFixed(0)}% of the energy is below ${LOW_SHARE_HZ} Hz, limit ${MAX_LOW_SHARE * 100}%`);
+  if (loud.lufs - highpassed.lufs > MAX_HIGHPASS_GAP_LU)
+    fail(`small speakers hear it ${(loud.lufs - highpassed.lufs).toFixed(1)} LU quieter, limit ${MAX_HIGHPASS_GAP_LU}`);
+
+  for (const [from, to] of BEDS[film].gates) {
+    const [first, last] = [Math.round(((from * 60) / BPM) * RATE) + 200, Math.round(((to * 60) / BPM) * RATE) - 1];
+    let loudest = 0;
+    for (let i = first; i < last; i += 1) loudest = Math.max(loudest, Math.abs(audio.l[i] ?? 0), Math.abs(audio.r[i] ?? 0));
+    console.log(
+      `  silence gate ${((from * 60) / BPM).toFixed(2)} to ${((to * 60) / BPM).toFixed(2)} s: loudest sample ${loudest.toExponential(1)} (16 bit dither is about 3e-5)`,
+    );
+    if (loudest > 1e-4) fail(`something rings through the silence gate (${loudest.toExponential(1)})`);
+  }
+
+  const found = clicks(audio, film);
+  console.log(
+    `  click candidates (second difference against local level, away from cues): ${found.length}${found.length ? ` at ${found.slice(0, 6).join(" ")}` : ""}`,
+  );
+  if (found.length > 0) fail(`${found.length} click candidates`);
+
   const mid = Float32Array.from(audio.l, (l, i) => (l + (audio.r[i] ?? 0)) / 2);
   const side = Float32Array.from(audio.l, (l, i) => (l - (audio.r[i] ?? 0)) / 2);
   const lowMid = bandPowers(mid, 0, mid.length)
-    .slice(0, 2)
+    .bands.slice(0, 2)
     .reduce((a, b) => a + b, 0);
   const lowSide = bandPowers(side, 0, side.length)
-    .slice(0, 2)
+    .bands.slice(0, 2)
     .reduce((a, b) => a + b, 0);
   const monoLoss = db(Math.sqrt(mid.reduce((sum, x) => sum + x * x, 0) / mid.length)) - whole.rms;
   console.log(
@@ -310,7 +390,8 @@ async function auditFilm(film: Film): Promise<number> {
   if (10 * Math.log10(lowSide / lowMid) > -30) fail("low end is not mono");
   if (monoLoss < -3) fail("mono fold-down loses more than 3 dB");
 
-  console.log("  section            lufs   rms   peak | spectrum dev vs reference (dB, 8 bands 20 Hz..20 kHz)");
+  const [highL, highR] = [highpass(audio.l, 300), highpass(audio.r, 300)];
+  console.log("  section            lufs   rms   peak  corr>300 | spectrum dev vs reference (dB, 8 bands 0..24 kHz)");
   const lufs: Record<string, number> = {};
   for (const section of SECTIONS[film]) {
     const from = Math.round(secondsOf(beat(section.from)) * RATE);
@@ -318,7 +399,7 @@ async function auditFilm(film: Film): Promise<number> {
     const level = stats(audio, from, to);
     const l = (await measureLoudness(file, secondsOf(beat(section.from)), secondsOf(beat(section.to)))).lufs;
     lufs[section.id] = l;
-    const power = bandPowers(mid, from, to);
+    const { bands: power } = bandPowers(mid, from, to);
     const reference = power[3] ?? 1;
     const devs = power.map((p, i) => 10 * Math.log10(Math.max(p, 1e-18) / Math.max(reference, 1e-18)) - (REFERENCE_DB[i] ?? 0));
     const worst = Math.max(...devs.map(Math.abs));
@@ -326,17 +407,42 @@ async function auditFilm(film: Film): Promise<number> {
     const audible = level.rms > -45;
     const tooFar = devs.some((d) => d > BAND_TOLERANCE_DB || (dense && d < -BAND_TOLERANCE_DB));
     console.log(
-      `  ${section.id.padEnd(16)} ${l.toFixed(1).padStart(6)} ${level.rms.toFixed(1).padStart(6)} ${level.peak.toFixed(1).padStart(6)} | ${devs.map((d) => d.toFixed(0).padStart(4)).join("")}${audible && tooFar ? "  FAIL" : ""}`,
+      `  ${section.id.padEnd(16)} ${l.toFixed(1).padStart(6)} ${level.rms.toFixed(1).padStart(6)} ${level.peak.toFixed(1).padStart(6)} ${correlation(highL, highR, from, to).toFixed(2).padStart(8)} | ${devs.map((d) => d.toFixed(0).padStart(4)).join("")}${audible && tooFar ? "  FAIL" : ""}`,
     );
     if (audible && tooFar) fail(`${section.id} spectrum is ${worst.toFixed(0)} dB off the reference in one band`);
   }
 
+  const arc = (loud_: number | undefined, quiet: number | undefined, label: string, lu: number): void => {
+    if (loud_ === undefined || quiet === undefined || loud_ - quiet < lu) fail(`dynamics: ${label} is not ${lu} LU quieter`);
+  };
   if (film === "hero") {
-    const arc = (loud_: number | undefined, quiet: number | undefined, label: string): void => {
-      if (loud_ === undefined || quiet === undefined || loud_ - quiet < 5) fail(`dynamics: ${label} is not 5 LU quieter`);
-    };
-    arc(lufs.session, lufs.intro, "the intro against the session");
-    arc(lufs.session, lufs.terminal, "the terminal against the session");
+    arc(lufs.session, lufs.intro, "the intro against the session", 5);
+    arc(lufs.session, lufs.terminal, "the terminal against the session", 5);
+    arc(
+      lufs.session,
+      Math.max(lufs.drop ?? -99, lufs["wide app"] ?? -99, lufs.queue ?? -99, lufs.mixes ?? -99),
+      "the loudest other section against the session",
+      2.5,
+    );
+  } else arc(lufs.lyrics, lufs.hook, "the hook against the lyrics drop", 5);
+  const bars = [];
+  for (let bar = 0; bar < FILM_BEATS[film] / 4; bar += 1) {
+    const value = (await measureLoudness(file, bar * 2, bar * 2 + 2)).lufs;
+    bars.push(Number.isFinite(value) ? value : -70);
+  }
+  console.log(`  loudness per bar (2 s, LUFS): ${bars.map((v) => v.toFixed(1)).join(" ")}`);
+  for (let from = 0; from < bars.length; from += 1) {
+    let to = from;
+    let [lowest, highest] = [bars[from] as number, bars[from] as number];
+    while (to + 1 < bars.length && Math.max(highest, bars[to + 1] as number) - Math.min(lowest, bars[to + 1] as number) <= FLAT_LU) {
+      to += 1;
+      lowest = Math.min(lowest, bars[to] as number);
+      highest = Math.max(highest, bars[to] as number);
+    }
+    if ((to - from + 1) * 2 > FLAT_SECONDS) {
+      fail(`bars ${from + 1} to ${to + 1} stay within ${FLAT_LU} LU for ${(to - from + 1) * 2} s`);
+      break;
+    }
   }
 
   failures += reportCues(

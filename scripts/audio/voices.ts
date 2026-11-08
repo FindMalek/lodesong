@@ -39,16 +39,30 @@ export function kick(gain: number): Voice {
   const noise = highpass(noiseBuffer(length, 11), 1800);
   const body = tone(length, (t) => {
     const phase = 2 * Math.PI * (55 * t + 130 * 0.018 * (1 - Math.exp(-t / 0.018)));
-    return Math.sin(phase) * decay(t, 0.26) * attack(t, 0.0008);
+    return Math.sin(phase) * decay(t, 0.15) * attack(t, 0.0008);
+  });
+  const punch = tone(length, (t) => {
+    const phase = 2 * Math.PI * (110 * t + 260 * 0.012 * (1 - Math.exp(-t / 0.012)));
+    return Math.sin(phase) * decay(t, 0.05) * attack(t, 0.0008);
   });
   const click = gated(noise, (t) => decay(t, 0.0025) * 0.3);
-  const out = sum(body, click).map((x) => softClip(x * 1.5, 1.3));
+  const out = sum(
+    body.map((x) => x * 0.5),
+    punch.map((x) => x * 0.7),
+    click,
+  ).map((x) => softClip(x * 2, 1.6));
   return { audio: panned(out, 0, gain * 0.9), verb: 0, echo: 0 };
 }
 
 export function hat(gain: number, open: boolean, pan: number, seed: number): Voice {
+  const voice = hatRaw(gain, open, pan, seed);
+  fadeOut(voice.audio, 0.012);
+  return voice;
+}
+
+function hatRaw(gain: number, open: boolean, pan: number, seed: number): Voice {
   const length = samples(open ? 0.32 : 0.1);
-  const noise = lowpass(highpass(bandpass(noiseBuffer(length, seed), 8000, 0.8), 6000), 9500);
+  const noise = lowpass(highpass(bandpass(noiseBuffer(length, seed), 8000, 0.5), 4500), 11000);
   const tau = open ? 0.09 : 0.02;
   return {
     audio: panned(
@@ -66,13 +80,13 @@ export function hit(style: SheetCue["style"], gain: number, seed: number): Voice
   const drop = style === "drop";
   const length = samples(brand ? 2.6 : drop ? 1.8 : 1.2);
   const subTau = brand ? 0.9 : drop ? 0.55 : 0.32;
-  const subLevel = brand ? 0.75 : drop ? 0.85 : 0.55;
+  const subLevel = brand ? 0.5 : drop ? 0.55 : 0.35;
   const sub = tone(length, (t) => {
     const hz = 44 + 22 * Math.exp(-t / 0.045) + (brand ? 11 : 0);
     return Math.sin(2 * Math.PI * hz * t) * decay(t, subTau) * attack(t, 0.002) * subLevel;
   });
   const noise = noiseBuffer(length, seed);
-  const mid = gated(bandpass(noise, brand ? 1500 : 1000, 1.1), (t) => decay(t, 0.012) * 0.65);
+  const mid = gated(bandpass(noise, brand ? 1500 : 1000, 1.1), (t) => decay(t, 0.012) * 1.2);
   const thump = tone(length, (t) => Math.sin(2 * Math.PI * (brand ? 440 : 180) * t) * decay(t, brand ? 0.09 : 0.05) * 0.25);
   const crash = drop ? gated(highpass(noise, 3500), (t) => decay(t, 0.3) * 0.16) : new Float32Array(0);
   return { audio: panned(sum(sub, mid, thump, crash), 0, gain * 0.9), verb: brand ? 0.5 : drop ? 0.35 : 0.22, echo: 0 };
@@ -114,16 +128,16 @@ function bell(hz: number, length: number, seed: number): Float32Array {
 export function impact(style: SheetCue["style"], gain: number, seed: number): Voice {
   const drop = style === "drop";
   const length = samples(drop ? 4.2 : 3.6);
-  const sub = tone(length, (t) => Math.sin(2 * Math.PI * 55 * t) * decay(t, drop ? 1.2 : 0.9) * attack(t, 0.006) * (drop ? 0.8 : 0.5));
+  const sub = tone(length, (t) => Math.sin(2 * Math.PI * 55 * t) * decay(t, drop ? 1.2 : 0.9) * attack(t, 0.006) * (drop ? 0.5 : 0.32));
   const chord = chordBloom(drop ? CHORD_DROP : CHORD_GOLD, drop ? 1.5 : 1.3, length, drop ? 0.13 : 0.15);
   const shimmer = bell(midiHz(drop ? 100 : 93), length, seed).map((x) => x * 0.14);
   const thud = gated(lowpass(noiseBuffer(length, seed + 1), 320), (t) => decay(t, 0.03) * 0.5);
-  const crash = drop ? gated(highpass(noiseBuffer(length, seed + 2), 2600), (t) => decay(t, 0.5) * 0.14) : new Float32Array(0);
+  const crash = drop ? gated(highpass(noiseBuffer(length, seed + 2), 2600), (t) => decay(t, 0.3) * 0.14) : new Float32Array(0);
   return { audio: panned(sum(sub, chord, shimmer, thud, crash), 0, gain), verb: drop ? 0.5 : 0.65, echo: 0.25 };
 }
 
 export function ping(note: number, gain: number, pan: number, seed: number): Voice {
-  return { audio: panned(bell(midiHz(note), samples(3.2), seed), pan, gain * 0.34), verb: 0.55, echo: 0.4 };
+  return { audio: panned(bell(midiHz(note), samples(4.5), seed), pan, gain * 0.34), verb: 0.55, echo: 0.4 };
 }
 
 export function tick(note: number, gain: number, pan: number, seed: number): Voice {
@@ -150,8 +164,8 @@ export function key(style: SheetCue["style"], gain: number, seed: number): Voice
     (t) => Math.sin(2 * Math.PI * (bodyHz + 90 * Math.exp(-t / 0.012)) * t) * decay(t, enter ? 0.06 : 0.034) * attack(t, 0.0006) * 0.85,
   );
   const clack = sum(
-    gated(bandpass(noise, 2300 * jitter, 2.2), (t) => decay(t, 0.0035) * 1.2),
-    gated(bandpass(noise, 5200 * jitter, 3), (t) => decay(t, 0.002) * 0.5),
+    gated(bandpass(noise, 2300 * jitter, 2.2), (t) => decay(t, 0.0035) * 1.7),
+    gated(bandpass(noise, 5200 * jitter, 3), (t) => decay(t, 0.002) * 0.8),
   );
   const releaseAt = typed ? Number.POSITIVE_INFINITY : 0.078;
   const release = gated(bandpass(noise, 3200, 2.5), (t) => (t >= releaseAt ? decay(t - releaseAt, 0.0025) * 0.38 : 0));
@@ -238,14 +252,14 @@ export function swell(style: SheetCue["style"], length: number, gain: number, se
 
 const LEVEL: Record<SheetCue["kind"], number> = {
   kick: 0.4,
-  hit: 0.3,
-  impact: 0.3,
-  ping: 0.05,
-  tick: 0.07,
-  key: 0.15,
+  hit: 0.55,
+  impact: 0.36,
+  ping: 0.08,
+  tick: 0.15,
+  key: 0.3,
   whoosh: 0.07,
   riser: 0.1,
-  swell: 0.07,
+  swell: 0.09,
 };
 
 function loudest(audio: Stereo): number {
@@ -285,6 +299,16 @@ function build(cue: SheetCue, seed: number): Voice {
   }
 }
 
+function fadeOut(audio: Stereo, seconds: number): void {
+  const fade = samples(seconds);
+  const length = audio.l.length;
+  for (let i = Math.max(0, length - fade); i < length; i += 1) {
+    const g = (length - i) / fade;
+    audio.l[i] = (audio.l[i] ?? 0) * g;
+    audio.r[i] = (audio.r[i] ?? 0) * g;
+  }
+}
+
 export function render(cue: SheetCue, index: number): Voice {
   const voice = build(cue, seedOf(`${cue.id}:${index}`));
   const scale = (LEVEL[cue.kind] * cue.gain) / loudest(voice.audio);
@@ -292,5 +316,6 @@ export function render(cue: SheetCue, index: number): Voice {
     voice.audio.l[i] = (voice.audio.l[i] ?? 0) * scale;
     voice.audio.r[i] = (voice.audio.r[i] ?? 0) * scale;
   }
+  fadeOut(voice.audio, voice.audio.l.length > RATE ? 0.05 : 0.02);
   return voice;
 }

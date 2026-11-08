@@ -10,10 +10,10 @@ export interface Chord {
 }
 
 const CHORDS = {
-  am9: { notes: [45, 52, 55, 59, 60, 64], root: 33 },
+  am9: { notes: [45, 52, 60, 67, 71, 76], root: 33 },
   fmaj7: { notes: [41, 48, 52, 57, 60, 64], root: 29 },
   cmaj9: { notes: [48, 55, 59, 62, 64, 67], root: 36 },
-  g6: { notes: [43, 50, 52, 59, 62, 67], root: 31 },
+  g6: { notes: [43, 50, 59, 64, 67, 71], root: 31 },
 } satisfies Record<string, Chord>;
 
 type ChordName = keyof typeof CHORDS;
@@ -56,6 +56,7 @@ export interface BedSpec {
   hats: HatSpan[];
   arp: ArpSpan[];
   bass: BassSpan[];
+  mix: Curve;
   gates: readonly [number, number][];
 }
 
@@ -100,8 +101,8 @@ export const BEDS: Record<Film, BedSpec> = {
       [46, 0.3],
       [52, 0.4],
       [54, 0.7],
-      [54.5, 0.95],
-      [58, 0.7],
+      [54.5, 0.7],
+      [58, 0.55],
       [60, 0],
     ],
     cut: [
@@ -146,10 +147,26 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 50, to: 54, level: 0.35, sparse: true },
     ],
     bass: [
-      { from: 2, to: 6, mode: "drone", level: 0.1 },
-      { from: 6, to: 30, mode: "drone", level: 0.3 },
-      { from: 30, to: 46, mode: "line", level: 0.4 },
-      { from: 46, to: 54, mode: "drone", level: 0.2 },
+      { from: 2, to: 6, mode: "drone", level: 0.05 },
+      { from: 6, to: 30, mode: "drone", level: 0.15 },
+      { from: 30, to: 46, mode: "line", level: 0.25 },
+      { from: 46, to: 54, mode: "drone", level: 0.12 },
+    ],
+    mix: [
+      [0, 1],
+      [5.9, 1],
+      [6, 0.7],
+      [12, 0.7],
+      [12.5, 0.62],
+      [16, 0.62],
+      [16.5, 0.5],
+      [26, 0.85],
+      [26.5, 0.8],
+      [36, 1],
+      [36.5, 1.5],
+      [45.9, 1.5],
+      [46, 1],
+      [60, 1],
     ],
     gates: [[54, 54.5]],
   },
@@ -165,13 +182,13 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 26, to: 30, chord: "am9" },
     ],
     pad: [
-      [0, 0.3],
-      [3, 0.4],
+      [0, 0.2],
+      [3, 0.28],
       [5, 0.7],
       [18, 0.85],
       [25, 0.8],
-      [26, 0.95],
-      [28, 0.7],
+      [26, 0.7],
+      [28, 0.5],
       [30, 0],
     ],
     cut: [
@@ -201,13 +218,33 @@ export const BEDS: Record<Film, BedSpec> = {
       { from: 18, to: 25, level: 0.9, octave: true },
     ],
     bass: [
-      { from: 1, to: 5, mode: "drone", level: 0.2 },
-      { from: 5, to: 9, mode: "drone", level: 0.3 },
-      { from: 9, to: 25, mode: "line", level: 0.4 },
+      { from: 1, to: 5, mode: "drone", level: 0.1 },
+      { from: 5, to: 9, mode: "drone", level: 0.15 },
+      { from: 9, to: 25, mode: "line", level: 0.25 },
+    ],
+    mix: [
+      [0, 1],
+      [4.9, 1],
+      [5, 1],
+      [18, 1],
+      [18.5, 1.3],
+      [24.9, 1.3],
+      [25, 1],
+      [30, 1],
     ],
     gates: [[25, 26]],
   },
 };
+
+export function windowSpec(spec: BedSpec, from: number, to: number): BedSpec {
+  const clip = <T extends { from: number; to: number }>(items: T[]): T[] =>
+    items
+      .filter((item) => item.to > from && item.from < to)
+      .map((item) => ({ ...item, from: Math.max(item.from, from), to: Math.min(item.to, to) }));
+  return { ...spec, chords: clip(spec.chords), hats: clip(spec.hats), arp: clip(spec.arp), bass: clip(spec.bass), gates: [] };
+}
+
+export const mixAt = (spec: BedSpec, sample: number): number => curveAt(spec.mix, beatOf(sample));
 
 const BEAT_SECONDS = 60 / BPM;
 export const beatOf = (sample: number): number => sample / RATE / BEAT_SECONDS;
@@ -233,20 +270,22 @@ export function renderPad(spec: BedSpec, length: number): Stereo {
       const env = Math.min(1, t / attack) ** 2 * (into > 0 ? Math.max(0, 1 - into / 0.9) ** 2 : 1);
       const seconds = i / RATE;
       const wow = 1 + 0.0014 * Math.sin(2 * Math.PI * 0.33 * seconds) + 0.0007 * Math.sin(2 * Math.PI * 1.13 * seconds + 1);
+      const wowR = 1 + 0.0014 * Math.sin(2 * Math.PI * 0.29 * seconds + 2) + 0.0007 * Math.sin(2 * Math.PI * 1.31 * seconds);
       let l = 0;
       let r = 0;
       for (const [k, note] of notes.entries()) {
         const dt = (midiHz(note) * wow) / RATE;
+        const dtR = (midiHz(note) * wowR) / RATE;
         const p = phases[k] as number[];
         p[0] = ((p[0] as number) + dt * 0.9965) % 1;
         p[1] = ((p[1] as number) + dt) % 1;
-        p[2] = ((p[2] as number) + dt * 1.0035) % 1;
+        p[2] = ((p[2] as number) + dtR * 1.0035) % 1;
         const weight = note < 50 ? 1.2 : 0.8;
         l += (sawBlep(p[0] as number, dt) + sawBlep(p[1] as number, dt) * 0.5) * weight;
-        r += (sawBlep(p[2] as number, dt) + sawBlep(p[1] as number, dt) * 0.5) * weight;
+        r += (sawBlep(p[2] as number, dtR) + sawBlep(p[1] as number, dtR) * 0.5) * weight;
       }
-      left[i] = (left[i] ?? 0) + l * env * 0.09;
-      right[i] = (right[i] ?? 0) + r * env * 0.09;
+      left[i] = (left[i] ?? 0) + l * env * 0.12;
+      right[i] = (right[i] ?? 0) + r * env * 0.12;
     }
   }
   const cut = (i: number): number => curveAt(spec.cut, beatOf(i));
@@ -257,7 +296,10 @@ export function renderPad(spec: BedSpec, length: number): Stereo {
     l[i] = (l[i] ?? 0) * level(i);
     r[i] = (r[i] ?? 0) * level(i);
   }
-  return { l, r };
+  const delay = Math.round(RATE * 0.007);
+  const late = new Float32Array(length);
+  late.set(r.subarray(0, length - delay), delay);
+  return { l, r: late };
 }
 
 export function renderTexture(spec: BedSpec, length: number, seed: number): Stereo {
@@ -265,7 +307,7 @@ export function renderTexture(spec: BedSpec, length: number, seed: number): Ster
   const body = highpass(lowpass(noiseBuffer(length, seed), 5200), 220);
   const air = lowpass(highpass(noiseBuffer(length, seed + 1), 3500), 9000);
   const crackle = new Float32Array(length);
-  for (let i = 0; i < length; i += 1) if (next() < 5 / RATE) crackle[i] = (next() * 2 - 1) * (0.2 + next() * 0.8);
+  for (let i = 0; i < length; i += 1) if (next() < 5 / RATE) crackle[i] = (next() * 2 - 1) * (0.2 + next() * 0.8) * 0.12;
   const pops = highpass(crackle, 1800);
   const out = new Float32Array(length);
   for (let i = 0; i < length; i += 1) {
@@ -292,7 +334,7 @@ export function renderBass(spec: BedSpec, length: number): Float32Array {
         const stop = Math.min(length, sampleOf(to));
         for (let i = start; i < stop; i += 1) {
           const edge = Math.min((i - start) / (RATE * 0.05), (stop - i) / (RATE * 0.08), 1);
-          out[i] = (out[i] ?? 0) + softClip(Math.sin((2 * Math.PI * hz * i) / RATE), 1.8) * edge * span.level * 0.5;
+          out[i] = (out[i] ?? 0) + softClip(Math.sin((2 * Math.PI * hz * i) / RATE), 3) * edge * span.level * 0.5;
         }
       }
       continue;
@@ -303,10 +345,10 @@ export function renderBass(spec: BedSpec, length: number): Float32Array {
       if (!chord) continue;
       const hz = midiHz(chord.root + (offsets[beat % 4] as number));
       const start = sampleOf(beat + 0.5);
-      const size = Math.round(RATE * 0.32);
+      const size = Math.round(RATE * 0.5);
       for (let i = 0; i < size && start + i < length; i += 1) {
         const t = i / RATE;
-        const shape = Math.min(1, t / 0.004) * Math.exp(-t / 0.15);
+        const shape = Math.min(1, t / 0.004) * Math.exp(-t / 0.15) * Math.min(1, (size - i) / (RATE * 0.015));
         out[start + i] = (out[start + i] ?? 0) + softClip(Math.sin(2 * Math.PI * hz * t) * 1.2, 2.2) * shape * span.level * 0.5;
       }
     }
@@ -314,7 +356,8 @@ export function renderBass(spec: BedSpec, length: number): Float32Array {
   return out;
 }
 
-export function renderArp(spec: BedSpec, length: number): { audio: Stereo; echo: Stereo } {
+export function renderArp(spec: BedSpec, length: number, seed: number): { audio: Stereo; echo: Stereo } {
+  const human = rng(seed + 9);
   const audio = { l: new Float32Array(length), r: new Float32Array(length) };
   const pattern = [0, -1, 2, -1, -1, 4, -1, 3, -1, -1, 5, -1, 2, -1, -1, -1];
   const sparse = [0, -1, -1, -1, -1, -1, -1, 3, -1, -1, 5, -1, -1, -1, -1, -1];
@@ -330,17 +373,17 @@ export function renderArp(spec: BedSpec, length: number): { audio: Stereo; echo:
       const voices = span.octave ? [note, note + 12] : [note];
       for (const [v, midi] of voices.entries()) {
         const hz = midiHz(midi);
-        const start = sampleOf(beat);
-        const pan = step % 2 ? 0.4 : -0.4;
+        const start = sampleOf(beat) + Math.round((human() - 0.5) * 0.006 * RATE);
+        const pan = (step % 2 ? 0.35 : -0.35) + (human() - 0.5) * 0.4;
         const size = Math.round(RATE * 0.5);
-        const level = span.level * (v === 0 ? 1 : 0.35) * 0.07;
+        const level = span.level * (v === 0 ? 1 : 0.35) * 0.09 * 10 ** (((human() - 0.5) * 3) / 20);
         for (let i = 0; i < size && start + i < length; i += 1) {
           const t = i / RATE;
           const wave =
             Math.sin(2 * Math.PI * hz * t) +
             0.45 * Math.sin(4 * Math.PI * hz * t) * Math.exp(-t / 0.08) +
             0.2 * Math.sin(6 * Math.PI * hz * t) * Math.exp(-t / 0.04);
-          const sample = wave * Math.min(1, t / 0.002) * Math.exp(-t / 0.16) * level;
+          const sample = wave * Math.min(1, t / 0.002) * Math.exp(-t / 0.16) * Math.min(1, (size - i) / (RATE * 0.015)) * level;
           audio.l[start + i] = (audio.l[start + i] ?? 0) + sample * (1 - pan) * 0.7;
           audio.r[start + i] = (audio.r[start + i] ?? 0) + sample * (1 + pan) * 0.7;
         }
@@ -352,6 +395,7 @@ export function renderArp(spec: BedSpec, length: number): { audio: Stereo; echo:
 
 export function renderHats(spec: BedSpec, dry: Stereo, verb: Stereo, film: Film): void {
   let n = 0;
+  const human = rng(film === "hero" ? 77 : 78);
   for (const span of spec.hats) {
     const half = span.mode === "ghost" ? [0.25, 0.75] : span.mode === "eighth" ? [0, 0.5] : [0.5];
     for (let beat = Math.floor(span.from); beat < span.to; beat += 1) {
@@ -362,12 +406,12 @@ export function renderHats(spec: BedSpec, dry: Stereo, verb: Stereo, film: Film)
         const open = Boolean(span.open) && span.mode !== "ghost" && offset === 0.5 && beat % 4 === 3;
         const accent = offset === 0.5 ? 1 : 0.7;
         const voice = hat(
-          span.level * accent * (span.mode === "ghost" ? 0.55 : 1),
+          span.level * accent * (span.mode === "ghost" ? 0.55 : 1) * 10 ** (((human() - 0.5) * 4) / 20),
           open,
-          n % 2 ? 0.3 : -0.3,
+          (n % 2 ? 0.35 : -0.35) + (human() - 0.5) * 0.5,
           n + (film === "hero" ? 0 : 1000),
         );
-        const start = sampleOf(at);
+        const start = sampleOf(at) + Math.round((human() - 0.5) * 0.008 * RATE);
         for (let i = 0; i < voice.audio.l.length && start + i < dry.l.length; i += 1) {
           dry.l[start + i] = (dry.l[start + i] ?? 0) + (voice.audio.l[i] ?? 0);
           dry.r[start + i] = (dry.r[start + i] ?? 0) + (voice.audio.r[i] ?? 0);
