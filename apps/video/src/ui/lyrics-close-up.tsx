@@ -25,11 +25,11 @@ const GEOM = {
     textW: 900,
     cover: 520,
     coverX: 280,
-    coverY: 330,
+    coverY: 390,
     chipX: 90,
     chipY: 250,
-    mid: 1260,
-    span: 620,
+    mid: 1310,
+    span: 560,
   },
 } as const;
 

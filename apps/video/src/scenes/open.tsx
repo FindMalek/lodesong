@@ -15,7 +15,7 @@ import { OPEN, type OpenTimeline } from "./timelines";
 
 const START_SECONDS = 71;
 const FOCUS_FROM = 2;
-const DIM = 0.2;
+const DIM = 0.12;
 
 interface Fly {
   x: number;
@@ -53,7 +53,7 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
 
   const end = beat(T.end);
   const wideT = ramp(frame, cut, end - cut, ease.inOut);
-  const scale = lerp(1.1, 1.16, wideT);
+  const scale = lerp(1.05, 1.11, wideT);
   const rotateY = lerp(-7, -4, wideT);
   const rotateX = lerp(5, 2, wideT);
   const dim = ramp(frame, beat(T.lift), beat(1), ease.inOut);
@@ -130,7 +130,7 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
               width: STAGE.width,
               height: STAGE.height,
               transformStyle: "preserve-3d",
-              transform: `scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+              transform: `translateY(18px) scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
             }}
           >
             <div style={{ ...layer, ...fly(frame, { x: 0, y: 70, z: -500, from: cut }), opacity: stageFade(cut) }}>

@@ -136,7 +136,7 @@ function Sheet({ frame }: { frame: number }) {
               transform: `translateY(${(1 - t) * 26}px)`,
             }}
           >
-            <div style={{ display: "flex", gap: 10, minWidth: 124 }}>
+            <div style={{ display: "flex", gap: 10, minWidth: 196 }}>
               {keys.map((key) => (
                 <Keycap key={key} label={key} size={72} wide={key.length > 1} legible />
               ))}

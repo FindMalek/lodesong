@@ -88,7 +88,7 @@ async function stills(args: string[]): Promise<number> {
   const serveUrl = await bundle({ entryPoint: resolve("src/index.ts"), webpackOverride: enableTailwind });
   console.log(`bundle ${((performance.now() - started) / 1000).toFixed(1)} s`);
   mkdirSync(docs ? "docs-stills" : "out/stills", { recursive: true });
-  const ids = id === "all" ? Object.keys(STILLS) : [id ?? "scene-open"];
+  const ids = !id || id === "all" ? Object.keys(STILLS) : [id];
   let failures = 0;
   for (const one of ids) failures += await stillsOf(serveUrl, one, picked, docs);
   console.log(`stills in ${((performance.now() - started) / 1000).toFixed(1)} s`);
