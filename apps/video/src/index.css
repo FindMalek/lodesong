@@ -1,0 +1,15 @@
+@import "tailwindcss" source(".");
+@import "../../../packages/ui/src/styles/theme.css";
+@source "../../../packages/ui/src";
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+}
