@@ -1,4 +1,6 @@
 // the readme loop: the 60 fps half-size render, re-encoded to 300 frames at 30 fps, no audio, faststart
+export {};
+
 const run = Bun.spawn(
   [
     "ffmpeg",
