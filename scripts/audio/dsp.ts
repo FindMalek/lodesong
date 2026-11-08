@@ -108,9 +108,19 @@ export function reverb(send: Stereo, rt60: number, damp: number, preDelay: numbe
   const pre = Math.round(preDelay * RATE);
   const out = stereo(send.l.length);
   const taps = new Float64Array(8);
+  const diffusers = [new Float32Array(142), new Float32Array(379)];
+  const diffuserHeads = [0, 0];
   const sign = [1, -1, 1, -1, -1, 1, -1, 1];
   for (let n = 0; n < send.l.length; n += 1) {
-    const source = n >= pre ? ((send.l[n - pre] ?? 0) + (send.r[n - pre] ?? 0)) * 0.5 : 0;
+    let source = n >= pre ? ((send.l[n - pre] ?? 0) + (send.r[n - pre] ?? 0)) * 0.5 : 0;
+    for (const [k, line] of diffusers.entries()) {
+      const head = diffuserHeads[k] as number;
+      const delayed = line[head] ?? 0;
+      const inner = source - 0.6 * delayed;
+      line[head] = inner;
+      source = delayed + 0.6 * inner;
+      diffuserHeads[k] = (head + 1) % line.length;
+    }
     for (let i = 0; i < 8; i += 1) {
       const line = lines[i] as Float32Array;
       const read = line[heads[i] as number] ?? 0;

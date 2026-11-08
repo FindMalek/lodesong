@@ -66,8 +66,10 @@ const TYPED_FRAMES: readonly number[] = TYPED_GAPS.reduce<number[]>(
 );
 const TYPED_CHARS = [..."lodesong now"];
 
-const kicks = (from: number, to: number, label: string, gain = 0.9): Spec[] =>
-  range(from, to).map((at): Spec => ({ at, kind: "kick", label, gain }));
+const kicks = (from: number, to: number, label: string, gain: number, out: readonly number[] = []): Spec[] =>
+  range(from, to)
+    .filter((at) => !out.includes(at))
+    .map((at): Spec => ({ at, kind: "kick", label, gain }));
 
 const HERO: readonly Spec[] = [
   { at: 0, kind: "tick", label: "hairline starts drawing", note: 96, gain: 0.5 },
@@ -77,12 +79,12 @@ const HERO: readonly Spec[] = [
   { at: 5.5, kind: "whoosh", label: "headline leaves", beats: 0.5, gain: 0.7 },
   { at: 6, kind: "hit", label: "the drop: lyrics close-up", style: "drop" },
   { at: 6, kind: "whoosh", label: "key chip rises", beats: 0.75 },
-  ...kicks(6, 35, "kick", 0.85),
-  ...kicks(36, 45, "kick", 1),
+  ...kicks(6, 35, "kick", 0.85, [10, 11, 14, 15, 24, 25, 34, 35]),
+  ...kicks(36, 45, "kick", 1, [44, 45]),
   { at: 7, kind: "key", label: "y key press" },
   { at: 7.5, kind: "ping", label: "lyric lines land", note: 88 },
   { at: 8.5, kind: "swell", label: "gold builds", beats: 0.4, style: "reverse" },
-  { at: 9, kind: "impact", label: "cover turns gold", style: "gold" },
+  { at: 9, kind: "impact", label: "cover turns gold", style: "gold", gain: 0.7 },
   { at: 9, kind: "ping", label: "line: i keep the lights on", note: 84 },
   { at: 11, kind: "ping", label: "line: hold the signal violet", note: 81 },
   { at: 12, kind: "hit", label: "hard cut to the wide app", style: "cut" },
@@ -128,13 +130,13 @@ const HERO: readonly Spec[] = [
   { at: 36, kind: "whoosh", label: "laptop window mask-in", beats: 1 },
   { at: 36.5, kind: "tick", label: "phone frame lands", note: 93, gain: 0.7, pan: 0.4 },
   { at: 37, kind: "key", label: "play key press" },
-  { at: 39, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5 },
-  { at: 39.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5 },
+  { at: 39, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5, gain: 2 },
+  { at: 39.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5, gain: 1.5 },
   { at: 39.25, kind: "tick", label: "terminal blip", note: 100, gain: 0.7, pan: 0.2 },
   ...[81, 84, 86, 88, 91].map(
-    (note, i): Spec => ({ at: 40 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.6, pan: i % 2 ? 0.3 : -0.3 }),
+    (note, i): Spec => ({ at: 40 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.9, pan: i % 2 ? 0.3 : -0.3 }),
   ),
-  { at: 44, kind: "riser", label: "riser out of the session", beats: 2 },
+  { at: 44, kind: "riser", label: "riser out of the session", beats: 2, gain: 1.5 },
   { at: 46, kind: "swell", label: "music filters down", beats: 0.5, style: "down" },
   ...TYPED_FRAMES.map(
     (frame, i): Spec => ({
@@ -150,7 +152,7 @@ const HERO: readonly Spec[] = [
   { at: 50, kind: "ping", label: "your server. echoes", note: 81, gain: 0.7 },
   { at: 52, kind: "riser", label: "build to the end card", beats: 2, style: "quiet" },
   ...[52, 53, 53.5].map((at): Spec => ({ at, kind: "kick", label: "kick roll into the silence", gain: 0.7 })),
-  { at: 54.5, kind: "hit", label: "end card sub hit", style: "brand" },
+  { at: 54.5, kind: "hit", label: "end card sub hit", style: "brand", gain: 0.55 },
   { at: 55, kind: "ping", label: "lodesong: lode (motif, first note)", note: 76, gain: 1.1 },
   { at: 55.5, kind: "ping", label: "lodesong: song (motif, second note)", note: 81, gain: 1.1 },
   { at: 56, kind: "tick", label: "url line fades in", note: 93, gain: 0.45 },
@@ -158,33 +160,32 @@ const HERO: readonly Spec[] = [
 
 const CUTDOWN: readonly Spec[] = [
   { at: 0, kind: "ping", label: "your music. lands (motif, first note)", note: 76 },
-  ...kicks(0, 4, "hook kick", 0.65),
   { at: 1, kind: "ping", label: "your server. lands (motif, second note)", note: 81 },
   { at: 3.5, kind: "riser", label: "riser into the drop", beats: 1.25 },
   { at: 3, kind: "whoosh", label: "headline leaves", beats: 0.5, gain: 0.7 },
   { at: 5, kind: "hit", label: "the drop: lyrics", style: "drop" },
   { at: 5, kind: "whoosh", label: "key chip rises", beats: 0.75 },
-  ...kicks(5, 17, "kick", 0.85),
-  { at: 7, kind: "key", label: "y key press" },
+  ...kicks(5, 17, "kick", 0.85, [16, 17]),
+  { at: 7, kind: "key", label: "y key press", gain: 1.4 },
   { at: 7.5, kind: "ping", label: "lyric lines land", note: 88 },
   { at: 8.5, kind: "swell", label: "gold builds", beats: 0.4, style: "reverse" },
-  { at: 9, kind: "impact", label: "cover turns gold", style: "gold" },
+  { at: 9, kind: "impact", label: "cover turns gold", style: "gold", gain: 0.7 },
   { at: 9, kind: "ping", label: "line: i keep the lights on", note: 84 },
   { at: 11, kind: "ping", label: "line: hold the signal violet", note: 81 },
   { at: 13, kind: "ping", label: "lyrics scroll: line 4", note: 79, gain: 0.8 },
   { at: 15, kind: "ping", label: "lyrics scroll: line 5", note: 76, gain: 0.8 },
-  { at: 17, kind: "ping", label: "lyrics scroll: line 6", note: 74, gain: 0.8 },
+  { at: 17, kind: "ping", label: "lyrics scroll: line 6", note: 74, gain: 1.2 },
   { at: 18, kind: "hit", label: "cut to phone and terminal", style: "cut" },
   { at: 18, kind: "whoosh", label: "strip slides in", beats: 0.75 },
-  ...kicks(18, 24, "kick", 0.9),
-  { at: 19, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5 },
-  { at: 19.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5 },
+  ...kicks(18, 24, "kick", 1, [23, 24]),
+  { at: 19, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5, gain: 2 },
+  { at: 19.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5, gain: 1.5 },
   { at: 19.25, kind: "tick", label: "terminal blip", note: 100, gain: 0.7, pan: 0.2 },
   ...[81, 84, 86, 88, 91].map(
-    (note, i): Spec => ({ at: 20 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.6, pan: i % 2 ? 0.3 : -0.3 }),
+    (note, i): Spec => ({ at: 20 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.9, pan: i % 2 ? 0.3 : -0.3 }),
   ),
-  { at: 23, kind: "riser", label: "riser into the end card", beats: 2 },
-  { at: 26, kind: "hit", label: "end card sub hit", style: "brand" },
+  { at: 23, kind: "riser", label: "riser into the end card", beats: 2, gain: 1.5 },
+  { at: 26, kind: "hit", label: "end card sub hit", style: "brand", gain: 0.55 },
   { at: 27, kind: "ping", label: "lodesong: lode (motif, first note)", note: 76, gain: 1.1 },
   { at: 27.5, kind: "ping", label: "lodesong: song (motif, second note)", note: 81, gain: 1.1 },
   { at: 28, kind: "tick", label: "url line fades in", note: 93, gain: 0.45 },

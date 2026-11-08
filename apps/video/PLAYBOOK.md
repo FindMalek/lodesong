@@ -166,18 +166,19 @@ Still **[spec]**:
 
 ```bash
 bun install                                   # repo root
-bun run --cwd apps/video audio                # writes public/audio/hero.wav, cutdown.wav and open.wav (git-ignored, from the score in src/audio-cues.ts)
+bun run --cwd apps/video audio                # writes public/audio/hero.wav, cutdown.wav, open.wav and stems/ (git-ignored, generated from src/audio-cues.ts)
 bun run --cwd apps/video dev                  # runs audio first, then Remotion Studio; add --no-open --port=3917 for headless
 bun run --cwd apps/video stills               # every keyframe of every composition (or: stills scene-mixes), plus the legibility checks
 bun run --cwd apps/video render:hero          # out/hero-16x9.mp4 (also render:cutdown, render:loop)
 bun run --cwd apps/video still -- scene-open out/f300.png --frame=300   # one frame
 bun run --cwd apps/video render               # out/open.mp4, h264 crf16, 1080p60, bt709
 bun run --cwd apps/video onsets               # audio onsets of out/open.mp4 against the cue table
+bun run --cwd apps/video audio:check          # loudness, peak, spectrum, mono, clipping, every cue against the wavs; pictures in out/audio-qa/
 bun run --cwd apps/video test                 # hold times and beat grid
 bun run --cwd apps/video render:gif           # out/open.gif (every 3rd frame, half size)
 ```
 
-`dev`, `still`, `stills`, `render` and `render:gif` run `audio` first, because `public/audio/open.wav` is not committed.
+`dev`, `still`, `stills`, `render` and `render:gif` run `audio` first, because `public/audio/*.wav` is not committed.
 
 Notes measured on the proof:
 
@@ -251,7 +252,7 @@ Run PLAYBOOK section 11. Print exact commands, file sizes, duration, loudness (e
 
 ## 9. Sound and music
 
-**Decision: our own score, zero licence.** `scripts/video-audio.ts` **[built]** synthesises an 8 s placeholder at 120 BPM, 48 kHz stereo (kick with pitch sweep, hats, ticks, riser, sub, whoosh, key clicks, a gold-moment bloom chord, soft drone) and writes `apps/video/public/audio/open.wav`. It plays the `CUES` table of `scenes/open-timeline.ts`, the same table the visuals read, so a retimed event moves its sound too. The same approach scales to the full film: add a 4-bar intro (pad), build (kick, hat), drop (full), outro (filter down, tape stop), one cue table per scene. Reuse voices from `scripts/demo/synth.ts` (seeded, but 44.1 kHz and no drums; add a `sampleRate` option).
+**Decision: our own score, zero licence.** `scripts/video-audio.ts` **[built]** synthesises the whole score and every sound effect from sine, saw and noise (no samples) and masters it. One cue sheet, `src/audio-cues.ts`, feeds both the renderer and the `AUDIO_CUES` table the visuals read, so the table cannot drift from the wav. See "The composed score" at the end of this section.
 
 Why not a library track: the repo is MIT and a CC-BY/NC file cannot ship with it; Content ID claims on YouTube and Instagram are the real risk for any free library (Pixabay tracks marked with a shield are Content ID-registered, a claim is not a strike but a rejected appeal can become one: [Pixabay FAQ](https://pixabay.com/service/faq/)).
 
@@ -277,9 +278,52 @@ ffmpeg -i mix.wav -af loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json -f null -
 ffmpeg -i mix.wav -af "loudnorm=I=-14:TP=-1.5:LRA=11:measured_I=<I>:measured_TP=<TP>:measured_LRA=<LRA>:measured_thresh=<thresh>:offset=<offset>:linear=true" -ar 48000 -c:a pcm_s24le master.wav
 ```
 
-Target -14 LUFS integrated, true peak -1.5 dBTP, AAC-LC stereo 48 kHz (-14 is the consensus for YouTube, Reels, X, TikTok; none publish official numbers for the last three: [Fora Soft](https://www.forasoft.com/learn/audio-for-video/articles-audio/lufs-targets-per-platform-2026), [X audio spec](https://docs.x.com/x-api/media/quickstart/best-practices)). **The proof's placeholder measures -17.9 LUFS, peak -1.3 dBFS on the encoded mp4; run `loudnorm` before publishing anything.**
+Target -14 LUFS integrated, true peak -1.5 dBTP, AAC-LC stereo 48 kHz (-14 is the consensus for YouTube, Reels, X, TikTok; none publish official numbers for the last three: [Fora Soft](https://www.forasoft.com/learn/audio-for-video/articles-audio/lufs-targets-per-platform-2026), [X audio spec](https://docs.x.com/x-api/media/quickstart/best-practices)). The composed masters are generated straight to that target (measured numbers below); the old 8 s placeholder measured -17.9 LUFS. The encoded mp4 is not measured yet: re-run `onsets` and an `ebur128` pass on the final file.
 
 Craft rules: sub-bass hit (40-60 Hz) on the logo, paired with a mid transient because phones do not reproduce sub; a half-beat of silence before the last hit; 1-2 s tail, not a hard stop; duck music 2-4 dB under impacts (`sidechaincompress`, 10-30 ms attack, 150-300 ms release); few SFX, aligned to the exact frame; picture and captions must carry the story with sound off because most social viewing is muted.
+
+### The composed score **[built, not yet listened to]**
+
+`bun run --cwd apps/video audio` renders, deterministically on one machine, runtime and ffmpeg (two runs give the same sha256; the final gain is found by measuring with ffmpeg `ebur128` and uses Bun's `Math.sin`, `tanh` and `exp`, so another Bun or ffmpeg version can differ in the last bits), into the git-ignored `public/audio/`: `hero.wav` (30 s, 1800 frames), `cutdown.wav` (15 s, 900 frames, its own arrangement with the hook in the first 2 s, same key and tempo), `open.wav` (the first 8 s of the hero, for `scene-open`) and `stems/<film>-music.wav` and `-sfx.wav` (they add up to the master before the limiter). 48 kHz stereo, 16 bit with dither.
+
+`src/audio-cues.ts` exports `AUDIO_CUES: { id, frame, kind, label, film, length? }[]`. `frame` is at 60 fps and is the first sample of the sound; land the visual on that frame or up to 2 frames after it. `kind` is `kick`, `hit` (sub plus mid transient, used on cuts), `riser`, `tick` (list rows, chips, terminal blips), `key` (keycap press), `ping` (the bell), `whoosh`, `impact` (the gold cover and the full drop) or `swell`. `length` (frames) is set for sounds that last. Terminal typing frames are not on the grid on purpose (3 to 7 frames apart, `terminal types "l"` and so on); everything else sits on the quarter beat, and quarter beats at 60 fps round like `beat()` does (`beat(12.25)` is 368).
+
+Key A minor, 120 BPM, chords Am9, Fmaj7, Cmaj9 and G6, always ending a section on G6 so the next downbeat lands on Am9. One motif: two bell notes a fourth apart, E5 then A5, the sound of the word "lodesong". It plays when "your music." and "your server." land, again when "your server." comes back in the terminal, and last on the end card.
+
+What the hero sounds like, bar by bar (a bar is 4 beats, 2 s; the sections follow the storyboard, so they start on odd beats as often as on bar lines):
+
+- **0 to 2 s** (the hero is 15 bars; the 15 s cut is 7.5): almost nothing. A single tick as the hairline starts, a dark Am9 pad behind a low-pass at 380 Hz, a breath of tape air and a faint crackle. At 0.5 s the first bell (E5), at 1.0 s the second (A5). That is the motif, quiet.
+- **2 to 4 s**: a noise riser starts at 2.0 s and rises to 2.9 s, hats tick on the off-beats from 2.25 s, a whoosh carries the headline out at 2.75 s, then about 100 ms of air. At 3.0 s the drop: a sub hit, a kick on every beat, a sub note, the pad opens up (the kick has a 55 Hz body and a 110 to 330 Hz punch, so small speakers still carry it). At 3.5 s the keycap for `y`, at 3.75 s a high bell as the lyric lines land.
+- **4 to 6 s**: a short reverse swell at 4.25 s and, at 4.5 s, the warm impact when the cover turns gold: a low A, an Fmaj7 chord blooming, a glass shimmer, with the bed ducked under it. A bell (C6) lands on the line, another (A5) at 5.5 s. An arpeggio of plucked notes with a dotted-eighth echo has been dancing over the groove since 4 s.
+- **6 to 8 s**: at 6.0 s the hard cut to the wide app: a hit, a whoosh that starts just before it, three soft ticks as the panels land (6.13, 6.25, 6.5 s), a 1 s riser into the next cut. The kick is pulled out for the last two beats before every hard cut (5.0 to 6.0 s, 7.0 to 8.0 s, 12.0 to 13.0 s, 17.0 to 18.0 s, 22.0 to 23.0 s) so each cut lands on a hole and then the kick comes back.
+- **8 to 13 s, the queue**: hit and whoosh at 8.0 s on the quietest bed of the film (it then rises about 3 LU over the next 10 s), the `q` keycap at 8.5 s, five ticks rising up the scale as rows 2 to 6 appear, a firmer tick for the drag at 9.5 s, ghost sixteenth hats join at 9.5 s, a tick for "next up" at 10.5 s, riser from 12 s.
+- **13 to 18 s, the mixes**: a hit and a bright Fmaj7 chord swell at 13.0 s, two ticks as the covers develop, a whoosh as they slide together (14.0 s), a low tick at the merge (14.5 s). The bass stops being a held note and becomes an off-beat sub line at 15.0 s. Four rising ticks for the labels (15.5 to 16.25 s), riser from 17 s.
+- **18 to 23 s, one session**: the biggest moment, about 3 LU louder than any other section. The full drop at 18.0 s (impact, crash, whoosh), the kick a little harder, the arpeggio doubled an octave up, hats on every eighth. A tick for the phone frame, the `play` keycap at 18.5 s, then the handoff: a bell in the left ear (A5, 19.5 s), the answer in the right ear (E6, 19.63 s) with a terminal blip. Five ticks climb the scale, one per device chip (20 to 22 s), riser from 22 s.
+- **23 to 26 s, the terminal**: the quiet before the end. A falling filter sweep at 23.0 s and the drums are gone; the pad sits behind a low-pass at 600 Hz about 10 LU under the session. Where a keycap or a bell lands, the pad and arpeggio duck about 2 dB for a tenth of a second so it reads. Twelve soft key ticks type `lodesong now` at irregular gaps from 23.25 s, a heavier key for enter at 24.5 s, E5 at 24.75 s as the now-playing block resolves and A5 at 25.0 s as "your server." returns.
+- **26 to 27 s**: the build. A tonal riser over two beats, hats on every eighth, a short kick roll (26.0, 26.5, 26.75 s), the filter opening, and at 27.0 s everything stops dead (3 ms ramp).
+- **27 to 30 s, the end card**: 0.25 s of near silence (only the 16 bit dither, 3e-5 full scale; the check fails if anything rings through). Nothing is allowed to ring across the gap: the film is rendered as two independent windows, so a reverb tail or a kick tail from before 27.0 s cannot come back after 27.25 s. At 27.25 s a sub hit with a mid transient, an Am9 pad blooming under it, at 27.5 s and 27.75 s the motif again (E5, A5: "lode", "song"), a very soft tick at 28.0 s for the URL, then the pad and the reverb fade to silence at 30.0 s (the last 0.7 s is a fade, so the file ends clean).
+
+The 15 s vertical cut is a re-arrangement, not a truncation, and it is 7.5 bars: the motif (two bells at 0.0 s and 0.5 s, the hook) over a quiet drumless bed, hats from 0.75 s, a whoosh at 1.5 s and a riser from 1.75 s into the drop at 2.5 s (beat 5), the `y` key at 3.5 s, the same gold impact at 4.5 s, bells scrolling down the lyrics (5.5, 6.5, 7.5, 8.5 s), a cut at 9.0 s to the phone and terminal strip (the loudest part, with the handoff pair and five chip ticks), a riser into the end card at 11.5 s, near silence from 12.5 s, the sub hit at 13.0 s, the motif at 13.5 and 13.75 s, the URL tick at 14.0 s, tail to 15.0 s.
+
+Measured on the generated files (`audio:check`, ffmpeg `ebur128`):
+
+| | hero | cutdown |
+| --- | --- | --- |
+| integrated | -14.0 LUFS | -14.0 LUFS |
+| true peak | -1.8 dBTP | -1.9 dBTP |
+| loudness range | 7.7 LU | 4.3 LU |
+| loudness through a 150 Hz high-pass (two 12 dB/oct stages) | -16.4 LUFS (2.4 LU under full range) | -16.3 LUFS (2.3 LU under) |
+| share of the energy below 150 Hz | 64% | 63% |
+| click candidates | 0 | 0 |
+
+Hero short-term level per section (LUFS): intro -20.1, drop -13.1, wide app -16.1, queue -17.2, mixes -14.7, session -10.0, terminal -19.6, build -14.9, end card -15.6. Per 2 s bar: -20.1 -14.3 -13.0 -16.1 -16.5 -17.1 -14.7 -14.6 -15.5 -9.3 -9.8 -14.5 -20.1 -14.8 -17.3, and the check fails if more than 10 s stay within 2 LU. Cutdown: hook -19.3, lyrics -13.8, strip -11.8, end card -17.2. Low end below 120 Hz is mono (side against mid about -34 dB), mono fold-down loses about 0.5 dB, left and right above 300 Hz are 0.3 to 0.8 correlated depending on the section, no clipped sample, DC under 3e-4. Every transient cue starts within 1 frame of its table frame on the stems (worst 0.70 frame in the hero, 0.55 in the cutdown, with the humanising jitter of up to 2 ms already in). Each sfx sits above the bed in its own band by at least 0 to 4 dB depending on the kind (keys and bells at least 3 dB).
+
+Design notes: kick and sub are sidechain-ducked into pad, arpeggio, bass and air (the bass by more than the others so the kick reads), impacts duck the bed harder (the pad drops by 6 dB), the low end was deliberately thinned (a 55 Hz drone and sub at about half the level, kick tau 0.15 s plus a punch layer) because 64% of the energy is still below 150 Hz and small speakers hear it about 2.4 LU quieter than a full-range system, the reverb is an 8-line feedback network with longer delay lines (43 to 87 ms) behind two all-pass diffusers and the echo is a ping-pong delay at three quarters of a beat, the pad's right channel has its own wow and a 7 ms delay and the hats and arpeggio are panned at random, the side channel is high-passed at 150 Hz (four poles) so the low end stays mono, there is a 15.5 kHz low-pass, kicks, ticks, keys, bells, hats and arpeggio notes are humanised by 1 to 8 ms and 0.4 to 4 dB (seeded, so the files stay deterministic), every voice ends with a 12 to 50 ms fade, and a lookahead limiter with a radius of 220 samples (4.6 ms each side) sits at about -2 dBFS so the true peak lands under -1.5 dBTP.
+
+Two honest caveats:
+
+1. **Nobody has listened to it.** Everything above is numbers, spectrograms and waveforms; this Mac was kept silent on purpose. A synthesised score can measure perfectly and still sound thin, harsh, too busy in the arpeggio, or have a riser that is cheesier than intended. Treat the first listen as a review step with the owner, and expect to retune levels (`LEVEL` in `scripts/audio/voices.ts`), the pad filter curves and the arpeggio density in `scripts/audio/bed.ts`.
+2. **The sync and loudness claims are about the files, not about the final video.** The onset check on the stems proves the wav matches the cue table. Whether a visual event lands on its sound is only proven once the film is rendered and `onsets` is run on the mp4, and loudness is measured on the wav, not on the AAC that YouTube or X will re-encode (platform normalisation and lossy encoding can move the numbers by about 1 LU and 0.5 dB of true peak; the margin is built in but not measured). The spectrum reference curve is the author's own sane tilt, not a standard.
 
 ## 10. Review loop
 
@@ -297,7 +341,7 @@ Never deliver an unverified render. For every scene:
    ```
 3. **Numbers over eyes**: dead stretches (no scene change for over 3 s: `ffmpeg -vf select='gt(scene,0.02)',showinfo`), text below the 28 px floor, empty first frame, silence with `silencedetect`.
 4. **Frame diff between iterations** to prove a change did only what you meant: `ffmpeg -i old.mp4 -i new.mp4 -lavfi ssim -f null -` (1.0 = identical) or `psnr`.
-5. **Audio sync**: `bun run --cwd apps/video onsets` decodes `out/open.mp4`, finds transients (a raw and a high-passed envelope, so quiet clicks on top of a kick are found) and prints the offset of every `detect` cue from its frame. On the proof, 8 detectable cues all sit at +0.0 frames. Read that for what it is: the score is generated from the same cue table the visuals read, so this proves the score is on the beat grid and that the encode and mux did not shift it, not that an independent visual event lands on a sound. The visual side is checked by the stills at the hit frames. A true visual check (extract event frames from the rendered video, for example with `select=gt(scene,x)`) is not built.
+5. **Audio sync**: `bun run --cwd apps/video onsets [file] [hero|cutdown]` decodes a rendered mp4 or wav and checks every cue of `AUDIO_CUES` that falls inside it: a transient (kick, hit, impact, key, tick, ping) must start within 1 frame of its table frame, a riser must grow. `bun run --cwd apps/video audio:check` runs the same check on the generated wavs using the music and sfx stems, so a quiet tick is not hidden by the bed, plus loudness, true peak, loudness range, loudness through a 150 Hz high-pass and the share of energy below 150 Hz (small speakers), clipping, DC, mono low end, per-section and per-bar level (a flat stretch over 10 s fails), a spectrum check against a reference tilt (every FFT bin belongs to a band), a click detector over the whole file (second difference against the local level, away from cue onsets), a silence-gate check, and a masking check (each sfx must sit above the bed in its own band by a per-kind minimum). Read that for what it is: the score is generated from the same cue table the visuals read, so this proves the wav matches the table and that the encode and mux did not shift it, not that an independent visual event lands on a sound. The visual side is checked by the stills at the hit frames. A true visual check (extract event frames from the rendered video, for example with `select=gt(scene,x)`) is not built.
 6. **Critic pass** with P7 in a fresh context, stills only. Write findings to a `REVIEW.md` per scene, with the weakest shot and what went unchecked ([hyperframes review rules](https://github.com/heygen-com/hyperframes)). Never score out of 10.
 7. **Phone check**: the final export on a real phone at low brightness (banding shows there).
 8. **Studio preview** while building: keep Studio running; do not render until asked ([remotion-best-practices](https://www.remotion.dev/docs/ai/skills)).
@@ -460,7 +504,7 @@ A scene is two files plus copy: `scenes/<id>-timeline.ts` (pure: `FRAMES`, the e
 
 - **High confidence**: the toolchain (pinned 4.0.541, Tailwind v4, real `@lodesong/ui` and theme, bt709 tag, bundle-once stills), the beat grid and hold-time rules (tested), the legibility floor and safe-area rules (measured from the rendered DOM and shown to fail on bad values), the licence table for the own-score decision.
 - **Medium**: the S2 to S6 tables. They are written to the same rules as S1 and pass the hold-time arithmetic on paper, but no kit piece for them exists, and unbuilt scenes tend to collide with the 28 px floor (queue rows, terminal text) in ways only a render shows.
-- **Low**: that this is a premium commercial. It is a tasteful, consistent house style with one good moment. No human art director has judged it; nobody has watched it on a phone; the score is a placeholder at -17.9 LUFS.
+- **Low**: that this is a premium commercial. It is a tasteful, consistent house style with one good moment. No human art director has judged it; nobody has watched it on a phone; the score is composed and measured but nobody has listened to it.
 - **Not measured**: motion quality of the gold ignite and the cut (stills only, nobody has watched the render), banding on a phone, GitHub README autoplay, X upload acceptance of 1080p, per-platform loudness.
 - **Risks**: Remotion licence terms change in 5.0; the gold accent breaks the product's own "no colour" rule; naming Spotify in a comparison is a legal question; a 30 s film of five product features may be the wrong film for the audience (owner call).
 - **Owner questions** (section 14): tagline and voice, the three lead features, music taste or commissioning, naming Spotify in a comparison, primary channel, the gold accent, Remotion eligibility.
