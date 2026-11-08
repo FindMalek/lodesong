@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.15.0](https://github.com/FindMalek/lodesong/compare/v1.14.0...v1.15.0) (2026-11-08)
+
+
+### Features
+
+* **app:** dither covers and og ([#496](https://github.com/FindMalek/lodesong/issues/496)) ([a95474c](https://github.com/FindMalek/lodesong/commit/a95474c5ea7b0dd2d7fdaeb1bfbb31c55e6b2300))
+* **folders:** real playlist folders ([#491](https://github.com/FindMalek/lodesong/issues/491)) ([6b4fe1c](https://github.com/FindMalek/lodesong/commit/6b4fe1ce74f652e9ddc80285ebd499792aa95e28)), closes [#484](https://github.com/FindMalek/lodesong/issues/484)
+* **mixes:** add discovery lane ([ae9ce04](https://github.com/FindMalek/lodesong/commit/ae9ce04cfecbf5b37f8228dda2defc49f60d84d0)), closes [#476](https://github.com/FindMalek/lodesong/issues/476)
+* **mixes:** discovery lane ([#499](https://github.com/FindMalek/lodesong/issues/499)) ([4cd555a](https://github.com/FindMalek/lodesong/commit/4cd555aa12356d966f400985cdd7121df22e54c0)), closes [#476](https://github.com/FindMalek/lodesong/issues/476)
+* **mixes:** remember and rotate ([#490](https://github.com/FindMalek/lodesong/issues/490)) ([4142026](https://github.com/FindMalek/lodesong/commit/4142026e328f2f18325827dde537f3a2d8274ec2)), closes [#473](https://github.com/FindMalek/lodesong/issues/473)
+* **mixes:** score songs ([8cb72c7](https://github.com/FindMalek/lodesong/commit/8cb72c7ac31099502bec00972e27c91244d3eeee)), closes [#475](https://github.com/FindMalek/lodesong/issues/475)
+* **mixes:** score songs ([#498](https://github.com/FindMalek/lodesong/issues/498)) ([7d10c01](https://github.com/FindMalek/lodesong/commit/7d10c01baf781b911252e9a2a6c97eb656001bd8)), closes [#475](https://github.com/FindMalek/lodesong/issues/475)
+* **mixes:** widen artist pools ([9c3c026](https://github.com/FindMalek/lodesong/commit/9c3c026c384f8d7dfc03f5ce51a4af021057ab8b)), closes [#474](https://github.com/FindMalek/lodesong/issues/474)
+* **mixes:** wider artist pools ([#497](https://github.com/FindMalek/lodesong/issues/497)) ([9c64ecc](https://github.com/FindMalek/lodesong/commit/9c64eccc7ebc2f5a27910dcd23fb065696950456)), closes [#474](https://github.com/FindMalek/lodesong/issues/474)
+* **search:** mood search in palette ([#494](https://github.com/FindMalek/lodesong/issues/494)) ([2e9f81c](https://github.com/FindMalek/lodesong/commit/2e9f81c2e7588db8ad868cffa53d1c4318657200))
+* **search:** rank playlists by fit ([#500](https://github.com/FindMalek/lodesong/issues/500)) ([f9c64e2](https://github.com/FindMalek/lodesong/commit/f9c64e29f68c085ecc2a03382001214ab0be1320)), closes [#482](https://github.com/FindMalek/lodesong/issues/482)
+* **share:** designed og cards, share links ([#489](https://github.com/FindMalek/lodesong/issues/489)) ([86df90e](https://github.com/FindMalek/lodesong/commit/86df90ecd44e32d1cddef527ce6e7cfcc538845e)), closes [#488](https://github.com/FindMalek/lodesong/issues/488)
+* **sidebar:** resizable width ([#495](https://github.com/FindMalek/lodesong/issues/495)) ([4bbc204](https://github.com/FindMalek/lodesong/commit/4bbc204ebd7aa1fc9f85f4c1973909d4226a963d)), closes [#483](https://github.com/FindMalek/lodesong/issues/483)
+
+
+### Bug Fixes
+
+* **mixes:** align seed guard with pool ([deeb995](https://github.com/FindMalek/lodesong/commit/deeb9952e684f425940a79283d13bce8b53bfb39))
+* **mixes:** handle failing likes ([0319a2e](https://github.com/FindMalek/lodesong/commit/0319a2e3f5a80847df70fdd32607b58a62a36189))
+* **mixes:** harden discovery lane ([a200355](https://github.com/FindMalek/lodesong/commit/a200355b1955426cad15ee45de834ea1cc97acef))
+* **player:** fall back from opus ([#487](https://github.com/FindMalek/lodesong/issues/487)) ([d82d43c](https://github.com/FindMalek/lodesong/commit/d82d43c34271e93bb42f4e511b0b9d08d29418a1)), closes [#486](https://github.com/FindMalek/lodesong/issues/486)
+
 ## [1.14.0](https://github.com/FindMalek/lodesong/compare/v1.13.0...v1.14.0) (2026-11-04)
 
 
