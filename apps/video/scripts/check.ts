@@ -33,7 +33,10 @@ function judge(m: Measure, plan: StillPlan, size: Size): string[] {
     if (item.px < FLOOR_PX) problems.push(`"${item.text}" is ${item.px.toFixed(1)} px, floor ${FLOOR_PX}`);
     if (item.opacity < MIN_OPACITY)
       problems.push(`"${item.text}" is at ${(item.opacity * 100).toFixed(0)}% opacity, floor ${MIN_OPACITY * 100}`);
-    if (item.opacity >= MIN_OPACITY && outside(item.box, size)) problems.push(`"${item.text}" leaves the safe area`);
+    if (item.opacity >= MIN_OPACITY && outside(item.box, size))
+      problems.push(
+        `"${item.text}" leaves the safe area (${Math.round(item.box.x)},${Math.round(item.box.y)} ${Math.round(item.box.w)}x${Math.round(item.box.h)})`,
+      );
   }
   return problems;
 }

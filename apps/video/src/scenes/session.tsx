@@ -46,7 +46,7 @@ const GEOM = {
   tall: {
     win: {
       x: 90,
-      y: 520,
+      y: 570,
       w: 900,
       h: 410,
       cover: 250,
@@ -60,8 +60,8 @@ const GEOM = {
       noteX: 312,
       noteY: 156,
     },
-    phone: { x: 600, y: 940, w: 380, h: 610, cover: 220, coverY: 80, title: 32, scrubY: 396, ctlY: 456, noteY: 540 },
-    caption: { left: 90, top: 270, font: 120 },
+    phone: { x: 600, y: 985, w: 380, h: 590, cover: 220, coverY: 80, title: 32, scrubY: 396, ctlY: 456, noteY: 540 },
+    caption: { left: 104, top: 330, font: 112 },
     chips: { right: 90, top: 1000 },
     pop: { right: 20, bottom: 24 },
   },
@@ -148,7 +148,7 @@ export function SessionShot() {
 
   const win = g.win;
   const ph = g.phone;
-  const center = { x: 960, y: layout === "wide" ? 540 : 960 };
+  const center = layout === "wide" ? { x: 960, y: 540 } : { x: 540, y: 960 };
   const from = { x: win.x + win.coverX + win.cover / 2, y: win.y + 52 + win.coverY + win.cover / 2, size: win.cover };
   const to = { x: ph.x + ph.w / 2, y: ph.y + ph.coverY + ph.cover / 2, size: ph.cover };
   const lift = atDepth(from.x, from.y, 130, center.x, center.y);
