@@ -3,7 +3,8 @@ import WebKit
 import XCTest
 @testable import Lodesong
 
-/// The real `PlayerView` (same configuration, same native bridge) on the built player, with the shared output tap injected.
+/// The real `PlayerView` (same configuration, same native bridge) on the built player, with the shared output tap
+/// injected and its audio muted at the page (`Silence`), so the test tone never reaches the speakers.
 @MainActor final class PlayerPage {
     let player: PlayerView
     let nowPlaying = NowPlaying()
@@ -11,14 +12,41 @@ import XCTest
 
     private static let tap: String = {
         let file = Servers.root.appendingPathComponent("test/output-tap.js")
-        return (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        do { return try String(contentsOf: file, encoding: .utf8) } catch { fatalError("cannot read \(file.path): \(error)") }
     }()
 
-    init(quality: String) {
+    /// Presses play from a page timer once the bar shows a song: no event and no script from the app. Records
+    /// `navigator.userActivation` as it does, in `window.__autostart`.
+    private static let autostart = """
+    window.addEventListener("load", () => {
+      const timer = setInterval(() => {
+        const bar = [...document.querySelectorAll("footer button")].some((b) => b.getAttribute("aria-label") === "play");
+        if (!window.keepNative || !bar) return;
+        clearInterval(timer);
+        const activation = navigator.userActivation;
+        window.__autostart = { active: activation?.isActive ?? null, been: activation?.hasBeenActive ?? null };
+        window.keepNative.play();
+      }, 250);
+    });
+    """
+
+    /// Wipes the app's persistent web data, so no run starts signed in or with settings an earlier one left.
+    static func resetStore() async {
+        await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+    }
+
+    init(quality: String, startsByItself: Bool = false) {
         let configuration = PlayerView.makeConfiguration()
         let seed = """
         window.__tap = { sink: "real" };
         \(Self.tap)
+        window.__activation = [];
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+          const activation = navigator.userActivation;
+          window.__activation.push({ active: activation?.isActive ?? null, been: activation?.hasBeenActive ?? null });
+          return play.call(this);
+        };
         try {
           const key = "keep-player:settings";
           const settings = JSON.parse(localStorage.getItem(key) ?? "{}");
@@ -28,7 +56,12 @@ import XCTest
         """
         configuration.userContentController.addUserScript(
             WKUserScript(source: seed, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if startsByItself {
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: Self.autostart, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        }
         player = PlayerView(server: Servers.app, nowPlaying: nowPlaying, configuration: configuration)
+        Silence.mute(player.webView)
         // A view outside any window is treated as hidden: WebKit throttles its timers and pages never settle.
         _ = NSApplication.shared
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800), styleMask: [.titled], backing: .buffered, defer: false)
@@ -37,6 +70,12 @@ import XCTest
     }
 
     private let window: NSWindow
+
+    /// What `navigator.userActivation` said at each `play()` call of the page (nil: the engine has no such API).
+    func activations() async -> [(active: Bool?, been: Bool?)] {
+        let list = (try? await js("return window.__activation") as? [[String: Any]]) ?? []
+        return list.map { ($0["active"] as? Bool, $0["been"] as? Bool) }
+    }
 
     func close() {
         web.loadHTMLString("", baseURL: nil)
@@ -70,6 +109,12 @@ import XCTest
         (try? await js("return window.__output.states()") as? [String]) ?? []
     }
 
+    /// The loudest sample this page hands the audio device; nil when it can't be metered (see `SpeakerMeter`).
+    func speakerPeak(_ seconds: Double = 1) async -> Float? {
+        guard #available(macOS 14.2, *), let pid = Silence.audioProcess(of: web) else { return nil }
+        return await SpeakerMeter.peak(ofProcess: pid, seconds: seconds)
+    }
+
     func level() async -> Double { await number("window.__output.level()") }
 
     func playhead() async -> Double { await number("window.__output.playhead()") }
@@ -84,8 +129,9 @@ import XCTest
         return await check()
     }
 
-    /// Signs in as the mock's user (if the app's store has no session yet) and presses play on an album from the page,
-    /// which is no user gesture: it is what the island or a media key does.
+    /// Signs in as the mock's user (if the app's store has no session yet) and presses play on an album from script
+    /// the app runs: no DOM tap, as with the island or a media key. WebKit counts that script as user-activated, so it
+    /// is not an activation-free start (`startsByItself: true` is).
     func playAlbum(_ id: String) async throws {
         trace("playAlbum: waiting for load")
         let loaded = await until { (try? await self.js("return !!document.querySelector('#root') && document.readyState === 'complete'")) as? Bool == true }

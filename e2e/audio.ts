@@ -9,7 +9,7 @@ interface OutputProbe {
   sinkCalls: () => string[];
 }
 
-const TAP = join(process.cwd(), "test/output-tap.js");
+const TAP = join(import.meta.dirname, "../test/output-tap.js");
 
 interface Tap {
   /** "none": render to no device (no sound card in CI). "spy": the real `setSinkId`, recorded. */

@@ -1,7 +1,8 @@
 // Taps what reaches a context's speakers, for e2e/audio.ts and the macOS harness. window.__tap: sink "none" | "spy"
-// (records setSinkId), gate (suspended until a trusted tap, like WebKit).
+// (records setSinkId), gate (suspended until a trusted tap, like WebKit). Any sink but "real" is silent: no engine's sinkId is trusted.
 (() => {
   const { sink = "real", gate = false } = window.__tap ?? {};
+  const quiet = sink !== "real";
   const Native = window.AudioContext;
   const sinkCalls = [];
   let Context = Native;
@@ -69,6 +70,7 @@
         analysers.set(this.context, analyser);
       }
       connect.call(this, analyser);
+      if (quiet) return args[0];
     }
     return connect.apply(this, args);
   };
@@ -79,6 +81,7 @@
       try {
         disconnect.call(this, analyser);
       } catch {}
+      if (quiet && args.length) return;
     }
     return disconnect.apply(this, args);
   };

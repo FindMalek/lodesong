@@ -9,6 +9,16 @@ const AUDIBLE = 0.04;
 const SLOW = 15_000;
 const bar = (page: Page) => page.getByRole("contentinfo");
 
+const NEUTRAL = "#neutral-tap";
+
+const addNeutral = (page: Page): Promise<void> =>
+  page.evaluate((selector) => {
+    const square = document.createElement("div");
+    square.id = selector.slice(1);
+    square.setAttribute("style", "position:fixed;right:0;bottom:0;width:24px;height:24px;z-index:2147483647");
+    document.body.append(square);
+  }, NEUTRAL);
+
 /** A queue with a song, paused, in a document that has had no tap yet. */
 async function pausedAfterReload(page: Page): Promise<void> {
   await page.goto("/album/al-3");
@@ -18,17 +28,18 @@ async function pausedAfterReload(page: Page): Promise<void> {
   await page.reload();
   await expect(bar(page).getByRole("button", { name: "play" })).toBeVisible();
   expect(await outputStates(page)).toEqual([]);
+  await addNeutral(page);
 }
 
 const TAPS: [string, (page: Page) => Promise<void>][] = [
-  ["a click", (page) => page.mouse.click(0, 0)],
+  ["a click", (page) => page.locator(NEUTRAL).click()],
   ["a key press", (page) => page.keyboard.press("Shift")],
   [
     "a touch",
     async (page) => {
       // Without this the tap also fires a click, which would unlock on its own.
       await page.evaluate(() => document.addEventListener("touchend", (event) => event.preventDefault(), { passive: false }));
-      await page.touchscreen.tap(0, 0);
+      await page.locator(NEUTRAL).tap();
     },
   ],
 ];
@@ -47,7 +58,30 @@ for (const [name, tap] of TAPS) {
   });
 }
 
-test("playback started without a tap is audible once the first tap lands, whatever the engine allows", async ({ page, signedIn }) => {
+test("a tap before any playback creates the context, so a later tapless start is audible", async ({ page, signedIn }) => {
+  await tapOutput(page, { gate: true });
+  await nativeBridge(page);
+  await pausedAfterReload(signedIn);
+  await page.locator(NEUTRAL).click();
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["running"]);
+  await keepNative(page, "play");
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["running"]);
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+});
+
+test("the unlock still works when the page stops the click from bubbling", async ({ page, signedIn }) => {
+  await tapOutput(page, { gate: true });
+  await nativeBridge(page);
+  await pausedAfterReload(signedIn);
+  await page.evaluate(() => document.body.addEventListener("click", (event) => event.stopPropagation()));
+  await keepNative(page, "play");
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["suspended"]);
+  await page.locator(NEUTRAL).click();
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["running"]);
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+});
+
+test("playback started without a tap does not break engines that allow autoplay", async ({ page, signedIn }) => {
   await tapOutput(page);
   await nativeBridge(page);
   await pausedAfterReload(signedIn);
@@ -58,10 +92,21 @@ test("playback started without a tap is audible once the first tap lands, whatev
   await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
 });
 
+test("iOS is told this page plays audio, so the silent switch does not mute it", async ({ page, signedIn }) => {
+  await tapOutput(page);
+  await page.addInitScript(() => Object.defineProperty(navigator, "audioSession", { value: { type: "auto" }, configurable: true }));
+  await signedIn.goto("/album/al-3");
+  const session = (): Promise<string> =>
+    page.evaluate(() => (navigator as unknown as { audioSession: { type: string } }).audioSession.type);
+  expect(await session()).toBe("auto");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  await expect.poll(session, { timeout: SLOW }).toBe("playback");
+});
+
 test.describe("output device", () => {
   test.skip(({ browserName }) => browserName === "webkit", "WebKit has no AudioContext.setSinkId");
 
-  test("the real setSinkId gets the default device and leaves the context running", async ({ page, signedIn }) => {
+  test("setSinkId is called with the default device on start", async ({ page, signedIn }) => {
     await tapOutput(page, { sink: "spy" });
     await signedIn.goto("/album/al-3");
     await page.getByRole("button", { name: "play", exact: true }).first().click();
@@ -86,7 +131,8 @@ test.describe("output device", () => {
     await page.getByRole("menuitemradio", { name: "gone speakers" }).click();
     await expect.poll(() => sinkCalls(page), { timeout: SLOW }).toContain("nonexistent");
     await expect(page.getByRole("menuitemradio", { name: "gone speakers" })).not.toBeChecked();
-    await expect.poll(() => outputStates(page)).toEqual(["running"]);
+    await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["running"]);
+    await expect.poll(async () => (await sinkCalls(page)).slice(-2), { timeout: SLOW }).toEqual(["nonexistent", ""]);
     await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
   });
 });

@@ -360,7 +360,10 @@ function applyVolume(): void {
 }
 
 function applyOutputDevice(): void {
-  void decks.setSink(state.outputDevice ?? "").catch(() => set({ outputDevice: null }));
+  void decks.setSink(state.outputDevice ?? "").catch(() => {
+    set({ outputDevice: null });
+    void decks.setSink("").catch(() => undefined);
+  });
 }
 
 function upcoming(): { song: Song; factor: number } | null {
