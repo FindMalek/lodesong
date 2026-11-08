@@ -1,4 +1,3 @@
-import { del, get, set as setStored } from "idb-keyval";
 import { useRef, useSyncExternalStore } from "react";
 import type { FrameSource } from "./audio/types";
 import { fadeBetween } from "./crossfade";
@@ -10,8 +9,19 @@ import { isHidden, songPref } from "./prefs";
 import { queries, queryClient } from "./queries";
 import * as Q from "./queue";
 import { getSetting, subscribeSettings } from "./settings";
+import { createSnapshotStore } from "./snapshot-store";
 import { FALLBACK } from "./stream-quality";
-import { api, coverUrl, fallBackToTranscode, onAccountChange, preloadCover, qualityOf, scrobble, streamUrl } from "./subsonic";
+import {
+  api,
+  coverUrl,
+  currentAccount,
+  fallBackToTranscode,
+  onAccountChange,
+  preloadCover,
+  qualityOf,
+  scrobble,
+  streamUrl,
+} from "./subsonic";
 import type { Song } from "./types";
 import { done, record } from "./undo";
 
@@ -103,48 +113,34 @@ function startTicker(): void {
 
 document.addEventListener("visibilitychange", () => !document.hidden && startTicker());
 
-let persistQueued: "idle" | "soon" | null = null;
-
-let restored = false;
-
-function writeSnapshot(): void {
-  persistQueued = null;
-  if (!restored && !state.queue.current) return;
-  const { queue, volume, muted, outputDevice } = state;
-  void setStored(STORAGE_KEY, { queue, position, volume, muted, outputDevice }).catch(() => undefined);
-}
-
-// A queue change is written at once (a reload right after must find it); the position and volume wait for an idle moment.
-function persist(soon = false): void {
-  if (persistQueued === "soon" || (persistQueued && !soon)) return;
-  persistQueued = soon ? "soon" : "idle";
-  if (soon) setTimeout(writeSnapshot, 0);
-  else if ("requestIdleCallback" in window) requestIdleCallback(writeSnapshot, { timeout: 2000 });
-  else setTimeout(writeSnapshot, 500);
-}
-
-window.addEventListener("pagehide", writeSnapshot);
-document.addEventListener("visibilitychange", () => document.hidden && writeSnapshot());
-
 type Snapshot = Pick<PlayerState, "queue" | "volume" | "muted" | "outputDevice"> & { position: number };
 
-void get<Snapshot>(STORAGE_KEY)
-  .then((saved) => {
-    if (!saved?.queue || state.queue.current) return;
-    position = saved.position ?? 0;
-    set({
-      queue: { ...Q.EMPTY_QUEUE, ...saved.queue },
-      volume: saved.volume ?? state.volume,
-      muted: Boolean(saved.muted),
-      outputDevice: saved.outputDevice ?? null,
-      duration: saved.queue.current?.song.duration ?? 0,
-    });
-    for (const listener of positionListeners) listener();
-  })
-  .catch(() => undefined)
-  .finally(() => {
-    restored = true;
+function hasQueue(queue: Q.Queue): boolean {
+  return Boolean(queue.current) || queue.upNext.length > 0 || queue.history.length > 0 || queue.context.songs.length > 0;
+}
+
+// A queue change is written after a short quiet spell (a reload right after must find it); the position and volume wait for an idle moment.
+const store = createSnapshotStore<Snapshot>({
+  key: STORAGE_KEY,
+  read: () => ({ queue: state.queue, position, volume: state.volume, muted: state.muted, outputDevice: state.outputDevice }),
+  empty: () => !hasQueue(state.queue),
+  active: () => state.playing,
+  account: currentAccount,
+});
+const persist = store.persist;
+
+void store.restore().then((saved) => {
+  if (!saved?.queue || hasQueue(state.queue)) return;
+  position = saved.position ?? 0;
+  set({
+    queue: { ...Q.EMPTY_QUEUE, ...saved.queue },
+    volume: saved.volume ?? state.volume,
+    muted: Boolean(saved.muted),
+    outputDevice: saved.outputDevice ?? null,
+    duration: saved.queue.current?.song.duration ?? 0,
   });
+  for (const listener of positionListeners) listener();
+});
 try {
   localStorage.removeItem("keep-player:state");
 } catch {}
@@ -152,7 +148,7 @@ try {
 // Another account (or logout): its queue isn't yours.
 onAccountChange(async () => {
   player.clear();
-  await del(STORAGE_KEY).catch(() => undefined);
+  await store.forget();
 });
 
 function current(): Song | undefined {
@@ -828,6 +824,7 @@ export const player = {
     decks.stop();
     set({ queue: { ...Q.EMPTY_QUEUE, shuffle: state.queue.shuffle, repeat: state.queue.repeat }, playing: false, duration: 0 });
     setPosition(0);
+    store.skipRestore();
     persist(true);
   },
 };

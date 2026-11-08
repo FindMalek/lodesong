@@ -88,7 +88,7 @@ export function onAccountChange(listener: () => unknown): void {
   accountListeners.add(listener);
 }
 
-function currentAccount(): string {
+export function currentAccount(): string {
   try {
     return localStorage.getItem(ACCOUNT_KEY) ?? "";
   } catch {
