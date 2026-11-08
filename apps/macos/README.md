@@ -57,8 +57,8 @@ swift test --package-path apps/macos
 - Playback started by the native bridge with no DOM tap (what the island, menu bar and media keys do). WebKit counts
   script run through `callAsyncJavaScript` as user-activated (`navigator.userActivation.isActive` is true), so this
   case is audible with or without the app's media policy and does not prove it.
-- Playback started with no user activation at all: a fresh web view on the saved queue where a page timer presses
-  play, `navigator.userActivation.isActive` is false at that moment, and it is audible. Setting
+- Playback started with no user activation at all: the page reloaded on its saved queue, where a page timer (waiting
+  out the few seconds script the app ran still counts as a gesture) presses play, `navigator.userActivation.isActive` is false at that moment, and it is audible. Setting
   `mediaTypesRequiringUserActionForPlayback` to `.all` makes this test fail. `hasBeenActive` is already true in a page
   the app loads itself (observed, not explained), so only the transient activation is asserted.
 - The app's commands (`toggle`, `next`, `seek`) moving the page.

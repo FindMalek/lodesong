@@ -24,8 +24,8 @@ import XCTest
         Servers.stop()
     }
 
-    private func open(_ quality: String = "original", startsByItself: Bool = false) -> PlayerPage {
-        let opened = PlayerPage(quality: quality, startsByItself: startsByItself)
+    private func open(_ quality: String = "original") -> PlayerPage {
+        let opened = PlayerPage(quality: quality)
         page = opened
         return opened
     }
@@ -134,35 +134,29 @@ import XCTest
             "the native bridge no longer counts as user-activated: \(calls). Then it is activation-free and this test covers the other one")
     }
 
-    /// The real activation-free start: a fresh web view on the saved queue, where a page timer presses play with no
+    /// The real activation-free start: the page reloaded on its saved queue, where a page timer presses play with no
     /// event and no script from the app, so `navigator.userActivation` is false. Only the app's media policy lets that play.
     func testAudibleWhenStartedWithNoUserActivationAtAll() async throws {
         try requireOutputDevice()
-        // A fresh web view sometimes comes up without the song the first one saved (the player's own restore and its
-        // account check race on a loaded machine), so seeding is retried: it is the setup that is flaky, not the start.
-        var started: PlayerPage?
-        for attempt in 1...3 {
-            let seeded = open()
-            try await seeded.playAlbum("al-3")
-            let playing = await seeded.until { seeded.nowPlaying.playing }
-            let seen = playing ? "" : await seeded.describe()
-            XCTAssertTrue(playing, "play from the page did not reach the native side: \(seen)")
-            seeded.player.call("toggle()")
-            let paused = await seeded.until { !seeded.nowPlaying.playing }
-            XCTAssertTrue(paused, "toggle() did not pause")
-            let saved = await seeded.until { await seeded.savedQueue() }
-            XCTAssertTrue(saved, "the page never saved its queue, so a fresh web view has no song to start")
-            seeded.close()
-            let fresh = open(startsByItself: true)
-            let pressed = await fresh.until(25) { (try? await fresh.js("return window.__autostart !== undefined")) as? Bool == true }
-            if pressed {
-                started = fresh
-                break
-            }
-            trace("attempt \(attempt): the fresh web view showed no song to start: \(await fresh.describe())")
-            fresh.close()
+        let page = open()
+        try await page.playAlbum("al-3")
+        let playing = await page.until { page.nowPlaying.playing }
+        let state = playing ? "" : await page.describe()
+        XCTAssertTrue(playing, "play from the page did not reach the native side: \(state)")
+        page.player.call("toggle()")
+        let paused = await page.until { !page.nowPlaying.playing }
+        XCTAssertTrue(paused, "toggle() did not pause")
+        let saved = await page.until { await page.savedQueue() }
+        XCTAssertTrue(saved, "the page never saved its queue, so a reload has no song to start")
+        // A reload sometimes comes up with an empty queue on a loaded machine (the player's restore races its account
+        // check), so it is tried again: it is the setup that is flaky, not the start this test is about.
+        var pressed = false
+        for attempt in 1...3 where !pressed {
+            if attempt == 1 { page.reloadStartingByItself() } else { page.web.reload() }
+            pressed = await page.until(25) { (try? await page.js("return window.__autostart !== undefined")) as? Bool == true }
+            if !pressed { trace("attempt \(attempt): the reloaded page showed no song to start: \(await page.describe())") }
         }
-        guard let page = started else { return XCTFail("three fresh web views on a saved queue never showed a song to start") }
+        XCTAssertTrue(pressed, "three reloads never showed a song to start")
         let seen = try await page.json("window.__autostart ?? {}")
         XCTAssertEqual(seen["active"] as? Bool, false, "something activated the page right before play: \(seen)")
         let resumed = await page.until { page.nowPlaying.playing }

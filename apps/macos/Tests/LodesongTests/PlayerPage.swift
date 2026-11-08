@@ -21,9 +21,10 @@ import XCTest
     window.addEventListener("load", () => {
       const timer = setInterval(() => {
         const bar = [...document.querySelectorAll("footer button")].some((b) => b.getAttribute("aria-label") === "play");
-        if (!window.keepNative || !bar) return;
-        clearInterval(timer);
         const activation = navigator.userActivation;
+        // Script the app ran a moment ago still counts as a gesture for a few seconds: wait it out.
+        if (!window.keepNative || !bar || activation?.isActive) return;
+        clearInterval(timer);
         window.__autostart = { active: activation?.isActive ?? null, been: activation?.hasBeenActive ?? null };
         window.keepNative.play();
       }, 250);
@@ -35,7 +36,7 @@ import XCTest
         await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
     }
 
-    init(quality: String, startsByItself: Bool = false) {
+    init(quality: String) {
         let configuration = PlayerView.makeConfiguration()
         let seed = """
         window.__tap = { sink: "real" };
@@ -56,10 +57,6 @@ import XCTest
         """
         configuration.userContentController.addUserScript(
             WKUserScript(source: seed, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        if startsByItself {
-            configuration.userContentController.addUserScript(
-                WKUserScript(source: Self.autostart, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
-        }
         player = PlayerView(server: Servers.app, nowPlaying: nowPlaying, configuration: configuration)
         Silence.mute(player.webView)
         // A view outside any window is treated as hidden: WebKit throttles its timers and pages never settle.
@@ -70,6 +67,14 @@ import XCTest
     }
 
     private let window: NSWindow
+
+    /// Reloads the page with the timer that presses play by itself. The same web view, so the sign-in, the saved queue and
+    /// the account the player checks on boot are all still there: a new web view loses them on a loaded runner.
+    func reloadStartingByItself() {
+        web.configuration.userContentController.addUserScript(
+            WKUserScript(source: Self.autostart, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        web.reload()
+    }
 
     /// What `navigator.userActivation` said at each `play()` call of the page (nil: the engine has no such API).
     func activations() async -> [(active: Bool?, been: Bool?)] {
@@ -159,7 +164,7 @@ import XCTest
 
     /// Signs in as the mock's user (if the app's store has no session yet) and presses play on an album from script
     /// the app runs: no DOM tap, as with the island or a media key. WebKit counts that script as user-activated, so it
-    /// is not an activation-free start (`startsByItself: true` is).
+    /// is not an activation-free start (`reloadStartingByItself` is).
     func playAlbum(_ id: String) async throws {
         trace("playAlbum: waiting for load")
         let loaded = await until { (try? await self.js("return !!document.querySelector('#root') && document.readyState === 'complete'")) as? Bool == true }
