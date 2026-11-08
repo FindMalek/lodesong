@@ -55,20 +55,24 @@ export async function useQuality(page: Page, quality: string): Promise<void> {
 
 const MOCK = (): string => process.env.E2E_MOCK_URL as string;
 
-export async function firstSongOf(albumId: string): Promise<string> {
+export async function songsOf(albumId: string): Promise<string[]> {
   const salt = "e2e";
   const token = createHash("md5").update(`demo${salt}`).digest("hex");
   const response = await fetch(`${MOCK()}/rest/getAlbum?u=demo&t=${token}&s=${salt}&v=1.16.1&c=e2e&f=json&id=${albumId}`);
   const body = (await response.json()) as { "subsonic-response": { album: { song: { id: string }[] } } };
-  return (body["subsonic-response"].album.song[0] as { id: string }).id;
+  return body["subsonic-response"].album.song.map((song) => song.id);
+}
+
+export async function firstSongOf(albumId: string): Promise<string> {
+  return (await songsOf(albumId))[0] as string;
 }
 
 export async function breakStream(songId: string, format: "mp3" | "opus", mode: "garbage" | "empty" | "off" = "garbage"): Promise<void> {
   await fetch(`${MOCK()}/mock/fault?id=${songId}&format=${format}&mode=${mode}`, { method: "POST" });
 }
 
-export async function unsizeStream(songId: string, on = true): Promise<void> {
-  await fetch(`${MOCK()}/mock/unsized?id=${songId}&mode=${on ? "on" : "off"}`, { method: "POST" });
+export async function unsizeStream(songId: string, on = true, delay = 2): Promise<void> {
+  await fetch(`${MOCK()}/mock/unsized?id=${songId}&delay=${delay}&mode=${on ? "on" : "off"}`, { method: "POST" });
 }
 
 /** A browser that can't play these types: `canPlayType` answers "". */

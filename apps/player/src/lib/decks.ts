@@ -26,6 +26,8 @@ export function silencesUnsized(ua: string): boolean {
 }
 
 const BLOB_TYPES: Record<string, string> = { opus: "audio/ogg", mp3: "audio/mpeg" };
+const DOWNLOAD_MS = 60_000;
+const MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024;
 const LOGGED = [
   "loadstart",
   "loadedmetadata",
@@ -41,6 +43,11 @@ const LOGGED = [
   "ended",
 ];
 const LOG_SIZE = 20;
+const downloadable = (url: string): boolean => {
+  if (!silencesUnsized(navigator.userAgent)) return false;
+  const parsed = new URL(url, location.href);
+  return parsed.pathname === "/rest/stream" && parsed.searchParams.get("format") !== "raw";
+};
 export const finite = (value: number, fallback = 1): number => (Number.isFinite(value) ? value : fallback);
 
 export interface MediaEvent {
@@ -62,6 +69,8 @@ export interface DeckEvents {
   ended: () => void;
   handover: () => void;
   error: () => void;
+  sizing: () => void;
+  failed: () => void;
 }
 
 interface Deck {
@@ -72,6 +81,10 @@ interface Deck {
   fade: number;
   object: string | null;
   sized: string | null;
+  abort: AbortController | null;
+  sizing: boolean;
+  sizeError: string | null;
+  wantsPlay: boolean;
 }
 
 /** The levels worklet (packages/shared/src/levels-worklet.ts), served by our server: the CSP allows no blob: scripts. */
@@ -98,6 +111,7 @@ export class Decks {
   private fadesSkips = false;
 
   private readonly log: MediaEvent[] = [];
+  private unsized = false;
 
   constructor(private readonly events: DeckEvents) {
     this.decks = [this.createDeck(0), this.createDeck(1)];
@@ -106,7 +120,19 @@ export class Decks {
   private createDeck(index: number): Deck {
     const element = new Audio();
     element.preload = "auto";
-    const deck: Deck = { element, gain: null, songId: null, factor: 1, fade: 0, object: null, sized: null };
+    const deck: Deck = {
+      element,
+      gain: null,
+      songId: null,
+      factor: 1,
+      fade: 0,
+      object: null,
+      sized: null,
+      abort: null,
+      sizing: false,
+      sizeError: null,
+      wantsPlay: false,
+    };
     for (const name of LOGGED)
       element.addEventListener(name, () => {
         const error = element.error;
@@ -237,39 +263,67 @@ export class Decks {
   private source(deck: Deck, url: string): void {
     this.release(deck);
     deck.sized = null;
-    deck.element.src = url;
+    deck.sizeError = null;
+    if (this.unsized && downloadable(url)) void this.download(deck, url, 0);
+    else deck.element.src = url;
   }
 
   private release(deck: Deck): void {
+    deck.abort?.abort();
+    deck.abort = null;
+    deck.sizing = false;
     if (deck.object) URL.revokeObjectURL(deck.object);
     deck.object = null;
   }
 
-  // A stream of unknown length, in an engine that mutes those: downloaded whole (the server's own length is unknown
-  // too), then played from a blob, which has a length.
-  private async size(deck: Deck): Promise<void> {
+  // The first stream of unknown length WebKit meets: later songs go straight to `download`.
+  private size(deck: Deck): void {
+    const url = deck.element.getAttribute("src");
+    if (deck.element.duration !== Number.POSITIVE_INFINITY || !url || url === deck.sized || !downloadable(url)) return;
+    this.unsized = true;
+    void this.download(deck, url, deck.element.currentTime);
+  }
+
+  // WebKit gives a stream with no length silence in Web Audio, so it is downloaded whole and played from a blob, which
+  // has a length. A download that fails or runs out of time goes to the player's retry and is named in the report.
+  private async download(deck: Deck, url: string, at: number): Promise<void> {
     const { element, songId } = deck;
-    const url = element.getAttribute("src");
-    if (element.duration !== Number.POSITIVE_INFINITY || !url || url === deck.sized || !silencesUnsized(navigator.userAgent)) return;
-    if (new URL(url, location.href).pathname !== "/rest/stream") return;
-    const at = element.currentTime;
-    const resume = !element.paused && deck === this.playing;
-    deck.sized = url;
+    const control = new AbortController();
+    const timer = setTimeout(() => control.abort(new DOMException("download", "TimeoutError")), DOWNLOAD_MS);
     element.removeAttribute("src");
     element.load();
-    const blob = await fetch(url)
-      .then((response) => (response.ok ? response.blob() : null))
-      .catch(() => null);
-    if (element.getAttribute("src") !== null || deck.songId !== songId) return;
-    if (!blob) {
-      element.setAttribute("src", url);
-      return;
+    deck.abort = control;
+    deck.sizing = true;
+    deck.sized = url;
+    if (deck === this.playing) this.events.sizing();
+    try {
+      const response = await fetch(url, { signal: control.signal });
+      if (!response.ok) throw new DOMException("status", "NetworkError");
+      if (Number(response.headers.get("content-length")) > MAX_DOWNLOAD_BYTES) {
+        void response.body?.cancel();
+        deck.sizing = false;
+        deck.sizeError = "too large to hold";
+        element.src = url;
+        return;
+      }
+      const blob = await response.blob();
+      if (control.signal.aborted || deck.songId !== songId) return;
+      const format = new URL(url, location.href).searchParams.get("format") ?? "";
+      deck.object = URL.createObjectURL(new Blob([blob], { type: BLOB_TYPES[format] ?? blob.type }));
+      deck.sizing = false;
+      deck.abort = null;
+      element.src = deck.object;
+      if (at) element.addEventListener("loadedmetadata", () => (element.currentTime = at), { once: true });
+      if (deck.wantsPlay && deck === this.playing) void element.play().catch((error) => this.rejected(error));
+    } catch (error) {
+      if (control.signal.aborted && (control.signal.reason as DOMException | undefined)?.name !== "TimeoutError") return;
+      deck.sizing = false;
+      deck.sizeError = error instanceof Error ? error.name : "Error";
+      this.log.push({ ms: Math.round(performance.now()), deck: this.decks.indexOf(deck), name: "download failed", detail: deck.sizeError });
+      if (deck === this.playing) this.events.failed();
+    } finally {
+      clearTimeout(timer);
     }
-    const format = new URL(url, location.href).searchParams.get("format") ?? "";
-    deck.object = URL.createObjectURL(new Blob([blob], { type: BLOB_TYPES[format] ?? blob.type }));
-    element.src = deck.object;
-    if (at) element.addEventListener("loadedmetadata", () => (element.currentTime = at), { once: true });
-    if (resume) void element.play().catch((error) => this.rejected(error));
   }
 
   setFadesSkips(on: boolean): void {
@@ -334,8 +388,9 @@ export class Decks {
     clearTimeout(this.timer);
     this.armed = null;
     let faded = false;
-    if (this.idle.songId === songId && this.idle.element.src && !this.idle.element.error) {
+    if (this.idle.songId === songId && (this.idle.element.src || this.idle.sizing) && !this.idle.element.error) {
       const from = this.playing;
+      from.wantsPlay = false;
       this.active = 1 - this.active;
       const to = this.playing;
       if (this.fadesSkips && autoplay && !from.element.paused && from.gain && to.gain && this.context) {
@@ -434,12 +489,20 @@ export class Decks {
     this.ensureGraph();
     // Not awaited: a suspended context's resume() can stay pending until the next gesture.
     if (this.context && this.context.state !== "running") void this.context.resume().catch(() => undefined);
-    await this.playing.element.play();
+    const deck = this.playing;
+    deck.wantsPlay = true;
+    if (deck.sizing) return;
+    try {
+      await deck.element.play();
+    } catch (error) {
+      if (!(deck.sizing && error instanceof DOMException && error.name === "AbortError")) throw error;
+    }
   }
 
   pause(): void {
     clearTimeout(this.timer);
     this.armed = null;
+    this.playing.wantsPlay = false;
     this.playing.element.pause();
   }
 
@@ -454,6 +517,7 @@ export class Decks {
     for (const deck of this.decks) {
       deck.element.pause();
       this.release(deck);
+      deck.wantsPlay = false;
       deck.element.removeAttribute("src");
       deck.songId = null;
     }
@@ -515,6 +579,8 @@ export class Decks {
     }
     this.armed = null;
     this.active = 1 - this.active;
+    from.wantsPlay = false;
+    to.wantsPlay = true;
     void to.element.play().catch((error) => this.rejected(error));
     this.parkAfter(from, fade > RAMP_SECONDS ? fade * 1000 + 50 : (LEAD_SECONDS + RAMP_SECONDS) * 1000 + 50);
     this.events.handover();
@@ -555,6 +621,8 @@ export class Decks {
           src: element.getAttribute("src"),
           fromBlob: !!deck.object,
           sizedFrom: deck.sized,
+          downloading: deck.sizing,
+          downloadError: deck.sizeError,
           readyState: element.readyState,
           networkState: element.networkState,
           error: element.error ? { code: element.error.code, message: element.error.message } : null,
@@ -590,16 +658,23 @@ export class Decks {
     const analyser = context.createAnalyser();
     const mute = context.createGain();
     mute.gain.value = 0;
-    out.connect(analyser).connect(mute).connect(context.destination);
-    const samples = new Float32Array(analyser.fftSize);
-    let peak = 0;
-    for (const end = performance.now() + milliseconds; performance.now() < end; ) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      analyser.getFloatTimeDomainData(samples);
-      for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+    let linked = false;
+    try {
+      out.connect(analyser).connect(mute).connect(context.destination);
+      linked = true;
+      const samples = new Float32Array(analyser.fftSize);
+      let peak = 0;
+      for (const end = performance.now() + milliseconds; performance.now() < end; ) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        analyser.getFloatTimeDomainData(samples);
+        for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+      }
+      return peak;
+    } finally {
+      if (linked) {
+        out.disconnect(analyser);
+        mute.disconnect();
+      }
     }
-    out.disconnect(analyser);
-    mute.disconnect();
-    return peak;
   }
 }

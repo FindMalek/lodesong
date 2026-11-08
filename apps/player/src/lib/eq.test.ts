@@ -6,6 +6,7 @@ describe("replay gain", () => {
     expect(replayGainFactor({ trackGain: -6, albumGain: -3 }, false)).toBeCloseTo(0.501, 3);
     expect(replayGainFactor({ trackGain: -6, albumGain: -3 }, true)).toBeCloseTo(0.708, 3);
     expect(replayGainFactor({ trackGain: 6, trackPeak: 1 }, false)).toBe(1);
+    expect(replayGainFactor({ trackGain: Number.NaN, albumGain: -6 }, false)).toBeCloseTo(0.501, 3);
   });
   test("a tag that is no number or no sane value never silences a song or blasts it", () => {
     const bad = [

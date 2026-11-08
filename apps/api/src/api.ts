@@ -42,6 +42,7 @@ import type { Session, SessionStore } from "./sessions";
 import { RateLimit } from "./share-limit";
 import { SharedCards } from "./share-store";
 import { SHARE_KINDS, SHARE_LIFE_MS, ShareTokens } from "./share-token";
+import { needsLength, SPOOL_LIMIT, spool } from "./spool";
 import { subsonic, upstreamQuery } from "./subsonic";
 import { MAX_UPLOAD_BYTES, saveUpload, uploadPath } from "./upload";
 
@@ -472,6 +473,17 @@ export function createApi({
         .json()
         .catch(() => null)) as { "subsonic-response"?: { status?: string } } | null;
       if (body?.["subsonic-response"]?.status === "ok") forgetPlaylist(library, dataAccount(session), gone);
+    }
+    if (endpoint === "stream" && response.status === 200 && response.body && query.get("format") !== "raw") {
+      if (needsLength(request.headers.get("user-agent")) && !(Number(response.headers.get("content-length")) > SPOOL_LIMIT)) {
+        const spooled = await spool(response.body).catch(() => null);
+        if (!spooled) return json({ error: "server unreachable" }, 502);
+        if ("blob" in spooled) {
+          out.set("content-length", String(spooled.blob.size));
+          return new Response(spooled.blob, { status: 200, headers: out });
+        }
+        return new Response(spooled.stream, { status: 200, headers: out });
+      }
     }
     return new Response(response.body, { status: response.status, headers: out });
   }

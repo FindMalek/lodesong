@@ -20,6 +20,23 @@ const upstream = Bun.serve({
       streamAborted = new Promise((resolve) => request.signal.addEventListener("abort", () => resolve()));
       return new Response(new ReadableStream({ pull: (controller) => controller.enqueue(new Uint8Array(1024)) }));
     }
+    if (new URL(request.url).pathname === "/rest/stream" && new URL(request.url).searchParams.get("id") === "transcode") {
+      // A transcode as Navidrome sends it: whole body, no ranges, arriving in pieces.
+      if (request.headers.get("range"))
+        return new Response(new Uint8Array(4).fill(1), { status: 206, headers: { "content-range": "bytes 0-3/12" } });
+      return new Response(
+        new ReadableStream({
+          async start(controller) {
+            for (let piece = 0; piece < 3; piece += 1) {
+              controller.enqueue(new Uint8Array(4).fill(piece));
+              await Bun.sleep(5);
+            }
+            controller.close();
+          },
+        }),
+        { headers: { "content-type": "audio/ogg", "accept-ranges": "none" } },
+      );
+    }
     return Response.json({ "subsonic-response": { status: "ok" } });
   },
 });
@@ -72,6 +89,29 @@ test("a stream the browser drops is dropped upstream too", async () => {
   browser.abort();
   const aborted = await Promise.race([streamAborted?.then(() => true), Bun.sleep(2000).then(() => false)]);
   expect(aborted).toBe(true);
+});
+
+const WEBKIT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+const CHROME = "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+test("a transcode with no length reaches WebKit with its real Content-Length", async () => {
+  const response = await api.proxy(request("/rest/stream?id=transcode&format=opus", { "user-agent": WEBKIT }));
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-length")).toBe("12");
+  expect((await response.arrayBuffer()).byteLength).toBe(12);
+});
+
+test("other browsers keep the progressive stream, and raw files are never held back", async () => {
+  const chrome = await api.proxy(request("/rest/stream?id=transcode&format=opus", { "user-agent": CHROME }));
+  expect(chrome.headers.get("content-length")).toBeNull();
+  const raw = await api.proxy(request("/rest/stream?id=transcode&format=raw", { "user-agent": WEBKIT }));
+  expect(raw.headers.get("content-length")).toBeNull();
+});
+
+test("a ranged answer is passed through as it came", async () => {
+  const response = await api.proxy(request("/rest/stream?id=transcode&format=opus", { "user-agent": WEBKIT, range: "bytes=0-" }));
+  expect(response.status).toBe(206);
+  expect(response.headers.get("content-range")).toBe("bytes 0-3/12");
 });
 
 test("only admins see or rebuild the search index", async () => {

@@ -242,6 +242,8 @@ const decks = new Decks({
     started(current());
   },
   error: () => void onMediaError(),
+  sizing: () => set({ buffering: true }),
+  failed: () => recover(),
 });
 
 // Safari only lets audio start inside a tap or key press: unlock the engine on those, so the first play (which may
