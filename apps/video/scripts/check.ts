@@ -3,12 +3,13 @@ import { resolve } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
 import { enableTailwind } from "@remotion/tailwind-v4";
-import { beat, FPS } from "../src/design/beat";
+import type { Film } from "../src/audio-cues";
 import { type Box, type Measure, PROBE_TAG } from "../src/design/probe";
-import { CUES, HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "../src/scenes/open-timeline";
+import { HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "../src/scenes/open-timeline";
+import { audio, onsets } from "./audio-check";
 
-// bun scripts/check.ts stills [frames...] [--docs]   bundle once, render stills, fail on the legibility and furniture rules
-// bun scripts/check.ts onsets <file.mp4>             find audio onsets in a rendered file and compare them to the cue table
+// bun scripts/check.ts stills [frames...] [--docs] | audio [hero|cutdown] | onsets <file> [hero|cutdown]
+// stills renders keyframes and fails on the legibility rules; audio and onsets check a wav or mp4 against the cue table
 const FLOOR_PX = 28;
 const MIN_OPACITY = 0.6;
 const SAFE = 56;
@@ -82,49 +83,12 @@ async function stills(args: string[]): Promise<number> {
   return failures;
 }
 
-async function onsets(file: string): Promise<number> {
-  const decode = Bun.spawn(["ffmpeg", "-v", "error", "-i", file, "-vn", "-ac", "1", "-ar", "48000", "-f", "f32le", "-"], {
-    stdout: "pipe",
-  });
-  const samples = new Float32Array(await new Response(decode.stdout).arrayBuffer());
-  const win = 240;
-  const envelope = (diff: boolean): number[] => {
-    const env: number[] = [];
-    for (let i = 1; i + win < samples.length; i += win) {
-      let sum = 0;
-      for (let j = i; j < i + win; j += 1) sum += ((samples[j] ?? 0) - (diff ? (samples[j - 1] ?? 0) : 0)) ** 2;
-      env.push(Math.sqrt(sum / win));
-    }
-    return env;
-  };
-  const find = (env: number[], floor: number): number[] => {
-    const found: number[] = [];
-    for (let i = 5; i < env.length; i += 1) {
-      const before = env.slice(i - 5, i).reduce((a, b) => a + b, 0) / 5 + 1e-4;
-      const last = found.at(-1);
-      if ((env[i] ?? 0) > before * 4 && (env[i] ?? 0) > floor && (last === undefined || i - last > 40)) found.push(i);
-    }
-    return found;
-  };
-  const found = [...find(envelope(false), 0.05), ...find(envelope(true), 0.01)];
-  const frames = found.map((i) => (i * win * FPS) / 48_000);
-  let failures = 0;
-  for (const cue of CUES.filter((c) => c.detect)) {
-    const want = beat(cue.at);
-    const nearest = frames.reduce((best, f) => (Math.abs(f - want) < Math.abs(best - want) ? f : best), Number.POSITIVE_INFINITY);
-    const delta = nearest - want;
-    const ok = Math.abs(delta) <= 2;
-    if (!ok) failures += 1;
-    console.log(
-      `${cue.voice} @ beat ${cue.at} (frame ${want}): onset ${nearest.toFixed(1)}, ${delta >= 0 ? "+" : ""}${delta.toFixed(1)} frames ${ok ? "ok" : "FAIL"}`,
-    );
-  }
-  return failures;
-}
-
 const [command, ...rest] = process.argv.slice(2);
+const filmOf = (name: string | undefined, file?: string): Film =>
+  name === "cutdown" || (!name && file?.includes("cutdown")) ? "cutdown" : "hero";
 let failed = 1;
 if (command === "stills") failed = await stills(rest);
-else if (command === "onsets" && rest[0]) failed = await onsets(rest[0]);
-else console.error("usage: check.ts stills [frames...] [--docs] | onsets <file.mp4>");
+else if (command === "audio") failed = await audio(rest[0] ? [filmOf(rest[0])] : ["hero", "cutdown"]);
+else if (command === "onsets" && rest[0]) failed = await onsets(rest[0], filmOf(rest[1], rest[0]));
+else console.error("usage: check.ts stills [frames...] [--docs] | audio [hero|cutdown] | onsets <file> [hero|cutdown]");
 process.exit(failed === 0 ? 0 : 1);
