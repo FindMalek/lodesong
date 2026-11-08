@@ -88,12 +88,8 @@ export function preloadRoute(path: string): void {
 }
 
 export function preloadAllRoutes(extra: (() => Promise<unknown>)[] = []): void {
-  const run = () => {
-    for (const chunk of Object.keys(chunks) as Chunk[]) void load(chunk);
-    for (const more of extra) void more();
-  };
-  if ("requestIdleCallback" in window) requestIdleCallback(run, { timeout: 3000 });
-  else setTimeout(run, 1000);
+  for (const chunk of Object.keys(chunks) as Chunk[]) void load(chunk);
+  for (const more of extra) void more();
 }
 
 export const HomePage = page("browse", "HomePage");

@@ -34,6 +34,7 @@ import { useCheckingSession, useUser } from "@/lib/subsonic";
 import { isOnboarded, welcomeTip } from "@/lib/tips";
 import { loadTooltips } from "@/lib/tooltips";
 import { redo, undo } from "@/lib/undo";
+import { whenQuiet } from "@/lib/when-quiet";
 import {
   AlbumPage,
   AlbumsPage,
@@ -270,8 +271,10 @@ export function App() {
     return () => clearTimeout(id);
   }, [user, firstRun]);
 
+  // Every page's code and the tooltips are fetched once the first screen is done, not alongside it.
   useEffect(() => {
-    if (user)
+    if (!user) return;
+    return whenQuiet(() => {
       preloadAllRoutes([
         SplitView.preload,
         QueuePanel.preload,
@@ -281,11 +284,8 @@ export function App() {
         () => import("@/components/now-playing-details"),
         () => import("@/components/artist-card"),
       ]);
-    // Safari has no requestIdleCallback, and `?.` doesn't guard a global that isn't declared at all.
-    if (user) {
-      if ("requestIdleCallback" in window) requestIdleCallback(loadTooltips, { timeout: 4000 });
-      else setTimeout(loadTooltips, 1000);
-    }
+      loadTooltips();
+    });
   }, [user]);
 
   useEffect(() => {
