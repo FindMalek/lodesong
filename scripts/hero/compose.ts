@@ -1,123 +1,69 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Browser, Page } from "@playwright/test";
-import { ditherCells, ditherPath, ditherSeed } from "../../packages/shared/src/dither";
+import { type Frame, HERO_VIEW, STRIP_VIEW, type Theme } from "./capture";
+import { animate, decodedFrames, regions } from "./webp";
 
-type Theme = "dark" | "light";
+const BORDER: Record<Theme, string> = { dark: "#262626", light: "#c5c5c5" };
+const CARD: Record<Theme, string> = { dark: "#191919", light: "#f5f5f5" };
+const BG: Record<Theme, string> = { dark: "#101010", light: "#ebebeb" };
+const FG: Record<Theme, string> = { dark: "#ebebeb", light: "#101010" };
+const MUTED: Record<Theme, string> = { dark: "#9a9a9a", light: "#585858" };
+const MIN_BYTES = 250_000;
+const MAX_BYTES = 2_000_000;
+const MIN_STRIP_BYTES = 60_000;
+const MAX_STRIP_BYTES = 400_000;
+const STRIP = { width: 1600, height: 560 };
+const CARD_WIDTH = 784;
+const HEAD = 76;
+const BODY = STRIP.height - HEAD - 2;
+const inset = (theme: Theme): string => `left:16px;top:${HEAD + 4}px;width:750px;height:${BODY - 20}px;border:1px solid ${BORDER[theme]}`;
+const ZOOM = 1.3;
 
-const TOKENS: Record<Theme, Record<string, string>> = {
-  dark: {
-    bg: "#101010",
-    fg: "#ebebeb",
-    muted: "#939393",
-    border: "#262626",
-    card: "#191919",
-    bar: "#161616",
-    ink: "rgba(255,255,255,0.16)",
-  },
-  light: { bg: "#ebebeb", fg: "#101010", muted: "#5a5a5a", border: "#c5c5c5", card: "#f5f5f5", bar: "#e2e2e2", ink: "rgba(0,0,0,0.14)" },
-};
-
-const MARK = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
-const CHIPS = ["synced lyrics", "daily mixes", "a queue you can see", "one session, every device"];
-const HERO = { width: 1280, height: 960 };
-const STRIP = { width: 1280, height: 720 };
+type Crop = { src: string; x: number; y: number; zoom?: number; inset?: string };
 
 function fontFace(family: string, spec: string, weights: string): string {
   const path = Bun.resolveSync(spec, `${process.cwd()}/apps/api`);
   return `@font-face{font-family:"${family}";src:url("file://${path}") format("woff2");font-weight:${weights}}`;
 }
 
-function base(theme: Theme, size: { width: number; height: number }): string {
-  const t = TOKENS[theme];
+function crop(spec: Crop, style: string): string {
+  const zoom = spec.zoom ?? ZOOM;
+  const image = `<img src="file://${spec.src}" style="width:${STRIP_VIEW.width * zoom}px;left:${-spec.x * zoom}px;top:${-spec.y * zoom}px">`;
+  return `<div class="crop" style="${style}">${spec.inset ? `<div class="inset" style="${spec.inset}">${image}</div>` : image}</div>`;
+}
+
+function card(index: string, name: string, line: string, body: string): string {
+  return `<section><header><span class="mono muted">${index}</span><b class="mono">${name}</b><p>${line}</p></header>${body}</section>`;
+}
+
+function stripHtml(theme: Theme, raw: string): string {
+  const dir = `${raw}/${theme}`;
+  const albums: Crop = { src: `${dir}/strip-albums.png`, x: 214, y: 134, zoom: 1.65 };
+  const queue: Crop = { src: `${dir}/strip-queue.png`, x: 940, y: 44, zoom: 2.1 };
+  const popup: Crop = { src: `${dir}/strip-queue.png`, x: 852, y: 574, zoom: 1.7 };
   return `<!doctype html><meta charset="utf-8"><style>
 ${fontFace("Plex", "@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2", "100 700")}
 ${fontFace("Mono", "@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2", "100 800")}
 *{box-sizing:border-box;margin:0;padding:0}
-body{width:${size.width}px;height:${size.height}px;background:${t.bg};color:${t.fg};font-family:Plex,sans-serif;position:relative;overflow:hidden;-webkit-font-smoothing:antialiased}
-.mono{font-family:Mono,monospace}
-.muted{color:${t.muted}}
-</style>`;
-}
-
-function dither(theme: Theme, width: number, height: number, cell: number, mask: string): string {
-  const cols = Math.ceil(width / cell);
-  const rows = Math.ceil(height / cell);
-  const path = ditherPath(ditherCells(cols, rows, ditherSeed("lodesong"), 0), cols, cell);
-  return `<svg style="position:absolute;inset:0;mask-image:${mask};-webkit-mask-image:${mask}" width="${width}" height="${height}"><path d="${path}" fill="${TOKENS[theme].ink}"/></svg>`;
-}
-
-function heroHtml(theme: Theme, raw: string): string {
-  const t = TOKENS[theme];
-  const dark = theme === "dark";
-  const shadow = dark ? "0 60px 120px -20px #000, 0 0 0 1px #262626" : "0 50px 100px -30px rgba(0,0,0,.35), 0 0 0 1px #c5c5c5";
-  const glow = dark
-    ? "radial-gradient(520px 420px at 86% 38%, rgba(232,89,12,.20), transparent 70%), radial-gradient(640px 420px at 26% 100%, rgba(59,91,219,.16), transparent 70%)"
-    : "radial-gradient(520px 420px at 86% 38%, rgba(232,89,12,.16), transparent 70%), radial-gradient(640px 420px at 26% 100%, rgba(59,91,219,.12), transparent 70%)";
-  return `${base(theme, HERO)}<style>
-body{background:${glow},${t.bg}}
-.brand{position:absolute;left:72px;top:44px;display:flex;align-items:center;gap:11px;font:500 16px Mono}
-.brand svg{width:18px;height:18px;fill:${t.fg}}
-h1{position:absolute;left:72px;top:84px;font-size:58px;line-height:1.04;letter-spacing:-.04em;font-weight:600}
-p.sub{position:absolute;left:72px;top:224px;font-size:18px;color:${t.muted}}
-.chips{position:absolute;left:72px;top:268px;display:flex;gap:8px}
-.chip{border:1px solid ${t.border};background:${t.card};padding:6px 10px;font:500 12px Mono;color:${t.fg}}
-.win{position:absolute;left:72px;top:334px;width:1100px;background:${t.bg};box-shadow:${shadow}}
-.win .bar{height:36px;background:${t.bar};border-bottom:1px solid ${t.border};display:flex;align-items:center;padding:0 14px;position:relative}
-.dots{display:flex;gap:7px}.dots i{width:10px;height:10px;border:1px solid ${dark ? "#3a3a3a" : "#a8a8a8"}}
-.url{position:absolute;left:50%;transform:translateX(-50%);width:300px;height:22px;border:1px solid ${t.border};background:${t.bg};font:400 11px/20px Mono;text-align:center;color:${t.muted}}
-.win img{display:block;width:1100px}
-.phone{position:absolute;left:952px;top:240px;width:272px;padding:8px;background:${dark ? "#0a0a0a" : "#1b1b1b"};border:1px solid ${dark ? "#333" : "#000"};border-radius:36px;box-shadow:${dark ? "0 50px 90px -10px #000, 0 0 0 1px #1c1c1c" : "0 50px 90px -20px rgba(0,0,0,.5)"}}
-.phone .screen{position:relative;border-radius:29px;overflow:hidden;background:${t.bg}}
-.phone img{display:block;width:100%}
-.phone .pill{position:absolute;left:50%;top:9px;width:74px;height:21px;margin-left:-37px;border-radius:11px;background:#000}
-.fade{position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(to bottom,transparent,${t.bg})}
-</style>
-${dither(theme, HERO.width, 340, 8, "radial-gradient(ellipse 50% 95% at 90% 0%, #000 0%, transparent 72%)")}
-<div class="brand"><svg viewBox="8 8 48 48"><path d="${MARK}"/></svg>lodesong</div>
-<h1>your own music,<br><span class="muted">played like a streaming app.</span></h1>
-<p class="sub">a monochrome web player for your Navidrome library.</p>
-<div class="chips">${CHIPS.map((chip) => `<span class="chip">${chip}</span>`).join("")}</div>
-<div class="win"><div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">music.example.com</div></div><img src="file://${raw}/desk-scrolled.png"></div>
-<div class="phone"><div class="screen"><img src="file://${raw}/phone-home.png"><div class="pill"></div></div></div>
-<div class="fade"></div>`;
-}
-
-function crop(src: string, scale: number, x: number, y: number, w: number, h: number, extra = ""): string {
-  return `<div class="crop" style="width:${w}px;height:${h}px;${extra}"><img src="${src}" style="width:${1440 * scale}px;left:${-x * scale}px;top:${-y * scale}px"></div>`;
-}
-
-function stripHtml(theme: Theme, raw: string): string {
-  const t = TOKENS[theme];
-  const dark = theme === "dark";
-  const card = (cls: string, index: string, name: string, line: string, body: string): string =>
-    `<section class="${cls}"><header><div><span class="mono muted" style="margin-right:10px">${index}</span><span class="mono name">${name}</span></div><p>${line}</p></header>${body}</section>`;
-  const lyrics = crop(`file://${raw}/desk-full.png`, 0.58, 20, -20, 644, 548);
-  const mixes = crop(`file://${raw}/desk-home.png`, 0.85, 215, 245, 516, 214);
-  const queue = `<div class="pair">
-    ${crop(`file://${raw}/desk-queue.png`, 0.9, 1120, 44, 288, 214)}
-    <div class="pop">${crop(`file://${raw}/desk-queue.png`, 0.9, 1012, 752, 204, 88)}</div></div>`;
-  return `${base(theme, STRIP)}<style>
-.grid{position:absolute;left:48px;top:48px;width:1184px;height:624px;display:grid;grid-template-columns:644px 516px;grid-template-rows:300px 300px;gap:24px}
-section{border:1px solid ${t.border};background:${t.card};overflow:hidden;display:flex;flex-direction:column;box-shadow:${dark ? "0 30px 60px -30px #000" : "0 30px 60px -36px rgba(0,0,0,.3)"}}
-section.big{grid-row:1 / span 2}
-header{padding:18px 20px 16px;height:78px}
-header div{font-size:14px;margin-bottom:6px}
-.name{font-weight:600;color:${t.fg}}
-header p{font-size:14px;color:${t.muted};white-space:nowrap}
-.crop{position:relative;overflow:hidden;border-top:1px solid ${t.border};background:${t.bg}}
+html,body{width:${STRIP.width}px;height:${STRIP.height}px;background:transparent;overflow:hidden}
+body{position:relative;color:${FG[theme]};font-family:Plex,sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:Mono,monospace}.muted{color:${MUTED[theme]}}
+section{position:absolute;top:0;width:${CARD_WIDTH}px;height:${STRIP.height}px;border:1px solid ${BORDER[theme]};background:${CARD[theme]};overflow:hidden}
+section:nth-of-type(1){left:0}
+section:nth-of-type(2){left:${STRIP.width - CARD_WIDTH}px}
+header{height:${HEAD}px;padding:14px 22px 0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px}
+header span,header b{font-size:26px;font-weight:600;line-height:30px}
+header span{font-weight:400}
+header p{width:100%;font-size:24px;line-height:32px;color:${MUTED[theme]};white-space:nowrap}
+.crop{position:absolute;overflow:hidden;border-top:1px solid ${BORDER[theme]};background:${BG[theme]}}
 .crop img{position:absolute;max-width:none}
-.pair{position:relative;flex:1;border-top:1px solid ${t.border};background:${t.bg}}
-.pair .crop{border-top:0;border-right:1px solid ${t.border}}
-.pop{position:absolute;left:300px;top:58px;box-shadow:0 18px 40px -8px rgba(0,0,0,${dark ? 0.85 : 0.35})}
-.pop .crop{border:1px solid ${t.border}}
+.pop{position:absolute;left:352px;top:388px;width:380px;height:162px;overflow:hidden;border:1px solid ${BORDER[theme]};box-shadow:0 24px 48px -12px rgba(0,0,0,${theme === "dark" ? 0.9 : 0.4})}
 </style>
-<div class="grid">
-${card("big", "01", "synced lyrics", "line by line, full screen with ⇧F, timing nudged per song.", lyrics)}
-${card("", "02", "made for you", "daily mixes and discover weekly, from what you play.", mixes)}
-${card("", "03", "queue and devices", "a queue you can see, and a picker for every signed-in device.", queue)}
-</div>`;
+${card("01", "your library", "albums, artists, genres, filters.", crop(albums, inset(theme)))}
+${card("02", "queue and devices", "a queue you can see, a device picker.", `${crop(queue, inset(theme))}<div class="pop">${crop(popup, "left:0;top:0;width:380px;height:162px;border:0")}</div>`)}
+`;
 }
 
 async function toWebp(page: Page, png: Buffer, quality: number): Promise<Buffer> {
@@ -141,28 +87,42 @@ async function toWebp(page: Page, png: Buffer, quality: number): Promise<Buffer>
   return Buffer.from(encoded, "base64");
 }
 
-export async function compose(browser: Browser, raw: string, out: string): Promise<void> {
-  mkdirSync(out, { recursive: true });
-  const work = mkdtempSync(join(tmpdir(), "lodesong-compose-"));
-  const jobs: [string, (theme: Theme, dir: string) => string, { width: number; height: number }, number][] = [
-    ["hero", heroHtml, HERO, 0.82],
-    ["features", stripHtml, STRIP, 0.86],
-  ];
+export async function composeStrip(browser: Browser, raw: string, out: string, theme: Theme): Promise<void> {
+  const work = mkdtempSync(join(tmpdir(), "lodesong-strip-"));
+  const file = join(work, `features-${theme}.html`);
+  writeFileSync(file, stripHtml(theme, raw));
+  const page = await browser.newPage({ viewport: STRIP, deviceScaleFactor: 1 });
+  await page.goto(`file://${file}`);
+  await page.evaluate(() => document.fonts.ready);
+  const png = await page.screenshot({ type: "png", omitBackground: true });
+  await page.close();
   const encoder = await browser.newPage();
-  for (const theme of ["dark", "light"] as const) {
-    for (const [name, html, size, quality] of jobs) {
-      const page = await browser.newPage({ viewport: size, deviceScaleFactor: 1.5 });
-      const file = join(work, `${name}-${theme}.html`);
-      writeFileSync(file, html(theme, `${raw}/${theme}`));
-      await page.goto(`file://${file}`);
-      await page.evaluate(() => document.fonts.ready);
-      await page.waitForTimeout(500);
-      const png = await page.screenshot({ type: "png" });
-      await page.close();
-      const webp = await toWebp(encoder, png, quality);
-      writeFileSync(`${out}/${name}-${theme}.webp`, webp);
-      console.log(`${out}/${name}-${theme}.webp ${Math.round(webp.length / 1024)} KB`);
-    }
-  }
+  const webp = await toWebp(encoder, png, 0.86);
   await encoder.close();
+  if (webp.length < MIN_STRIP_BYTES || webp.length > MAX_STRIP_BYTES) throw new Error(`features-${theme}.webp is ${webp.length} bytes`);
+  writeFileSync(`${out}/features-${theme}.webp`, webp);
+  console.log(`${out}/features-${theme}.webp ${Math.round(webp.length / 1024)} KB`);
+}
+
+export async function composeHero(browser: Browser, raw: string, out: string, theme: Theme, frames: Frame[]): Promise<void> {
+  const page = await browser.newPage();
+  const pngs = frames.map((frame) => readFileSync(`${raw}/${theme}/${frame.name}.png`));
+  const firstDiff = frames.findIndex((frame) => frame.name.startsWith("lyrics-")) + 1;
+  const width = Math.round(HERO_VIEW.width * HERO_VIEW.scale);
+  const height = Math.round(HERO_VIEW.height * HERO_VIEW.scale);
+  const pieces = await regions(page, pngs, BORDER[theme], 0.8, firstDiff, [width, height]);
+  await page.close();
+  const webp = animate(
+    width,
+    height,
+    pieces.map((piece, index) => ({ ...piece, ms: frames[index]?.hold ?? 1000, data: Buffer.from(piece.webp, "base64") })),
+  );
+  if (webp.length < MIN_BYTES || webp.length > MAX_BYTES) throw new Error(`hero-${theme}.webp is ${webp.length} bytes`);
+  const decoded = await decodedFrames(browser, webp);
+  const wrong =
+    decoded.length !== frames.length ||
+    decoded.some((frame, index) => frame.width !== width || frame.height !== height || frame.ms !== frames[index]?.hold);
+  if (wrong) throw new Error(`hero-${theme}.webp does not decode to ${frames.length} frames of ${width}x${height}`);
+  writeFileSync(`${out}/hero-${theme}.webp`, webp);
+  console.log(`${out}/hero-${theme}.webp ${Math.round(webp.length / 1024)} KB, ${pieces.length} frames`);
 }

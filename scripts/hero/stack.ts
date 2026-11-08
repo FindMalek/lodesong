@@ -28,9 +28,25 @@ export async function startStack(): Promise<() => void> {
     stdout: "ignore",
     stderr: "ignore",
   });
-  await until(`http://127.0.0.1:${MOCK}/rest/ping`);
-  const fixture = startFixture(FIXTURE, `http://127.0.0.1:${MOCK}`);
-  const app = Bun.spawn(["./dist/lodesong"], {
+  const kill: (() => void)[] = [() => mock.kill()];
+  try {
+    await until(`http://127.0.0.1:${MOCK}/rest/ping`);
+    const fixture = startFixture(FIXTURE, `http://127.0.0.1:${MOCK}`);
+    kill.push(() => fixture.stop());
+    const app = launch(data);
+    kill.push(() => app.kill());
+    await until(`http://127.0.0.1:${APP}/healthz`);
+  } catch (error) {
+    for (const stop of kill) stop();
+    throw error;
+  }
+  return () => {
+    for (const stop of kill) stop();
+  };
+}
+
+function launch(data: string): ReturnType<typeof Bun.spawn> {
+  return Bun.spawn(["./dist/lodesong"], {
     env: {
       ...process.env,
       PORT: String(APP),
@@ -45,10 +61,4 @@ export async function startStack(): Promise<() => void> {
     stdout: "ignore",
     stderr: "ignore",
   });
-  await until(`http://127.0.0.1:${APP}/healthz`);
-  return () => {
-    app.kill();
-    mock.kill();
-    fixture.stop();
-  };
 }

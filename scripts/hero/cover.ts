@@ -4,17 +4,9 @@ import { rgbPng } from "../demo/png";
 type Rgb = [number, number, number];
 type Palette = [string, string, string];
 
-const PALETTES: Palette[] = [
-  ["#0b1026", "#3b5bdb", "#dbe4ff"],
-  ["#1a0a05", "#e8590c", "#ffe8cc"],
-  ["#1f0614", "#d6336c", "#ffdeeb"],
-  ["#07140c", "#2f9e44", "#d3f9d8"],
-  ["#120a24", "#7048e8", "#e5dbff"],
-  ["#111111", "#868e96", "#f1f3f5"],
-  ["#041a1c", "#0c8599", "#c5f6fa"],
-  ["#1a1203", "#f59f00", "#fff3bf"],
-];
-
+const GREY: Palette = ["#0a0a0a", "#6b6b6b", "#f2f2f2"];
+const GOLD: Palette = ["#1a1203", "#f59f00", "#fff3bf"];
+const KINDS = 8;
 const LEVELS = 4;
 
 function rgb(hex: string): Rgb {
@@ -29,9 +21,9 @@ function ramp(palette: Palette, t: number): Rgb {
 }
 
 export function colourCover(index: number, size = 512): Uint8Array<ArrayBuffer> {
-  const palette = PALETTES[index % PALETTES.length] as Palette;
+  const palette = index % 7 === 3 ? GOLD : GREY;
   const swatches = Array.from({ length: LEVELS }, (_, level) => ramp(palette, level / (LEVELS - 1)));
-  const f = field(index + Math.floor(index / PALETTES.length), index * 7919 + 13);
+  const f = field(index + Math.floor(index / KINDS), index * 7919 + 13);
   const pixels = new Uint8Array(size * size * 3);
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
