@@ -83,6 +83,12 @@ Setup: [docs/deploy/dokploy.md](docs/deploy/dokploy.md).
 
 New settings go in `apps/api/src/settings.ts` (parsed and checked at boot), then `bun run config-docs`.
 
+## Promo video
+
+`apps/video` (Remotion, playbook in `apps/video/PLAYBOOK.md`) is not part of the app or the image. Remotion is source-available,
+not open source: free for an individual or a for-profit company of up to 3 people, otherwise it needs a paid licence. Whoever
+renders from this repo is responsible for their own eligibility ([terms](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)).
+
 ## Translations
 
 Strings live in flat catalogs, `apps/player/src/locales/<language>.json` (`en.json` is the source of the keys; `{count}` picks

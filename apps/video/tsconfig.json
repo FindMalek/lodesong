@@ -1,5 +1,5 @@
 {
   "extends": "@lodesong/config/tsconfig.base.json",
-  "compilerOptions": { "types": [] },
-  "include": ["src", "remotion.config.ts"]
+  "compilerOptions": { "types": ["bun"] },
+  "include": ["src", "scripts", "remotion.config.ts"]
 }
