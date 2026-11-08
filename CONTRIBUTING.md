@@ -52,6 +52,7 @@ on Base UI's ContextMenu (the registry was unreachable when it was added); repla
 - Tests: one focused test per behavior or bug. Pure logic gets a unit test; flows and shortcuts get an e2e test.
   Mock only the network (the mock Subsonic server), never our own modules.
 - Playback is checked by sound, not by the pause button: `e2e/audio-output.e2e.ts` reads what reaches the speakers (`tapOutput`), and the mock streams real mp3 and opus tones (`format=`) that `/mock/fault` can break per song.
+- Playback that starts with no tap (the macOS island and media keys) and the output device path are in `e2e/audio-gesture.e2e.ts`; the macOS app's real WKWebView, built exactly like `PlayerView`, is exercised by `swift test` in `apps/macos` (needs `bun scripts/build.ts` first). Both inject `test/output-tap.js`, and neither makes sound: the e2e tap routes to a zero gain, the harness mutes its web view (see `apps/macos/README.md`). Without an audio output device the harness skips the loudness checks locally and fails them in CI.
 - The mock server lives in `test/mock/`. When the app calls a new Subsonic endpoint, add it there in the same PR.
 
 ## How it ships

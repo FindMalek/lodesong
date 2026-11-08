@@ -3,7 +3,7 @@ import { expect, test } from "./fixtures";
 
 // "Playing" in the UI is not sound: these read the signal that reaches the speakers.
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(tapOutput);
+  await tapOutput(page);
 });
 
 const AUDIBLE = 0.04;

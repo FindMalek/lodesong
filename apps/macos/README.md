@@ -40,3 +40,38 @@ swift run --package-path apps/macos Lodesong --preview /tmp/island   # the islan
 ```
 
 No dependencies: AppKit, SwiftUI and WebKit. The page talks to the app through `apps/player/src/lib/native.ts`.
+
+## Tests
+
+```sh
+bun scripts/build.ts            # the player the app loads, at ./dist/lodesong
+swift test --package-path apps/macos
+```
+
+`swift test` starts the mock Navidrome and `./dist/lodesong` on free ports, loads the player in a WKWebView made by
+`PlayerView.makeConfiguration()` (the one the app uses) and checks what the page does in this engine:
+
+- `canPlayType` for opus, mp3, aac and flac, and the configuration the app runs with (media policy, persistent store,
+  user agent).
+- Sound reaching the output for original, mp3 and opus streams, through `test/output-tap.js` (the tap the e2e specs use).
+- Playback started by the native bridge with no DOM tap (what the island, menu bar and media keys do). WebKit counts
+  script run through `callAsyncJavaScript` as user-activated (`navigator.userActivation.isActive` is true), so this
+  case is audible with or without the app's media policy and does not prove it.
+- Playback started with no user activation at all: the page reloaded on its saved queue, where a page timer (waiting
+  out the few seconds script the app ran still counts as a gesture) presses play, `navigator.userActivation.isActive` is false at that moment, and it is audible. Setting
+  `mediaTypesRequiringUserActionForPlayback` to `.all` makes this test fail. `hasBeenActive` is already true in a page
+  the app loads itself (observed, not explained), so only the transient activation is asserted.
+- The app's commands (`toggle`, `next`, `seek`) moving the page.
+
+The harness makes no sound. Each test web view is muted at the page (`Silence.mute`, WebKit's `_setPageMuted:`, checked by
+reading the state back and stopping the run if WebKit refuses), below Web Audio: the context runs and the tap's analyser
+still sees the 440 Hz tone, but the web process hands the device zeros. After every audible check the harness measures
+the loudest sample the page's GPU process sends the device (a Core Audio process tap, macOS 14.2+) and fails above zero;
+`SpeakerMeterTests` shows that meter hears a -70 dB tone from a page that is not muted, so its zero means silence. Where
+the process tap can't be made (no permission) or `CI` is set (the tap asks for permission, which blocks a runner) the measurement is skipped with a trace line and
+only the mute readback stands. Playwright's WebKit has no `sinkId` support, so `test/output-tap.js` routes every sink but
+`real` to a zero gain instead of the device.
+
+A Mac with no audio output device never starts an AudioContext: locally the sound checks are skipped with a message, in
+CI (`CI` set) they fail. Each run wipes the test web view's website data first. `LODESONG_HARNESS_PORT` pins the app
+port (the mock takes the next 19, default: free ports), `LODESONG_HARNESS_LOG` copies the harness trace to a file.

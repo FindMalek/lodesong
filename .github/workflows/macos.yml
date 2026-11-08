@@ -1,13 +1,14 @@
 # Builds the macOS app (ad-hoc signed, not notarized) and its Fleet pkg on a macOS runner. On a release the zip (the
-# in-app updater reads it) and the pkg (docs/macos/fleet.md) are attached to it. Runs only when the app changes.
+# in-app updater reads it) and the pkg (docs/macos/fleet.md) are attached to it. Runs only when the app or the player
+# and server its tests load change.
 name: macOS
 
 on:
   pull_request:
-    paths: [apps/macos/**, .github/workflows/macos.yml]
+    paths: [apps/macos/**, apps/player/**, apps/api/**, packages/**, test/output-tap.js, test/mock/**, scripts/build.ts, bun.lock, .github/workflows/macos.yml]
   push:
     branches: [main]
-    paths: [apps/macos/**, .github/workflows/macos.yml]
+    paths: [apps/macos/**, apps/player/**, apps/api/**, packages/**, test/output-tap.js, test/mock/**, scripts/build.ts, bun.lock, .github/workflows/macos.yml]
   workflow_dispatch:
     inputs:
       tag:
@@ -33,12 +34,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
       - name: Build the app and the pkg
         run: |
           apps/macos/build.sh
           apps/macos/pkg.sh
           ditto -c -k --keepParent apps/macos/dist/lodesong.app lodesong-macos.zip
           cp apps/macos/dist/lodesong-macos.pkg .
+      # Not on a release: a flaky test must not stop the zip the in-app updater reads from being attached.
+      - name: Run the player in the app's WKWebView
+        if: inputs.tag == ''
+        timeout-minutes: 10
+        env:
+          # XCTest buffers its output when it is not a terminal: a hung run would print nothing before the timeout.
+          NSUnbufferedIO: "YES"
+        run: |
+          bun install --frozen-lockfile
+          bun scripts/build.ts
+          swift test --package-path apps/macos
       - uses: actions/upload-artifact@v7
         with:
           name: lodesong-macos

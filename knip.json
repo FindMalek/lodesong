@@ -7,7 +7,7 @@
   },
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.ts"]
+      "entry": ["scripts/**/*.ts", "test/output-tap.js"]
     },
     "apps/player": {
       "entry": ["src/main.tsx", "src/app.css"]

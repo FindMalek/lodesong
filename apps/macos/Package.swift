@@ -5,6 +5,7 @@ let package = Package(
     name: "Lodesong",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "Lodesong", path: "Sources/Lodesong")
+        .executableTarget(name: "Lodesong", path: "Sources/Lodesong"),
+        .testTarget(name: "LodesongTests", dependencies: ["Lodesong"], path: "Tests/LodesongTests"),
     ]
 )

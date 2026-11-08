@@ -15,20 +15,25 @@ import WebKit
     static let startUptime = ProcessInfo.processInfo.systemUptime
     #endif
 
-    init(server: URL, nowPlaying: NowPlaying) {
-        self.server = server
-        self.nowPlaying = nowPlaying
+    /// The web view's configuration, shared with the macOS test harness so it runs the engine exactly as the app does.
+    static func makeConfiguration() -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.mediaTypesRequiringUserActionForPlayback = []
         // The player names this device "the desktop app" in its device picker.
         config.applicationNameForUserAgent = "lodesong-desktop"
-        let controller = WKUserContentController()
-        config.userContentController = controller
-        Self.allowFullFrameRate(config.preferences)
-        webView = WKWebView(frame: .zero, configuration: config)
+        config.userContentController = WKUserContentController()
+        allowFullFrameRate(config.preferences)
+        return config
+    }
+
+    init(server: URL, nowPlaying: NowPlaying, configuration: WKWebViewConfiguration? = nil) {
+        self.server = server
+        self.nowPlaying = nowPlaying
+        let configuration = configuration ?? Self.makeConfiguration()
+        webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
-        controller.add(WeakHandler(self), name: "keep")
+        configuration.userContentController.add(WeakHandler(self), name: "keep")
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
