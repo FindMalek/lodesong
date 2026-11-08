@@ -14,6 +14,7 @@ import SwiftUI
     private var statusItem: StatusItem?
     /// The PR preview open instead of your server ("pr-123"), for this launch only; the saved server stays as it is.
     private var preview: String?
+    private var copyingDiagnostics = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
@@ -174,6 +175,31 @@ import SwiftUI
         LevelMeter.shared.want("mini", true)
     }
 
+    @objc func copyAudioDiagnostics() {
+        guard !copyingDiagnostics else { return }
+        copyingDiagnostics = true
+        buildMenu()
+        Task {
+            let result: (text: String, findings: [String])
+            if let player {
+                result = await player.audioDiagnostics()
+            } else {
+                let output = await Task.detached { Diagnostics.defaultOutput() }.value
+                let app = Diagnostics.app(inspectable: Diagnostics.inspectable(), output: output)
+                result = Diagnostics.report(page: .missing, app: app, findings: output.findings)
+            }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(result.text, forType: .string)
+            copyingDiagnostics = false
+            buildMenu()
+            let found = result.findings.isEmpty ? "Nothing looked wrong." : result.findings.prefix(5).map { "• \($0)" }.joined(separator: "\n")
+            Updater.tell(
+                "Audio diagnostics copied",
+                "Paste them where you were asked for them. They name your song, your output device and your macOS version; "
+                    + "they hold no password or cookie.\n\n\(found)")
+        }
+    }
+
     @objc func changeServer() { askForServer() }
     @objc func togglePlay() { nowPlaying.toggle() }
     @objc func nextSong() { nowPlaying.next() }
@@ -230,7 +256,9 @@ import SwiftUI
             item("Close", #selector(NSWindow.performClose(_:)), "w"),
         ]
         submenu("Window", windows)
-        NSApp.mainMenu = main
         NSApp.windowsMenu = main.items.last?.submenu
+        submenu("Help", [item(copyingDiagnostics ? "Copying Audio Diagnostics…" : "Copy Audio Diagnostics", #selector(copyAudioDiagnostics))])
+        NSApp.helpMenu = main.items.last?.submenu
+        NSApp.mainMenu = main
     }
 }

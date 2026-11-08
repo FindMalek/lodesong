@@ -212,6 +212,11 @@ function control(url: URL, request: Request): Response {
     else faults.set(key, mode);
     return Response.json({ ok: true });
   }
+  if (url.pathname === "/mock/unsized" && request.method === "POST") {
+    if (url.searchParams.get("mode") === "off") unsized.delete(id);
+    else unsized.set(id, Number(url.searchParams.get("delay") ?? 2));
+    return Response.json({ ok: true });
+  }
   if (url.pathname === "/mock/streams") return Response.json(streamLog.filter((entry) => entry.id === id));
   return new Response("not found", { status: 404 });
 }
@@ -222,6 +227,21 @@ const TONES: Record<string, { type: string; bytes: Uint8Array<ArrayBuffer> }> = 
 };
 // `POST /mock/fault?id=&format=opus&mode=garbage|empty|off`: that song's stream in that format arrives broken until switched off.
 const faults = new Map<string, string>();
+// `POST /mock/unsized?id=&delay=<ms per 4 kB>&mode=off`: that song's transcodes come like Navidrome's: no Range, no Content-Length (chunked).
+const unsized = new Map<string, number>();
+
+function live(body: Uint8Array<ArrayBuffer>, type: string, delay: number): Response {
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (let at = 0; at < body.length; at += 4096) {
+        controller.enqueue(body.subarray(at, at + 4096));
+        await Bun.sleep(delay);
+      }
+      controller.close();
+    },
+  });
+  return new Response(stream, { headers: { "content-type": type, "accept-ranges": "none" } });
+}
 
 function ranged(body: Uint8Array<ArrayBuffer>, type: string, request: Request): Response {
   const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") ?? "");
@@ -242,6 +262,7 @@ function transcoded(song: Song, format: string, request: Request): Response {
   const fault = faults.get(`${song.id}:${format}`);
   if (fault === "empty") return new Response(null, { headers: { "content-type": tone.type } });
   if (fault === "garbage") return ranged(new Uint8Array(4096).fill(0x17), tone.type, request);
+  if (unsized.has(song.id)) return live(tone.bytes, tone.type, unsized.get(song.id) ?? 2);
   return ranged(tone.bytes, tone.type, request);
 }
 

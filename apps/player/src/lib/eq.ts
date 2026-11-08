@@ -1,3 +1,5 @@
+import type { Song } from "./types";
+
 // Pure data and maths; the filters live in the deck graph (decks.ts).
 
 export const BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000] as const;
@@ -33,3 +35,17 @@ export function headroom(gains: number[]): number {
 }
 
 export const fromDb = (db: number): number => 10 ** (db / 20);
+
+const MAX_REPLAY_DB = 24;
+const MIN_PEAK_LIMIT = 1 / 8;
+
+/** The linear gain a song's ReplayGain tags ask for. A bad tag (not a number, 200 dB, a peak of a billion) can't silence a song or blast it. */
+export function replayGainFactor(tags: NonNullable<Song["replayGain"]> | undefined, album: boolean): number {
+  if (!tags) return 1;
+  const own = (value: unknown): number | undefined => (typeof value === "number" && Number.isFinite(value) ? value : undefined);
+  const db = album ? (own(tags.albumGain) ?? own(tags.trackGain)) : (own(tags.trackGain) ?? own(tags.albumGain));
+  const peak = album ? (own(tags.albumPeak) ?? own(tags.trackPeak)) : (own(tags.trackPeak) ?? own(tags.albumPeak));
+  if (db === undefined) return 1;
+  const factor = fromDb(Math.max(-MAX_REPLAY_DB, Math.min(MAX_REPLAY_DB, db)));
+  return peak !== undefined && peak > 0 ? Math.min(factor, Math.max(1 / peak, MIN_PEAK_LIMIT)) : factor;
+}

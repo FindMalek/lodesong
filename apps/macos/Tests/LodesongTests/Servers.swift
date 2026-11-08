@@ -15,6 +15,13 @@ final class Servers {
     private static var scratch: URL?
     private static var started = false
 
+    /// That song's transcodes come the way Navidrome's do: no Range, no Content-Length.
+    static func unsize(_ songId: String, on: Bool = true) async {
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(mockPort)/mock/unsized?id=\(songId)&mode=\(on ? "on" : "off")")!)
+        request.httpMethod = "POST"
+        _ = try? await URLSession.shared.data(for: request)
+    }
+
     static func start() async throws {
         if started { return }
         let binary = root.appendingPathComponent("dist/lodesong").path

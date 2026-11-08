@@ -105,6 +105,7 @@ export function startNativeBridge(): void {
         .levels(on ? (levels) => player.getState().playing && native.postMessage({ levels }) : null)
         .catch((error: unknown) => native.postMessage({ debug: `levels: ${error}` }));
     },
+    diagnostics: async () => JSON.stringify(await import("./diagnostics").then((module) => module.audioDiagnostics()), null, 2),
     lyrics: async () => {
       const song = currentSong(player.getState());
       if (!song) return { status: "missing", lines: [] };

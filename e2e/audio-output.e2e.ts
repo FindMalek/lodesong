@@ -1,5 +1,17 @@
-import { breakStream, cannotPlay, firstSongOf, outputLevel, outputStates, silencedElement, tapOutput, useQuality } from "./audio";
-import { expect, test } from "./fixtures";
+import type { Page } from "@playwright/test";
+import {
+  breakStream,
+  cannotPlay,
+  firstSongOf,
+  outputLevel,
+  outputStates,
+  silencedElement,
+  songsOf,
+  tapOutput,
+  unsizeStream,
+  useQuality,
+} from "./audio";
+import { expect, test, trackTitles } from "./fixtures";
 
 // "Playing" in the UI is not sound: these read the signal that reaches the speakers.
 test.beforeEach(async ({ page }) => {
@@ -81,6 +93,86 @@ for (const [claims, n, says] of [
     }
   });
 }
+
+// Navidrome's transcodes have no Range and no Content-Length: WebKit plays them but gives Web Audio silence.
+test("a transcode that arrives without a length is audible", async ({ page, signedIn }) => {
+  const album = albumFor(13);
+  const song = await firstSongOf(album);
+  await unsizeStream(song);
+  try {
+    await useQuality(page, "opus-192");
+    await signedIn.goto(`/album/${album}`);
+    await page.getByRole("button", { name: "play", exact: true }).first().click();
+    await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  } finally {
+    await unsizeStream(song, false);
+  }
+});
+
+const WEBKIT_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15";
+const CHROME_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+// The server tells WebKit apart by its header: this one says Chrome, as a proxy in front that holds nothing back would, so the player's own fallback runs.
+const stripLength = async (page: Page): Promise<void> => {
+  await page.route("**/rest/stream**", (route) =>
+    route.continue({ headers: { ...route.request().headers(), "user-agent": CHROME_AGENT } }),
+  );
+};
+
+test("lodesong sends WebKit a transcode with its length and leaves other browsers the stream", async ({ signedIn: page }) => {
+  const song = await firstSongOf(albumFor(15));
+  await unsizeStream(song);
+  try {
+    const url = `/rest/stream?id=${song}&format=opus&maxBitRate=192`;
+    const webkit = await page.request.get(url, { headers: { "user-agent": WEBKIT_AGENT } });
+    expect(Number(webkit.headers()["content-length"])).toBe((await webkit.body()).length);
+    const chrome = await page.request.get(url, { headers: { "user-agent": CHROME_AGENT } });
+    expect(chrome.headers()["content-length"]).toBeUndefined();
+  } finally {
+    await unsizeStream(song, false);
+  }
+});
+
+for (const [who, strip] of [
+  ["lodesong", false],
+  ["a proxy that holds nothing back", true],
+] as const) {
+  test(`a slow stream with no length from ${who} still hands over to the next song and stays audible`, async ({ page, signedIn }) => {
+    const album = albumFor(strip ? 19 : 17);
+    const [first, second] = await songsOf(album);
+    await Promise.all([unsizeStream(first as string, true, 120), unsizeStream(second as string, true, 120)]);
+    try {
+      if (strip) await stripLength(page);
+      await useQuality(page, "opus-192");
+      await signedIn.goto(`/album/${album}`);
+      const titles = await trackTitles(page);
+      await page.getByRole("button", { name: "play", exact: true }).first().click();
+      const bar = page.getByRole("contentinfo");
+      await expect(bar.getByRole("link", { name: titles[1] as string })).toBeVisible({ timeout: 30_000 });
+      await expect.poll(() => outputLevel(page), { timeout: 20_000 }).toBeGreaterThan(AUDIBLE);
+      await expect(page.getByText(/skipped|couldn't be loaded/)).toHaveCount(0);
+    } finally {
+      await Promise.all([unsizeStream(first as string, false), unsizeStream(second as string, false)]);
+    }
+  });
+}
+
+test("a stream the proxy in front strips the length from is audible", async ({ page, signedIn }) => {
+  const album = albumFor(21);
+  const song = await firstSongOf(album);
+  await unsizeStream(song);
+  try {
+    await stripLength(page);
+    await useQuality(page, "opus-192");
+    await signedIn.goto(`/album/${album}`);
+    await page.getByRole("button", { name: "play", exact: true }).first().click();
+    await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  } finally {
+    await unsizeStream(song, false);
+  }
+});
 
 test("a song that can't be played even as mp3 is skipped and the next one plays", async ({ page, signedIn }) => {
   const album = albumFor(9);
