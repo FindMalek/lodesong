@@ -24,7 +24,11 @@ function apply(): void {
   document.documentElement.classList.toggle("light", !dark);
 }
 
-matchMedia(DARK_QUERY).addEventListener("change", () => theme === "system" && apply());
+matchMedia(DARK_QUERY).addEventListener("change", () => {
+  if (theme !== "system") return;
+  apply();
+  for (const listener of listeners) listener();
+});
 
 export function setTheme(next: Theme): void {
   theme = next;
