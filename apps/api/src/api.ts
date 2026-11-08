@@ -487,7 +487,6 @@ export function createApi({
     return shares.tags(request, kind, request.params.id, accessOf(request));
   }
 
-  /** `/og/<kind>/<id>.jpg`: the card image, under the same rule as the tags. */
   async function ogImage(request: Request & { params: { kind: string; file: string } }, server?: Server<unknown>): Promise<Response> {
     const kind = SHARE_KINDS.find((item) => item === request.params.kind);
     const id = request.params.file.endsWith(".jpg") ? request.params.file.slice(0, -4) : "";
