@@ -45,7 +45,7 @@ function LoopShot() {
 
 export function Loop({ probe = false }: { probe?: boolean }) {
   return (
-    <Shell grain={false} chrome={false} probe={probe}>
+    <Shell grain={false} probe={probe}>
       <LoopShot />
     </Shell>
   );

@@ -14,7 +14,6 @@ interface FrameProps {
 export function Window({ width, height, title, children, style }: FrameProps & { title: string }) {
   return (
     <div
-      data-panel="window"
       style={{
         position: "absolute",
         width,
@@ -51,7 +50,6 @@ export function Window({ width, height, title, children, style }: FrameProps & {
 export function Phone({ width, height, children, style }: FrameProps) {
   return (
     <div
-      data-panel="phone"
       style={{
         position: "absolute",
         width,

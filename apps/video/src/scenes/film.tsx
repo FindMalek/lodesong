@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { Sequence } from "remotion";
 import { beat } from "../design/beat";
 import { Shell } from "../design/shell";
+import { ShotStart } from "../design/song-clock";
 import { EndShot } from "./end";
 import { KeysShot } from "./keys";
 import { MixesShot } from "./mixes";
@@ -34,7 +35,9 @@ export function Film({ shots, audio, probe }: FilmProps) {
         const Component = SHOTS[shot.id];
         return Component ? (
           <Sequence key={shot.id} from={at[shot.id] ?? 0} durationInFrames={beat(shot.beats)} name={shot.id}>
-            <Component />
+            <ShotStart.Provider value={at[shot.id] ?? 0}>
+              <Component />
+            </ShotStart.Provider>
           </Sequence>
         ) : null;
       })}

@@ -8,6 +8,7 @@ import { Label, MaskLine } from "../design/kinetic";
 import { useLayout } from "../design/layout";
 import { ease, ramp } from "../design/motion";
 import { DitherCover } from "../ui/dither-cover";
+import { GoldTransit } from "../ui/gold-transit";
 import { END } from "./timelines";
 
 const VEIN = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
@@ -15,20 +16,24 @@ const QUICK = beat(0.5);
 
 const GEOM = {
   wide: {
-    orb: { x: 1230, y: 250, size: 520 },
-    mark: { x: 168, y: 150, font: 150 },
-    tag: { x: 168, y: 350, font: 92 },
-    box: { x: 168, y: 640, w: 1010 },
-    url: { x: 168, y: 868 },
+    orb: { x: 1340, y: 240, size: 480 },
+    mark: { x: 168, y: 100, font: 150 },
+    tag: { x: 168, y: 290, font: 92 },
+    box: { x: 168, y: 560, w: 1150 },
+    url: { x: 168, y: 830, font: 48 },
+    code: 34,
   },
   tall: {
     orb: { x: 280, y: 330, size: 520 },
     mark: { x: 90, y: 940, font: 120 },
     tag: { x: 90, y: 1110, font: 100 },
     box: { x: 90, y: 1260, w: 900 },
-    url: { x: 90, y: 1360 },
+    url: { x: 90, y: 1360, font: 44 },
+    code: 28,
   },
 } as const;
+
+const ARRIVE = { wide: { cx: 298, cy: 550, size: 128 }, tall: { cx: 805, cy: 1130, size: 220 } };
 
 function Wordmark({ font, lode, song }: { font: number; lode: number; song: number }) {
   return (
@@ -64,8 +69,9 @@ export function EndShot() {
   const g = GEOM[layout];
   const T = END[layout];
   const time = frame / FPS;
-  const orbDevelop = ramp(frame, beat(T.orb), beat(2), ease.inOut);
-  const glow = ramp(frame, beat(T.orb), beat(1.5)) * 360;
+  const arrival = ramp(frame, beat(T.orb - 0.25), beat(1.5), ease.inOut);
+  const landed = arrival >= 1;
+  const glow = arrival * 360;
   const cam = camAt(frame, [
     { at: 0, scale: 1.05, ry: layout === "wide" ? 4 : 0 },
     { at: T.end, scale: 1.0, ry: 0 },
@@ -92,9 +98,15 @@ export function EndShot() {
               background: glowOf(1, 30),
             }}
           />
-          <div style={{ position: "absolute", left: g.orb.x, top: g.orb.y }}>
-            <DitherCover id="quiet-hours-ii" size={g.orb.size} develop={orbDevelop} time={time * 0.5} color={gold(1)} />
+          <div style={{ position: "absolute", left: g.orb.x, top: g.orb.y, opacity: landed ? 1 : 0 }}>
+            <DitherCover id="quiet-hours-ii" size={g.orb.size} time={time * 0.5} color={gold(1)} />
           </div>
+          <GoldTransit
+            from={ARRIVE[layout]}
+            to={{ cx: g.orb.x + g.orb.size / 2, cy: g.orb.y + g.orb.size / 2, size: g.orb.size }}
+            progress={arrival}
+            time={time}
+          />
         </Layer>
 
         <Layer z={0}>
@@ -131,7 +143,7 @@ export function EndShot() {
                 border: "1px solid color-mix(in oklch, var(--foreground) 28%, transparent)",
                 background: "#050505",
                 fontFamily: "var(--font-mono)",
-                fontSize: 28,
+                fontSize: g.code,
                 lineHeight: 1.55,
                 whiteSpace: "pre",
                 opacity: ramp(frame, beat(T.lines - 0.25), beat(0.25)),
@@ -145,7 +157,7 @@ export function EndShot() {
             </div>
           ) : null}
           <div style={{ position: "absolute", left: g.url.x, top: g.url.y, opacity: ramp(frame, beat(T.url), beat(0.25)) }}>
-            <Label legible style={{ fontSize: 32, color: "var(--foreground)", textTransform: "none", letterSpacing: "0.02em" }}>
+            <Label legible style={{ fontSize: g.url.font, color: "var(--foreground)", textTransform: "none", letterSpacing: "0.02em" }}>
               {FILM.end.url}
             </Label>
           </div>

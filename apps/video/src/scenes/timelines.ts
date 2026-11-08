@@ -67,7 +67,7 @@ export const OPEN: { wide: OpenTimeline; tall: OpenTimeline } = {
   },
 };
 
-export const KEYS = { chord: 1, type: 1.25, enter: 3, cut: 4.75, caption: 4.75, sheet: 5, rows: 5.25, end: 10 } as const;
+export const KEYS = { chord: 1, type: 1.25, enter: 3, cut: 4.75, caption: 4.75, sheet: 5, rows: 5, end: 10 } as const;
 
 export const MIXES = { cover: 0, merge: 2, mergeEnd: 3, caption: 4, chip: 3, row: 5, rowEnd: 7, ignite: 9, end: 10 } as const;
 
@@ -76,7 +76,7 @@ export const SESSION = {
   tall: { windows: 0, phone: 0.5, picker: 0.25, caption: 0.25, select: 1, flyEnd: 2, chips: 2, end: 7 },
 } as const;
 
-export const TERMINAL = { caption: 0, type: 0.5, enter: 3, end: 8 } as const;
+export const TERMINAL = { caption: 0, type: 0.5, enter: 3, again: 5.25, pause: 7, end: 8 } as const;
 
 export const END = {
   wide: { orb: 0.5, mark: 1, song: 1.5, tagline: 1.5, lines: 1.5, url: 2, end: 6 },

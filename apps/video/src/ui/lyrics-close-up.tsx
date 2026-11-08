@@ -46,6 +46,9 @@ export interface CloseUpState {
   press: number;
 }
 
+/** where the cover sits in the wide close-up (frame pixels), so the next shot can start from it */
+export const LYRICS_COVER = { cx: 1312 + 220, cy: 270 + 220, size: 440 };
+
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
 /** The lyrics hero shot: a layout made for each crop (92 px lines beside a cover on wide, a cover above 78 px lines on tall), not the app panel zoomed. */

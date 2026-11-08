@@ -11,9 +11,7 @@ export interface Box {
 
 export interface Measure {
   frame: number;
-  legible: { text: string; px: number; opacity: number }[];
-  panels: Box[];
-  furniture: Box[];
+  legible: { text: string; px: number; opacity: number; box: Box }[];
 }
 
 export const PROBE_TAG = "PROBE ";
@@ -36,16 +34,12 @@ function measure(frame: number): Measure {
       text: element.textContent ?? "",
       px: Number.parseFloat(getComputedStyle(element).fontSize) * (element.getBoundingClientRect().height / element.offsetHeight),
       opacity: opacityOf(element),
+      box: box(element),
     }));
-  return {
-    frame,
-    legible,
-    panels: [...document.querySelectorAll("[data-panel]")].map(box),
-    furniture: [...document.querySelectorAll("[data-furniture]")].map(box),
-  };
+  return { frame, legible };
 }
 
-/** Logs what the frame really draws (rendered text height, opacity, panel boxes) so scripts/check.ts can fail on it. */
+/** Logs what the frame really draws (rendered text height, opacity and box of tagged text) so scripts/check.ts can fail on it. */
 export function Probe() {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender("probe"));

@@ -54,7 +54,7 @@ export const FILM = {
     caption: ["keyboard", "first."],
     query: "lights on",
     results: [
-      { line: "i keep the lights on", song: "signal violet pt. 2", at: "1:42" },
+      { line: "i keep the lights on", song: "signal violet pt. 2", at: "1:14" },
       { line: "leave the lights on", song: "static echo at night", at: "0:58" },
       { line: "lights on the atlas", song: "silver atlas again", at: "2:21" },
     ],
@@ -76,7 +76,7 @@ export const FILM = {
     caption: ["now playing", "in your terminal."],
     command: "/lodesong next",
     now: [
-      { track: "signal violet pt. 2", artist: "satellite garden", line: "i keep the lights on", at: 102 },
+      { track: "signal violet pt. 2", artist: "satellite garden", line: "i keep the lights on", at: 0 },
       { track: "static echo at night", artist: "satellite garden", line: "hold the signal violet", at: 3 },
     ],
   },

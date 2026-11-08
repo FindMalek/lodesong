@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { COPY } from "../copy";
 import { beat, FPS } from "../design/beat";
@@ -7,34 +6,22 @@ import { Label, MaskLine } from "../design/kinetic";
 import { useLayout } from "../design/layout";
 import { ease, hash, lerp, ramp } from "../design/motion";
 import { Shell } from "../design/shell";
+import { useSongSeconds } from "../design/song-clock";
+import { ALBUM_SLOT, APP_VIEW, AppStage, type AppView, stageToScreen } from "../ui/app-stage";
 import { DitherCover } from "../ui/dither-cover";
-import { LyricsCloseUp } from "../ui/lyrics-close-up";
-import { Lyrics, Main, PlayerBar, Sidebar, STAGE } from "../ui/player-panels";
+import { GoldTransit, type Spot } from "../ui/gold-transit";
+import { LYRICS_COVER, LyricsCloseUp } from "../ui/lyrics-close-up";
 import { LABEL_FADE } from "./open-timeline";
 import { OPEN, type OpenTimeline } from "./timelines";
 
-const START_SECONDS = 71;
 const FOCUS_FROM = 2;
-const DIM = 0.12;
 
-interface Fly {
-  x: number;
-  y: number;
-  z: number;
-  from: number;
-}
+const slotSpot = (view: AppView): Spot => {
+  const c = stageToScreen(view, ALBUM_SLOT.x + ALBUM_SLOT.size / 2, ALBUM_SLOT.y + ALBUM_SLOT.size / 2);
+  return { cx: c.x, cy: c.y, size: ALBUM_SLOT.size * view.scale };
+};
 
-function fly(frame: number, spec: Fly) {
-  const t = ramp(frame, spec.from, beat(1));
-  return {
-    "--float": 1 - t,
-    transform: `translate3d(${lerp(spec.x, 0, t)}px, ${lerp(spec.y, 0, t)}px, ${lerp(spec.z, 0, t)}px)`,
-  } as CSSProperties;
-}
-
-const layer = { position: "absolute", inset: 0, transformStyle: "preserve-3d" } as const;
-
-/** The opening shot: the line, the lyrics close-up with the one gold moment, and (wide only) the pull back to the real app. */
+/** The opening shot: the line, the lyrics close-up with the one gold moment, and (wide only) the app, full frame, with the gold cover shrinking into its album slot. */
 export function OpenShot({ tl }: { tl?: OpenTimeline }) {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
@@ -43,7 +30,7 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
   const T = tl ?? OPEN[layout];
   const time = frame / FPS;
   const cut = beat(T.cut);
-  const hasWide = !tall && T.cut < T.end;
+  const hasApp = !tall && T.cut < T.end;
   const inCloseUp = frame >= beat(T.chip) && frame < cut;
 
   const scrolled = (T.scroll ?? []).reduce((sum, at) => sum + ramp(frame, beat(at), beat(0.5)), 0);
@@ -51,24 +38,25 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
   const ignite = ramp(frame, beat(T.ignite), beat(0.5));
   const pulse = ramp(frame, beat(T.ignite), beat(0.25)) - ramp(frame, beat(T.ignite) + beat(0.25), beat(1));
 
-  const end = beat(T.end);
-  const wideT = ramp(frame, cut, end - cut, ease.inOut);
-  const scale = lerp(1.05, 1.11, wideT);
-  const rotateY = lerp(-7, -4, wideT);
-  const rotateX = lerp(5, 2, wideT);
-  const dim = ramp(frame, beat(T.lift), beat(1), ease.inOut);
-  const stageFade = (from: number) => ramp(frame, from, beat(0.5)) * (1 - DIM * dim);
+  const wideT = ramp(frame, cut, beat(T.end) - cut, ease.inOut);
+  const view: AppView = {
+    scale: lerp(APP_VIEW.from.scale, APP_VIEW.to.scale, wideT),
+    cx: lerp(APP_VIEW.from.cx, APP_VIEW.to.cx, wideT),
+    cy: lerp(APP_VIEW.from.cy, APP_VIEW.to.cy, wideT),
+  };
+  const landing = ramp(frame, cut, beat(1.25), ease.inOut);
   const bars = [0, 1, 2, 3].map((i) => 0.25 + 0.75 * hash(Math.floor(frame / beat(0.25)) + i * 13));
-  const position = START_SECONDS + time;
+  const position = useSongSeconds();
 
   const headlineOut = beat(T.headlineOut);
   const gone = ramp(frame, headlineOut, beat(0.5));
   const headFont = tall ? 150 : 176;
   const left = tall ? 90 : 168;
+  const texture = 0.16 + 0.34 * (1 - ramp(frame, 0, beat(1.5)));
 
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ opacity: 0.16 * (1 - gone), maskImage: "radial-gradient(circle at 50% 50%, black 0, transparent 540px)" }}>
+      <AbsoluteFill style={{ opacity: texture * (1 - gone), maskImage: "radial-gradient(circle at 50% 50%, black 0, transparent 540px)" }}>
         <div style={{ position: "absolute", left: (width - 1080) / 2, top: (height - 1080) / 2 }}>
           <DitherCover id="lodesong-open" size={1080} time={time * 0.6} />
         </div>
@@ -112,7 +100,7 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
         <LyricsCloseUp
           layout={layout}
           focus={focus}
-          enter={ramp(frame, beat(T.press), beat(1))}
+          enter={ramp(frame, beat(T.chip) + beat(0.25), beat(1))}
           ignite={ignite}
           pulse={pulse}
           develop={ramp(frame, beat(T.chip), beat(T.ignite - T.chip), ease.inOut)}
@@ -122,35 +110,14 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
         />
       ) : null}
 
-      {hasWide && frame >= cut ? (
-        <AbsoluteFill style={{ perspective: 2200, alignItems: "center", justifyContent: "center" }}>
-          <div
-            style={{
-              position: "relative",
-              width: STAGE.width,
-              height: STAGE.height,
-              transformStyle: "preserve-3d",
-              transform: `translateY(18px) scale(${scale}) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
-            }}
-          >
-            <div style={{ ...layer, ...fly(frame, { x: 0, y: 70, z: -500, from: cut }), opacity: stageFade(cut) }}>
-              <Main develop={1} time={time * 0.5} bars={bars} coverColor="var(--ignite)" />
-            </div>
-            <div
-              style={{ ...layer, ...fly(frame, { x: -300, y: 0, z: -260, from: cut + beat(0.25) }), opacity: stageFade(cut + beat(0.25)) }}
-            >
-              <Sidebar />
-            </div>
-            <div style={{ ...layer, ...fly(frame, { x: 0, y: 240, z: -160, from: cut + beat(0.5) }), opacity: stageFade(cut + beat(0.5)) }}>
-              <PlayerBar position={position} coverColor="var(--ignite)" />
-            </div>
-            <div style={{ ...layer, transform: `translateZ(${dim * 60}px)`, ...({ "--float": dim } as CSSProperties) }}>
-              <Lyrics focus={focus} />
-            </div>
-          </div>
-        </AbsoluteFill>
+      {hasApp && frame >= cut ? (
+        <>
+          <AppStage view={view} focus={focus} bars={bars} position={position} time={time} coverOpacity={landing >= 1 ? 1 : 0} />
+          <GoldTransit from={LYRICS_COVER} to={slotSpot(view)} progress={landing} time={time} />
+        </>
       ) : null}
       <DitherWipe />
+      {hasApp ? <DitherWipe from={cut} /> : null}
     </AbsoluteFill>
   );
 }

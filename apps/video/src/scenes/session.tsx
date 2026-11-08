@@ -8,37 +8,39 @@ import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
 import { glowOf, gold } from "../design/gold";
 import { useLayout } from "../design/layout";
-import { ease, lerp, ramp } from "../design/motion";
+import { ease, ramp } from "../design/motion";
+import { useSongSeconds } from "../design/song-clock";
 import { DitherCover } from "../ui/dither-cover";
 import { Phone, Window } from "../ui/frames";
+import { GoldTransit } from "../ui/gold-transit";
 import { SESSION } from "./timelines";
 
-const START = 71;
 const TRACK = FIXTURE.tracks[0][1];
 const PHONE_Z = 110;
+const ARRIVE = { wide: { cx: 890, cy: 420, size: 300 }, tall: { cx: 540, cy: 650, size: 520 } };
 const TITLE = FIXTURE.tracks[0][0].toLowerCase();
 
 const GEOM = {
   wide: {
     win: {
-      x: 140,
-      y: 100,
-      w: 1180,
-      h: 660,
-      cover: 340,
-      coverX: 56,
-      coverY: 56,
-      textX: 436,
-      title: 48,
-      scrubY: 300,
-      ctlY: 400,
-      scrubW: 688,
-      noteX: 836,
-      noteY: 414,
+      x: 100,
+      y: 56,
+      w: 1280,
+      h: 700,
+      cover: 380,
+      coverX: 60,
+      coverY: 60,
+      textX: 480,
+      title: 54,
+      scrubY: 316,
+      ctlY: 420,
+      scrubW: 740,
+      noteX: 900,
+      noteY: 434,
     },
-    phone: { x: 1400, y: 150, w: 380, h: 720, cover: 300, coverY: 96, title: 32, scrubY: 510, ctlY: 574, noteY: 640 },
-    caption: { left: 148, top: 800, font: 96 },
-    chips: { right: 140, top: 922 },
+    phone: { x: 1420, y: 80, w: 410, h: 780, cover: 320, coverY: 96, title: 34, scrubY: 540, ctlY: 610, noteY: 686 },
+    caption: { left: 110, top: 790, font: 92 },
+    chips: { right: 170, top: 930 },
     pop: { right: 36, bottom: 40 },
   },
   tall: {
@@ -131,7 +133,7 @@ export function SessionShot() {
   const g = GEOM[layout];
   const T = SESSION[layout];
   const time = frame / FPS;
-  const position = START + time;
+  const position = useSongSeconds();
   const select = beat(T.select);
   const flyEnd = beat(T.flyEnd);
   const flight = ramp(frame, select, flyEnd - select, ease.inOut);
@@ -149,8 +151,10 @@ export function SessionShot() {
   const center = { x: 960, y: layout === "wide" ? 540 : 960 };
   const from = { x: win.x + win.coverX + win.cover / 2, y: win.y + 52 + win.coverY + win.cover / 2, size: win.cover };
   const to = { x: ph.x + ph.w / 2, y: ph.y + ph.coverY + ph.cover / 2, size: ph.cover };
-  const ghost = atDepth(lerp(from.x, to.x, flight), lerp(from.y, to.y, flight) - Math.sin(Math.PI * flight) * 110, 130, center.x, center.y);
-  const ghostSize = lerp(from.size, to.size, flight) * ghost.k;
+  const lift = atDepth(from.x, from.y, 130, center.x, center.y);
+  const land = atDepth(to.x, to.y, 130, center.x, center.y);
+  const arrival = ramp(frame, 0, beat(1.25), ease.inOut);
+  const landed = arrival >= 1;
 
   const cam = camAt(
     frame,
@@ -187,9 +191,10 @@ export function SessionShot() {
                   width: win.cover + 180,
                   height: win.cover + 180,
                   background: glowOf(deskGold, 28),
+                  opacity: landed ? 1 : 0,
                 }}
               />
-              <div style={{ position: "absolute", left: win.coverX, top: win.coverY }}>
+              <div style={{ position: "absolute", left: win.coverX, top: win.coverY, opacity: landed ? 1 : 0 }}>
                 <DitherCover id="quiet-hours-ii" size={win.cover} time={time * 0.5} color={gold(deskGold)} />
               </div>
               <div
@@ -221,7 +226,7 @@ export function SessionShot() {
                   left: win.noteX,
                   top: win.noteY,
                   fontFamily: "var(--font-mono)",
-                  fontSize: 28,
+                  fontSize: 30,
                   opacity: picked ? ramp(frame, select + beat(0.5), beat(0.5)) : 0,
                 }}
               >
@@ -323,20 +328,23 @@ export function SessionShot() {
           </div>
         </Layer>
 
+        <Layer z={20}>
+          <GoldTransit
+            from={ARRIVE[layout]}
+            to={{ cx: win.x + win.coverX + win.cover / 2, cy: win.y + 52 + win.coverY + win.cover / 2, size: win.cover }}
+            progress={arrival}
+            time={time}
+          />
+        </Layer>
+
         <Layer z={130}>
-          <div
-            style={{
-              position: "absolute",
-              left: ghost.x - ghostSize / 2,
-              top: ghost.y - ghostSize / 2,
-              width: ghostSize,
-              height: ghostSize,
-              opacity: flight > 0 && flight < 1 ? 1 : 0,
-              boxShadow: "0 30px 80px rgb(0 0 0 / 0.6)",
-            }}
-          >
-            <DitherCover id="quiet-hours-ii" size={Math.round(ghostSize / ghost.k)} time={time * 0.5} color={gold(1)} />
-          </div>
+          <GoldTransit
+            from={{ cx: lift.x, cy: lift.y, size: from.size / lift.k }}
+            to={{ cx: land.x, cy: land.y, size: to.size / land.k }}
+            progress={flight}
+            time={time}
+            arc={110}
+          />
         </Layer>
 
         <Layer z={60}>
@@ -370,6 +378,7 @@ export function SessionShot() {
                   fontFamily: "var(--font-mono)",
                   fontSize: 30,
                   ...reveal(ramp(frame, beat(T.chips + index), beat(0.25))),
+                  opacity: frame >= beat(T.chips + index) ? 1 : 0,
                 }}
               >
                 {chip}

@@ -10,13 +10,13 @@ const BAYER = [
 ];
 
 /** The cut: the new shot is uncovered through an ordered-dither mask sweeping left to right, the brand's own texture as the transition. */
-export function DitherWipe({ from = 0, length = beat(0.5) }: { from?: number; length?: number }) {
+export function DitherWipe({ from = 0, length = beat(0.4) }: { from?: number; length?: number }) {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const canvas = useRef<HTMLCanvasElement>(null);
   const cols = Math.ceil(width / CELL);
   const rows = Math.ceil(height / CELL);
-  const t = ramp(frame, from, length, ease.inOut);
+  const t = 0.3 + 0.7 * ramp(frame, from, length, ease.inOut);
   useLayoutEffect(() => {
     const context = canvas.current?.getContext("2d");
     if (!context) return;

@@ -13,6 +13,7 @@
     "render:cutdown": "bun run audio && remotion render src/index.ts cutdown-vertical out/cutdown-9x16.mp4 --codec=h264 --crf=16 --x264-preset=slow",
     "render:loop": "remotion render src/index.ts loop-readme out/loop-60.mp4 --crf=16 --scale=0.5 --muted && bun scripts/encode-loop.ts",
     "sheet": "bun scripts/check.ts sheet",
+    "docs:stills": "bun scripts/docs-stills.ts",
     "render:gif": "bun run audio && remotion render src/index.ts scene-open out/open.gif --every-nth-frame=3 --scale=0.5",
     "onsets": "bun scripts/check.ts onsets out/open.mp4",
     "audio:check": "bun scripts/check.ts audio",

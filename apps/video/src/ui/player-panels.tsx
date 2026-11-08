@@ -42,10 +42,7 @@ const panel: CSSProperties = {
 
 export function Sidebar() {
   return (
-    <div
-      data-panel="sidebar"
-      style={{ ...panel, left: 0, top: 0, width: SIDE, height: STAGE.height - BAR, borderRight: "1px solid var(--border)" }}
-    >
+    <div style={{ ...panel, left: 0, top: 0, width: SIDE, height: STAGE.height - BAR, borderRight: "1px solid var(--border)" }}>
       <div className="flex h-11 items-center px-5">
         <BrandMark />
       </div>
@@ -74,16 +71,16 @@ export function Sidebar() {
 }
 
 interface MainProps {
+  coverOpacity?: number;
   develop: number;
   time: number;
   bars: readonly number[];
   coverColor: string;
 }
 
-export function Main({ develop, time, bars, coverColor }: MainProps) {
+export function Main({ coverOpacity = 1, develop, time, bars, coverColor }: MainProps) {
   return (
     <div
-      data-panel="main"
       style={{
         ...panel,
         left: SIDE,
@@ -102,7 +99,7 @@ export function Main({ develop, time, bars, coverColor }: MainProps) {
         <Badge variant="outline">demo</Badge>
       </div>
       <div className="flex gap-5 border-b p-5">
-        <div className="outline outline-muted">
+        <div className="outline outline-muted" style={{ opacity: coverOpacity }}>
           <DitherCover id="quiet-hours-ii" size={128} develop={develop} time={time} color={coverColor} />
         </div>
         <div className="flex flex-col justify-between">
@@ -157,7 +154,7 @@ export function Main({ develop, time, bars, coverColor }: MainProps) {
 
 export function Lyrics({ focus }: { focus: number }) {
   return (
-    <div data-panel="lyrics" style={{ ...panel, left: STAGE.width - LYRICS, top: 0, width: LYRICS, height: STAGE.height - BAR }}>
+    <div style={{ ...panel, left: STAGE.width - LYRICS, top: 0, width: LYRICS, height: STAGE.height - BAR }}>
       <div className="flex h-11 items-center border-b px-5 font-mono text-small">lyrics</div>
       <div
         className="absolute inset-x-0 top-11 bottom-0 overflow-hidden"
@@ -185,10 +182,7 @@ export function Lyrics({ focus }: { focus: number }) {
 export function PlayerBar({ position, coverColor }: { position: number; coverColor: string }) {
   const progress = Math.min(1, position / TRACK_SECONDS);
   return (
-    <div
-      data-panel="bar"
-      style={{ ...panel, left: 0, top: STAGE.height - BAR, width: STAGE.width, height: BAR, borderTop: "1px solid var(--border)" }}
-    >
+    <div style={{ ...panel, left: 0, top: STAGE.height - BAR, width: STAGE.width, height: BAR, borderTop: "1px solid var(--border)" }}>
       <div className="flex h-full items-center px-5">
         <div className="flex w-72 items-center gap-3">
           <div className="outline outline-muted">

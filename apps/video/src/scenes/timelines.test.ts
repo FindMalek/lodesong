@@ -20,7 +20,7 @@ const ITEMS: Item[] = [
   { id: "keys caption", words: 2, from: KEYS.caption + 1, to: KEYS.end },
   { id: "terminal caption", words: 5, from: TERMINAL.caption + 1, to: TERMINAL.end },
   { id: "terminal first song", words: 2, from: 0.5, to: TERMINAL.enter },
-  { id: "terminal second song", words: 3, from: TERMINAL.enter + 1, to: TERMINAL.end },
+  { id: "terminal second song", words: 3, from: TERMINAL.enter + 1, to: TERMINAL.pause },
   { id: "end tagline", words: 4, from: END.wide.tagline + 0.75, to: END.wide.end },
   { id: "end install", words: 4, from: END.wide.lines + 1, to: END.wide.end },
   { id: "end url", words: 1, from: END.wide.url + 0.25, to: END.wide.end },

@@ -1,4 +1,4 @@
-import { PauseIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
+import { PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { SHEET } from "../audio-cues";
@@ -9,9 +9,11 @@ import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
 import { gold } from "../design/gold";
 import { ease, ramp } from "../design/motion";
+import { useSongSeconds } from "../design/song-clock";
 import { Caret, typedCount } from "../design/typing";
 import { DitherCover } from "../ui/dither-cover";
 import { Window } from "../ui/frames";
+import { GoldTransit } from "../ui/gold-transit";
 import { HERO_SHOTS, starts, TERMINAL } from "./timelines";
 
 const COMMAND = FILM.terminal.command;
@@ -19,6 +21,10 @@ const SHOT_START = starts(HERO_SHOTS).terminal ?? 0;
 const STRUCK = SHEET.filter((cue) => cue.film === "hero" && cue.style === "typed").map((cue) => cue.frame - SHOT_START);
 const LANDINGS = [...COMMAND].map((_, i) => STRUCK[i] ?? (STRUCK.at(-1) ?? 0) + 5 * (i - STRUCK.length + 1));
 const ENTER = beat(TERMINAL.enter);
+const COMMAND_AGAIN = "/lodesong pause";
+const AGAIN_LANDINGS = [...COMMAND_AGAIN].map((_, i) => beat(TERMINAL.again) + 3 * i);
+const PAUSE = beat(TERMINAL.pause);
+const PHONE_END = { cx: 1650, cy: 340, size: 330 };
 const MONO = "var(--font-mono)";
 
 interface Now {
@@ -30,12 +36,12 @@ interface Now {
 const TRACK_SECONDS = [FIXTURE.tracks[0][1], FIXTURE.tracks[1][1]] as const;
 
 const G = {
-  win: { x: 190, y: 430, w: 1540, h: 550 },
-  cover: 112,
-  font: 36,
-  pad: 40,
+  win: { x: 190, y: 390, w: 1540, h: 610 },
+  cover: 128,
+  font: 40,
+  pad: 44,
   bar: 640,
-  caption: { left: 190, top: 110, font: 120 },
+  caption: { left: 190, top: 90, font: 120 },
 } as const;
 
 function Swap({ frame, height, a, b }: { frame: number; height: number; a: ReactNode; b: ReactNode }) {
@@ -52,21 +58,29 @@ export function TerminalShot() {
   const frame = useCurrentFrame();
   const g = G;
   const time = frame / FPS;
-  const typed = frame < ENTER ? COMMAND.slice(0, typedCount(frame, LANDINGS)) : "";
+  const typedFirst = COMMAND.slice(0, typedCount(frame, LANDINGS));
+  const typedAgain = COMMAND_AGAIN.slice(0, typedCount(frame, AGAIN_LANDINGS));
+  const typed = frame < ENTER ? typedFirst : frame < PAUSE ? typedAgain : "";
+  const typing = frame < ENTER ? typedFirst.length < COMMAND.length : frame < PAUSE && typedAgain.length < COMMAND_AGAIN.length;
+  const paused = frame >= PAUSE;
+  const dim = 1 - 0.3 * ramp(frame, PAUSE, beat(0.5));
+  const arrival = ramp(frame, 0, beat(1.25), ease.inOut);
   const [one, two]: readonly Now[] = FILM.terminal.now;
-  const sinceEnter = Math.max(0, (frame - ENTER) / FPS);
+  const sinceEnter = Math.max(0, (Math.min(frame, PAUSE) - ENTER) / FPS);
   const stage = frame >= ENTER ? 1 : 0;
-  const position = stage === 0 ? (one?.at ?? 0) + time : (two?.at ?? 0) + sinceEnter;
+  const playhead = useSongSeconds();
+  const position = stage === 0 ? playhead : (two?.at ?? 0) + sinceEnter;
   const length = TRACK_SECONDS[stage];
   const flash = ramp(frame, ENTER, beat(0.125)) - ramp(frame, ENTER + beat(0.25), beat(0.25));
+  const flashPause = ramp(frame, PAUSE, beat(0.125)) - ramp(frame, PAUSE + beat(0.25), beat(0.25));
   const open = ramp(frame, 0, beat(0.5));
   const cam = camAt(frame, [
     { at: 0, scale: 1.0, ry: -3, x: -10 },
     { at: TERMINAL.end, scale: 1.03, ry: 2, x: 10 },
   ]);
-  const row = (now: Now, id: string, develop: number) => (
-    <div style={{ position: "absolute", inset: 0, display: "flex", gap: 28 }}>
-      <div style={{ width: g.cover, height: g.cover, flexShrink: 0 }}>
+  const row = (now: Now, id: string, develop: number, rowOpacity = 1, coverOpacity = 1) => (
+    <div style={{ position: "absolute", inset: 0, display: "flex", gap: 28, opacity: rowOpacity }}>
+      <div style={{ width: g.cover, height: g.cover, flexShrink: 0, opacity: coverOpacity }}>
         <DitherCover id={id} size={g.cover} develop={develop} time={time * 0.5} color={gold(1)} />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -82,7 +96,7 @@ export function TerminalShot() {
       “{text}”
     </div>
   );
-  const icons = [SkipBackIcon, PauseIcon, SkipForwardIcon] as const;
+  const icons = [SkipBackIcon, paused ? PlayIcon : PauseIcon, SkipForwardIcon] as const;
   return (
     <AbsoluteFill>
       <Camera cam={cam}>
@@ -101,6 +115,14 @@ export function TerminalShot() {
             style={{ left: g.caption.left, top: g.caption.top }}
           />
         </Layer>
+        <Layer z={20}>
+          <GoldTransit
+            from={PHONE_END}
+            to={{ cx: g.win.x + g.pad + g.cover / 2, cy: g.win.y + 52 + g.pad + g.cover / 2, size: g.cover }}
+            progress={arrival}
+            time={time}
+          />
+        </Layer>
         <Layer z={0}>
           <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 ${(1 - open) * 100}% 0)` }}>
             <Window width={g.win.w} height={g.win.h} title="claude" style={{ left: g.win.x, top: g.win.y, background: "#050505" }}>
@@ -108,8 +130,8 @@ export function TerminalShot() {
                 <Swap
                   frame={frame}
                   height={g.cover}
-                  a={row(one ?? FILM.terminal.now[0], "quiet-hours-ii", 1)}
-                  b={row(two ?? FILM.terminal.now[1], "static-echo-at-night", ramp(frame, ENTER + beat(0.25), beat(1.5), ease.inOut))}
+                  a={row(one ?? FILM.terminal.now[0], "quiet-hours-ii", 1, 1, arrival >= 1 ? 1 : 0)}
+                  b={row(two ?? FILM.terminal.now[1], "static-echo-at-night", ramp(frame, ENTER + beat(0.25), beat(1.5), ease.inOut), dim)}
                 />
                 <div
                   style={{
@@ -146,13 +168,13 @@ export function TerminalShot() {
                   {
                     <div style={{ display: "flex", gap: 16, marginLeft: "auto", color: "var(--foreground)" }}>
                       {icons.map((Icon, index) => {
-                        const hit = index === 2 ? flash : 0;
+                        const hit = index === 2 ? flash : index === 1 ? flashPause : 0;
                         return (
                           <div
-                            key={Icon.displayName ?? String(index)}
+                            key={String(index)}
                             style={{
-                              width: 64,
-                              height: 64,
+                              width: 72,
+                              height: 72,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -161,7 +183,7 @@ export function TerminalShot() {
                               color: hit > 0.5 ? "var(--background)" : "var(--foreground)",
                             }}
                           >
-                            <Icon size={32} />
+                            <Icon size={36} />
                           </div>
                         );
                       })}
@@ -191,7 +213,7 @@ export function TerminalShot() {
                 <span style={{ color: "var(--muted-foreground)" }}>&gt;</span>
                 <span data-legible="">
                   {typed}
-                  <Caret frame={frame} typing={frame < ENTER && typed.length < COMMAND.length} size={g.font} />
+                  <Caret frame={frame} typing={typing} size={g.font} />
                 </span>
               </div>
             </Window>
