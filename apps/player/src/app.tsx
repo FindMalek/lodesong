@@ -55,6 +55,7 @@ import {
   PlaylistFolderPage,
   PlaylistPage,
   preloadAllRoutes,
+  preloadNextPages,
   RadioPage,
   SearchPage,
   SettingsPage,
@@ -271,21 +272,22 @@ export function App() {
     return () => clearTimeout(id);
   }, [user, firstRun]);
 
-  // Every page's code and the tooltips are fetched once the first screen is done, not alongside it.
+  // The likely next pages, then the rest and the tooltips, each once the page has gone quiet (never alongside the first screen or a tap).
   useEffect(() => {
     if (!user) return;
-    return whenQuiet(() => {
-      preloadAllRoutes([
-        SplitView.preload,
-        QueuePanel.preload,
-        InfoPanel.preload,
-        LyricsPanel.preload,
-        () => import("@/components/user-menu"),
-        () => import("@/components/now-playing-details"),
-        () => import("@/components/artist-card"),
-      ]);
-      loadTooltips();
-    });
+    return whenQuiet([
+      () => preloadNextPages([QueuePanel.preload, InfoPanel.preload]),
+      () => {
+        preloadAllRoutes([
+          SplitView.preload,
+          LyricsPanel.preload,
+          () => import("@/components/user-menu"),
+          () => import("@/components/now-playing-details"),
+          () => import("@/components/artist-card"),
+        ]);
+        loadTooltips();
+      },
+    ]);
   }, [user]);
 
   useEffect(() => {

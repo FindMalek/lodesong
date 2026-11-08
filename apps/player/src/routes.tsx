@@ -87,6 +87,13 @@ export function preloadRoute(path: string): void {
   if (chunk) void load(chunk);
 }
 
+const NEXT_PAGES: Chunk[] = ["browse", "albums", "detail", "search"];
+
+export function preloadNextPages(extra: (() => Promise<unknown>)[] = []): void {
+  for (const chunk of NEXT_PAGES) void load(chunk);
+  for (const more of extra) void more();
+}
+
 export function preloadAllRoutes(extra: (() => Promise<unknown>)[] = []): void {
   for (const chunk of Object.keys(chunks) as Chunk[]) void load(chunk);
   for (const more of extra) void more();
