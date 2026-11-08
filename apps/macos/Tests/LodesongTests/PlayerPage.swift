@@ -130,6 +130,19 @@ import XCTest
         return ((try? await js(script)) as? Bool) == true
     }
 
+    /// What the page looks like, for a failure message: a harness that fails only on a runner has to explain itself there.
+    func describe() async -> String {
+        let script = """
+        return JSON.stringify({
+          url: location.href, ready: document.readyState, visibility: document.visibilityState,
+          text: document.body?.innerText.slice(0, 200), html: document.body?.innerHTML.slice(0, 400),
+          buttons: [...document.querySelectorAll("button")].map((b) => b.getAttribute("aria-label") ?? b.textContent.trim()).slice(0, 12),
+          states: window.__output?.states(), autostart: window.__autostart ?? null,
+        });
+        """
+        return ((try? await js(script, timeout: 10)) as? String) ?? "(page did not answer)"
+    }
+
     func level() async -> Double { await number("window.__output.level()") }
 
     func playhead() async -> Double { await number("window.__output.playhead()") }

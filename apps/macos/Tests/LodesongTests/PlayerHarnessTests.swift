@@ -116,7 +116,8 @@ import XCTest
         let page = open()
         try await page.playAlbum("al-3")
         let playing = await page.until { page.nowPlaying.playing }
-        XCTAssertTrue(playing, "play from the page did not reach the native side")
+        let seen = playing ? "" : await page.describe()
+        XCTAssertTrue(playing, "play from the page did not reach the native side: \(seen)")
         try await expectAudible(page, "original")
         page.player.call("toggle()")
         let paused = await page.until { !page.nowPlaying.playing }
@@ -144,7 +145,8 @@ import XCTest
             let seeded = open()
             try await seeded.playAlbum("al-3")
             let playing = await seeded.until { seeded.nowPlaying.playing }
-            XCTAssertTrue(playing, "play from the page did not reach the native side")
+            let seen = playing ? "" : await seeded.describe()
+            XCTAssertTrue(playing, "play from the page did not reach the native side: \(seen)")
             seeded.player.call("toggle()")
             let paused = await seeded.until { !seeded.nowPlaying.playing }
             XCTAssertTrue(paused, "toggle() did not pause")
@@ -157,8 +159,7 @@ import XCTest
                 started = fresh
                 break
             }
-            let screen = (try? await fresh.js("return document.body.innerText.slice(0, 300)")) as? String ?? ""
-            trace("attempt \(attempt): the fresh web view showed no song to start; it shows: \(screen)")
+            trace("attempt \(attempt): the fresh web view showed no song to start: \(await fresh.describe())")
             fresh.close()
         }
         guard let page = started else { return XCTFail("three fresh web views on a saved queue never showed a song to start") }
