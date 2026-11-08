@@ -206,3 +206,67 @@ test("a folder stays open when the saved folder list is older than the folder", 
   await expect(sidebar.getByRole("link", { name: playlist })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("lodesong:folders-open"))).toContain(id);
 });
+
+test("a folder without a picture gets a dithered aura that holds one frame under reduced motion, a picture replaces it", async ({
+  page,
+  signedIn,
+}) => {
+  const made = await page.request.post("/api/folders", {
+    headers: { "x-lodesong": "1" },
+    data: { name: `Dither ${Date.now()}`, parentId: null },
+  });
+  const { id } = (await made.json()) as { id: string };
+  const cover = page.locator("main div.size-40");
+  const dots = cover.locator("canvas").nth(1);
+  const snapshot = () => dots.evaluate((element: HTMLCanvasElement) => element.toDataURL());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signedIn.goto(`/playlist-folder/${id}`);
+  await expect(cover.locator("canvas")).toHaveCount(2);
+  await expect(dots).toHaveAttribute("aria-hidden", "true");
+  const inked = await dots.evaluate((element: HTMLCanvasElement) => {
+    const pixels = element.getContext("2d")?.getImageData(0, 0, element.width, element.height).data ?? [];
+    return pixels.some((value, index) => index % 4 === 3 && value > 0);
+  });
+  expect(inked).toBe(true);
+  const still = await snapshot();
+  await page.waitForTimeout(1_200);
+  expect(await snapshot()).toBe(still);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await expect.poll(snapshot, { timeout: 10_000 }).not.toBe(still);
+
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.getByRole("button", { name: "edit" }).click();
+  await page.getByLabel("folder picture").setInputFiles({ name: "cover.png", mimeType: "image/png", buffer: png });
+  await page.getByRole("button", { name: "save" }).click();
+  await expect(cover.locator("img")).toBeVisible();
+  await expect(cover.locator("canvas")).toHaveCount(0);
+});
+
+test("a folder page full of dithered covers keeps one 500 ms timer, not one each", async ({ page, signedIn }) => {
+  const headers = { "x-lodesong": "1" };
+  const make = async (name: string, parentId: string | null) =>
+    ((await (await page.request.post("/api/folders", { headers, data: { name, parentId } })).json()) as { id: string }).id;
+  const stamp = Date.now();
+  const parent = await make(`Shelf ${stamp}`, null);
+  for (const name of ["a", "b", "c", "d"]) await make(`${name} ${stamp}`, parent);
+  await page.addInitScript(() => {
+    const live = new Set<number>();
+    const [set, clear] = [window.setInterval.bind(window), window.clearInterval.bind(window)];
+    Object.assign(window, {
+      liveFrames: () => live.size,
+      setInterval: (run: TimerHandler, ms?: number, ...rest: unknown[]) => {
+        const id = set(run, ms, ...rest);
+        if (ms === 500) live.add(id);
+        return id;
+      },
+      clearInterval: (id?: number) => {
+        live.delete(id ?? 0);
+        clear(id);
+      },
+    });
+  });
+  await signedIn.goto(`/playlist-folder/${parent}`);
+  await expect(page.locator("main canvas")).toHaveCount(10);
+  const live = () => page.evaluate(() => (window as unknown as { liveFrames: () => number }).liveFrames());
+  expect(await live()).toBe(1);
+});

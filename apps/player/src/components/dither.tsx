@@ -6,6 +6,25 @@ import { subscribeTheme } from "@/lib/theme";
 const CELL_PX = 4;
 const FRAME_MS = 500;
 
+const running = new Set<() => void>();
+let ticker = 0;
+
+/** One interval for every cover that is moving, so a page of covers wakes once per frame, not once each. */
+function tick(paint: () => void): () => void {
+  running.add(paint);
+  if (!ticker)
+    ticker = window.setInterval(() => {
+      for (const run of running) run();
+    }, FRAME_MS);
+  return () => {
+    running.delete(paint);
+    if (!running.size) {
+      clearInterval(ticker);
+      ticker = 0;
+    }
+  };
+}
+
 /** Dithered ink dots over whatever is behind, seeded by `id`. They drift slowly while on screen and hold one frame under reduced motion. */
 export function Dither({ id, className }: { id: string; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -17,7 +36,7 @@ export function Dither({ id, className }: { id: string; className?: string }) {
     const seed = ditherSeed(id);
     const still = matchMedia("(prefers-reduced-motion: reduce)");
     let visible = true;
-    let timer = 0;
+    let stop: (() => void) | null = null;
     const paint = () => {
       const scale = window.devicePixelRatio || 1;
       const width = Math.max(1, Math.round(element.clientWidth * scale));
@@ -38,10 +57,10 @@ export function Dither({ id, className }: { id: string; className?: string }) {
       }
     };
     const sync = () => {
-      clearInterval(timer);
-      timer = 0;
+      stop?.();
+      stop = null;
       paint();
-      if (visible && !document.hidden && !still.matches) timer = window.setInterval(paint, FRAME_MS);
+      if (visible && !document.hidden && !still.matches) stop = tick(paint);
     };
     const watch = new IntersectionObserver(([entry]) => {
       visible = entry?.isIntersecting ?? true;
@@ -55,7 +74,7 @@ export function Dither({ id, className }: { id: string; className?: string }) {
     const unsubscribe = subscribeTheme(paint);
     sync();
     return () => {
-      clearInterval(timer);
+      stop?.();
       watch.disconnect();
       resize.disconnect();
       still.removeEventListener("change", sync);
