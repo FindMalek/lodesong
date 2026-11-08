@@ -22,15 +22,15 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
   return out;
 }
 
-/** An 8-bit greyscale PNG from `size * size` pixel values. */
-export function greyscalePng(size: number, pixels: Uint8Array): Uint8Array<ArrayBuffer> {
+function encode(size: number, colorType: number, channels: number, pixels: Uint8Array): Uint8Array<ArrayBuffer> {
   const header = new Uint8Array(13);
   const view = new DataView(header.buffer);
   view.setUint32(0, size);
   view.setUint32(4, size);
-  header.set([8, 0, 0, 0, 0], 8);
-  const rows = new Uint8Array(size * (size + 1));
-  for (let y = 0; y < size; y += 1) rows.set(pixels.subarray(y * size, (y + 1) * size), y * (size + 1) + 1);
+  header.set([8, colorType, 0, 0, 0], 8);
+  const stride = size * channels;
+  const rows = new Uint8Array(size * (stride + 1));
+  for (let y = 0; y < size; y += 1) rows.set(pixels.subarray(y * stride, (y + 1) * stride), y * (stride + 1) + 1);
   const parts = [
     new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk("IHDR", header),
@@ -44,4 +44,14 @@ export function greyscalePng(size: number, pixels: Uint8Array): Uint8Array<Array
     offset += part.length;
   }
   return out;
+}
+
+/** An 8-bit greyscale PNG from `size * size` pixel values. */
+export function greyscalePng(size: number, pixels: Uint8Array): Uint8Array<ArrayBuffer> {
+  return encode(size, 0, 1, pixels);
+}
+
+/** An 8-bit RGB PNG from `size * size * 3` pixel values. */
+export function rgbPng(size: number, pixels: Uint8Array): Uint8Array<ArrayBuffer> {
+  return encode(size, 2, 3, pixels);
 }

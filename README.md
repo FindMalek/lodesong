@@ -1,41 +1,133 @@
+<div align="center">
+
+# lodesong
+
+**Your own music, played like a streaming app.**<br>
+A monochrome web player for your [Navidrome](https://www.navidrome.org) library: synced lyrics, a queue you can see,
+mixes made from what you play, one session on every device.
+
+<a href="https://github.com/FindMalek/lodesong/actions/workflows/ci.yml"><img alt="CI" src="https://shieldcn.dev/github/ci/FindMalek/lodesong.svg?workflow=ci.yml&branch=main&variant=secondary" /></a>
+<a href="https://github.com/FindMalek/lodesong/releases"><img alt="Latest release" src="https://shieldcn.dev/github/release/FindMalek/lodesong.svg?variant=secondary" /></a>
+<a href="https://github.com/FindMalek/lodesong/pkgs/container/lodesong"><img alt="Docker image" src="https://shieldcn.dev/badge/ghcr.io-lodesong-18181b.svg?logo=docker&variant=secondary" /></a>
+<a href="LICENSE"><img alt="License" src="https://shieldcn.dev/github/license/FindMalek/lodesong.svg?variant=secondary" /></a>
+
+</div>
+
+```sh
+docker run -d -p 8080:8080 -v lodesong-data:/data \
+  -e NAVIDROME_URL=http://host.docker.internal:4533 \
+  ghcr.io/findmalek/lodesong
+```
+
+Open `http://localhost:8080` and sign in with your Navidrome account. On Linux add
+`--add-host=host.docker.internal:host-gateway`. Compose and building from source are under [Run it](#run-it).
+
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://shieldcn.dev/header/graph.svg?title=lodesong&subtitle=your+own+music%2C+played+like+a+streaming+app&align=left&font=jetbrains-mono&radius=0&mode=dark" />
-    <img alt="lodesong: your own music, played like a streaming app" src="https://shieldcn.dev/header/graph.svg?title=lodesong&subtitle=your+own+music%2C+played+like+a+streaming+app&align=left&font=jetbrains-mono&radius=0&mode=light" />
+    <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.webp">
+    <img alt="lodesong playing: the home screen with daily mixes and the queue, then full-screen lyrics next to the cover, one line at a time." src="docs/hero-light.webp">
   </picture>
 </p>
 
 <p align="center">
-  <a href="https://github.com/FindMalek/lodesong/actions/workflows/ci.yml"><img alt="CI" src="https://shieldcn.dev/github/ci/FindMalek/lodesong.svg?workflow=ci.yml&variant=secondary" /></a>
-  <a href="https://github.com/FindMalek/lodesong/releases"><img alt="Latest release" src="https://shieldcn.dev/github/release/FindMalek/lodesong.svg?variant=secondary" /></a>
-  <a href="https://github.com/FindMalek/lodesong/pkgs/container/lodesong"><img alt="Docker image" src="https://shieldcn.dev/badge/ghcr.io-lodesong-18181b.svg?logo=docker&variant=secondary" /></a>
-  <a href="LICENSE"><img alt="License" src="https://shieldcn.dev/github/license/FindMalek/lodesong.svg?variant=secondary" /></a>
-  <a href="https://github.com/FindMalek/lodesong/commits/main"><img alt="Last commit" src="https://shieldcn.dev/github/last-commit/FindMalek/lodesong.svg?variant=secondary" /></a>
+  <a href="#run-it">Run it</a> ·
+  <a href="#why">Why</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#works-with">Works with</a> ·
+  <a href="#docs">Docs</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#develop">Develop</a>
 </p>
 
-<p align="center">
-  <a href="https://www.navidrome.org"><img alt="Navidrome" src="https://shieldcn.dev/badge/-Navidrome-18181b.svg?logo=navidrome&variant=secondary&mode=dark" /></a>
-  <a href="https://bun.sh"><img alt="Bun" src="https://shieldcn.dev/badge/-Bun-18181b.svg?logo=bun&variant=secondary&mode=dark" /></a>
-  <a href="https://react.dev"><img alt="React 19" src="https://shieldcn.dev/badge/-React_19-18181b.svg?logo=react&variant=secondary&mode=dark" /></a>
-  <a href="https://ui.shadcn.com"><img alt="shadcn/ui" src="https://shieldcn.dev/badge/-shadcn%2Fui-18181b.svg?logo=shadcnui&variant=secondary&mode=dark" /></a>
-  <a href="https://opensubsonic.netlify.app"><img alt="OpenSubsonic" src="https://shieldcn.dev/badge/-OpenSubsonic-18181b.svg?variant=secondary&mode=dark" /></a>
-</p>
+**Try it without your own music**, no Docker and no Navidrome: a fake one with 10k generated songs, sign in as `demo` / `demo`.
 
-<p align="center">
-<picture>
-  <source media="(prefers-color-scheme: light)" srcset="docs/album-lyrics-light.png">
-  <img alt="An album open next to its synced lyrics, a song playing" src="docs/album-lyrics.png">
-</picture>
-</p>
+```sh
+git clone https://github.com/FindMalek/lodesong && cd lodesong && bun install
+bun run mock &                                     # the fake Navidrome, on :4599
+NAVIDROME_URL=http://127.0.0.1:4599 bun run dev    # the player, on :8080
+```
 
-**Try it:** a public [live demo](docs/public-demo.md) (sign in with `demo` / `demo`, resets every night) is set up in the
-repo and waits for its host; the page says what is left.
+For a real, copyright-free library in a real Navidrome there is the [demo library](docs/demo-library.md).
 
-> A monochrome web player for your [Navidrome](https://www.navidrome.org) library. Square covers, hairline borders,
-> synced lyrics, a queue you can see, mixes made from what you play, and one session across all your devices.
+## Run it
 
-**Jump to:** [Self-host](#self-host) · [Features](#features) · [Browsers](#browsers) · [With Lyterion](#with-lyterion) ·
-[Docs](#docs) · [FAQ](#faq) · [Develop](#develop)
+<a id="self-host"></a>
+
+You need a running Navidrome and Docker (or [Bun](https://bun.sh) to build it yourself). Pick by where your Navidrome runs:
+
+- **In a Docker compose file**: use **1**, so the player joins its network.
+- **Anywhere else** (on the host, or another machine): use **2**.
+- **No Docker**: use **3**.
+
+**1. Docker compose**, on the same Docker network as Navidrome:
+
+```yaml
+# compose.yaml
+services:
+  player:
+    image: ghcr.io/findmalek/lodesong:latest   # amd64
+    restart: unless-stopped
+    environment:
+      NAVIDROME_URL: http://navidrome:4533     # Navidrome's service name and port on that network
+    ports:
+      - "8080:8080"
+    volumes:
+      - player-data:/data
+    networks: [navidrome]
+volumes:
+  player-data:
+networks:
+  navidrome:
+    external: true
+    name: navidrome_default                    # Navidrome's network, see `docker network ls`
+```
+
+If Navidrome is in the same compose file, drop the `networks` lines and add `player` next to it.
+
+```sh
+docker compose up -d
+```
+
+**2. Docker run**, one container, Navidrome on the host (or set `NAVIDROME_URL` to any address that container can reach):
+
+```sh
+docker run -d --name lodesong --restart unless-stopped -p 8080:8080 \
+  --add-host host.docker.internal:host-gateway \
+  -e NAVIDROME_URL=http://host.docker.internal:4533 \
+  -v lodesong-data:/data \
+  ghcr.io/findmalek/lodesong:latest
+```
+
+**3. From source**, one executable:
+
+```sh
+git clone https://github.com/FindMalek/lodesong && cd lodesong
+bun install && bun run build
+NAVIDROME_URL=http://localhost:4533 ./dist/lodesong
+```
+
+Open `http://localhost:8080` and sign in with your Navidrome account. No Navidrome yet?
+[`docs/deploy/full-stack.compose.yaml`](docs/deploy/full-stack.compose.yaml) runs both.
+
+The whole stack (Navidrome, lodesong, uploads into a tagging inbox, AI playlists, a domain with HTTPS, Lyterion) is
+in **[self-hosting](docs/self-hosting.md)**, written so a person or a coding agent can follow it step by step. Every
+setting is in [configuration](docs/configuration.md).
+
+<details>
+<summary>With a coding agent</summary>
+
+Paste this into Claude Code, OpenCode, Codex or Cursor on the machine that will run it:
+
+```text
+Set up lodesong (https://github.com/FindMalek/lodesong) on this machine by following
+docs/self-hosting.md in that repo, top to bottom. Ask me before each choice the guide marks as
+"ask", never print secrets, and finish with the guide's "check it works" list, showing me each result.
+```
+
+The guide has a decision list up front (fresh Navidrome or existing, domain or local, which extras), commands with the
+output to expect, and a closing checklist, so the agent can tell you what it did and what to look at.
+
+</details>
 
 ## Why
 
@@ -51,105 +143,65 @@ Your own music deserves a player as good as the streaming apps, and better where
 | lyrics timing you can nudge per song, saved across devices | ✓ | — |
 | next songs downloaded ahead, playing offline in the browser | ✓ | — |
 | now playing and play/pause in your terminal (Claude Code, OpenCode) | ✓ | — |
-| every action on the keyboard, a searchable cheat sheet (`?`) | ✓ | some shortcuts |
 
-## Self-host
-
-Next to your Navidrome:
-
-```yaml
-# compose.yaml
-services:
-  player:
-    image: ghcr.io/findmalek/lodesong:latest   # amd64
-    restart: unless-stopped
-    environment:
-      NAVIDROME_URL: http://navidrome:4533        # as this container reaches Navidrome
-    ports:
-      - "8080:8080"
-    volumes:
-      - player-data:/data
-volumes:
-  player-data:
-```
-
-`docker compose up -d`, open `http://localhost:8080`, sign in with your Navidrome account. No Navidrome yet?
-[`docs/deploy/full-stack.compose.yaml`](docs/deploy/full-stack.compose.yaml) runs both.
-
-The whole stack (Navidrome, lodesong, uploads into a tagging inbox, AI playlists, a domain with HTTPS, Lyterion) is
-in **[self-hosting](docs/self-hosting.md)**, written so a person or a coding agent can follow it step by step.
-
-### With a coding agent
-
-Paste this into Claude Code, OpenCode, Codex or Cursor on the machine that will run it:
-
-```text
-Set up lodesong (https://github.com/FindMalek/lodesong) on this machine by following
-docs/self-hosting.md in that repo, top to bottom. Ask me before each choice the guide marks as
-"ask", never print secrets, and finish with the guide's "check it works" list, showing me each result.
-```
-
-The guide has a decision list up front (fresh Navidrome or existing, domain or local, which extras), commands with the
-output to expect, and a closing checklist, so the agent can tell you what it did and what to look at.
+It reads through Navidrome's API and never touches your files. Likes, ratings, playlists and plays stay Navidrome's, so
+every other app agrees with it.
 
 ## Features
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/features-dark.webp">
+    <img alt="Two views: the album grid with generated dithered covers, and the queue with the device picker open." src="docs/features-light.webp">
+  </picture>
+</p>
+
 **Listen**
 
-- **Lyrics** for nearly every song: Navidrome's, else LRCLIB's, cached and fetched ahead. Word by word, full screen
-  with `⇧F`, `[` `]` fix the timing per song. [lyrics](docs/lyrics.md)
-- **Playback** that doesn't stutter: two decks for gapless handover, ReplayGain, the next songs precached by a service
-  worker (instant seeks, plays offline), stalls recovered in place, crossfade and a ten-band equalizer.
-- **Stream quality** per device: *auto* plays songs kept offline as they are and streams the rest as Opus 192, or
-  pick original, mp3 320, Opus 192 or Opus 96. [devices](docs/devices.md#stream-quality)
-- **Queue** you can see and steer: your queue apart from the album it came from, balanced shuffle, undo, stop after
-  this song, sleep timer.
+- **Lyrics** for nearly every song (Navidrome's, else LRCLIB's), line by line, word by word when the file has word
+  timings. Full screen with `⇧F`, `[` `]` fix the timing per song. [lyrics](docs/lyrics.md)
+- **Playback** that doesn't stutter: gapless two-deck handover, ReplayGain, crossfade, a ten-band equalizer, and the
+  next songs precached by a service worker (instant seeks, plays offline).
+- **Stream quality** per device: *auto* plays songs kept offline as they are and streams the rest as Opus 192, or pick
+  original, mp3 320, Opus 192 or Opus 96. [devices](docs/devices.md#stream-quality)
+- **A queue you can see**, apart from the album it came from: balanced shuffle, undo, stop after this song, sleep timer.
 
 **Discover** · [mixes](docs/mixes.md)
 
 - **Made for you** on home: daily mixes grouped by the artists you play together, **discover weekly** every Friday
-  (songs you own and never played), and a **daylist** that changes four times a day. All saved as Navidrome playlists,
-  so your phone has them too.
-- **Playlists from a prompt**: "late night drive, 90s, no vocals" → Groq picks artists from your library, the server
-  builds the list from songs you own. Review it, make it again, save.
-- **Playlist folders**: make, nest (4 deep), rename and delete folders, drag playlists in and out, give a folder a picture
-  or keep its generated aura. Folders live in lodesong, so playlist names in Navidrome never change; a `Chill / Night`
-  group converts to a real folder in one click. Playlists move by drag or from "move to folder…" in their menu.
-
-  ![A playlist folder](docs/playlist-folders.png)
-- **Recap**: your month or year as a reel: minutes, top artists and songs, your listening hours, your biggest day,
-  and your top songs played back or saved.
-- **Stats**, history, forgotten favourites, and a radio that learns what you skip. Radio opens as a page.
-- **Following**: the artists you play most are followed for you, you can follow, pin or unfollow others, and their new
-  albums, EPs and singles land on a page grouped by week. With Lyterion your Spotify follows come over too.
+  (songs you own and never played) and a **daylist** that changes four times a day, all saved as Navidrome playlists so
+  your phone has them too.
+- **Playlists from a prompt** ("late night drive, 90s, no vocals": Groq picks artists from your library, the server
+  builds the list from songs you own), and **playlist folders** (nest 4 deep, drag playlists in, a folder keeps its own
+  picture or generated aura) that live in lodesong, not in Navidrome.
+- **Recap** of your month or year, **stats**, history, forgotten favourites, and a radio that learns what you skip.
+- **Following**: the artists you play most are followed for you, and their new albums, EPs and singles land on a page
+  grouped by week. With Lyterion your Spotify follows come over too.
   [new from artists you follow](docs/mixes.md#new-from-artists-you-follow)
 
 **Everywhere** · [devices](docs/devices.md)
 
 - **One session across devices**, like Spotify Connect: start on one tab or computer, control it from another, move
-  playback with the device picker in the player bar.
-- **Your phone**: the queue hands off both ways with Arpeggi or any OpenSubsonic app; likes, ratings, playlists and
-  plays are the server's, so every app agrees. [sync](docs/sync.md)
-- **A Mac app** with the song around the notch: cover and bars while it plays, controls on hover, lyrics and the
-  queue on click. [macOS](apps/macos/README.md)
-- **Phone and desktop apps**: an [iPhone app](docs/ios.md) (sideload with a free Apple ID, or an AltStore source), an
-  [Android app](docs/android.md) (an APK from the releases) and a [Linux and Windows app](docs/desktop.md). Each is a
-  small shell around the same page, with media controls and playback in the background.
-- **Scrobbling** through Navidrome (Last.fm, ListenBrainz): settings say whether it is on for you and how many plays
-  were sent today.
-- **Now playing in your terminal**: the song, its lyric line and ⏮ ⏸ ⏭ above the prompt in Claude Code and OpenCode.
-- **Listen together** with friends on the same server. [listen together](docs/listen-together.md)
+  playback with the device picker in the player bar. Listen together with friends on the same server.
+  [listen together](docs/listen-together.md)
+- **Apps**: a [Mac app](apps/macos/README.md) with the song around the notch, an [iPhone app](docs/ios.md), an
+  [Android app](docs/android.md) and a [Linux and Windows app](docs/desktop.md), each a small shell around the same page
+  with media controls and background playback. On a phone the queue also hands off with Arpeggi. [sync](docs/sync.md)
+- **Scrobbling** through Navidrome (Last.fm, ListenBrainz): settings say whether it is on and how many plays were sent
+  today. **Now playing in your terminal**: the song, its lyric line and ⏮ ⏸ ⏭ above the prompt in Claude Code and OpenCode.
 
 **Your library**
 
 - **Search** (`⌘K`): songs, albums, artists, playlists, lyrics and commands, typo-tolerant, with filters
   (`artist:` `year:1990..1999` `is:liked` `format:flac` …). [search](docs/search.md)
-- **Upload** songs or whole album folders from the browser into your tagging inbox (beets, Lyterion).
-- **Library doctor**: missing covers, tags and ReplayGain, duplicates, low-quality files, with one-click fixes through
-  Lyterion.
-- **Keyboard first**: everything has a key, `?` shows them all, lists move with `j`/`k`. [shortcuts](docs/shortcuts.md)
+- **Upload** songs or album folders from the browser into your tagging inbox, and a **library doctor** for missing covers,
+  tags and ReplayGain, duplicates and low-quality files, with one-click fixes through Lyterion.
+- **Keyboard first**: everything has a key, `?` shows them all. [shortcuts](docs/shortcuts.md)
 - **Fast**: a 10k-song list renders ~40 rows, the library is cached so a reload paints instantly, the first screen is
   under 161 KB of JS (gzip).
+
+<details>
+<summary>More screenshots</summary>
 
 <table>
   <tr>
@@ -172,10 +224,14 @@ output to expect, and a closing checklist, so the agent can tell you what it did
 
 <p align="center"><img alt="on a phone: an album, a song playing" src="docs/phone.png" width="260"></p>
 
-All screenshots are the [generated demo library](docs/demo-library.md): synthesized tracks and dithered covers, no real music.
-The album shot has a light twin, served automatically on a light system theme.
+</details>
 
-## Browsers
+The hero and feature images are the built app over generated data (invented names and lyrics, generated covers, no real
+music). `bun run hero` makes them again. The other screenshots are the [demo library](docs/demo-library.md).
+
+## Works with
+
+<a id="browsers"></a>
 
 Desktop browsers from the last two years. CI signs in and plays in **Chromium** (the whole suite) and **WebKit** (the
 engine of Safari) on every pull request.
@@ -187,15 +243,19 @@ engine of Safari) on every pull request.
 | pick the output device (speakers, headphones) | ✓ | — | ✓ |
 | install as an app | ✓ | ✓ (File → Add to Dock) | — |
 
-Phones: the layout works down to 320 px, and there are [iPhone](docs/ios.md) and [Android](docs/android.md) apps; a
-Subsonic app (Arpeggi, Substreamer, Symfonium) works too, and the queue hands off between them. [sync](docs/sync.md)
+**Phones**: the layout works down to 320 px, and there are [iPhone](docs/ios.md) and [Android](docs/android.md) apps.
+Subsonic apps (Arpeggi, Substreamer, Symfonium) talk to the same Navidrome and account, so likes, ratings, playlists and
+plays agree; the queue hands off with Arpeggi. [sync](docs/sync.md)
 
-## With Lyterion
+**Servers**: built and tested against [Navidrome](https://www.navidrome.org). Other OpenSubsonic servers should work,
+untested.
 
-[Lyterion](https://github.com/FindMalek/lyterion) brings a Spotify library over to your own Navidrome. lodesong
-connects to it: the import page shows each Spotify playlist and how much of it is already in your library, the doctor's
-"fix with Lyterion" hands songs over for a better copy, and Lyterion keeps every playlist editable in Navidrome.
-Setting them up together: [lyterion](docs/lyterion.md).
+<a id="with-lyterion"></a>
+
+**With [Lyterion](https://github.com/FindMalek/lyterion)**: it brings a Spotify library over to your own Navidrome.
+lodesong connects to it: the import page shows each Spotify playlist and how much of it is already in your library, the
+doctor's "fix with Lyterion" hands songs over for a better copy, and Lyterion keeps every playlist editable in
+Navidrome. [lyterion](docs/lyterion.md)
 
 ## Docs
 
@@ -212,7 +272,7 @@ Setting them up together: [lyterion](docs/lyterion.md).
 | [genres](docs/genres.md) · [lyterion](docs/lyterion.md) · [spotify import](docs/spotify-import.md) | bringing a Spotify library over |
 | [API](docs/api.md) | the typed API, its reference at `/api`, tokens for your own integrations |
 | [architecture](docs/architecture.md) · [security](docs/security.md) | how it's built, what's protected |
-| [demo library](docs/demo-library.md) · [previews](docs/previews.md) · [public demo](docs/public-demo.md) | the generated library, per-PR previews, the permanent demo |
+| [demo library](docs/demo-library.md) · [previews](docs/previews.md) | the generated library, per-PR previews |
 | [troubleshooting](docs/troubleshooting.md) | when something's off |
 | [contributing](CONTRIBUTING.md) · [roadmap](docs/ROADMAP.md) | working on it |
 
@@ -220,17 +280,22 @@ Setting them up together: [lyterion](docs/lyterion.md).
 
 **Does it work on a phone?** Yes: the layout follows the window down to 320 px, and it installs as an app from the
 browser's menu. There are also an [iPhone app](docs/ios.md) you can sideload with a free Apple ID (music keeps playing
-with the screen locked) and an [Android app](docs/android.md) (an APK from the releases). A Subsonic app (Arpeggi, Substreamer, Symfonium…) works too; the queue hands off between them.
+with the screen locked) and an [Android app](docs/android.md) (an APK from the releases). A Subsonic app (Arpeggi,
+Substreamer, Symfonium…) works too.
 
-**Can I try it without my own music?** Yes: `bun run demo:library ./demo-music` generates a library and
-[`compose.demo.yaml`](compose.demo.yaml) serves it from a Navidrome. See [demo library](docs/demo-library.md).
+**Can I try it without my own music?** Yes, with the fake Navidrome under the picture (`bun run mock`), or
+`bun run demo:library ./demo-music` for a generated library that [`compose.demo.yaml`](compose.demo.yaml) serves from a
+real one. See [demo library](docs/demo-library.md).
 
 **Does it change my music files?** No. It reads through Navidrome's API. Likes, ratings, playlists and plays are
 stored by Navidrome; lodesong keeps only its own data (sessions, its search and lyrics cache, history) in `/data`.
 
-**Does it phone home?** No. It talks to your Navidrome and, for missing lyrics, to LRCLIB (`LRCLIB_URL=` turns that
-off). Groq is called only for playlists from a prompt, and only when you set `GROQ_API_KEY`; it gets your artist names,
-never your files. The release check is off unless you set `UPDATE_CHECK=on`.
+**Does it phone home?** No telemetry, no analytics. It talks to your Navidrome and, by default, to two public services:
+LRCLIB for lyrics Navidrome doesn't have (the song's title and artist) and MusicBrainz once a week for new releases by the
+artists you follow (artist names only). `LRCLIB_URL=` and `MUSICBRAINZ_URL=` (empty) turn each off. The rest is opt-in:
+Groq for playlists from a prompt and upload tags, only with `GROQ_API_KEY` (it gets artist names, never your files);
+the release check on GitHub, only with `UPDATE_CHECK=on`; Lyterion, only if you set `LYTERION_URL` to your own.
+Scrobbling to Last.fm or ListenBrainz is Navidrome's to do, not lodesong's. [every setting](docs/configuration.md)
 
 **Several Navidrome servers?** `NAVIDROME_SERVERS=home=http://a:4533,friend=https://b` and pick at sign-in.
 
@@ -249,6 +314,7 @@ NAVIDROME_URL=http://127.0.0.1:4599 bun run dev    # app on :8080, hot reload
 bun run check                                      # typecheck, lint, unit tests, bundle size, generated docs
 bun run e2e                                        # Playwright against the mock
 bun run demo:library ./demo-music                  # a real, copyright-free library for a real Navidrome
+bun run hero                                       # builds, then redraws the README hero and feature images in docs/
 ```
 
 Every pull request gets a [preview deployment](docs/previews.md) with a demo account. More in

@@ -27,7 +27,7 @@ export interface DemoAlbum {
   tracks: DemoTrack[];
 }
 
-const ARTISTS: { name: string; genre: string; bpm: [number, number]; scale: DemoTrack["scale"] }[] = [
+export const ARTISTS: { name: string; genre: string; bpm: [number, number]; scale: DemoTrack["scale"] }[] = [
   { name: "Halcyon Static", genre: "Electronic", bpm: [112, 128], scale: "minor" },
   { name: "The Paper Lanterns", genre: "Indie", bpm: [90, 108], scale: "major" },
   { name: "Marlow Quartet", genre: "Jazz", bpm: [72, 96], scale: "dorian" },
@@ -38,7 +38,7 @@ const ARTISTS: { name: string; genre: string; bpm: [number, number]; scale: Demo
   { name: "Satellite Garden", genre: "Pop", bpm: [100, 120], scale: "major" },
 ];
 
-const ALBUM_WORDS = [
+export const ALBUM_WORDS = [
   "Orbit",
   "Quiet Hours",
   "Low Tide",
@@ -52,7 +52,7 @@ const ALBUM_WORDS = [
   "Distance",
   "Winter Lights",
 ];
-const TITLE_WORDS = [
+export const TITLE_WORDS = [
   "Echo",
   "Harbor",
   "Violet",
@@ -76,7 +76,7 @@ const TITLE_WORDS = [
   "Signal",
   "Garden",
 ];
-const TITLE_TAILS = ["", "", "", " Again", " (Reprise)", " Pt. 2", " in Blue", " at Night"];
+export const TITLE_TAILS = ["", "", "", " Again", " (Reprise)", " Pt. 2", " in Blue", " at Night"];
 
 /** The whole demo library as data, deterministic from `seed`: same artists, albums, titles and tags every run. */
 export function createCatalog(seed = 2026): DemoAlbum[] {
