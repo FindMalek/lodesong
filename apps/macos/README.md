@@ -40,3 +40,17 @@ swift run --package-path apps/macos Lodesong --preview /tmp/island   # the islan
 ```
 
 No dependencies: AppKit, SwiftUI and WebKit. The page talks to the app through `apps/player/src/lib/native.ts`.
+
+## Tests
+
+```sh
+bun scripts/build.ts            # the player the app loads, at ./dist/lodesong
+swift test --package-path apps/macos
+```
+
+`swift test` starts the mock Navidrome and `./dist/lodesong`, loads the player in a WKWebView made by
+`PlayerView.makeConfiguration()` (the one the app uses) and checks what the page does in this engine: `canPlayType`
+for opus, mp3, aac and flac, the AudioContext running after a play that has no tap behind it (the island, menu bar and
+media keys), sound reaching the output for original, mp3 and opus streams (`test/output-tap.js`, the tap the e2e specs
+use), and the app's commands (`toggle`, `next`, `seek`) moving the page. A Mac with no audio output device (GitHub's
+runners may have none) never starts an AudioContext: those checks are skipped with a message, the rest still run.

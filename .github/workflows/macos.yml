@@ -4,10 +4,10 @@ name: macOS
 
 on:
   pull_request:
-    paths: [apps/macos/**, .github/workflows/macos.yml]
+    paths: [apps/macos/**, test/output-tap.js, .github/workflows/macos.yml]
   push:
     branches: [main]
-    paths: [apps/macos/**, .github/workflows/macos.yml]
+    paths: [apps/macos/**, test/output-tap.js, .github/workflows/macos.yml]
   workflow_dispatch:
     inputs:
       tag:
@@ -33,12 +33,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
       - name: Build the app and the pkg
         run: |
           apps/macos/build.sh
           apps/macos/pkg.sh
           ditto -c -k --keepParent apps/macos/dist/lodesong.app lodesong-macos.zip
           cp apps/macos/dist/lodesong-macos.pkg .
+      - name: Run the player in the app's WKWebView
+        run: |
+          bun install --frozen-lockfile
+          bun scripts/build.ts
+          swift test --package-path apps/macos
       - uses: actions/upload-artifact@v7
         with:
           name: lodesong-macos
