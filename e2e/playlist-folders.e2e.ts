@@ -269,4 +269,27 @@ test("a folder page full of dithered covers keeps one 500 ms timer, not one each
   await expect(page.locator("main canvas")).toHaveCount(10);
   const live = () => page.evaluate(() => (window as unknown as { liveFrames: () => number }).liveFrames());
   expect(await live()).toBe(1);
+  await signedIn.getByRole("link", { name: "albums", exact: true }).click();
+  await expect.poll(live).toBe(0);
+});
+
+test("static covers repaint in the new ink when the colour scheme flips", async ({ page, signedIn }) => {
+  const made = await page.request.post("/api/folders", {
+    headers: { "x-lodesong": "1" },
+    data: { name: `Scheme ${Date.now()}`, parentId: null },
+  });
+  const { id } = (await made.json()) as { id: string };
+  const dots = page.locator("main div.size-40").locator("canvas").nth(1);
+  const ink = () =>
+    dots.evaluate((element: HTMLCanvasElement) => {
+      const pixels = element.getContext("2d")?.getImageData(0, 0, element.width, element.height).data ?? [];
+      const first = pixels.findIndex((value, index) => index % 4 === 3 && value > 0);
+      return first < 0 ? -1 : (pixels[first - 3] ?? -1);
+    });
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+  await signedIn.goto(`/playlist-folder/${id}`);
+  await expect.poll(ink).toBeGreaterThan(0);
+  const dark = await ink();
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect.poll(ink).not.toBe(dark);
 });

@@ -62,8 +62,8 @@ export function Dither({ id, className }: { id: string; className?: string }) {
       paint();
       if (visible && !document.hidden && !still.matches) stop = tick(paint);
     };
-    const watch = new IntersectionObserver(([entry]) => {
-      visible = entry?.isIntersecting ?? true;
+    const watch = new IntersectionObserver((entries) => {
+      visible = entries.at(-1)?.isIntersecting ?? true;
       sync();
     });
     watch.observe(element);
