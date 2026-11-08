@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pressHeld, whenPressEnds } from "./press-hold";
 
 // Tooltips (~20 KB gzip) load when idle or on the first hover or focus; until then triggers render as plain markup.
 
@@ -7,38 +8,17 @@ type TooltipModule = typeof import("@lodesong/ui/components/tooltip");
 let loaded: TooltipModule | null = null;
 let arrived: TooltipModule | null = null;
 let requested = false;
-let pressed = false;
-let released: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
 
 function publish(): void {
-  if (!arrived || pressed) return;
+  if (!arrived || pressHeld()) return;
   loaded = arrived;
   arrived = null;
   for (const listener of listeners) listener();
 }
 
-// The code arriving swaps every trigger for a new element, and WebKit drops the click of a button swapped out mid-press.
-if (typeof window !== "undefined") {
-  const release = (delay: number) => {
-    clearTimeout(released);
-    released = setTimeout(() => {
-      pressed = false;
-      publish();
-    }, delay);
-  };
-  window.addEventListener(
-    "pointerdown",
-    () => {
-      clearTimeout(released);
-      pressed = true;
-    },
-    true,
-  );
-  window.addEventListener("click", () => release(0), true);
-  window.addEventListener("pointerup", () => release(400), true);
-  window.addEventListener("pointercancel", () => release(0), true);
-}
+// The code arriving swaps every trigger for a new element: wait out a press that is under way.
+whenPressEnds(publish);
 
 export function loadTooltips(): void {
   if (requested) return;
