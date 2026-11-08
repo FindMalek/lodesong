@@ -11,19 +11,30 @@ import { DitherCover } from "../ui/dither-cover";
 import { END } from "./timelines";
 
 const VEIN = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
+const QUICK = beat(0.5);
 
 const GEOM = {
-  wide: { orb: { x: 1230, y: 250, size: 520 }, mark: { x: 168, y: 150, font: 150 }, tag: { x: 168, y: 350, font: 92 }, box: { x: 168, y: 640, w: 940 }, url: { x: 168, y: 868 } },
-  tall: { orb: { x: 280, y: 270, size: 520 }, mark: { x: 90, y: 850, font: 110 }, tag: { x: 90, y: 1010, font: 84 }, box: { x: 90, y: 1260, w: 900 }, url: { x: 90, y: 1470 } },
+  wide: { orb: { x: 1230, y: 250, size: 520 }, mark: { x: 168, y: 150, font: 150 }, tag: { x: 168, y: 350, font: 92 }, box: { x: 168, y: 640, w: 1010 }, url: { x: 168, y: 868 } },
+  tall: { orb: { x: 280, y: 330, size: 520 }, mark: { x: 90, y: 940, font: 120 }, tag: { x: 90, y: 1110, font: 100 }, box: { x: 90, y: 1260, w: 900 }, url: { x: 90, y: 1360 } },
 } as const;
 
-function Wordmark({ font }: { font: number }) {
+function Wordmark({ font, lode, song }: { font: number; lode: number; song: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: font * 0.28, fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: font, letterSpacing: "-0.04em", lineHeight: 1 }}>
-      <svg aria-hidden width={font * 0.86} height={font * 0.86} viewBox="8 8 48 48" fill="currentColor">
-        <path d={VEIN} />
-      </svg>
-      lodesong
+    <div
+      data-legible=""
+      style={{ display: "flex", fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: font, letterSpacing: "-0.04em", lineHeight: 1.1 }}
+    >
+      <MaskLine from={lode} length={QUICK}>
+        <div style={{ display: "flex", alignItems: "center", gap: font * 0.28 }}>
+          <svg aria-hidden width={font * 0.86} height={font * 0.86} viewBox="8 8 48 48" fill="currentColor">
+            <path d={VEIN} />
+          </svg>
+          lode
+        </div>
+      </MaskLine>
+      <MaskLine from={song} length={QUICK}>
+        song
+      </MaskLine>
     </div>
   );
 }
@@ -34,8 +45,8 @@ export function EndShot() {
   const g = GEOM[layout];
   const T = END[layout];
   const time = frame / FPS;
-  const orbDevelop = ramp(frame, beat(T.orb), beat(2.5), ease.inOut);
-  const glow = ramp(frame, beat(T.orb), beat(2)) * 360;
+  const orbDevelop = ramp(frame, beat(T.orb), beat(2), ease.inOut);
+  const glow = ramp(frame, beat(T.orb), beat(1.5)) * 360;
   const cam = camAt(frame, [
     { at: 0, scale: 1.05, ry: layout === "wide" ? 4 : 0 },
     { at: T.end, scale: 1.0, ry: 0 },
@@ -69,45 +80,45 @@ export function EndShot() {
 
         <Layer z={0}>
           <div style={{ position: "absolute", left: g.mark.x, top: g.mark.y }}>
-            <MaskLine from={beat(T.mark)}>
-              <div data-legible="">
-                <Wordmark font={g.mark.font} />
-              </div>
-            </MaskLine>
+            <Wordmark font={g.mark.font} lode={beat(T.mark)} song={beat(T.song)} />
           </div>
           <div
             data-legible=""
             style={{ position: "absolute", left: g.tag.x, top: g.tag.y, fontSize: g.tag.font, fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.04 }}
           >
-            <MaskLine from={beat(T.tagline)}>{COPY.headline[0]}</MaskLine>
-            <MaskLine from={beat(T.tagline + 0.25)} style={{ color: "var(--muted-foreground)" }}>
+            <MaskLine from={beat(T.tagline)} length={QUICK}>
+              {COPY.headline[0]}
+            </MaskLine>
+            <MaskLine from={beat(T.tagline + 0.25)} length={QUICK} style={{ color: "var(--muted-foreground)" }}>
               {COPY.headline[1]}
             </MaskLine>
           </div>
-          <div
-            style={{
-              position: "absolute",
-              left: g.box.x,
-              top: g.box.y,
-              width: g.box.w,
-              padding: "26px 32px",
-              border: "1px solid color-mix(in oklch, var(--foreground) 28%, transparent)",
-              background: "#050505",
-              fontFamily: "var(--font-mono)",
-              fontSize: 28,
-              lineHeight: 1.55,
-              whiteSpace: "pre",
-              opacity: ramp(frame, beat(T.lines - 0.5), beat(0.5)),
-            }}
-          >
-            {FILM.end.docker.map((line, index) => (
-              <MaskLine key={line} from={beat(T.lines + index * 0.5)}>
-                <span data-legible="">{line}</span>
-              </MaskLine>
-            ))}
-          </div>
-          <div data-legible="" style={{ position: "absolute", left: g.url.x, top: g.url.y, opacity: ramp(frame, beat(T.url), beat(0.75)) }}>
-            <Label style={{ fontSize: 32, color: "var(--foreground)", textTransform: "none", letterSpacing: "0.02em" }}>
+          {layout === "wide" ? (
+            <div
+              style={{
+                position: "absolute",
+                left: g.box.x,
+                top: g.box.y,
+                width: g.box.w,
+                padding: "26px 32px",
+                border: "1px solid color-mix(in oklch, var(--foreground) 28%, transparent)",
+                background: "#050505",
+                fontFamily: "var(--font-mono)",
+                fontSize: 28,
+                lineHeight: 1.55,
+                whiteSpace: "pre",
+                opacity: ramp(frame, beat(T.lines - 0.25), beat(0.25)),
+              }}
+            >
+              {FILM.end.docker.map((line, index) => (
+                <MaskLine key={line} from={beat(T.lines + index * 0.25)} length={QUICK}>
+                  <span data-legible="">{line}</span>
+                </MaskLine>
+              ))}
+            </div>
+          ) : null}
+          <div style={{ position: "absolute", left: g.url.x, top: g.url.y, opacity: ramp(frame, beat(T.url), beat(0.5)) }}>
+            <Label legible style={{ fontSize: 32, color: "var(--foreground)", textTransform: "none", letterSpacing: "0.02em" }}>
               {FILM.end.url}
             </Label>
           </div>

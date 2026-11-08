@@ -48,7 +48,7 @@ export const FILM = {
     caption: ["one session.", "every device."],
     devices: ["chrome on mac", "iphone"],
     playingOn: "playing on",
-    chips: ["web", "macos", "ios", "android", "linux", "windows"],
+    chips: ["web", "macos", "ios", "android", "desktop"],
   },
   keys: {
     caption: ["keyboard", "first."],

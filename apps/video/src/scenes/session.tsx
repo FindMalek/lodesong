@@ -7,7 +7,6 @@ import { atDepth, Camera, camAt, Layer } from "../design/camera";
 import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
 import { glowOf, gold } from "../design/gold";
-import { Label } from "../design/kinetic";
 import { useLayout } from "../design/layout";
 import { ease, lerp, ramp } from "../design/motion";
 import { DitherCover } from "../ui/dither-cover";
@@ -31,7 +30,7 @@ const GEOM = {
     win: { x: 90, y: 560, w: 900, h: 400, cover: 250, coverX: 32, coverY: 32, textX: 312, title: 42, scrubY: 190, ctlY: 258, scrubW: 560 },
     phone: { x: 560, y: 900, w: 380, h: 650, cover: 230, coverY: 84, title: 32, scrubY: 380, ctlY: 440, noteY: 560 },
     caption: { left: 90, top: 270, font: 120 },
-    chips: { right: 90, top: 0 },
+    chips: { right: 90, top: 1120 },
     pop: { right: 20, bottom: 24 },
   },
 } as const;
@@ -261,32 +260,36 @@ export function SessionShot() {
 
         <Layer z={60}>
           <Caption lines={FILM.session.caption} from={beat(T.caption)} font={g.caption.font} style={{ left: g.caption.left, top: g.caption.top }} />
-          {layout === "wide" ? (
-            <div style={{ position: "absolute", right: g.chips.right, top: g.chips.top, display: "flex", gap: 14 }}>
-              {FILM.session.chips.map((chip, index) => {
-                const t = ramp(frame, beat(T.chips + index * 0.5), beat(0.75));
-                return (
-                  <div
-                    key={chip}
-                    data-legible=""
-                    style={{
-                      height: 52,
-                      padding: "0 16px",
-                      display: "flex",
-                      alignItems: "center",
-                      border: "1px solid color-mix(in oklch, var(--foreground) 30%, transparent)",
-                      background: "var(--background)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 30,
-                      ...reveal(t),
-                    }}
-                  >
-                    <Label style={{ fontSize: 30, letterSpacing: 0, textTransform: "none", color: "var(--foreground)" }}>{chip}</Label>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
+          <div
+            style={{
+              position: "absolute",
+              display: "flex",
+              gap: 14,
+              ...(layout === "wide"
+                ? { right: g.chips.right, top: g.chips.top }
+                : { left: 90, top: 1120, flexDirection: "column", alignItems: "flex-start" }),
+            }}
+          >
+            {FILM.session.chips.map((chip, index) => (
+              <div
+                key={chip}
+                data-legible=""
+                style={{
+                  height: 52,
+                  padding: "0 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  border: "1px solid color-mix(in oklch, var(--foreground) 30%, transparent)",
+                  background: "var(--background)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 30,
+                  ...reveal(ramp(frame, beat(T.chips + index), beat(0.25))),
+                }}
+              >
+                {chip}
+              </div>
+            ))}
+          </div>
         </Layer>
       </Camera>
       <DitherWipe />

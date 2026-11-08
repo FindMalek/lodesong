@@ -28,7 +28,7 @@ interface Now {
 const TRACK_SECONDS = [FIXTURE.tracks[0][1], FIXTURE.tracks[1][1]] as const;
 
 const GEOM = {
-  wide: { win: { x: 168, y: 420, w: 1584, h: 560 }, cover: 112, font: 36, pad: 40, bar: 640, caption: { left: 168, top: 100, font: 120 } },
+  wide: { win: { x: 190, y: 430, w: 1540, h: 550 }, cover: 112, font: 36, pad: 40, bar: 640, caption: { left: 190, top: 110, font: 120 } },
   tall: { win: { x: 90, y: 560, w: 900, h: 760 }, cover: 120, font: 34, pad: 32, bar: 520, caption: { left: 90, top: 270, font: 120 } },
 } as const;
 
@@ -64,8 +64,8 @@ export function TerminalShot() {
           { at: TERMINAL.end, scale: 1.04, y: -10 },
         ]
       : [
-          { at: 0, scale: 1.0, ry: -3, x: -20 },
-          { at: TERMINAL.end, scale: 1.06, ry: 2, x: 20 },
+          { at: 0, scale: 1.0, ry: -3, x: -10 },
+          { at: TERMINAL.end, scale: 1.03, ry: 2, x: 10 },
         ],
   );
   const row = (now: Now, id: string, develop: number) => (
@@ -97,7 +97,7 @@ export function TerminalShot() {
             </div>
           </AbsoluteFill>
         </Layer>
-        <Layer z={80}>
+        <Layer z={0}>
           <Caption lines={FILM.terminal.caption} from={beat(TERMINAL.caption)} font={g.caption.font} style={{ left: g.caption.left, top: g.caption.top }} />
         </Layer>
         <Layer z={0}>

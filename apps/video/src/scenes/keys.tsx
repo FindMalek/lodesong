@@ -45,7 +45,7 @@ function Palette({ frame }: { frame: number }) {
         </div>
       </div>
       {FILM.keys.results.map((row, index) => {
-        const rise = ramp(frame, beat(KEYS.type + 0.5) + beat(0.25) * index, beat(0.75));
+        const rise = ramp(frame, beat(KEYS.type) + beat(0.25) * index, beat(0.75));
         const chosen = index === 0;
         const inverse = chosen ? flash : 0;
         return (

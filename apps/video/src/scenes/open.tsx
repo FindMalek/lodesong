@@ -11,7 +11,7 @@ import { DitherCover } from "../ui/dither-cover";
 import { LyricsCloseUp } from "../ui/lyrics-close-up";
 import { Lyrics, Main, PlayerBar, Sidebar, STAGE } from "../ui/player-panels";
 import { LABEL_FADE } from "./open-timeline";
-import { OPEN } from "./timelines";
+import { OPEN, type OpenTimeline } from "./timelines";
 
 const START_SECONDS = 71;
 const FOCUS_FROM = 2;
@@ -34,7 +34,6 @@ function fly(frame: number, spec: Fly) {
 
 const layer = { position: "absolute", inset: 0, transformStyle: "preserve-3d" } as const;
 
-type OpenTimeline = (typeof OPEN)[keyof typeof OPEN];
 
 /** The opening shot: the line, the lyrics close-up with the one gold moment, and (wide only) the pull back to the real app. */
 export function OpenShot({ tl }: { tl?: OpenTimeline }) {
@@ -48,7 +47,8 @@ export function OpenShot({ tl }: { tl?: OpenTimeline }) {
   const hasWide = !tall && T.cut < T.end;
   const inCloseUp = frame >= beat(T.chip) && frame < cut;
 
-  const focus = FOCUS_FROM + ramp(frame, beat(T.ignite), beat(0.5)) + ramp(frame, beat(T.advance), beat(0.5));
+  const scrolled = (T.scroll ?? []).reduce((sum, at) => sum + ramp(frame, beat(at), beat(0.5)), 0);
+  const focus = FOCUS_FROM + ramp(frame, beat(T.ignite), beat(0.5)) + ramp(frame, beat(T.advance), beat(0.5)) + scrolled;
   const ignite = ramp(frame, beat(T.ignite), beat(0.5));
   const pulse = ramp(frame, beat(T.ignite), beat(0.25)) - ramp(frame, beat(T.ignite) + beat(0.25), beat(1));
 
