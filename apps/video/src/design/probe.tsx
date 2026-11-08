@@ -23,13 +23,15 @@ const box = (element: Element): Box => {
 
 function opacityOf(element: HTMLElement): number {
   let value = 1;
-  for (let node: HTMLElement | null = element; node; node = node.parentElement) value *= Number(getComputedStyle(node).opacity);
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    if (!node.hasAttribute("data-blur-sample")) value *= Number(getComputedStyle(node).opacity);
+  }
   return value;
 }
 
 function measure(frame: number): Measure {
   const legible = [...document.querySelectorAll<HTMLElement>("[data-legible]")]
-    .filter((element) => opacityOf(element) >= 0.02)
+    .filter((element) => !element.closest("[aria-hidden]") && opacityOf(element) >= 0.02)
     .map((element) => ({
       text: element.textContent ?? "",
       px: Number.parseFloat(getComputedStyle(element).fontSize) * (element.getBoundingClientRect().height / element.offsetHeight),

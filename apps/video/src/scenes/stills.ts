@@ -15,6 +15,10 @@ export const STILLS: Record<string, StillPlan> = {
     frames: [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b),
     hero: HERO_FRAMES,
   },
+  "scene-lens-demo": {
+    frames: at(0.25, 1.75, 3.5, 5.5, 7.6, 8.5, 10.5, 11.2, 11.9),
+    hero: [],
+  },
   "scene-keys": { frames: at(0.5, 2, 3.5, 5, 7.5, 9.9), hero: at(3, 9.9) },
   "scene-mixes": { frames: at(1, 2.5, 3.5, 5.5, 7, 8.5, 9.9), hero: at(8, 9.9) },
   "scene-session": { frames: at(0.75, 2.5, 3.5, 5, 6, 7.5, 9.9), hero: at(5, 9.9) },

@@ -4,6 +4,7 @@ import { Composition } from "remotion";
 import { beat, FPS } from "./design/beat";
 import { Shell } from "./design/shell";
 import { Film, SHOTS } from "./scenes/film";
+import { LENS_DEMO_BEATS, LensDemo } from "./scenes/lens-demo";
 import { Loop } from "./scenes/loop";
 import { Open } from "./scenes/open";
 import { FRAMES } from "./scenes/open-timeline";
@@ -43,6 +44,7 @@ const COMPOSITIONS: { id: string; component: Scene; frames: number; size: { widt
   { id: "cutdown-vertical", component: cutdown, frames: frames(CUT_SHOTS), size: TALL },
   { id: "loop-readme", component: Loop, frames: beat(LOOP.end), size: WIDE },
   { id: "scene-open", component: Open, frames: FRAMES, size: WIDE },
+  { id: "scene-lens-demo", component: LensDemo, frames: beat(LENS_DEMO_BEATS), size: WIDE },
   ...Object.entries(SHOTS)
     .filter(([id]) => id !== "open")
     .map(([id, Shot]) => ({ id: `scene-${id}`, component: solo(Shot), frames: beats(id), size: WIDE })),
