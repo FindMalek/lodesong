@@ -21,8 +21,8 @@ export default defineConfig({
     { name: "chromium", testIgnore: /lighthouse|webkit/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "webkit", testMatch: WEBKIT_SPECS, use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } } },
     { name: "phone", testMatch: PHONE_SPECS, use: { ...devices["iPhone 14"] } },
-    // Alone and last: a busy CPU from parallel tests would skew the score.
-    { name: "lighthouse", testMatch: /lighthouse/, dependencies: ["chromium"] },
+    // Alone and last, and one profile at a time: a busy CPU from parallel tests would skew the score.
+    { name: "lighthouse", testMatch: /lighthouse/, dependencies: ["chromium"], fullyParallel: false },
   ],
   webServer: [
     {

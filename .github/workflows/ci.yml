@@ -144,7 +144,7 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       # One artifact per release: first-screen size and the Lighthouse desktop and mobile numbers.
       - run: SIZE_REPORT=perf-trend/size.json bun run size
-      - run: bun run e2e --project=lighthouse --no-deps
+      - run: bun run e2e --project=lighthouse --no-deps --workers=1
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
