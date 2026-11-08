@@ -43,3 +43,18 @@ test("AUDIOMUSE_URL is optional and must be a URL", () => {
   expect(readConfig({ AUDIOMUSE_URL: "http://audiomuse:8000/" }).config.audiomuseUrl).toBe("http://audiomuse:8000");
   expect(readConfig({ AUDIOMUSE_URL: "audiomuse" }).errors.map((error) => error.split(" ")[0])).toEqual(["AUDIOMUSE_URL"]);
 });
+
+test("PUBLIC_URL loses a trailing slash, and a value that passes a regex but is not an origin is an error", () => {
+  expect(readConfig({ PUBLIC_URL: "https://tunes.example/" }).config.publicUrl).toBe("https://tunes.example");
+  expect(readConfig({}).config.publicUrl).toBeNull();
+  for (const bad of ["https://x.example:99999", "http://[::1", "https://user:pw@evil.example", "https://x.example/app"]) {
+    const { errors } = readConfig({ PUBLIC_URL: bad });
+    expect(errors.map((error) => error.split(" ")[0])).toEqual(["PUBLIC_URL"]);
+  }
+});
+
+test("SHARE_PURGE is off unless asked for", () => {
+  expect(readConfig({}).config.purgeShares).toBe(false);
+  expect(readConfig({ SHARE_PURGE: "on" }).config.purgeShares).toBe(true);
+  expect(readConfig({ SHARE_PURGE: "yes" }).errors.map((error) => error.split(" ")[0])).toEqual(["SHARE_PURGE"]);
+});

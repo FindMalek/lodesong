@@ -37,4 +37,5 @@ boot with a message naming the variable.
 | `REDIS_URL` | — | `redis://…`: keep computed answers (made for you) in Redis, shared by several instances. Unset: in memory, which is all one instance needs. |
 | `TRUST_PROXY` | `false` | `true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits). |
 | `PUBLIC_URL` | — | The address people reach the player at, e.g. `https://music.example.com`. Link previews (`og:image`, `og:url`) point there. Unset: taken from the request, and from the proxy's `X-Forwarded-*` headers when `TRUST_PROXY` is on. |
+| `SHARE_PURGE` | `off` | `on` deletes every shared link at start, e.g. after an owner's account is removed. Turn it off again after one restart. |
 | `UPDATE_CHECK` | `off` | `on`: admins see when a newer release is out (one request to GitHub a day). The other outside calls are lyrics lookups (`LRCLIB_URL`), new releases (`MUSICBRAINZ_URL`) and Groq when `GROQ_API_KEY` is set. |

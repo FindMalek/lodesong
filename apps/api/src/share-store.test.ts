@@ -96,8 +96,85 @@ test("a row that does not hold a valid card reads as no share instead of throwin
     ["long", JSON.stringify({ ...card("A"), title: "x".repeat(500) })],
     ["bad-cover", JSON.stringify({ ...card("A"), covers: ["../x"] })],
   ] as const) {
-    db.run("insert into shared_cards values (?, 'home', 'alice', 'album', ?, ?, 0, 99999)", [id, id, json]);
+    db.run(
+      "insert into shared_cards (id, server, account, kind, item, card, created, expires) values (?, 'home', 'alice', 'album', ?, ?, 0, 99999)",
+      [id, id, json],
+    );
     expect(cards.find(id)).toBeNull();
   }
+  expect(cards.list(alice)).toHaveLength(0);
+});
+
+test("accounts are matched however the name was typed", () => {
+  const { cards } = store();
+  const id = cards.save({ server: "home", user: "Alice " }, "album", "al-1", card("A"))?.id ?? "";
+  expect(cards.save({ server: "home", user: "ALICE" }, "album", "al-1", card("B"))?.id).toBe(id);
+  expect(cards.list({ server: "home", user: "aLiCe" })).toHaveLength(1);
+  expect(cards.remove({ server: "home", user: "ALICE" }, id)).toBe(true);
+});
+
+test("expired rows are gone as soon as the store opens", () => {
+  const db = openLibraryDb(":memory:");
+  new SharedCards(db, () => 1000, 10_000).save(alice, "album", "al-1", card("A"));
+  new SharedCards(db, () => 50_000, 10_000);
+  expect(db.query("select count(*) as n from shared_cards").get()).toEqual({ n: 0 });
+});
+
+test("a share keeps its art until it is shared again, removed or expired", () => {
+  let now = 1000;
+  const { cards, db } = store(() => now, 10_000);
+  const id = cards.save(alice, "album", "al-1", card("A"), new Map([["c-1", new Uint8Array([1, 2, 3])]]))?.id ?? "";
+  expect([...(cards.art(id).get("c-1") ?? [])]).toEqual([1, 2, 3]);
+  cards.save(alice, "album", "al-1", card("A"), new Map([["c-2", new Uint8Array([4])]]));
+  expect([...cards.art(id).keys()]).toEqual(["c-2"]);
+  cards.remove(alice, id);
+  expect(db.query("select count(*) as n from shared_art").get()).toEqual({ n: 0 });
+  const later = cards.save(alice, "album", "al-2", card("B"), new Map([["c-1", new Uint8Array([1])]]))?.id ?? "";
+  now = 99_000;
+  cards.purge();
+  expect(cards.art(later).size).toBe(0);
+});
+
+test("shares whose owner has had no login for the grace period are dropped, and a login in between saves them", () => {
+  let now = 0;
+  const { cards } = store(() => now, 1_000_000_000);
+  const first = cards.save(alice, "album", "al-1", card("A"))?.id ?? "";
+  const other = cards.save(bob, "album", "al-1", card("B"))?.id ?? "";
+  const live = new Set(["bob"]);
+  const check = () => cards.retire((owner) => live.has(owner.user), 1000);
+  expect(check()).toBe(0);
+  now = 1000;
+  expect(check()).toBe(0);
+  live.add("alice");
+  now = 1500;
+  expect(check()).toBe(0);
+  live.delete("alice");
+  now = 1600;
+  expect(check()).toBe(0);
+  now = 2600;
+  expect(check()).toBe(0);
+  now = 2601;
+  expect(check()).toBe(1);
+  expect(cards.find(first)).toBeNull();
+  expect(cards.find(other)).not.toBeNull();
+});
+
+test("when the signing key changes every old share goes, and the same key keeps them", () => {
+  const { cards } = store();
+  expect(cards.adopt("one")).toBe(0);
+  const id = cards.save(alice, "album", "al-1", card("A"), new Map([["c-1", new Uint8Array([1])]]))?.id ?? "";
+  expect(cards.adopt("one")).toBe(0);
+  expect(cards.find(id)).not.toBeNull();
+  expect(cards.adopt("two")).toBe(1);
+  expect(cards.find(id)).toBeNull();
+  expect(cards.art(id).size).toBe(0);
+  expect(cards.adopt("two")).toBe(0);
+});
+
+test("clear removes every share", () => {
+  const { cards } = store();
+  cards.save(alice, "album", "al-1", card("A"));
+  cards.save(bob, "album", "al-1", card("A"));
+  expect(cards.clear()).toBe(2);
   expect(cards.list(alice)).toHaveLength(0);
 });

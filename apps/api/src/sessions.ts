@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { accountName } from "./account-name";
 
 export interface Session {
   id: string;
@@ -132,10 +133,9 @@ export class SessionStore {
   /** The Navidrome login of the account's most recently used browser, if one is still signed in. */
   credentials(server: string, user: string): { user: string; token: string; salt: string } | null {
     const row = this.db
-      .query<RowData, [string, string, number]>(
-        "select * from sessions where server = ? and user = ? and seen > ? order by seen desc limit 1",
-      )
-      .get(server, user, this.now() - this.idleMs);
+      .query<RowData, [string, number]>("select * from sessions where server = ? and seen > ? order by seen desc")
+      .all(server, this.now() - this.idleMs)
+      .find((item) => accountName(item.user) === accountName(user));
     const secret = row && this.open(row.secret);
     if (!row || !secret) return null;
     const { token, salt } = JSON.parse(secret) as { token: string; salt: string };

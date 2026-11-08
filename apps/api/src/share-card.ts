@@ -94,4 +94,7 @@ export function textOf(card: CardData): { title: string; description: string } {
   return { title: card.title, description: join(card.kind, card.subtitle, card.stats) };
 }
 
+/** Pixels to ask for each cover: a mosaic shows four small ones, otherwise one large. */
+export const coverSize = (card: CardData): number => (card.covers.length > 1 ? 256 : 512);
+
 export const GENERIC_TEXT = { title: "lodesong", description: "a self-hosted music player. sign in to open this link." };

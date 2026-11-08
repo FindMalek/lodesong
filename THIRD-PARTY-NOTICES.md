@@ -387,6 +387,45 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   defined by the Mozilla Public License, v. 2.0.
 ```
 
+## Packages bundled inside satori: MIT, and Apache-2.0 for two files
+
+satori embeds the packages below (the layout engine is Yoga, compiled to `layout.wasm`). They are used unmodified, as
+published on npm, and each is MIT licensed:
+
+- Yoga layout (https://github.com/facebook/yoga): Copyright (c) Meta Platforms, Inc. and affiliates
+- @shuding/opentype.js 1.4.0-beta.0: Copyright (c) 2020 Frederik De Bleser
+- harfbuzzjs 0.10.0: Copyright (c) 2019 Ebrahim Byagowi
+- linebreak 1.1.0: Copyright (c) 2014-present Devon Govett
+- fflate 0.7.3: Copyright (c) 2020 Arjun Barrett
+- css-background-parser 0.1.0: Copyright (c) 2015 Gilmore Davidson
+- css-box-shadow 1.0.0-3: Copyright (c) Brent Jackson
+- css-gradient-parser 0.0.17: Copyright (c) 2023 Lynnnnnnxx
+- css-to-react-native 3.2.0: Copyright (c) 2016 Jacob Parker and Maximilian Stoiber
+- emoji-regex-xs 2.0.1: Copyright (c) 2025 Steven Levithan
+- escape-html 1.0.3: Copyright (c) 2012-2013 TJ Holowaychuk, (c) 2015 Andreas Lubbe, (c) 2015 Tiancheng "Timothy" Gu
+- parse-css-color 0.2.1: Copyright (c) Noel Delgado
+- postcss-value-parser 4.2.0: Copyright (c) Bogdan Chadkin
+
+harfbuzzjs also contains two files under the Apache License 2.0 (`zephyr-string.c` from the Zephyr project and
+`emmalloc.cpp` from Emscripten); the licence text is at https://www.apache.org/licenses/LICENSE-2.0.
+
+```text
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ## IBM Plex Sans and JetBrains Mono: SIL Open Font License 1.1
 
 The card fonts are the static `woff` files of `@fontsource/ibm-plex-sans` (5.3.0) and

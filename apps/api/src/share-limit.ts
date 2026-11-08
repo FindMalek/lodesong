@@ -14,7 +14,7 @@ export class RateLimit {
     const recent = (this.hits.get(key) ?? []).filter((at) => time - at < this.windowMs);
     if (recent.length >= this.max) {
       this.hits.set(key, recent);
-      return Math.max(1, Math.ceil(((recent[0] ?? time) + this.windowMs - time) / 1000));
+      return Math.ceil(((recent[0] ?? time) + this.windowMs - time) / 1000);
     }
     recent.push(time);
     this.hits.set(key, recent);

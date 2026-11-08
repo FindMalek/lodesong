@@ -57,3 +57,11 @@ test("a page address is logged without its query or fragment, which can hold a s
     "csp violation: script-src blocked inline on https://x/song/2",
   ]);
 });
+
+test("a fragment, a query or a line break cannot carry a token into the log", async () => {
+  const lines: string[] = [];
+  const report = createCspReporter((line) => lines.push(line));
+  for (const page of ["https://x/a#SECRET", "https://x/a?s=SECRET", "https://x/a?s=SE\nCRET", "https://x/a#f?q=SECRET"])
+    await report(post({ "csp-report": { "violated-directive": "img-src", "blocked-uri": "inline", "document-uri": page } }));
+  expect(lines).toEqual(Array(4).fill("csp violation: img-src blocked inline on https://x/a"));
+});

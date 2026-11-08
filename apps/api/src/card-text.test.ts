@@ -40,3 +40,17 @@ test("the card's colours are the player's dark theme tokens", async () => {
   expect(palette.MUTED).toBe(token("muted-foreground"));
   expect(palette.LINE).toBe(token("border"));
 });
+
+test("joiners stay inside emoji sequences and Persian words, and go everywhere else", () => {
+  const family = "👨\u200d👩\u200d👧";
+  expect(clean(family, 50)).toBe(family);
+  expect(clean("می\u200cخواهم", 50)).toBe("می\u200cخواهم");
+  expect(clean("\u200dab\u200d \u200c\u200cc\u200d", 50)).toBe("ab c");
+  expect(clean("a\u200bb\u202ec", 50)).toBe("a b c");
+});
+
+test("a joiner left over from a dropped emoji or an unsupported word draws nothing", async () => {
+  const has = await covered();
+  expect(drawable("Fam 👨\u200d👩 Mix", has)).toBe("Fam Mix");
+  expect(drawable("a\u200cb", has)).toBe("ab");
+});

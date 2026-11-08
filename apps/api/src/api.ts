@@ -6,6 +6,7 @@ import type { LyricsCoverage } from "@lodesong/shared/lyrics";
 import type { LyricsSearch } from "@lodesong/shared/search";
 import { readTrack } from "@lodesong/shared/spotify-import";
 import type { Server } from "bun";
+import { accountName } from "./account-name";
 import { askGroq, buildPlaylist, libraryArtists } from "./ai-playlist";
 import type { ArtistGenres } from "./artist-genres";
 import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
@@ -30,6 +31,7 @@ import { ShareCards, type ShareKind } from "./og";
 import { originOf } from "./origin-of";
 import { folderCover, forgetPlaylist } from "./playlist-folders";
 import type { LoginLimiter } from "./rate-limit";
+import { readCapped } from "./read-capped";
 import type { ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
 import { createRpc, accountOf as dataAccount } from "./rpc";
@@ -49,6 +51,10 @@ const API_AGENT = "api token";
 /** Requests that change or read data must carry this header. Cross-site pages can't set it without a CORS preflight. */
 const CSRF_HEADER = "x-lodesong";
 const SHARE_RATE = 30;
+const IMAGE_RATE_ACCOUNT = 60;
+const IMAGE_RATE_IP = 120;
+const SHARE_BODY_MAX = 4096;
+const SHARE_ORPHAN_MS = 30 * 86_400_000;
 const CLIENT_HEADER = "x-keep-client";
 
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
@@ -169,6 +175,7 @@ export interface ApiOptions {
   shareSecret?: string;
   publicUrl?: string | null;
   shareMax?: number;
+  purgeShares?: boolean;
 }
 
 interface ListenSocketData {
@@ -221,13 +228,19 @@ export function createApi({
   shareSecret = randomBytes(32).toString("hex"),
   publicUrl = null,
   shareMax,
+  purgeShares = false,
 }: ApiOptions) {
   const shareCards = new SharedCards(library, Date.now, SHARE_LIFE_MS, shareMax);
   const shareRate = new RateLimit(SHARE_RATE, 60_000);
+  const imageRate = new RateLimit(IMAGE_RATE_ACCOUNT, 60_000);
+  const imageRateIp = new RateLimit(IMAGE_RATE_IP, 60_000);
+  const tokens = new ShareTokens(shareSecret);
+  if (purgeShares) shareCards.clear();
+  shareCards.adopt(tokens.fingerprint());
   const shares = new ShareCards({
     upstreams,
     covers,
-    tokens: new ShareTokens(shareSecret),
+    tokens,
     cards: shareCards,
     origin: (request) => originOf(request, { publicUrl, trustProxy }),
     credentials: (server, user) => sessions.credentials(server, user),
@@ -471,16 +484,25 @@ export function createApi({
   }
 
   /** `/og/<kind>/<id>.jpg`: the card image, under the same rule as the tags. */
-  async function ogImage(request: Request & { params: { kind: string; file: string } }): Promise<Response> {
+  async function ogImage(request: Request & { params: { kind: string; file: string } }, server?: Server<unknown>): Promise<Response> {
     const kind = SHARE_KINDS.find((item) => item === request.params.kind);
     const id = request.params.file.endsWith(".jpg") ? request.params.file.slice(0, -4) : "";
     if (!kind || !id) return json({ error: "not found" }, 404);
-    return shares.image(request, kind, id, accessOf(request));
+    const access = accessOf(request);
+    const waits = [imageRateIp.take(`ip:${server ? clientIp(request, server) : "unknown"}`)];
+    if (access) waits.push(imageRate.take(`${access.session.server}:${accountName(access.session.user)}`));
+    const wait = Math.max(...waits);
+    if (wait) return json({ error: "too many card requests, try again soon" }, 429, { "retry-after": String(wait) });
+    return shares.image(request, kind, id, access);
   }
 
   const genericCard = (request: Request) => shares.image(request, "album", "", null);
 
-  const ownerOf = (access: { session: Session }) => ({ server: access.session.server, user: access.session.user });
+  const ownerOf = (access: { session: Session }) => ({ server: access.session.server, user: accountName(access.session.user) });
+
+  function retireShares(): number {
+    return shareCards.retire((owner) => sessions.credentials(owner.server, owner.user) !== null, SHARE_ORPHAN_MS);
+  }
 
   /** A signed link for one item the caller can see. It lets the holder see that item's card, nothing else. */
   async function shareCreate(request: Request): Promise<Response> {
@@ -488,9 +510,17 @@ export function createApi({
     if (publicDemo) return json({ error: "not in the public demo" }, 403);
     const access = accessOf(request);
     if (!access) return json({ error: "signed out" }, 401);
-    const wait = shareRate.take(`${access.session.server}:${access.session.user}`);
+    const wait = shareRate.take(`${access.session.server}:${accountName(access.session.user)}`);
     if (wait) return json({ error: "too many share links, try again soon" }, 429, { "retry-after": String(wait) });
-    const body = (await request.json().catch(() => null)) as { kind?: unknown; id?: unknown } | null;
+    const text = await readCapped(request, SHARE_BODY_MAX);
+    if (text === null) return json({ error: "too large" }, 413);
+    const body = (() => {
+      try {
+        return JSON.parse(text) as { kind?: unknown; id?: unknown } | null;
+      } catch {
+        return null;
+      }
+    })();
     const kind = SHARE_KINDS.find((item) => item === body?.kind);
     if (!kind || typeof body?.id !== "string") return json({ error: "bad request" }, 400);
     const created = await shares.create(access, kind, body.id);
@@ -501,6 +531,7 @@ export function createApi({
 
   /** What this account shares right now: no tokens, just enough to name each link and stop it. */
   function shareList(request: Request): Response {
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
     const access = accessOf(request);
     if (!access) return json({ error: "signed out" }, 401);
     const items = shareCards.list(ownerOf(access)).map(({ id, kind, item, card, created, expires }) => ({
@@ -531,7 +562,7 @@ export function createApi({
     const size = snapCoverSize(Number(request.params.size) || 256);
     const started = performance.now();
     const path = await covers.get(
-      `${upstream.id}:${request.params.id}`,
+      `${upstream.id}:${accountName(session.user)}:${request.params.id}`,
       size,
       (id, wanted) => {
         const query = upstreamQuery(session);
@@ -1061,6 +1092,8 @@ export function createApi({
     proxy,
     cover,
     shareHead,
+    warmCards: () => shares.warm(),
+    retireShares,
     ogImage,
     genericCard,
     shareCreate,

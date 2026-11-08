@@ -24,3 +24,12 @@ test("background jobs borrow only an admin's session", () => {
   store.create({ server: "default", user: "boss", token: "b", salt: "b", agent: "", admin: true });
   expect(store.adminCredentials("default")).toMatchObject({ user: "boss", token: "b" });
 });
+
+test("an account's login is found whatever case the name was typed in", () => {
+  const sessions = new SessionStore(":memory:", "secret", 60_000);
+  sessions.create({ server: "home", user: "Alice", token: "t", salt: "s", agent: "", admin: false });
+  expect(sessions.credentials("home", "alice")).toEqual({ user: "Alice", token: "t", salt: "s" });
+  expect(sessions.credentials("home", " ALICE")?.user).toBe("Alice");
+  expect(sessions.credentials("away", "alice")).toBeNull();
+  expect(sessions.credentials("home", "bob")).toBeNull();
+});

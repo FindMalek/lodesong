@@ -91,6 +91,7 @@ const api = createApi({
   sessions,
   shareSecret: config.sessionSecret,
   publicUrl: config.publicUrl,
+  purgeShares: config.purgeShares,
   limiter: new LoginLimiter(),
   idleSeconds,
   trustProxy: config.trustProxy,
@@ -187,5 +188,16 @@ const server = Bun.serve({
     ...webRoutes,
   }),
 });
+
+if (config.purgeShares) console.warn("SHARE_PURGE is on: every shared link was deleted. Turn it off again.");
+if (process.env.NODE_ENV === "production" && !config.publicUrl)
+  console.warn("PUBLIC_URL is not set: link previews point at whatever address each request arrived on. Set it to your public address.");
+void api.warmCards().catch(() => undefined);
+const retire = () => {
+  const dropped = api.retireShares();
+  if (dropped) console.log(`dropped ${dropped} shared link${dropped === 1 ? "" : "s"} whose owner stopped signing in`);
+};
+retire();
+setInterval(retire, 3_600_000).unref();
 
 console.log(`lodesong ${VERSION} on :${server.port} → ${config.upstreams.map((upstream) => `${upstream.id} ${upstream.url}`).join(", ")}`);

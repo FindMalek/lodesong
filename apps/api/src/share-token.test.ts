@@ -53,3 +53,10 @@ test("an image token cannot be turned into a page token", () => {
   expect(tokens.verify(image, "album", "al-1", "page")).toBeNull();
   expect(tokens.verify(tokens.sign("album", "al-1", SHARE), "album", "al-1", "image")).toBe(SHARE);
 });
+
+test("the fingerprint follows the secret and never contains it", () => {
+  expect(tokens.fingerprint()).toBe(new ShareTokens("secret").fingerprint());
+  expect(tokens.fingerprint()).not.toBe(new ShareTokens("other").fingerprint());
+  expect(tokens.fingerprint()).not.toContain("secret");
+  expect(tokens.fingerprint()).toHaveLength(16);
+});

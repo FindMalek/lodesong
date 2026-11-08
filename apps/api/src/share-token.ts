@@ -26,6 +26,11 @@ export class ShareTokens {
     return createHmac("sha256", this.key).update(`${scope}\n${kind}\n${id}\n${share}\n${expires}`).digest().subarray(0, 18);
   }
 
+  /** Changes whenever the secret does, without revealing it. */
+  fingerprint(): string {
+    return createHmac("sha256", this.key).update("fingerprint").digest("base64url").slice(0, 16);
+  }
+
   sign(kind: ShareKind, id: string, share: string, scope: Scope = "page"): string {
     const expires = Math.floor((this.now() + this.lifeMs) / 1000).toString(36);
     return `${share}.${expires}.${this.mac(scope, kind, id, share, expires).toString("base64url")}`;

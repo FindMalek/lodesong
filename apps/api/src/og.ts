@@ -1,9 +1,10 @@
+import { accountName } from "./account-name";
 import { Busy, CardImages, type Drawn, pictureUri, rasterize } from "./card-image";
 import { cardSvg } from "./card-svg";
 import { clean } from "./card-text";
 import type { Upstream } from "./config";
 import type { CoverCache } from "./covers";
-import { type CardData, cardOf, type Entity, GENERIC_TEXT, ID, textOf } from "./share-card";
+import { type CardData, cardOf, coverSize, type Entity, GENERIC_TEXT, ID, textOf } from "./share-card";
 import type { SharedCards } from "./share-store";
 import type { ShareKind, ShareTokens } from "./share-token";
 import { type Credentials, subsonic, upstreamQuery } from "./subsonic";
@@ -22,6 +23,10 @@ export type Created = { path: string; share: string } | "missing" | "full";
 const ENDPOINT = { album: "getAlbum", artist: "getArtist", playlist: "getPlaylist", song: "getSong" } as const;
 // The page waits on this lookup, so a slow Navidrome must not hold up the app.
 const LOOKUP_MS = 2000;
+const FETCH_MS = 8000;
+// A share keeps its own copy of the art so it still draws once the owner's login is gone; these bound what that costs.
+const ART_FETCH_MS = 4000;
+const ART_MAX_BYTES = 150_000;
 const ONE_DAY = "public, max-age=86400";
 const ONE_HOUR = "public, max-age=3600";
 
@@ -74,19 +79,19 @@ export class ShareCards {
     return entity ? cardOf(kind, entity) : null;
   }
 
-  private loader(server: string, access: Access | null): Loader {
+  private loader(server: string, account: string, access: Access | null, art: ReadonlyMap<string, Uint8Array>, timeoutMs: number): Loader {
     return async (cover, size) => {
+      const kept = art.get(cover);
+      if (kept) return kept;
       const path = await this.options.covers.get(
-        `${server}:${cover}`,
+        `${server}:${account}:${cover}`,
         size,
         async (id, wanted) => {
           if (!access) return null;
           const query = upstreamQuery(access.session);
           query.set("id", id);
           query.set("size", String(wanted));
-          return fetch(`${access.upstream.url}/rest/getCoverArt?${query}`, { signal: AbortSignal.timeout(LOOKUP_MS * 4) }).catch(
-            () => null,
-          );
+          return fetch(`${access.upstream.url}/rest/getCoverArt?${query}`, { signal: AbortSignal.timeout(timeoutMs) }).catch(() => null);
         },
         cover,
       );
@@ -94,14 +99,23 @@ export class ShareCards {
     };
   }
 
-  private async draw(card: CardData | null, load: Loader): Promise<Drawn> {
-    const size = (card?.covers.length ?? 0) > 1 ? 256 : 512;
-    const found = await Promise.all((card?.covers ?? []).map((cover) => load(cover, size)));
+  private async draw(card: CardData, load: Loader): Promise<Drawn> {
+    const size = coverSize(card);
+    const found = await Promise.all(card.covers.map((cover) => load(cover, size)));
     const covers = found.filter((bytes): bytes is Uint8Array => !!bytes);
     const images = (await Promise.all(covers.map((bytes) => pictureUri(bytes)))).filter((uri): uri is string => !!uri);
     const backdrop = covers[0] ? await pictureUri(covers[0], 5) : null;
     const bytes = await rasterize(await cardSvg(card, images, backdrop ?? undefined));
-    return { bytes, complete: images.length === (card?.covers.length ?? 0) };
+    return { bytes, complete: images.length === card.covers.length };
+  }
+
+  /** The card for anyone without a link: drawn once and always served, whatever the queue is doing. */
+  private generic(): Promise<Uint8Array> {
+    return this.images.pinned(async () => rasterize(await cardSvg(null, [])));
+  }
+
+  warm(): Promise<unknown> {
+    return this.generic();
   }
 
   private shared(request: Request, kind: ShareKind, id: string, scope: "page" | "image") {
@@ -128,12 +142,12 @@ export class ShareCards {
   async image(request: Request, kind: ShareKind, id: string, access: Access | null): Promise<Response> {
     let card: CardData | null = null;
     let server = "";
-    let load: Loader = this.loader("", null);
+    let load: Loader | null = null;
     let cache = ONE_DAY;
     if (access) {
       card = await this.lookup(kind, id, access);
       server = access.upstream.id;
-      load = this.loader(server, access);
+      load = this.loader(server, accountName(access.session.user), access, new Map(), FETCH_MS);
       cache = "private, max-age=300";
     } else {
       const shared = this.shared(request, kind, id, "image");
@@ -142,15 +156,28 @@ export class ShareCards {
         const session = this.options.credentials(shared.server, shared.user);
         card = shared.card;
         server = shared.server;
-        load = this.loader(server, upstream && session ? { upstream, session } : null);
+        load = this.loader(
+          server,
+          shared.user,
+          upstream && session ? { upstream, session } : null,
+          this.options.cards.art(shared.id),
+          FETCH_MS,
+        );
         cache = ONE_HOUR;
       }
     }
     const headers = { "content-type": "image/jpeg", vary: "cookie", "x-content-type-options": "nosniff" };
+    if (!card || !load)
+      return new Response((await this.generic()) as Uint8Array<ArrayBuffer>, { headers: { ...headers, "cache-control": cache } });
+    const loadCovers = load;
     try {
-      const drawn = await this.images.get(card ? `${server}\n${JSON.stringify(card)}` : "generic", () => this.draw(card, load));
+      const drawn = await this.images.get(
+        `${server}
+${JSON.stringify(card)}`,
+        () => this.draw(card, loadCovers),
+      );
       return new Response(drawn.bytes as Uint8Array<ArrayBuffer>, {
-        headers: { ...headers, "cache-control": drawn.complete ? cache : "private, no-store" },
+        headers: { ...headers, "cache-control": drawn.complete ? cache : "private, max-age=60" },
       });
     } catch (error) {
       if (!(error instanceof Busy)) throw error;
@@ -161,7 +188,16 @@ export class ShareCards {
   async create(access: Access, kind: ShareKind, id: string): Promise<Created> {
     const card = await this.lookup(kind, id, access);
     if (!card) return "missing";
-    const saved = this.options.cards.save({ server: access.upstream.id, user: access.session.user }, kind, id, card);
+    const load = this.loader(access.upstream.id, accountName(access.session.user), access, new Map(), ART_FETCH_MS);
+    const size = coverSize(card);
+    const art = new Map<string, Uint8Array>();
+    await Promise.all(
+      card.covers.map(async (cover) => {
+        const bytes = await load(cover, size).catch(() => null);
+        if (bytes && bytes.length <= ART_MAX_BYTES) art.set(cover, bytes);
+      }),
+    );
+    const saved = this.options.cards.save({ server: access.upstream.id, user: access.session.user }, kind, id, card, art);
     if (!saved) return "full";
     return { share: saved.id, path: `/${kind}/${encodeURIComponent(id)}?s=${this.options.tokens.sign(kind, id, saved.id)}` };
   }

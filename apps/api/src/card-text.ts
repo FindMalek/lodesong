@@ -1,10 +1,12 @@
-const HIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
-const DECORATION = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{M}]/u;
+const SHAPES = "\\p{L}\\p{M}\\p{Extended_Pictographic}\\p{Emoji_Modifier}";
+const STRAY_JOINER = new RegExp(`(?<![${SHAPES}])[\\u200c\\u200d]|[\\u200c\\u200d](?![${SHAPES}])`, "gu");
+const HIDDEN = /[\p{Cc}\p{Zl}\p{Zp}]|(?![\u200c\u200d])\p{Cf}/gu;
+const DECORATION = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{M}\u200c\u200d]/u;
 const LETTER = /[\p{L}\p{N}]/u;
 
 /** Text from the library as shown anywhere outside the app: composed, no control or bidi characters, one line, capped. */
 export function clean(text: string, max: number): string {
-  const flat = text.toWellFormed().normalize("NFC").replace(HIDDEN, " ").replace(/\s+/g, " ").trim();
+  const flat = text.toWellFormed().normalize("NFC").replace(STRAY_JOINER, "").replace(HIDDEN, " ").replace(/\s+/g, " ").trim();
   const chars = [...flat];
   return chars.length > max
     ? `${chars

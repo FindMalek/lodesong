@@ -11,6 +11,8 @@ import plexVietnamese600 from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-vie
 import monoLatin500 from "@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff" with { type: "file" };
 import monoLatinExt500 from "@fontsource/jetbrains-mono/files/jetbrains-mono-latin-ext-500-normal.woff" with { type: "file" };
 import { glyphsOf } from "./font-cmap";
+import { memoAsync } from "./memo-async";
+
 export interface CardFont {
   name: string;
   data: ArrayBuffer;
@@ -37,16 +39,14 @@ const FILES: [string, 400 | 500 | 600, string][] = [
 export const SANS = "Plex, PlexExt, PlexVietnamese, PlexGreek, PlexCyrillic";
 export const MONO = "Mono, MonoExt";
 
-let loaded: Promise<CardFont[]> | undefined;
 let known: Set<number> | undefined;
 
 /** The OFL fonts the app uses, embedded in the executable. */
-export function cardFonts(): Promise<CardFont[]> {
-  loaded ??= Promise.all(
+export const cardFonts: () => Promise<CardFont[]> = memoAsync(() =>
+  Promise.all(
     FILES.map(async ([name, weight, path]) => ({ name, weight, style: "normal" as const, data: await Bun.file(path).arrayBuffer() })),
-  );
-  return loaded;
-}
+  ),
+);
 
 /** Code points both weights of the sans faces can draw, read from the fonts so the list cannot drift from them. */
 export async function covered(): Promise<(code: number) => boolean> {

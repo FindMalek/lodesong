@@ -30,8 +30,9 @@ URL that has `/rest/ping` under it.
   shows the generic card. Copy the link again if it was stopped or is older than 180 days.
 - The image address comes from `PUBLIC_URL`, or from the request when that is unset. Behind a reverse proxy set
   `PUBLIC_URL`, or `TRUST_PROXY=true` with the proxy passing `Host` or `X-Forwarded-Host` and `X-Forwarded-Proto`.
-- Titles in scripts the bundled fonts lack (CJK, Arabic, Hebrew, Thai) show as `…` on the card; the preview text above
-  the card keeps the real name.
+- Titles in scripts the bundled fonts lack (CJK, Arabic, Hebrew, Thai) can't be drawn on the card: it uses the artist
+  (or the first part of the subtitle it can draw) as the headline, or just the kind if nothing is drawable. The preview
+  text above the card keeps the real name.
 - Chat apps cache previews; a changed card can take a while to show.
 
 ## Songs start slowly or skip

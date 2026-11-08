@@ -71,7 +71,9 @@ test("copy share link: the link shows the song to a crawler, a changed one shows
   expect(image.headers()["content-type"]).toBe("image/jpeg");
   expect(size(await image.body())).toEqual([1200, 630]);
 
-  const tampered = await (await crawler.get(`${link.pathname}?s=${(link.searchParams.get("s") as string).slice(0, -2)}xx`)).text();
+  const token = link.searchParams.get("s") as string;
+  const flipped = `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`;
+  const tampered = await (await crawler.get(`${link.pathname}?s=${flipped}`)).text();
   expect(content(tampered, "og:title")).toBe("lodesong");
   await crawler.dispose();
 });
@@ -141,4 +143,22 @@ test("without a clipboard the link is shown to copy by hand, and a refusal says 
   await page.getByRole("row").nth(1).click({ button: "right" });
   await page.getByRole("menu").getByRole("menuitem", { name: "copy share link" }).click();
   await expect(page.getByText("too many share links, try again soon")).toBeVisible();
+});
+
+test("a shared links list that fails to load says so and can be retried", async ({ page, signedIn }) => {
+  await signedIn.goto("/settings/account");
+  let failing = true;
+  await page.route("**/api/share", (route) =>
+    failing && route.request().method() === "GET" ? route.fulfill({ status: 500 }) : route.fallback(),
+  );
+  await page
+    .getByText("links you copied from an item")
+    .locator("xpath=ancestor::div[.//button][1]")
+    .getByRole("button", { name: "manage" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "shared links" });
+  await expect(dialog.getByRole("alert")).toContainText("couldn't load");
+  failing = false;
+  await dialog.getByRole("button", { name: "try again" }).click();
+  await expect(dialog.getByRole("alert")).toBeHidden();
 });
