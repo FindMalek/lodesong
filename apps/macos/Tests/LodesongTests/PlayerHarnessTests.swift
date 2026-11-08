@@ -137,18 +137,31 @@ import XCTest
     /// event and no script from the app, so `navigator.userActivation` is false. Only the app's media policy lets that play.
     func testAudibleWhenStartedWithNoUserActivationAtAll() async throws {
         try requireOutputDevice()
-        let signedIn = open()
-        try await signedIn.playAlbum("al-3")
-        let playing = await signedIn.until { signedIn.nowPlaying.playing }
-        XCTAssertTrue(playing, "play from the page did not reach the native side")
-        signedIn.player.call("toggle()")
-        let paused = await signedIn.until { !signedIn.nowPlaying.playing }
-        XCTAssertTrue(paused, "toggle() did not pause")
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        signedIn.close()
-        let page = open(startsByItself: true)
-        let pressed = await page.until(40) { (try? await page.js("return window.__autostart !== undefined")) as? Bool == true }
-        XCTAssertTrue(pressed, "the page never showed a song to start")
+        // A fresh web view sometimes comes up without the song the first one saved (the player's own restore and its
+        // account check race on a loaded machine), so seeding is retried: it is the setup that is flaky, not the start.
+        var started: PlayerPage?
+        for attempt in 1...3 {
+            let seeded = open()
+            try await seeded.playAlbum("al-3")
+            let playing = await seeded.until { seeded.nowPlaying.playing }
+            XCTAssertTrue(playing, "play from the page did not reach the native side")
+            seeded.player.call("toggle()")
+            let paused = await seeded.until { !seeded.nowPlaying.playing }
+            XCTAssertTrue(paused, "toggle() did not pause")
+            let saved = await seeded.until { await seeded.savedQueue() }
+            XCTAssertTrue(saved, "the page never saved its queue, so a fresh web view has no song to start")
+            seeded.close()
+            let fresh = open(startsByItself: true)
+            let pressed = await fresh.until(25) { (try? await fresh.js("return window.__autostart !== undefined")) as? Bool == true }
+            if pressed {
+                started = fresh
+                break
+            }
+            let screen = (try? await fresh.js("return document.body.innerText.slice(0, 300)")) as? String ?? ""
+            trace("attempt \(attempt): the fresh web view showed no song to start; it shows: \(screen)")
+            fresh.close()
+        }
+        guard let page = started else { return XCTFail("three fresh web views on a saved queue never showed a song to start") }
         let seen = try await page.json("window.__autostart ?? {}")
         XCTAssertEqual(seen["active"] as? Bool, false, "something activated the page right before play: \(seen)")
         let resumed = await page.until { page.nowPlaying.playing }

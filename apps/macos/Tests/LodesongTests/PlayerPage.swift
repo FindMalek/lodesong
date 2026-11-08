@@ -111,8 +111,23 @@ import XCTest
 
     /// The loudest sample this page hands the audio device; nil when it can't be metered (see `SpeakerMeter`).
     func speakerPeak(_ seconds: Double = 1) async -> Float? {
-        guard #available(macOS 14.2, *), let pid = Silence.audioProcess(of: web) else { return nil }
+        // A process tap asks for permission and, with nobody to answer, blocks for minutes: nobody hears a CI runner either.
+        guard ProcessInfo.processInfo.environment["CI"] == nil, #available(macOS 14.2, *), let pid = Silence.audioProcess(of: web) else { return nil }
         return await SpeakerMeter.peak(ofProcess: pid, seconds: seconds)
+    }
+
+    /// True once the page has written its queue to IndexedDB (idle time, so a loaded machine can lag): a fresh web view
+    /// on the same store then shows that song in the bar.
+    func savedQueue() async -> Bool {
+        let script = """
+        const db = await new Promise((resolve, reject) => { const r = indexedDB.open("keyval-store"); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+        try {
+          if (!db.objectStoreNames.contains("keyval")) return false;
+          const saved = await new Promise((resolve) => { const r = db.transaction("keyval").objectStore("keyval").get("keep-player:player"); r.onsuccess = () => resolve(r.result); r.onerror = () => resolve(null); });
+          return !!saved?.queue;
+        } finally { db.close(); }
+        """
+        return ((try? await js(script)) as? Bool) == true
     }
 
     func level() async -> Double { await number("window.__output.level()") }

@@ -68,7 +68,7 @@ reading the state back and stopping the run if WebKit refuses), below Web Audio:
 still sees the 440 Hz tone, but the web process hands the device zeros. After every audible check the harness measures
 the loudest sample the page's GPU process sends the device (a Core Audio process tap, macOS 14.2+) and fails above zero;
 `SpeakerMeterTests` shows that meter hears a -70 dB tone from a page that is not muted, so its zero means silence. Where
-the process tap can't be made (no permission, a runner without audio) the measurement is skipped with a trace line and
+the process tap can't be made (no permission) or `CI` is set (the tap asks for permission, which blocks a runner) the measurement is skipped with a trace line and
 only the mute readback stands. Playwright's WebKit has no `sinkId` support, so `test/output-tap.js` routes every sink but
 `real` to a zero gain instead of the device.
 
