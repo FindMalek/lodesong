@@ -1,7 +1,10 @@
+import { tapOutput } from "./audio";
 import { expect, test } from "./fixtures";
 
 test("your queue sits before the album, survives a reload, and saves as a playlist", async ({ page, signedIn }) => {
+  await tapOutput(page);
   await signedIn.goto("/album/al-3");
+  const name = `e2e queue ${Date.now()}`;
   const title = (await page.getByRole("heading", { level: 1 }).textContent()) ?? "";
   await page.getByRole("button", { name: "play", exact: true }).first().click();
 
@@ -22,14 +25,12 @@ test("your queue sits before the album, survives a reload, and saves as a playli
   await expect(panel.getByText(`next from ${title}`)).toBeVisible();
   await expect(panel.getByText(queuedTitle, { exact: true })).toBeVisible();
 
-  // The queue is in IndexedDB, written when the browser is idle.
-  await page.waitForTimeout(1500);
   await page.reload();
   await page.keyboard.press("q");
   await expect(page.getByRole("complementary", { name: "queue" }).getByText(queuedTitle, { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "save queue as playlist" }).click();
-  await page.getByLabel("playlist name").fill("e2e queue");
+  await page.getByLabel("playlist name").fill(name);
   await page.getByRole("button", { name: "save", exact: true }).click();
-  await expect(page.getByRole("link", { name: "e2e queue" })).toBeVisible();
+  await expect(page.getByRole("link", { name })).toBeVisible();
 });

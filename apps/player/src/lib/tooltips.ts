@@ -1,19 +1,31 @@
 import { useSyncExternalStore } from "react";
+import { pressHeld, whenPressEnds } from "./press-hold";
 
 // Tooltips (~20 KB gzip) load when idle or on the first hover or focus; until then triggers render as plain markup.
 
 type TooltipModule = typeof import("@lodesong/ui/components/tooltip");
 
 let loaded: TooltipModule | null = null;
+let arrived: TooltipModule | null = null;
 let requested = false;
 const listeners = new Set<() => void>();
+
+function publish(): void {
+  if (!arrived || pressHeld()) return;
+  loaded = arrived;
+  arrived = null;
+  for (const listener of listeners) listener();
+}
+
+// The code arriving swaps every trigger for a new element: wait out a press that is under way.
+whenPressEnds(publish);
 
 export function loadTooltips(): void {
   if (requested) return;
   requested = true;
   void import("@lodesong/ui/components/tooltip").then((module) => {
-    loaded = module;
-    for (const listener of listeners) listener();
+    arrived = module;
+    publish();
   });
 }
 
@@ -27,8 +39,7 @@ export function useTooltips(): TooltipModule | null {
   );
 }
 
-// For 400 ms after a tooltip closes, triggers open with no delay (what Base UI's provider does, without pulling
-// floating-ui onto the first screen).
+// For 400 ms after a tooltip closes, triggers open with no delay (Base UI's provider does this, but pulls floating-ui in).
 const OPEN_DELAY_MS = 400;
 let warm = false;
 let cool: ReturnType<typeof setTimeout> | undefined;
