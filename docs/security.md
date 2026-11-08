@@ -48,6 +48,44 @@ the user menu (sessions). Rotating `SESSION_SECRET` signs everyone out.
 - Logging out (or signing in as someone else) deletes the server session, the cookie, the saved queue, the cached
   library data (IndexedDB) and the offline audio and covers (service worker caches).
 
+## Share links
+
+Pasted `/album`, `/artist`, `/playlist` and `/song` links unfurl in chat apps with a card (title, artist, cover). The
+library is private, so what a crawler sees depends on who asks:
+
+- **Signed-in browser:** the real details, for that item, looked up as that user (so Navidrome's folder rules apply).
+  Pages answer `Cache-Control: private, no-store`, and `/og/*` images vary on the cookie.
+- **Anyone else:** a generic card, unless the address carries a share token (`?s=...`) that "copy share link" made.
+- **What a token is.** `share-id.expiry.hmac`: the id of a row in `shared_cards`, an expiry and a MAC over scope, kind,
+  item id, share id and expiry (key derived from `SESSION_SECRET`, compared in constant time). The page token never
+  appears in the page's HTML; the `og:image` address carries a separate image-only token. A token opens that one item's
+  title, subtitle, counts and cover, never the API or the stream.
+- **What is stored.** One row per server, account and item: the card text (title, subtitle, stats, each capped, control
+  and bidi characters removed) and up to four cover ids, taken when the link is copied. A copy of each cover (the 256 or
+  512 px image, nothing over 150 KB) is kept in the row too, so the card still has its art once the owner has signed out
+  everywhere. A cover that could not be fetched at that moment is fetched later with the owner's login while they have
+  one; without it the card is drawn without that art and reused for a minute (`Cache-Control: private, max-age=60`)
+  instead of being redrawn on every hit.
+- **Revoking.** "Stop sharing" in the toast after copying, or settings → account → shared links, deletes the row, which
+  ends every link made from it at once; so does a row's expiry. Copying again refreshes the same row (a new expiry and
+  snapshot) for the same account. Another account sharing the same item gets its own row and cannot change or remove
+  yours. Account names are matched case-insensitively (`Alice` and `alice` are one account, one list, one cap).
+- **When it can't be stopped from the app.** Rotating `SESSION_SECRET` makes every token unverifiable, so the rows are
+  deleted at the next start. A share whose owner has had no live login for 30 days is deleted too (checked at start and
+  hourly). To delete every shared link by hand, start once with `SHARE_PURGE=on` and then turn it off again.
+- **Policy.** Links last 180 days. Expired rows are deleted on the next share. An account keeps at most 200 shared
+  items and may create 30 links a minute. Sharing is off in the public demo. The snapshot is a copy: renaming or
+  deleting the item in Navidrome does not change a link already made, stop sharing to retract it.
+- **Origin.** `og:image` and `og:url` point at `PUBLIC_URL` when set, otherwise at the request address, using
+  `X-Forwarded-Host` and `X-Forwarded-Proto` only when `TRUST_PROXY` is on.
+- **Cost.** A crawler without a valid token never reaches Navidrome and gets one cached card. `/og/<kind>/<id>.jpg` is
+  limited to 60 requests a minute per account and 120 per address, checked before anything is looked up (429 with
+  `Retry-After`). Cards render two at a time behind a queue of eight; beyond that it answers 503 with `Retry-After`. The
+  generic card (`/og.jpg`) is drawn once, kept outside the queue and the cache, and always served. Share-link tokens are
+  removed from CSP violation logs.
+- **Cover cache.** Cached covers are kept per account, so a cover one member could open is never handed to a member
+  Navidrome would refuse. The cost is one cached copy of a cover per account that opens it.
+
 ## API tokens
 
 - **Terminal now-playing token.** A session of its own with the agent `terminal · now playing`. It can only reach
@@ -81,6 +119,7 @@ the user menu (sessions). Rotating `SESSION_SECRET` signs everyone out.
 | a guessed listen-together code | random code, joining needs a signed-in session on the same server and a same-origin WebSocket (no CSRF header on sockets) |
 | a leaked terminal or API token | the terminal token is limited to now-playing, tokens expire when idle and can be revoked in the sessions list |
 | feedback leaking data to GitHub | off unless configured; sends only the text, page path, version, username and an optional screenshot you attach; rate limited per session |
+| a leaked share link | the snapshot shows only title, artist, counts and cover; stop sharing deletes it, it expires after 180 days, and it opens nothing else |
 | a session on a lost device | idle expiry, revoke from the sessions list, or rotate `SESSION_SECRET` |
 
 Navidrome itself still accepts the Subsonic token for as long as the password is unchanged; change

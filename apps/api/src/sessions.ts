@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { accountName } from "./account-name";
 
 export interface Session {
   id: string;
@@ -127,6 +128,18 @@ export class SessionStore {
   revoke(server: string, user: string, id: string): boolean {
     if (!/^[0-9a-f]{16}$/.test(id)) return false;
     return this.db.query("delete from sessions where server = ? and user = ? and hash like ?").run(server, user, `${id}%`).changes > 0;
+  }
+
+  /** The Navidrome login of the account's most recently used browser, if one is still signed in. */
+  credentials(server: string, user: string): { user: string; token: string; salt: string } | null {
+    const row = this.db
+      .query<RowData, [string, number]>("select * from sessions where server = ? and seen > ? order by seen desc")
+      .all(server, this.now() - this.idleMs)
+      .find((item) => accountName(item.user) === accountName(user));
+    const secret = row && this.open(row.secret);
+    if (!row || !secret) return null;
+    const { token, salt } = JSON.parse(secret) as { token: string; salt: string };
+    return { user: row.user, token, salt };
   }
 
   adminCredentials(server: string): { user: string; token: string; salt: string } | null {

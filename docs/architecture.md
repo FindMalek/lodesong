@@ -33,6 +33,10 @@
   background backfill. See [lyrics](lyrics.md).
 - **Covers** (`covers.ts`): fetched once per id and size step, converted to WebP, kept in an LRU on disk, served
   `immutable`.
+- **Link previews** (`og.ts`, `share-store.ts`, `share-token.ts`): the player's own item links carry Open Graph tags
+  and a 1200x630 JPEG card, drawn on first use by satori and resvg (WebAssembly, loaded lazily) from the bundled
+  fonts. Signed-in members see real details; link holders get the snapshot a share link stores. See
+  [security](security.md#share-links).
 - **Config** (`settings.ts`): one table of every variable, checked at boot, rendered into
   [configuration](configuration.md).
 

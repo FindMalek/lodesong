@@ -20,6 +20,7 @@ import {
   HardDriveDownloadIcon,
   LogOutIcon,
   MonitorSmartphoneIcon,
+  Share2Icon,
 } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useState, useSyncExternalStore } from "react";
 import { LibraryRules } from "@/components/library-rules";
@@ -43,6 +44,7 @@ const EqualizerSheet = lazy(() => import("@/components/equalizer-sheet").then((m
 const ThemeBuilder = lazy(() => import("@/components/theme-builder").then((module) => ({ default: module.ThemeBuilder })));
 const StorageDialog = lazy(() => import("@/components/storage-dialog").then((module) => ({ default: module.StorageDialog })));
 const IndexDialog = lazy(() => import("@/components/index-dialog").then((module) => ({ default: module.IndexDialog })));
+const SharedLinksDialog = lazy(() => import("@/components/shared-links-dialog").then((module) => ({ default: module.SharedLinksDialog })));
 const SessionsDialog = lazy(() => import("@/components/sessions-dialog").then((module) => ({ default: module.SessionsDialog })));
 
 const NARROW = "(max-width: 639px)";
@@ -420,6 +422,7 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
   const [eqOpen, setEqOpen] = useState(false);
   const eqOn = useSetting("eqOn");
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sharedOpen, setSharedOpen] = useState(false);
   const [indexOpen, setIndexOpen] = useState(false);
   const narrow = useNarrow();
 
@@ -614,6 +617,12 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
                 </Row>
               )}
               <ScrobblingRow />
+              <Row label="shared links" hint="links you copied from an item's menu, and a way to stop any of them">
+                <Button variant="outline" size="sm" onClick={() => setSharedOpen(true)}>
+                  <Share2Icon />
+                  manage
+                </Button>
+              </Row>
               <Row label="sessions" hint="every browser signed in as you, and a way to sign one out">
                 <Button variant="outline" size="sm" onClick={() => setSessionsOpen(true)}>
                   <MonitorSmartphoneIcon />
@@ -667,6 +676,11 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
       {indexOpen && (
         <Suspense>
           <IndexDialog open={indexOpen} onOpenChange={setIndexOpen} />
+        </Suspense>
+      )}
+      {sharedOpen && (
+        <Suspense>
+          <SharedLinksDialog open={sharedOpen} onOpenChange={setSharedOpen} />
         </Suspense>
       )}
       {sessionsOpen && (
