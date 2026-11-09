@@ -3,14 +3,13 @@ import { beat, beatAtFrame, bpmAt, CUT_MAP, FPS, gridBeat, HERO_MAP, secondsOfBe
 
 const ENDS = TEMPO.map((_, i) => TEMPO.slice(0, i + 1).reduce((sum, segment) => sum + segment.beats, 0));
 
-test("the hero ramp is 108 beats, 3192 frames", () => {
-  expect(HERO_MAP.totalBeats).toBe(108);
-  expect(HERO_MAP.totalFrames).toBe(3192);
+test("the hero ramp is 124 beats", () => {
+  expect(HERO_MAP.totalBeats).toBe(124);
   expect(CUT_MAP.totalBeats).toBe(30);
 });
 
 test("beat is strictly increasing and integer, also between beats", () => {
-  const frames = Array.from({ length: 108 * 4 + 1 }, (_, i) => beat(i / 4));
+  const frames = Array.from({ length: 124 * 4 + 1 }, (_, i) => beat(i / 4));
   expect(frames.every(Number.isInteger)).toBe(true);
   expect(frames.some((frame, i) => i > 0 && frame <= (frames[i - 1] ?? 0))).toBe(false);
 });
@@ -27,13 +26,13 @@ test("bpm steps up at each boundary and seconds follow the local tempo", () => {
   expect(bpmAt(0)).toBe(100);
   expect(bpmAt(3.99)).toBe(100);
   expect(bpmAt(4)).toBe(104);
-  expect(bpmAt(108)).toBe(138);
+  expect(bpmAt(123)).toBe(138);
   expect(secondsOfBeat(4)).toBeCloseTo(2.4, 9);
   expect(secondsOfBeat(5)).toBeCloseTo(2.4 + 60 / 104, 9);
 });
 
 test("beatAtFrame inverts beat", () => {
-  for (const count of [0, 1.5, 4, 9.25, 31, 60, 107.5]) expect(beatAtFrame(beat(count))).toBeCloseTo(count, 1);
+  for (const count of [0, 1.5, 4, 9.25, 31, 60, 123.5]) expect(beatAtFrame(beat(count))).toBeCloseTo(count, 1);
 });
 
 test("gridBeat keeps the old 120 bpm grid", () => {

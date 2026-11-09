@@ -32,6 +32,7 @@ export const STILLS: Record<string, StillPlan> = {
   "shot-mood": shotStills("mood"),
   "shot-session": shotStills("session"),
   "shot-shells": shotStills("shells"),
+  "shot-notch": shotStills("notch"),
   "shot-keys": shotStills("keys"),
   "shot-yours": shotStills("yours"),
   "shot-land": shotStills("land"),
