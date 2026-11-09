@@ -1,6 +1,6 @@
 import { type CursorStop, cursorAt } from "../design/cursor";
 import { ease, lerp, ramp } from "../design/motion";
-import { BRIGHT, Patch, plateFile } from "./s4-kit";
+import { BRIGHT, flat, LIFT, Patch, plateFile } from "./s4-kit";
 
 const SLOT0 = 237.4;
 const ROW = 40;
@@ -10,7 +10,7 @@ const FROM = 5;
 const TO = 1;
 
 const QUEUE = plateFile("queue/queue");
-const FLAT = "rgb(24 24 24)";
+const FLAT = flat(16);
 
 export const slotY = (slot: number): number => SLOT0 + ROW * slot;
 
@@ -73,7 +73,7 @@ export function QueueRows({ p, lift }: QueueRowsProps) {
           src={QUEUE}
           box={{ x: PANEL_X, y: slotY(FROM), w: ROW_W, h: ROW }}
           at={{ x: 6 * lift, y: lift }}
-          filter={`brightness(${1.5 + 0.35 * lift})`}
+          filter={`brightness(${LIFT + 0.35 * lift})`}
         />
       </div>
     </>
