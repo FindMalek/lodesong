@@ -1,6 +1,7 @@
-import { useCurrentFrame } from "remotion";
+import { Img, useCurrentFrame } from "remotion";
+import { plateBox, plateSrc } from "../captures/film-manifest";
 import type { ShotCue } from "../captures/types";
-import { Camera, camAt } from "../design/camera";
+import { Camera, camAt, Layer } from "../design/camera";
 import { Bokeh, DofLayer, focusAt } from "../design/dof";
 import { Halation } from "../design/halation";
 import { MaskLine } from "../design/kinetic";
@@ -13,9 +14,9 @@ const COVER_AT = { x: 200, y: 240 };
 const MID = 540;
 const HEADLINE = 130;
 
-const HAIRLINE_FRAMES = 7;
-const COVER_FROM = 3;
-const COVER_FRAMES = 30;
+const HAIRLINE_FRAMES = 6;
+const COVER_FROM = 2;
+const COVER_FRAMES = 22;
 const MUSIC_AT = 36;
 const SERVER_AT = 72;
 const CHIP_AT = 44;
@@ -36,9 +37,13 @@ const CAM = [
 ];
 
 const RACK = [
-  { at: g(6), z: 300 },
-  { at: g(48), z: 0 },
+  { at: g(2), z: 300 },
+  { at: g(14), z: 0 },
 ];
+
+/** The real player bar of the capture, cropped to its left 1100 px and shown at 1.75x: real product on the very first frame. */
+const BAR = plateBox("player-bar", "bar", "bar");
+const BAR_K = 1.75;
 
 /** S1: a hairline opens like a lid onto the monochrome dither cover, then the two-line promise rises beside it. */
 export function ColdOpenShot() {
@@ -93,6 +98,24 @@ export function ColdOpenShot() {
         </div>
         <ShotChip text="lodesong · music player" from={CHIP_AT} left={COVER_AT.x} top={COVER_AT.y + COVER + 24} />
       </DofLayer>
+      <Layer z={0}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            bottom: 0,
+            width: 1920,
+            height: BAR.h * BAR_K,
+            overflow: "hidden",
+            filter: "brightness(1.5)",
+          }}
+        >
+          <Img
+            src={plateSrc("player-bar", "bar")}
+            style={{ position: "absolute", left: 0, top: -BAR.y * BAR_K, width: 1440 * BAR_K, height: 810 * BAR_K, maxWidth: "none" }}
+          />
+        </div>
+      </Layer>
       <Bokeh focusZ={focusZ} z={300} count={14} seed={7} />
     </Camera>
   );

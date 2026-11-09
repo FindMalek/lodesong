@@ -1,11 +1,12 @@
 import { useCurrentFrame } from "remotion";
 import { addCam, Camera, camAt, handheld } from "../design/camera";
 import { Cursor, cursorAt } from "../design/cursor";
-import { ConnectLine } from "../design/draw";
+import { Bracket, ConnectLine } from "../design/draw";
 import { ease, lerp, ramp } from "../design/motion";
 import { Plate } from "../design/plate";
 import { typedCount } from "../design/typing";
 import {
+  BRACKET_AT,
   CARET,
   CLICK_AT,
   CURSOR_STOPS,
@@ -80,6 +81,9 @@ export function PaletteView() {
                 );
               })
             : null}
+          {settled ? (
+            <Bracket box={{ x: MARK.x, y: MARK.y - 18, w: MARK.w, h: 15 }} at={BRACKET_AT / 30} length={0.45} pad={3} arm={6} width={2} />
+          ) : null}
           {frame > OPEN_AT && !settled ? (
             <i
               style={{

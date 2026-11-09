@@ -27,8 +27,10 @@ const UNDERLINE_STEP = 5;
 export const ROW1: Box = plateBox(TAKE, "results", "row1");
 const INPUT: Box = plateBox(TAKE, "palette-empty", "input");
 const MARKED: Box = plateBox(TAKE, "results", "mark");
+export const BRACKET_AT = 150;
 const ROW_VIEW: Box = { x: ROW1.x, y: ROW1.y, w: 540, h: 100 };
 export const ROW_STEP = 84.97;
+const CONTEXT_VIEW: Box = { x: 430, y: 214, w: 250, h: 52 };
 /** The captured mark covers "lights"; the underline runs on over " on". */
 export const MARK = { x: MARKED.x, w: 47, y: MARKED.y + MARKED.h + 3 };
 
@@ -48,7 +50,10 @@ export const S2_KEYS = plateKeys(PLATE, [
   { at: g(0), box: { x: 0, y: 0, w: 1440, h: 810 }, scale: 1, ry: -3, rx: 0.6 },
   { at: g(36), box: { x: 380, y: 148, w: 680, h: 260 }, scale: 1.55, ry: 2.2, rx: 0 },
   { at: g(104), box: { x: 380, y: 160, w: 680, h: 200 }, scale: 2, ry: -1.6, rx: 0.4 },
-  { at: g(250), box: ROW_VIEW, scale: 2.5, ry: 1.6, rx: 0 },
+  { at: g(128), box: { x: 380, y: 170, w: 680, h: 190 }, scale: 2.2, ry: -0.8, rx: 0.2 },
+  { at: g(160), box: CONTEXT_VIEW, scale: 3.2, ry: 1, rx: 0 },
+  { at: g(208), box: CONTEXT_VIEW, scale: 3.5, ry: 2, rx: 0 },
+  { at: g(244), box: ROW_VIEW, scale: 2.5, ry: 1.6, rx: 0 },
   { at: g(330), box: ROW_VIEW, scale: 2.7, ry: 2.4, rx: 0 },
 ]);
 
@@ -68,7 +73,9 @@ export const S2_CUES: readonly ShotCue[] = [
   { shot: "find-line", at: underlineAt(0), kind: "tick", label: "underline 1" },
   { shot: "find-line", at: underlineAt(1), kind: "tick", label: "underline 2" },
   { shot: "find-line", at: underlineAt(2), kind: "tick", label: "underline 3" },
-  { shot: "find-line", at: 190, kind: "riser", label: "riser into the drop" },
+  { shot: "find-line", at: 138, kind: "swell", label: "camera cuts in on the lyric" },
+  { shot: "find-line", at: BRACKET_AT, kind: "tick", label: "bracket draws round the match" },
+  { shot: "find-line", at: 208, kind: "riser", label: "riser into the drop" },
   { shot: "find-line", at: CLICK_AT, kind: "key", label: "click the line" },
   { shot: "find-line", at: WHIP_AT, kind: "whoosh", label: "whip up to the player bar" },
 ];
