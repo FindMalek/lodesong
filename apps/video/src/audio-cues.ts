@@ -152,7 +152,6 @@ interface Def {
   rows: readonly Row[];
   pins: readonly Pin[];
   runs?: readonly (readonly [string, number, number, number])[];
-  /** the ritardando lands on the first beat of this segment */
   final: string;
   over: number;
   slow: number;
