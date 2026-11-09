@@ -192,10 +192,10 @@ export function ColdOpenShot() {
             />
           </div>
           <div style={{ position: "absolute", left: TEXT_X, top: 400 }}>
-            <DitherText text={WORDMARK} size={150} width={900} height={190} progress={wordmark} weight={600} glow={0.18} legible />
+            <DitherText text={WORDMARK} size={150} width={900} height={190} progress={wordmark} weight={600} glow={0.18} />
           </div>
           <div
-            data-legible=""
+            data-legible={typed > 0 ? "" : undefined}
             style={{
               position: "absolute",
               left: TEXT_X + 4,
@@ -210,7 +210,7 @@ export function ColdOpenShot() {
             {TAGLINE.slice(0, typed)}
             {frame >= TYPE_AT ? <Caret frame={frame} typing={typing} size={54} /> : null}
           </div>
-          <ShotChip text="self-hosted music player" from={CHIP_AT} left={COVER_AT.x} top={COVER_AT.y + COVER + 24} />
+          <ShotChip text="self-hosted music player" from={CHIP_AT} left={COVER_AT.x} top={COVER_AT.y + COVER + 2} />
         </DofLayer>
         <Layer z={0}>
           <div

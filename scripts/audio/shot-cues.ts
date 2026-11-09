@@ -16,6 +16,7 @@ const MODULES = [
   "shot-session",
   "shot-shells",
   "shot-notch",
+  "shot-themes",
   "s10-plan",
   "s11-plan",
   "s12-plan",
@@ -53,7 +54,7 @@ const found: string[] = [];
 for (const name of MODULES) {
   const module = (await import(`${SCENES}${name}`).catch(() => ({}))) as Record<string, unknown>;
   for (const [key, value] of Object.entries(module)) {
-    if (!/^(?:S\d+|NOTCH)_CUES$/.test(key) || !Array.isArray(value)) continue;
+    if (!/^(?:S\d+|NOTCH|THEMES)_CUES$/.test(key) || !Array.isArray(value)) continue;
     found.push(key);
     for (const cue of value as ShotCue[]) {
       const kind = uiKind(cue);

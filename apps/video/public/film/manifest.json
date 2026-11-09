@@ -3516,6 +3516,458 @@
       ],
       "events": []
     },
+    "look-paper": {
+      "id": "look-paper",
+      "shot": "S11",
+      "device": "desktop",
+      "theme": "light",
+      "w": 1440,
+      "h": 810,
+      "dsf": 2,
+      "fps": 30,
+      "plates": [
+        {
+          "name": "before",
+          "file": "look-paper/before.png",
+          "t": 0,
+          "boxes": {
+            "look": {
+              "x": 725.96875,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            },
+            "picked": {
+              "x": 813.578125,
+              "y": 172,
+              "w": 58,
+              "h": 28
+            },
+            "code": {
+              "x": 516,
+              "y": 486,
+              "w": 74.375,
+              "h": 20
+            }
+          }
+        },
+        {
+          "name": "panel",
+          "file": "look-paper/panel.png",
+          "t": 0.03333333333333333,
+          "boxes": {
+            "picked": {
+              "x": 813.578125,
+              "y": 172,
+              "w": 58,
+              "h": 28
+            }
+          }
+        },
+        {
+          "name": "home",
+          "file": "look-paper/home.png",
+          "t": 0.06666666666666667,
+          "boxes": {}
+        },
+        {
+          "name": "albums",
+          "file": "look-paper/albums.png",
+          "t": 0.1,
+          "boxes": {}
+        }
+      ],
+      "events": [
+        {
+          "t": 0,
+          "kind": "click",
+          "target": {
+            "x": 351,
+            "y": 162,
+            "w": 129,
+            "h": 26
+          }
+        },
+        {
+          "t": 0.03333333333333333,
+          "kind": "click",
+          "name": "look paper",
+          "target": {
+            "x": 813.578125,
+            "y": 172,
+            "w": 58,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "click",
+          "name": "save look",
+          "target": {
+            "x": 1010.5625,
+            "y": 429,
+            "w": 73.4375,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "key",
+          "key": "Escape",
+          "name": "close settings"
+        },
+        {
+          "t": 0.1,
+          "kind": "click",
+          "name": "albums",
+          "target": {
+            "x": 8,
+            "y": 84,
+            "w": 183,
+            "h": 28
+          }
+        }
+      ]
+    },
+    "look-slate": {
+      "id": "look-slate",
+      "shot": "S11",
+      "device": "desktop",
+      "theme": "dark",
+      "w": 1440,
+      "h": 810,
+      "dsf": 2,
+      "fps": 30,
+      "plates": [
+        {
+          "name": "before",
+          "file": "look-slate/before.png",
+          "t": 0,
+          "boxes": {
+            "look": {
+              "x": 725.96875,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            },
+            "picked": {
+              "x": 879.578125,
+              "y": 172,
+              "w": 58,
+              "h": 28
+            },
+            "code": {
+              "x": 516,
+              "y": 486,
+              "w": 74.375,
+              "h": 20
+            }
+          }
+        },
+        {
+          "name": "panel",
+          "file": "look-slate/panel.png",
+          "t": 0.03333333333333333,
+          "boxes": {
+            "picked": {
+              "x": 879.578125,
+              "y": 172,
+              "w": 58,
+              "h": 28
+            }
+          }
+        },
+        {
+          "name": "home",
+          "file": "look-slate/home.png",
+          "t": 0.06666666666666667,
+          "boxes": {}
+        },
+        {
+          "name": "albums",
+          "file": "look-slate/albums.png",
+          "t": 0.1,
+          "boxes": {}
+        }
+      ],
+      "events": [
+        {
+          "t": 0,
+          "kind": "click",
+          "target": {
+            "x": 351,
+            "y": 162,
+            "w": 129,
+            "h": 26
+          }
+        },
+        {
+          "t": 0.03333333333333333,
+          "kind": "click",
+          "name": "look slate",
+          "target": {
+            "x": 879.578125,
+            "y": 172,
+            "w": 58,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "click",
+          "name": "save look",
+          "target": {
+            "x": 1010.5625,
+            "y": 429,
+            "w": 73.4375,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "key",
+          "key": "Escape",
+          "name": "close settings"
+        },
+        {
+          "t": 0.1,
+          "kind": "click",
+          "name": "albums",
+          "target": {
+            "x": 8,
+            "y": 84,
+            "w": 183,
+            "h": 28
+          }
+        }
+      ]
+    },
+    "look-soft": {
+      "id": "look-soft",
+      "shot": "S11",
+      "device": "desktop",
+      "theme": "light",
+      "w": 1440,
+      "h": 810,
+      "dsf": 2,
+      "fps": 30,
+      "plates": [
+        {
+          "name": "before",
+          "file": "look-soft/before.png",
+          "t": 0,
+          "boxes": {
+            "look": {
+              "x": 725.96875,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            },
+            "picked": {
+              "x": 1033.1875,
+              "y": 172,
+              "w": 50.8125,
+              "h": 28
+            },
+            "code": {
+              "x": 516,
+              "y": 486,
+              "w": 84,
+              "h": 20
+            }
+          }
+        },
+        {
+          "name": "panel",
+          "file": "look-soft/panel.png",
+          "t": 0.03333333333333333,
+          "boxes": {
+            "picked": {
+              "x": 1033.1875,
+              "y": 172,
+              "w": 50.8125,
+              "h": 28
+            }
+          }
+        },
+        {
+          "name": "home",
+          "file": "look-soft/home.png",
+          "t": 0.06666666666666667,
+          "boxes": {}
+        },
+        {
+          "name": "albums",
+          "file": "look-soft/albums.png",
+          "t": 0.1,
+          "boxes": {}
+        }
+      ],
+      "events": [
+        {
+          "t": 0,
+          "kind": "click",
+          "target": {
+            "x": 351,
+            "y": 162,
+            "w": 129,
+            "h": 26
+          }
+        },
+        {
+          "t": 0.03333333333333333,
+          "kind": "click",
+          "name": "look soft",
+          "target": {
+            "x": 1033.1875,
+            "y": 172,
+            "w": 50.8125,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "click",
+          "name": "save look",
+          "target": {
+            "x": 1010.5625,
+            "y": 429,
+            "w": 73.4375,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "key",
+          "key": "Escape",
+          "name": "close settings"
+        },
+        {
+          "t": 0.1,
+          "kind": "click",
+          "name": "albums",
+          "target": {
+            "x": 8,
+            "y": 84,
+            "w": 183,
+            "h": 28
+          }
+        }
+      ]
+    },
+    "look-terminal": {
+      "id": "look-terminal",
+      "shot": "S11",
+      "device": "desktop",
+      "theme": "dark",
+      "w": 1440,
+      "h": 810,
+      "dsf": 2,
+      "fps": 30,
+      "plates": [
+        {
+          "name": "before",
+          "file": "look-terminal/before.png",
+          "t": 0,
+          "boxes": {
+            "look": {
+              "x": 725.96875,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            },
+            "picked": {
+              "x": 945.578125,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            },
+            "code": {
+              "x": 516,
+              "y": 486,
+              "w": 74.375,
+              "h": 20
+            }
+          }
+        },
+        {
+          "name": "panel",
+          "file": "look-terminal/panel.png",
+          "t": 0.03333333333333333,
+          "boxes": {
+            "picked": {
+              "x": 945.578125,
+              "y": 172,
+              "w": 79.609375,
+              "h": 28
+            }
+          }
+        },
+        {
+          "name": "home",
+          "file": "look-terminal/home.png",
+          "t": 0.06666666666666667,
+          "boxes": {}
+        },
+        {
+          "name": "albums",
+          "file": "look-terminal/albums.png",
+          "t": 0.1,
+          "boxes": {}
+        }
+      ],
+      "events": [
+        {
+          "t": 0,
+          "kind": "click",
+          "target": {
+            "x": 351,
+            "y": 162,
+            "w": 129,
+            "h": 26
+          }
+        },
+        {
+          "t": 0.03333333333333333,
+          "kind": "click",
+          "name": "look terminal",
+          "target": {
+            "x": 945.578125,
+            "y": 172,
+            "w": 79.609375,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "click",
+          "name": "save look",
+          "target": {
+            "x": 997.1875,
+            "y": 429,
+            "w": 86.8125,
+            "h": 28
+          }
+        },
+        {
+          "t": 0.06666666666666667,
+          "kind": "key",
+          "key": "Escape",
+          "name": "close settings"
+        },
+        {
+          "t": 0.1,
+          "kind": "click",
+          "name": "albums",
+          "target": {
+            "x": 8,
+            "y": 84,
+            "w": 183,
+            "h": 28
+          }
+        }
+      ]
+    },
     "lyrics-coverage": {
       "id": "lyrics-coverage",
       "shot": "tour",
