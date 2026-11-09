@@ -1,0 +1,937 @@
+[
+  {
+    "frame": 0,
+    "kind": "draw",
+    "label": "hairline draws"
+  },
+  {
+    "frame": 136,
+    "kind": "flash",
+    "label": "2 frames of silence, then the cut"
+  },
+  {
+    "frame": 158,
+    "kind": "key",
+    "label": "cmd k keycap thock"
+  },
+  {
+    "frame": 162,
+    "kind": "chip",
+    "label": "palette opens"
+  },
+  {
+    "frame": 174,
+    "kind": "type",
+    "label": "key l"
+  },
+  {
+    "frame": 180,
+    "kind": "type",
+    "label": "key i"
+  },
+  {
+    "frame": 185,
+    "kind": "type",
+    "label": "key g"
+  },
+  {
+    "frame": 190,
+    "kind": "type",
+    "label": "key h"
+  },
+  {
+    "frame": 196,
+    "kind": "type",
+    "label": "key t"
+  },
+  {
+    "frame": 203,
+    "kind": "type",
+    "label": "key s"
+  },
+  {
+    "frame": 209,
+    "kind": "type",
+    "label": "key space"
+  },
+  {
+    "frame": 216,
+    "kind": "type",
+    "label": "key o"
+  },
+  {
+    "frame": 221,
+    "kind": "type",
+    "label": "key n"
+  },
+  {
+    "frame": 231,
+    "kind": "chip",
+    "label": "results land"
+  },
+  {
+    "frame": 239,
+    "kind": "draw",
+    "label": "underline 1"
+  },
+  {
+    "frame": 244,
+    "kind": "draw",
+    "label": "underline 2"
+  },
+  {
+    "frame": 249,
+    "kind": "draw",
+    "label": "underline 3"
+  },
+  {
+    "frame": 402,
+    "kind": "click",
+    "label": "click the line"
+  },
+  {
+    "frame": 412,
+    "kind": "seek",
+    "label": "whip up to the player bar"
+  },
+  {
+    "frame": 430,
+    "kind": "ignite",
+    "label": "kick enters, cover ignites gold"
+  },
+  {
+    "frame": 438,
+    "kind": "seek",
+    "label": "seek fill jumps to the line"
+  },
+  {
+    "frame": 561,
+    "kind": "line",
+    "label": "sung: I"
+  },
+  {
+    "frame": 567,
+    "kind": "line",
+    "label": "sung: keep"
+  },
+  {
+    "frame": 581,
+    "kind": "line",
+    "label": "sung: the"
+  },
+  {
+    "frame": 593,
+    "kind": "line",
+    "label": "sung: lights"
+  },
+  {
+    "frame": 613,
+    "kind": "line",
+    "label": "sung: on"
+  },
+  {
+    "frame": 622,
+    "kind": "line",
+    "label": "sung: for"
+  },
+  {
+    "frame": 633,
+    "kind": "line",
+    "label": "sung: you"
+  },
+  {
+    "frame": 1569,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1570,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1572,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1573,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1575,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1577,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1578,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1580,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1581,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1583,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1585,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1587,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1589,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1590,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1592,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1594,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1595,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1596,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1599,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1600,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1601,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1604,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1605,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1607,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1609,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1610,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1612,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1614,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1615,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1617,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1619,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1621,
+    "kind": "type",
+    "label": "prompt key"
+  },
+  {
+    "frame": 1649,
+    "kind": "click",
+    "label": "make it"
+  },
+  {
+    "frame": 1649,
+    "kind": "chip",
+    "label": "playlist drafted"
+  },
+  {
+    "frame": 1707,
+    "kind": "click",
+    "label": "create"
+  },
+  {
+    "frame": 1707,
+    "kind": "chip",
+    "label": "list lands"
+  },
+  {
+    "frame": 1736,
+    "kind": "key",
+    "label": "cmd k"
+  },
+  {
+    "frame": 1736,
+    "kind": "type",
+    "label": "gym key"
+  },
+  {
+    "frame": 1741,
+    "kind": "type",
+    "label": "gym key"
+  },
+  {
+    "frame": 1746,
+    "kind": "type",
+    "label": "gym key"
+  },
+  {
+    "frame": 1752,
+    "kind": "chip",
+    "label": "mood result"
+  },
+  {
+    "frame": 1828,
+    "kind": "click",
+    "label": "devices"
+  },
+  {
+    "frame": 1828,
+    "kind": "chip",
+    "label": "picker opens"
+  },
+  {
+    "frame": 1860,
+    "kind": "click",
+    "label": "play on iphone"
+  },
+  {
+    "frame": 1866,
+    "kind": "seek",
+    "label": "whip to the two devices"
+  },
+  {
+    "frame": 1964,
+    "kind": "flash",
+    "label": "phone takes over"
+  },
+  {
+    "frame": 1970,
+    "kind": "chip",
+    "label": "web"
+  },
+  {
+    "frame": 1977,
+    "kind": "chip",
+    "label": "macos"
+  },
+  {
+    "frame": 1984,
+    "kind": "chip",
+    "label": "ios"
+  },
+  {
+    "frame": 1991,
+    "kind": "chip",
+    "label": "android"
+  },
+  {
+    "frame": 1998,
+    "kind": "chip",
+    "label": "desktop"
+  },
+  {
+    "frame": 2005,
+    "kind": "chip",
+    "label": "arpeggi"
+  },
+  {
+    "frame": 2131,
+    "kind": "flash",
+    "label": "mac notch"
+  },
+  {
+    "frame": 2186,
+    "kind": "flash",
+    "label": "iphone"
+  },
+  {
+    "frame": 2240,
+    "kind": "flash",
+    "label": "android"
+  },
+  {
+    "frame": 2295,
+    "kind": "flash",
+    "label": "linux and windows"
+  },
+  {
+    "frame": 2350,
+    "kind": "flash",
+    "label": "claude code"
+  },
+  {
+    "frame": 2354,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2356,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2358,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2361,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2363,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2365,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2367,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2369,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2372,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2374,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2376,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2378,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2380,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2383,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2391,
+    "kind": "click",
+    "label": "next"
+  },
+  {
+    "frame": 2396,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2398,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2400,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2403,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2405,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2407,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2409,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2411,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2414,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2416,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2418,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2420,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2422,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2425,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2427,
+    "kind": "type",
+    "label": "command key"
+  },
+  {
+    "frame": 2435,
+    "kind": "click",
+    "label": "pause"
+  },
+  {
+    "frame": 2461,
+    "kind": "key",
+    "label": "sheet: ?"
+  },
+  {
+    "frame": 2487,
+    "kind": "key",
+    "label": "albums: g"
+  },
+  {
+    "frame": 2500,
+    "kind": "key",
+    "label": "albums: a"
+  },
+  {
+    "frame": 2512,
+    "kind": "seek",
+    "label": "artists: whip-left"
+  },
+  {
+    "frame": 2514,
+    "kind": "key",
+    "label": "artists: g"
+  },
+  {
+    "frame": 2527,
+    "kind": "key",
+    "label": "artists: r"
+  },
+  {
+    "frame": 2538,
+    "kind": "seek",
+    "label": "stats: whip-right"
+  },
+  {
+    "frame": 2540,
+    "kind": "key",
+    "label": "stats: g"
+  },
+  {
+    "frame": 2553,
+    "kind": "key",
+    "label": "stats: t"
+  },
+  {
+    "frame": 2566,
+    "kind": "key",
+    "label": "moment: b"
+  },
+  {
+    "frame": 2593,
+    "kind": "key",
+    "label": "moments: g"
+  },
+  {
+    "frame": 2606,
+    "kind": "key",
+    "label": "moments: m"
+  },
+  {
+    "frame": 2617,
+    "kind": "seek",
+    "label": "play: whip-left"
+  },
+  {
+    "frame": 2619,
+    "kind": "key",
+    "label": "play: space"
+  },
+  {
+    "frame": 2646,
+    "kind": "key",
+    "label": "rebind: ?"
+  },
+  {
+    "frame": 2670,
+    "kind": "flash",
+    "label": "offline: flash"
+  },
+  {
+    "frame": 2696,
+    "kind": "flash",
+    "label": "share: flash"
+  },
+  {
+    "frame": 2723,
+    "kind": "flash",
+    "label": "light: flash"
+  },
+  {
+    "frame": 2749,
+    "kind": "flash",
+    "label": "scroll: flash"
+  },
+  {
+    "frame": 2775,
+    "kind": "flash",
+    "label": "following: flash"
+  },
+  {
+    "frame": 2801,
+    "kind": "flash",
+    "label": "themes: flash"
+  },
+  {
+    "frame": 2827,
+    "kind": "flash",
+    "label": "doctor: flash"
+  },
+  {
+    "frame": 2853,
+    "kind": "flash",
+    "label": "privacy: flash"
+  },
+  {
+    "frame": 2882,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2883,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2884,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2886,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2888,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2890,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2891,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2892,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2894,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2895,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2896,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2898,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2899,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2900,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2902,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2904,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2905,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 2910,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2911,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2913,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2914,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2916,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2917,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2919,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2920,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2921,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2923,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2924,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2926,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2927,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2929,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2930,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2932,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2933,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2935,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 2939,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2941,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2941,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2943,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2945,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2946,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2948,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2949,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2950,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 2952,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 3015,
+    "kind": "draw",
+    "label": "lodesong draws in"
+  },
+  {
+    "frame": 3033,
+    "kind": "chip",
+    "label": "your music. your server."
+  },
+  {
+    "frame": 3051,
+    "kind": "chip",
+    "label": "gold thread draws"
+  }
+]

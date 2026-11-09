@@ -1,4 +1,5 @@
 import { buildScore, type FilmSpec, type Score, type UiEvent, type UiKind } from "./audio-plan";
+import shotCues from "./audio-shot-cues.json";
 import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
 import { CUT_MAP, TEMPO, type Tempo } from "./design/beat";
 
@@ -54,9 +55,9 @@ const HERO: readonly Row[] = overTempo(TEMPO, [
   [["keyboard storm", 8, "storm", "drop"]],
   [["yours", 8, "flash", "hit", { db: 3 }]],
   [
-    ["docker run", 4, "hush", "cut", { gap: 8 }],
-    ["land", 2, "land", "hit"],
-    ["afterglow", 6, "afterglow"],
+    ["docker run", 3, "hush", "cut", { gap: 8 }],
+    ["land", 5, "land", "hit"],
+    ["afterglow", 4, "afterglow"],
   ],
 ]);
 
@@ -117,20 +118,11 @@ function manifest(
   return out.sort((a, b) => a.frame - b.frame);
 }
 
+/** Cues the shots export (scripts/audio/shot-cues.ts reads S<n>_CUES): the real frames of everything on screen. */
+const SHOT_CUES = shotCues as readonly UiEvent[];
+
 /** Placeholder events at the storyboard's moments. The capture manifest replaces this: every {frame, kind} owns a sound. */
 const HERO_UI: readonly Pin[] = [
-  ["cold open", 0, "draw", "hairline draws"],
-  ["find the line", 0.5, "key", "cmd-k"],
-  ["find the line", 4.5, "draw", "match underline draws"],
-  ["find the line", 5, "row", "result row 1"],
-  ["find the line", 5.25, "row", "result row 2"],
-  ["find the line", 5.5, "row", "result row 3"],
-  ["find the line", 6.5, "key", "arrow down"],
-  ["find the line", 7.5, "key", "enter"],
-  ["play from the line", 0.5, "seek", "seek bar jumps"],
-  ["play from the line", 1, "ignite", "cover ignites gold"],
-  ["play from the line", 3, "chip", "label chip"],
-  ["play from the line", 7.5, "seek", "match cut to the lyrics"],
   ["the lyrics", 0, "key", "shift f"],
   ["the lyrics", 1.5, "line", "lyric line 1"],
   ["the lyrics", 3, "line", "lyric line 2"],
@@ -158,47 +150,7 @@ const HERO_UI: readonly Pin[] = [
   ["mixes", 4.5, "tile", "mix tile 5"],
   ["mixes", 5.5, "tile", "mix tile 6"],
   ["mixes", 7, "click", "open daily mix"],
-  ["ask for a mood", 5.5, "enter", "enter"],
-  ["ask for a mood", 6, "chip", "playlist lands"],
-  ["one session", 1, "click", "devices"],
-  ["one session", 1.5, "row", "picker row 1"],
-  ["one session", 1.75, "row", "picker row 2"],
-  ["one session", 3.25, "click", "select iphone"],
-  ["one session", 4, "draw", "gold line draws"],
-  ["one session", 6, "device", "pulse arrives"],
-  ["one session", 8, "chip", "chip 1"],
-  ["one session", 8.5, "chip", "chip 2"],
-  ["one session", 9, "chip", "chip 3"],
-  ["one session", 9.5, "chip", "chip 4"],
-  ["one session", 10, "chip", "chip 5"],
-  ["one session", 10.5, "chip", "chip 6"],
-  ["everywhere", 2, "flash", "iphone"],
-  ["everywhere", 4, "flash", "android"],
-  ["everywhere", 6, "flash", "desktop"],
-  ["terminal", 3, "enter", "terminal enter"],
-  ["keyboard storm", 0, "key", "question mark"],
-  ["keyboard storm", 2, "key", "g"],
-  ["keyboard storm", 3, "key", "h"],
-  ["keyboard storm", 4, "key", "g"],
-  ["keyboard storm", 5, "key", "a"],
-  ["keyboard storm", 6, "key", "b"],
-  ["keyboard storm", 7, "key", "shift c"],
-  ["yours", 0, "flash", "offline"],
-  ["yours", 1.33, "flash", "upload"],
-  ["yours", 2.67, "flash", "doctor"],
-  ["yours", 4, "flash", "share"],
-  ["yours", 5.33, "flash", "light theme"],
-  ["yours", 6.67, "flash", "speed"],
-  ["docker run", 3.5, "enter", "docker run enter"],
-  ["land", 1, "draw", "wordmark draws"],
 ];
-
-const HERO_RUNS = [
-  ["find the line", 1, 9, 3],
-  ["ask for a mood", 2, 28, 3],
-  ["terminal", 0.5, 15, 3],
-  ["docker run", 0.3, 34, 2],
-] as const;
 
 function generated(rows: readonly Row[]): readonly Pin[] {
   const table = segments(rows);
@@ -226,7 +178,7 @@ interface Def {
 }
 
 const DEFS: Record<Film, Def> = {
-  hero: { rows: HERO, pins: HERO_UI, runs: HERO_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  hero: { rows: HERO, pins: HERO_UI, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   tour: { rows: TOUR, pins: generated(TOUR), runs: [["terminal type", 0.5, 14, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   cutdown: { rows: CUTDOWN, pins: generated(CUTDOWN), runs: [["hook", 1, 9, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };
@@ -237,7 +189,13 @@ function specOf(film: Film): FilmSpec {
   const base = createClock(table);
   const final = base.starts[table.findIndex((s) => s.id === def.final)] ?? base.totalBeats;
   const ritard: Ritard = { final, over: def.over, slow: def.slow };
-  return { id: film, segments: table, ritard, ui: manifest(def.rows, def.pins, def.runs), finalGap: def.finalGap };
+  return {
+    id: film,
+    segments: table,
+    ritard,
+    ui: [...manifest(def.rows, def.pins, def.runs), ...(film === "hero" ? SHOT_CUES : [])].sort((a, b) => a.frame - b.frame),
+    finalGap: def.finalGap,
+  };
 }
 
 export const SPECS: Record<Film, FilmSpec> = { hero: specOf("hero"), tour: specOf("tour"), cutdown: specOf("cutdown") };

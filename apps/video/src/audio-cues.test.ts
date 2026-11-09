@@ -138,3 +138,11 @@ test("risers, whooshes and swells carry a length that ends inside the film", () 
   const bad = lasting.filter((cue) => !cue.length || cue.frame + cue.length > FILM_FRAMES[cue.film]).map((cue) => cue.id);
   expect(bad).toEqual([]);
 });
+
+test("the ritardando ends on the picture's own frame, so the last hit lands where the shot expects it", () => {
+  for (const film of FILMS) {
+    const { clock, landmarks } = SCORES[film];
+    const last = clock.starts.at(-1) ?? 0;
+    expect(landmarks.find((l) => l.id === "final hit")?.frame).toBe(clock.frame(last));
+  }
+});

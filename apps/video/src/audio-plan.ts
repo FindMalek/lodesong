@@ -345,7 +345,7 @@ export const MOODS: Record<string, Mood> = {
     loops: [["i"]],
     hb: 4,
     db: -10,
-    pad: 0.8,
+    pad: 1.3,
     padCut: [1200, 2000],
     padAttack: 0.5,
     kick: "none",
