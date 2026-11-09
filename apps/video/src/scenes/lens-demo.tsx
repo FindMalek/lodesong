@@ -1,7 +1,7 @@
 import { Sequence, useCurrentFrame } from "remotion";
 import albumLyrics from "../../../../docs/album-lyrics.png";
 import phone from "../../../../docs/phone.png";
-import { beat } from "../design/beat";
+import { gridBeat as beat } from "../design/beat";
 import { addCam, Camera, CameraBlur, camAt, handheld, Layer } from "../design/camera";
 import { Cursor, type CursorStop, cursorAt } from "../design/cursor";
 import { DeviceFrame } from "../design/device-frame";
@@ -59,7 +59,7 @@ function PlateShot() {
         slices={SLICES}
         focusZ={focusAt(frame, FOCUS)}
         aperture={0.016}
-        light={{ x: pointer.x, y: pointer.y, radius: 420, dim: 0.4, wash: 0.12 }}
+        light={{ x: pointer.x, y: pointer.y, radius: 420, dim: 0.45, wash: 0.18 }}
       >
         <Bracket box={ROW} at={1.5} pad={6} />
         <Bracket box={LYRIC_LINE} at={3.25} pad={8} arm={14} width={2.5} />

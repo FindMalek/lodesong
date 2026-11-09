@@ -2,7 +2,7 @@ import { CheckIcon, PauseIcon, RepeatIcon, ShuffleIcon, SkipBackIcon, SkipForwar
 import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { clock, FILM, FIXTURE } from "../copy";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { atDepth, Camera, camAt, Layer } from "../design/camera";
 import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
@@ -13,7 +13,7 @@ import { useSongSeconds } from "../design/song-clock";
 import { DitherCover } from "../ui/dither-cover";
 import { Phone, Window } from "../ui/frames";
 import { GoldTransit } from "../ui/gold-transit";
-import { SESSION } from "./timelines";
+import { SESSION } from "./legacy-timelines";
 
 const TRACK = FIXTURE.tracks[0][1];
 const PHONE_Z = 110;

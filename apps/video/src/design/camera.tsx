@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Sequence } from "remotion";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { ease, lerp } from "./motion";
 import type { Box } from "./probe";
 

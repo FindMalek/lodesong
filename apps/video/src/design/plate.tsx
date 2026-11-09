@@ -35,6 +35,8 @@ const boxToStage = (layout: PlateLayout, box: Box): Box => ({
 
 const EDGE_MARGIN = 24;
 
+const LIFT = 1.5;
+
 function clampAxis(center: number, half: number, from: number, to: number): number {
   const lo = from + half + EDGE_MARGIN;
   const hi = to - half - EDGE_MARGIN;
@@ -116,7 +118,7 @@ export function Plate({
   focusZ = 0,
   aperture = 0.03,
   light,
-  brightness = 1,
+  brightness = LIFT,
   children,
 }: PlateProps) {
   const surface = (z: number, clip?: Box) => {

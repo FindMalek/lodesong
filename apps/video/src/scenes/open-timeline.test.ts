@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { CUES, FRAMES, holdSeconds, TEXT_ITEMS } from "./open-timeline";
 
 const onHalfBeat = (at: number): boolean => Number.isInteger(at * 2);

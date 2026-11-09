@@ -1,5 +1,6 @@
-import { beat } from "../design/beat";
+import { gridBeat as beat } from "../design/beat";
 import { HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "./open-timeline";
+import { CUTDOWN, HERO, type Plan } from "./timelines";
 
 export interface StillPlan {
   /** every keyframe rendered for the eye */
@@ -9,6 +10,12 @@ export interface StillPlan {
 }
 
 const at = (...beats: number[]): number[] => beats.map((n) => beat(n));
+
+/** Three frames per shot (first, middle, last) so every cut and every hold is seen once. */
+const ofPlan = (film: Plan<string>): StillPlan => ({
+  frames: film.shots.flatMap((shot) => [shot.start + 1, shot.start + Math.floor(shot.frames / 2), shot.start + shot.frames - 1]),
+  hero: [],
+});
 
 export const STILLS: Record<string, StillPlan> = {
   "scene-open": {
@@ -24,7 +31,7 @@ export const STILLS: Record<string, StillPlan> = {
   "scene-session": { frames: at(0.75, 2.5, 3.5, 5, 6, 7.5, 9.9), hero: at(5, 9.9) },
   "scene-terminal": { frames: at(0.5, 2, 3.5, 5, 7.9), hero: at(2.5, 7.9) },
   "scene-end": { frames: at(0.5, 1.5, 2.5, 3.5, 5.9), hero: at(4, 5.9) },
-  hero: { frames: at(2, 4.5, 8, 10, 13, 17, 19, 21, 27, 30, 33, 37, 39.5, 42, 47, 50, 55, 59.9), hero: [] },
-  "cutdown-vertical": { frames: at(2, 4.5, 6, 8, 10, 12, 15, 17.5, 19, 21, 24, 26, 27.5, 29.9), hero: [] },
+  hero: ofPlan(HERO),
+  "cutdown-vertical": ofPlan(CUTDOWN),
   "loop-readme": { frames: at(0.5, 2, 4, 8, 12, 16, 19.5), hero: [] },
 };

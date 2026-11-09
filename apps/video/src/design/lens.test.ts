@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { camAt, camTo, STAGE } from "./camera";
 import { type CursorStop, clickFrames, cursorAt } from "./cursor";
 import { defocus, focusAt } from "./dof";

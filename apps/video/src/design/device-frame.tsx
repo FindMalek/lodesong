@@ -20,6 +20,7 @@ interface DeviceFrameProps {
 interface Shape {
   ratio: number;
   bezel: number;
+  top?: number;
   radius: number;
   screenRadius: number;
 }
@@ -27,7 +28,7 @@ interface Shape {
 const SHAPES: Record<DeviceKind, Shape> = {
   iphone: { ratio: 2532 / 1170, bezel: 0.034, radius: 0.15, screenRadius: 0.118 },
   android: { ratio: 2532 / 1170, bezel: 0.028, radius: 0.095, screenRadius: 0.068 },
-  mac: { ratio: 900 / 1440, bezel: 0.011, radius: 0.016, screenRadius: 0.008 },
+  mac: { ratio: 900 / 1440, bezel: 0.011, top: 0.026, radius: 0.016, screenRadius: 0.008 },
 };
 
 const GLASS = "linear-gradient(115deg, rgb(255 255 255 / 0.07) 0%, transparent 32%, transparent 70%, rgb(255 255 255 / 0.03) 100%)";
@@ -38,7 +39,8 @@ export function DeviceFrame({ kind, width, src, children, label, note = DEFAULT_
   const bezel = width * shape.bezel;
   const screenW = width - bezel * 2;
   const screenH = screenW * shape.ratio;
-  const height = screenH + bezel * 2;
+  const bezelTop = width * (shape.top ?? shape.bezel);
+  const height = screenH + bezelTop + bezel;
   const mac = kind === "mac";
   return (
     <div style={{ position: "absolute", width, height, ...style }}>
@@ -56,7 +58,7 @@ export function DeviceFrame({ kind, width, src, children, label, note = DEFAULT_
         style={{
           position: "absolute",
           left: bezel,
-          top: bezel,
+          top: bezelTop,
           width: screenW,
           height: screenH,
           borderRadius: width * shape.screenRadius,
@@ -104,13 +106,13 @@ export function DeviceFrame({ kind, width, src, children, label, note = DEFAULT_
           <i
             style={{
               position: "absolute",
-              top: bezel,
+              top: bezelTop / 2 - width * 0.003,
               left: "50%",
-              width: width * 0.1,
-              height: width * 0.018,
-              marginLeft: -width * 0.05,
-              borderRadius: `0 0 ${width * 0.008}px ${width * 0.008}px`,
-              background: "#080808",
+              width: width * 0.006,
+              height: width * 0.006,
+              marginLeft: -width * 0.003,
+              borderRadius: "50%",
+              background: "#1c1c1c",
             }}
           />
           <i

@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.17.0](https://github.com/FindMalek/lodesong/compare/v1.16.1...v1.17.0) (2026-11-08)
+
+
+### Features
+
+* **video:** launch commercial ([#522](https://github.com/FindMalek/lodesong/issues/522)) ([1d22262](https://github.com/FindMalek/lodesong/commit/1d222624b4e5d66827f46851a2cab457bd125d4d))
+* **video:** score and sound design ([#520](https://github.com/FindMalek/lodesong/issues/520)) ([509dcd8](https://github.com/FindMalek/lodesong/commit/509dcd84cf1a57daa2867c352597c98a9d9d0110))
+
+
+### Bug Fixes
+
+* **macos:** audible unsized streams ([#521](https://github.com/FindMalek/lodesong/issues/521)) ([37754ae](https://github.com/FindMalek/lodesong/commit/37754ae38c0d3167fcd31aef8168d20a6f71221d))
+* **player:** stop phone flakes ([#517](https://github.com/FindMalek/lodesong/issues/517)) ([6d87dc0](https://github.com/FindMalek/lodesong/commit/6d87dc0eca064ca9bcf402c74c469a1d69e4950d))
+* **video:** load brand fonts from public ([#518](https://github.com/FindMalek/lodesong/issues/518)) ([cf64797](https://github.com/FindMalek/lodesong/commit/cf64797e1860d97ec2209f91617873f1ad675e6a)), closes [#516](https://github.com/FindMalek/lodesong/issues/516)
+
 ## [1.16.1](https://github.com/FindMalek/lodesong/compare/v1.16.0...v1.16.1) (2026-11-08)
 
 

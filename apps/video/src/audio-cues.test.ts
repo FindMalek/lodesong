@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { AUDIO_CUES, FILM_BEATS, FILM_FRAMES, type Film, SECTIONS, SHEET } from "./audio-cues";
-import { beat } from "./design/beat";
+import { gridBeat as beat } from "./design/beat";
 
 const FILMS: Film[] = ["hero", "cutdown"];
 const forFilm = (film: Film) => AUDIO_CUES.filter((cue) => cue.film === film);

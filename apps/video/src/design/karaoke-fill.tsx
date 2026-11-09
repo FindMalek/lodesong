@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useCurrentFrame } from "remotion";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { gold } from "./gold";
 
 export interface KaraokeWord {

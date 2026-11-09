@@ -1,5 +1,5 @@
 import { Easing, useCurrentFrame } from "remotion";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { ease, lerp, ramp } from "./motion";
 
 export interface CursorStop {

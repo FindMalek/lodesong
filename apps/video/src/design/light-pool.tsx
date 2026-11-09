@@ -13,7 +13,7 @@ const FALLOFF = "#000 0%, rgb(0 0 0 / 0.86) 24%, rgb(0 0 0 / 0.5) 52%, rgb(0 0 0
 const fill: CSSProperties = { position: "absolute", inset: 0 };
 
 /** A lit area that follows the action: dark copy, bright masked copy, faint warm wash. */
-export function LightPool({ x, y, radius, dim = 0.22, wash = 0.1, children }: Pool & { children: ReactNode }) {
+export function LightPool({ x, y, radius, dim = 0.45, wash = 0.16, children }: Pool & { children: ReactNode }) {
   const mask = `radial-gradient(circle ${radius}px at ${x}px ${y}px, ${FALLOFF})`;
   return (
     <div style={fill}>
