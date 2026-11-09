@@ -1,6 +1,6 @@
 import { gridBeat as beat } from "../design/beat";
 import { HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "./open-timeline";
-import { CUTDOWN, HERO, type Plan, type ShotId } from "./timelines";
+import { CUTDOWN, HERO, type Plan, type ShotId, shotOf } from "./timelines";
 
 export interface StillPlan {
   /** every keyframe rendered for the eye */
@@ -16,6 +16,8 @@ const ofPlan = (film: Plan<string>): StillPlan => ({
   frames: film.shots.flatMap((shot) => [shot.start + 1, shot.start + Math.floor(shot.frames / 2), shot.start + shot.frames - 1]),
   hero: [],
 });
+
+const atBeats = (id: ShotId, ...beats: number[]): number[] => beats.map((n) => shotOf(id).beat(n));
 
 const shotStills = (id: ShotId, frames?: number[], hero: number[] = []): StillPlan => {
   const length = HERO.shots.find((shot) => shot.id === id)?.frames ?? 1;
@@ -34,10 +36,14 @@ export const STILLS: Record<string, StillPlan> = {
   "shot-session": shotStills("session"),
   "shot-shells": shotStills("shells"),
   "shot-notch": shotStills("notch"),
-  "shot-keys": shotStills("keys"),
+  "shot-keys": shotStills(
+    "keys",
+    atBeats("keys", 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5),
+    atBeats("keys", 1.5, 3.5, 5.5, 7.5, 9.5, 11.5),
+  ),
   "shot-themes": shotStills("themes"),
-  "shot-yours": shotStills("yours"),
-  "shot-land": shotStills("land"),
+  "shot-yours": shotStills("yours", atBeats("yours", 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5), atBeats("yours", 1.5, 3.5, 5.5, 7.5)),
+  "shot-land": shotStills("land", atBeats("land", 0.5, 1.5, 2.5, 4.5, 5.2, 6, 7, 8.6, 9.8, 11.9), atBeats("land", 4.5, 11.9)),
   "scene-open": {
     frames: [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b),
     hero: HERO_FRAMES,

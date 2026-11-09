@@ -2,7 +2,7 @@ import { FPS } from "./design/beat";
 
 export { FPS };
 
-/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor */
+/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor; hb is beats per chord, to change harmony on the cuts; build is the beat each layer comes in */
 export interface Segment {
   id: string;
   beats: number;
@@ -13,6 +13,8 @@ export interface Segment {
   variant?: number;
   gap?: number;
   db?: number;
+  hb?: number;
+  build?: { hats?: number; snare?: number; arp?: number; stab?: number };
 }
 
 export interface Ritard {
