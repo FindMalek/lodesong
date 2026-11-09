@@ -566,7 +566,11 @@ const server = Bun.serve({
         .split("\n")
         .slice(0, 3)
         .map((line) => line.split(" · ")[0]);
-      const content = JSON.stringify({ name: "Rainy Sunday", description: "slow and warm", artists, size: 12 });
+      const night = (body.messages.at(-1)?.content ?? "").startsWith("Request: late night drive");
+      const plan = night
+        ? { name: "Late Night Drive", description: "dark roads, low lights" }
+        : { name: "Rainy Sunday", description: "slow and warm" };
+      const content = JSON.stringify({ ...plan, artists, size: 12 });
       return Response.json({ choices: [{ message: { content } }] });
     }
     // AudioMuse-AI (AUDIOMUSE_URL points here): features derived from the song's position, neighbours are the next songs.

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import { hat, render } from "../../../scripts/audio/voices";
-import { SHEET } from "./audio-cues";
+import { RATE } from "../../../scripts/audio/dsp";
+import { voice } from "../../../scripts/audio/synth";
+import { SCORES } from "./audio-cues";
 
 const MAX_TAIL = 1e-3;
 
@@ -12,25 +13,21 @@ function tailRatio(left: Float32Array, right: Float32Array): number {
 test("every voice ends at least 60 dB under its own peak, so nothing ends in a click", () => {
   const seen = new Set<string>();
   const loud: string[] = [];
-  for (const [index, cue] of SHEET.entries()) {
-    const key = `${cue.kind}:${cue.style ?? ""}`;
+  for (const [index, event] of SCORES.hero.events.entries()) {
+    const key = `${event.track}:${event.style ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const { audio } = render(cue, index);
-    if (tailRatio(audio.l, audio.r) > MAX_TAIL) loud.push(key);
-  }
-  for (const open of [false, true]) {
-    const { audio } = hat(1, open, 0, 3);
-    if (tailRatio(audio.l, audio.r) > MAX_TAIL) loud.push(`hat open ${open}`);
+    const { l, r } = voice(event, index);
+    if (tailRatio(l, r) > MAX_TAIL) loud.push(key);
   }
   expect(loud).toEqual([]);
 });
 
-test("the kick no longer rings for the whole beat", () => {
-  const cue = SHEET.find((c) => c.kind === "kick");
-  if (!cue) throw new Error("no kick in the sheet");
-  const { audio } = render(cue, 0);
-  const at = (seconds: number): number => Math.abs(audio.l[Math.round(seconds * 48000)] ?? 0);
-  const early = Math.max(...Array.from({ length: 400 }, (_, i) => at(0.02 + i / 48000)));
-  expect(at(0.5) / early).toBeLessThan(0.05);
+test("the kick is tuned and short: it does not ring for the whole beat", () => {
+  const event = SCORES.hero.events.find((e) => e.track === "kick");
+  if (!event) throw new Error("no kick in the score");
+  const { l } = voice(event, 0);
+  const at = (seconds: number): number => Math.abs(l[Math.round(seconds * RATE)] ?? 0);
+  const early = Math.max(...Array.from({ length: 400 }, (_, i) => at(0.02 + i / RATE)));
+  expect(at(0.4) / early).toBeLessThan(0.05);
 });
