@@ -98,7 +98,6 @@ function Entry({ item }: { item: Item }) {
   );
 }
 
-/** Films sit at the top of Studio, single shots and the pre-v2 scenes in folders below. */
 export function Root() {
   const folders = ["shots", "old-v1"];
   return (
