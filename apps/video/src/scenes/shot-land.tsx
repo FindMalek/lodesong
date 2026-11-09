@@ -24,7 +24,7 @@ const CODE = { x: 700, y: 836, font: 30 };
 const CODE_H = CODE.font * 1.5 * S12_LINES.length;
 const URL_AT = { x: CODE.x, y: 982, font: 40 };
 const CENTER = { x: 960, y: 540 };
-const SAFE_BLUR_FRAMES = [S12_TIMES.enter, S12_TIMES.enter + 46] as const;
+const SAFE_BLUR_FRAMES = [S12_TIMES.enter, S12_TIMES.enter + 32] as const;
 const DRIFT = 0.022;
 
 interface View {
@@ -129,7 +129,13 @@ function Cover({ frame }: { frame: number }) {
         }}
       />
       <div style={{ position: "absolute", left: COVER_WORLD.x, top: COVER_WORLD.y, opacity: orb }}>
-        <DitherCover id="quiet-hours-ii" size={Math.round(COVER_WORLD.size)} develop={develop} time={(frame / FPS) * 0.5} color={gold(1)} />
+        <DitherCover
+          id="quiet-hours-ii"
+          size={Math.round(COVER_WORLD.size)}
+          develop={develop}
+          time={((Math.floor(frame / 8) * 8) / FPS) * 0.5}
+          color={gold(1)}
+        />
       </div>
     </>
   );
@@ -255,7 +261,7 @@ export function LandShot() {
         );
       })}
       {frame >= S12_TIMES.intercutEnd ? (
-        <CameraBlur active={blur} samples={6} shutter={0.5} backdrop={VOID}>
+        <CameraBlur active={blur} samples={4} shutter={0.5} backdrop={VOID}>
           <World />
         </CameraBlur>
       ) : null}

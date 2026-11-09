@@ -1,7 +1,10 @@
 import type { CSSProperties, ReactNode } from "react";
-import compact from "../../../../docs/macos/compact.png";
-import open from "../../../../docs/macos/open.png";
-import peek from "../../../../docs/macos/peek.png";
+import { staticFile } from "remotion";
+
+const compact = staticFile("docs/macos/compact.png");
+const open = staticFile("docs/macos/open.png");
+const peek = staticFile("docs/macos/peek.png");
+
 import { ease, lerp, ramp } from "../design/motion";
 import { filmPlate, RealCrop } from "./s8-real-crop";
 
