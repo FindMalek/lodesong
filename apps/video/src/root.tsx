@@ -1,6 +1,6 @@
 import "./index.css";
 import type { ComponentType, ReactElement } from "react";
-import { Composition } from "remotion";
+import { Composition, Folder } from "remotion";
 import { FPS, gridBeat } from "./design/beat";
 import { Shell } from "./design/shell";
 import { CUT_SCENES } from "./scenes/cutdown";
@@ -45,6 +45,7 @@ function filmOf<Id extends string>(plan: Plan<Id>, scenes: Record<Id, ComponentT
 
 interface Item {
   id: string;
+  folder?: string;
   component: Scene;
   frames: number;
   size: Size;
@@ -54,11 +55,13 @@ interface Item {
 const FILMS: Item[] = [
   { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav"), frames: HERO.frames, size: WIDE },
   { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav"), frames: CUTDOWN.frames, size: TALL },
+  { id: "loop-readme", component: Loop, frames: gridBeat(LOOP.end), size: WIDE },
 ];
 
 /** Each shot alone, at its own length, for working on it in Studio. */
 const SHOT_STUDIO: Item[] = HERO.shots.map((shot) => ({
   id: `shot-${shot.id}`,
+  folder: "shots",
   component: solo(HERO_SCENES[shot.id]),
   frames: shot.frames,
   size: WIDE,
@@ -66,39 +69,49 @@ const SHOT_STUDIO: Item[] = HERO.shots.map((shot) => ({
 
 /** The pre-v2 scenes keep their old ids and their constant 120 bpm grid until the new shots replace them. */
 const LEGACY: Item[] = [
-  { id: "scene-open", component: Open, frames: FRAMES, size: WIDE },
-  { id: "scene-lens-demo", component: LensDemo, frames: gridBeat(LENS_DEMO_BEATS), size: WIDE },
+  { id: "scene-open", folder: "old-v1", component: Open, frames: FRAMES, size: WIDE },
+  { id: "scene-lens-demo", folder: "old-v1", component: LensDemo, frames: gridBeat(LENS_DEMO_BEATS), size: WIDE },
   ...Object.entries(LEGACY_SCENES)
     .filter(([id]) => id !== "open")
     .map(([id, Shot]) => ({
       id: `scene-${id}`,
+      folder: "old-v1",
       component: solo(Shot),
       frames: gridBeat(LEGACY_HERO_SHOTS.find((shot) => shot.id === id)?.beats ?? 1),
       size: WIDE,
     })),
 ];
 
-const COMPOSITIONS: Item[] = [
-  ...FILMS,
-  { id: "loop-readme", component: Loop, frames: gridBeat(LOOP.end), size: WIDE },
-  ...SHOT_STUDIO,
-  ...LEGACY,
-];
+const COMPOSITIONS: Item[] = [...FILMS, ...SHOT_STUDIO, ...LEGACY];
 
+function Entry({ item }: { item: Item }) {
+  return (
+    <Composition
+      id={item.id}
+      component={item.component}
+      durationInFrames={item.frames}
+      fps={FPS}
+      width={item.size.width}
+      height={item.size.height}
+      defaultProps={{ probe: false }}
+    />
+  );
+}
+
+/** Films sit at the top of Studio, single shots and the pre-v2 scenes in folders below. */
 export function Root() {
+  const folders = ["shots", "old-v1"];
   return (
     <>
-      {COMPOSITIONS.map((item) => (
-        <Composition
-          key={item.id}
-          id={item.id}
-          component={item.component}
-          durationInFrames={item.frames}
-          fps={FPS}
-          width={item.size.width}
-          height={item.size.height}
-          defaultProps={{ probe: false }}
-        />
+      {COMPOSITIONS.filter((item) => !item.folder).map((item) => (
+        <Entry key={item.id} item={item} />
+      ))}
+      {folders.map((name) => (
+        <Folder key={name} name={name}>
+          {COMPOSITIONS.filter((item) => item.folder === name).map((item) => (
+            <Entry key={item.id} item={item} />
+          ))}
+        </Folder>
       ))}
     </>
   );
