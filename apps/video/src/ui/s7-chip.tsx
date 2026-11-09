@@ -14,11 +14,11 @@ export function Chip({ text, from, style, size = 30 }: ChipProps) {
   const frame = useCurrentFrame();
   const t = ramp(frame, from, 14, ease.out);
   return (
-    <div style={{ position: "absolute", overflow: "hidden", paddingBottom: 6, ...style }}>
+    <div style={{ position: "absolute", ...style }}>
       <div
         data-legible=""
         style={{
-          transform: `translateY(${lerp(120, 0, t)}%)`,
+          clipPath: `inset(${lerp(100, 0, t)}% 0 0 0)`,
           display: "inline-flex",
           alignItems: "center",
           gap: 14,

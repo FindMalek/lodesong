@@ -241,7 +241,7 @@ function Devices() {
               <div
                 data-legible=""
                 style={{
-                  transform: `translateY(${lerp(120, 0, t)}%)`,
+                  clipPath: `inset(${lerp(100, 0, t)}% 0 0 0)`,
                   padding: "8px 16px",
                   fontFamily: "var(--font-mono)",
                   fontSize: 28,
@@ -277,7 +277,7 @@ export function SessionShot() {
           </Sequence>
         }
       />
-      <Chip text="one session" from={8} style={{ left: 70, top: 34 }} />
+      <Chip text="one session" from={8} style={{ left: 70, top: 48 }} />
     </>
   );
 }

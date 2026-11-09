@@ -1,13 +1,143 @@
 [
   {
     "frame": 0,
-    "kind": "draw",
-    "label": "hairline draws"
+    "kind": "chip",
+    "label": "point flickers"
   },
   {
-    "frame": 136,
-    "kind": "flash",
-    "label": "2 frames of silence, then the cut"
+    "frame": 24,
+    "kind": "ignite",
+    "label": "ignite: the gold point opens the cover"
+  },
+  {
+    "frame": 92,
+    "kind": "chip",
+    "label": "lyric forms from dots"
+  },
+  {
+    "frame": 160,
+    "kind": "chip",
+    "label": "wordmark resolves"
+  },
+  {
+    "frame": 198,
+    "kind": "type",
+    "label": "type: y"
+  },
+  {
+    "frame": 201,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 203,
+    "kind": "type",
+    "label": "type: u"
+  },
+  {
+    "frame": 206,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 208,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 211,
+    "kind": "type",
+    "label": "type: m"
+  },
+  {
+    "frame": 214,
+    "kind": "type",
+    "label": "type: u"
+  },
+  {
+    "frame": 216,
+    "kind": "type",
+    "label": "type: s"
+  },
+  {
+    "frame": 219,
+    "kind": "type",
+    "label": "type: i"
+  },
+  {
+    "frame": 221,
+    "kind": "type",
+    "label": "type: c"
+  },
+  {
+    "frame": 224,
+    "kind": "type",
+    "label": "type: ."
+  },
+  {
+    "frame": 227,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 229,
+    "kind": "type",
+    "label": "type: y"
+  },
+  {
+    "frame": 232,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 234,
+    "kind": "type",
+    "label": "type: u"
+  },
+  {
+    "frame": 237,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 240,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 242,
+    "kind": "type",
+    "label": "type: s"
+  },
+  {
+    "frame": 245,
+    "kind": "type",
+    "label": "type: e"
+  },
+  {
+    "frame": 247,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 250,
+    "kind": "type",
+    "label": "type: v"
+  },
+  {
+    "frame": 253,
+    "kind": "type",
+    "label": "type: e"
+  },
+  {
+    "frame": 255,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 258,
+    "kind": "type",
+    "label": "type: ."
   },
   {
     "frame": 302,
@@ -115,109 +245,79 @@
     "label": "seek fill jumps to the line"
   },
   {
-    "frame": 649,
+    "frame": 637,
     "kind": "line",
-    "label": "sung: I"
+    "label": "sung: I keep the lights on for you"
   },
   {
-    "frame": 653,
-    "kind": "line",
-    "label": "sung: keep"
-  },
-  {
-    "frame": 663,
-    "kind": "line",
-    "label": "sung: the"
-  },
-  {
-    "frame": 672,
-    "kind": "line",
-    "label": "sung: lights"
-  },
-  {
-    "frame": 686,
-    "kind": "line",
-    "label": "sung: on"
-  },
-  {
-    "frame": 692,
-    "kind": "line",
-    "label": "sung: for"
-  },
-  {
-    "frame": 701,
-    "kind": "line",
-    "label": "sung: you"
-  },
-  {
-    "frame": 713,
+    "frame": 677,
     "kind": "chip",
     "label": "lyric scrolls to the next line"
   },
   {
-    "frame": 721,
+    "frame": 689,
     "kind": "line",
-    "label": "sung: the"
+    "label": "sung: the quiet between the neon"
   },
   {
-    "frame": 728,
+    "frame": 834,
     "kind": "line",
-    "label": "sung: quiet"
+    "label": "line hold the morning lights"
   },
   {
-    "frame": 739,
+    "frame": 904,
     "kind": "line",
-    "label": "sung: between"
+    "label": "the song moves to say it slowly"
   },
   {
-    "frame": 753,
-    "kind": "line",
-    "label": "sung: the"
-  },
-  {
-    "frame": 760,
-    "kind": "line",
-    "label": "sung: neon"
-  },
-  {
-    "frame": 840,
-    "kind": "line",
-    "label": "line say it slowly"
-  },
-  {
-    "frame": 875,
-    "kind": "row",
-    "label": "word it"
-  },
-  {
-    "frame": 911,
-    "kind": "row",
-    "label": "word slowly,"
-  },
-  {
-    "frame": 946,
-    "kind": "row",
-    "label": "word say"
-  },
-  {
-    "frame": 982,
-    "kind": "row",
-    "label": "word it"
-  },
-  {
-    "frame": 1017,
-    "kind": "row",
-    "label": "word twice"
-  },
-  {
-    "frame": 1072,
+    "frame": 996,
     "kind": "click",
-    "label": "click line"
+    "label": "click a far line"
   },
   {
-    "frame": 1075,
+    "frame": 999,
     "kind": "line",
-    "label": "line stay until"
+    "label": "playback jumps to stay until"
+  },
+  {
+    "frame": 1095,
+    "kind": "chip",
+    "label": "lyterion chip"
+  },
+  {
+    "frame": 1103,
+    "kind": "chip",
+    "label": "import bars fill"
+  },
+  {
+    "frame": 1169,
+    "kind": "seek",
+    "label": "whip to the library doctor"
+  },
+  {
+    "frame": 1207,
+    "kind": "click",
+    "label": "click fix all shown with lyterion"
+  },
+  {
+    "frame": 1208,
+    "kind": "chip",
+    "label": "100 songs sent to lyterion"
+  },
+  {
+    "frame": 1259,
+    "kind": "seek",
+    "label": "whip to add by link"
+  },
+  {
+    "frame": 1267,
+    "kind": "key",
+    "label": "cmd k"
+  },
+  {
+    "frame": 1281,
+    "kind": "chip",
+    "label": "link understood"
   },
   {
     "frame": 1347,
@@ -305,77 +405,77 @@
     "label": "tile 1 develops, chord tone 1"
   },
   {
-    "frame": 1610,
+    "frame": 1616,
     "kind": "tile",
     "label": "tile 2 develops, chord tone 2"
   },
   {
-    "frame": 1618,
+    "frame": 1630,
     "kind": "tile",
     "label": "tile 3 develops, chord tone 3"
   },
   {
-    "frame": 1626,
+    "frame": 1644,
     "kind": "tile",
     "label": "tile 4 develops, chord tone 4"
   },
   {
-    "frame": 1634,
+    "frame": 1658,
     "kind": "tile",
     "label": "tile 5 develops, chord tone 5"
   },
   {
-    "frame": 1642,
+    "frame": 1672,
     "kind": "tile",
     "label": "tile 6 develops, chord tone 6"
   },
   {
-    "frame": 1650,
+    "frame": 1686,
     "kind": "tile",
     "label": "tile 7 develops, chord tone 7"
   },
   {
-    "frame": 1706,
+    "frame": 1766,
     "kind": "click",
     "label": "open daily mix 1"
   },
   {
-    "frame": 1708,
+    "frame": 1768,
     "kind": "seek",
     "label": "tile rushes forward"
   },
   {
-    "frame": 1730,
+    "frame": 1788,
     "kind": "flash",
     "label": "mix page opens"
   },
   {
-    "frame": 1732,
+    "frame": 1790,
     "kind": "ignite",
     "label": "cover ignites gold"
   },
   {
-    "frame": 1764,
+    "frame": 1832,
     "kind": "chip",
     "label": "saved to navidrome"
   },
   {
-    "frame": 1786,
+    "frame": 1842,
     "kind": "flash",
     "label": "radio station flash"
   },
   {
-    "frame": 1796,
+    "frame": 1866,
     "kind": "click",
     "label": "radio play, gold on the bar"
   },
   {
-    "frame": 1810,
+    "frame": 1894,
     "kind": "flash",
     "label": "folder flash"
   },
   {
-    "frame": 1813,
+    "frame": 1897,
     "kind": "tile",
     "label": "folder aura ignites"
   },
@@ -810,6 +910,46 @@
     "label": "rebind: chip settles"
   },
   {
+    "frame": 3280,
+    "kind": "chip",
+    "label": "settings, appearance"
+  },
+  {
+    "frame": 3301,
+    "kind": "click",
+    "label": "click the paper look"
+  },
+  {
+    "frame": 3306,
+    "kind": "flash",
+    "label": "look: paper"
+  },
+  {
+    "frame": 3320,
+    "kind": "chip",
+    "label": "tokens settle: lode1.warm.graphite.2.plex"
+  },
+  {
+    "frame": 3372,
+    "kind": "flash",
+    "label": "look: slate"
+  },
+  {
+    "frame": 3386,
+    "kind": "chip",
+    "label": "tokens settle: lode1.cool.steel.4.plex"
+  },
+  {
+    "frame": 3430,
+    "kind": "flash",
+    "label": "look: terminal"
+  },
+  {
+    "frame": 3444,
+    "kind": "chip",
+    "label": "tokens settle: lode1.neutral.graphite.0.mono"
+  },
+  {
     "frame": 3489,
     "kind": "flash",
     "label": "offline: flash"
@@ -832,22 +972,22 @@
   {
     "frame": 3593,
     "kind": "flash",
-    "label": "scroll: flash"
+    "label": "library: flash"
   },
   {
     "frame": 3620,
     "kind": "chip",
-    "label": "scroll: chip settles"
+    "label": "library: chip settles"
   },
   {
     "frame": 3646,
     "kind": "flash",
-    "label": "privacy: flash"
+    "label": "server: flash"
   },
   {
     "frame": 3672,
     "kind": "chip",
-    "label": "privacy: chip settles"
+    "label": "server: chip settles"
   },
   {
     "frame": 3698,

@@ -254,10 +254,10 @@ export function MoodShot() {
         <Recap />
       </Sequence>
       <Sequence layout="none" durationInFrames={STATS_AT}>
-        <Chip text="ask for a mood" from={6} style={{ right: 70, bottom: 22 }} />
+        <Chip text="ask for a mood" from={6} style={{ right: 70, bottom: 56 }} />
       </Sequence>
       <Sequence layout="none" from={STATS_AT}>
-        <Chip text="recap" from={0} style={{ right: 70, bottom: 22 }} />
+        <Chip text="recap" from={0} style={{ right: 70, bottom: 56 }} />
       </Sequence>
     </>
   );
