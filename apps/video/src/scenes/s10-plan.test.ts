@@ -20,14 +20,14 @@ test("the keyboard storm is two-beat moments that tile the shot, each held about
   expect(S10_CUES.filter((cue) => cue.kind === "key")).toHaveLength(S10_CUTS.reduce((sum, cut) => sum + cut.keys.length, 0));
 });
 
-test("the flashes tile the shot in beats (privacy last, two beats), and it ends on 8 silent frames", () => {
+test("yours is four equal flashes held about a second, with no jargon chips, and it ends on 8 silent frames", () => {
   const shot = shotOf("yours");
+  expect(S11_FLASHES.map((flash) => flash.id)).toEqual(["offline", "share", "library", "server"]);
   expect(S11_FLASHES.reduce((sum, flash) => sum + flash.beats, 0)).toBe(shot.beats);
-  expect(S11_FLASHES.at(-1)?.id).toBe("privacy");
-  expect(S11_FLASHES.at(-1)?.beats).toBe(2);
   const lengths = S11_FLASHES.map((_, i) => flashFrames(i).frames);
-  for (const [i, frames] of lengths.entries()) expect(frames).toBeGreaterThanOrEqual((S11_FLASHES[i]?.beats ?? 1) * 25);
+  for (const frames of lengths) expect(frames).toBeGreaterThanOrEqual(0.85 * SECOND);
   expect(lengths.reduce((sum, frames) => sum + frames, 0)).toBe(shot.frames);
+  expect(S11_FLASHES.some((flash) => /10,000|:ro|never touches/.test(flash.chip))).toBe(false);
   expect(S11_CUES.find((cue) => cue.kind === "rest")?.at).toBe(shot.frames - REST_FRAMES);
 });
 

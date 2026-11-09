@@ -1,14 +1,14 @@
-import { Video } from "@remotion/media";
 import type { CSSProperties, ReactNode } from "react";
-import { Img, Sequence, useCurrentFrame } from "remotion";
-import ogAlbum from "../../../../docs/og-album.jpg";
-import ogArtist from "../../../../docs/og-artist.jpg";
-import ogSong from "../../../../docs/og-song.jpg";
-import { videoSrc } from "../captures/film-manifest";
-import { gold } from "../design/gold";
-import { ease, lerp, ramp } from "../design/motion";
+import { Img, Sequence, staticFile, useCurrentFrame } from "remotion";
+
+import { lerp, ramp } from "../design/motion";
 import { FlashChip, PlateFlash } from "../ui/s11-flash";
+import { ServerFlow } from "../ui/s11-server";
 import { type Flash, flashFrames, S11_FLASHES } from "./s11-plan";
+
+const ogAlbum = staticFile("docs/og-album.jpg");
+const ogArtist = staticFile("docs/og-artist.jpg");
+const ogSong = staticFile("docs/og-song.jpg");
 
 const CARD = { w: 1200, h: 630 };
 
@@ -53,46 +53,6 @@ function CardsFlash({ frame }: { frame: number }) {
         );
       })}
     </>
-  );
-}
-
-function ScrollFlash({ frames, frame }: { frames: number; frame: number }) {
-  const t = ramp(frame, 0, frames, ease.out);
-  return (
-    <div style={{ position: "absolute", inset: 0, transform: `scale(${lerp(1.2, 1.45, t)})`, transformOrigin: "45% 40%" }}>
-      <Video src={videoSrc("scroll-10k")} muted playbackRate={2.2} style={{ width: "100%", height: "100%" }} />
-    </div>
-  );
-}
-
-function ReadOnly({ frame }: { frame: number }) {
-  const tag = ramp(frame, 14, 8);
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        top: 250,
-        textAlign: "center",
-        fontFamily: "var(--font-mono)",
-        fontWeight: 500,
-        fontSize: 232,
-        letterSpacing: "-0.04em",
-        lineHeight: 1,
-      }}
-    >
-      <span style={{ color: "var(--muted-foreground)" }}>/music</span>
-      <span
-        style={{
-          color: gold(1),
-          opacity: tag,
-          textShadow: `0 0 ${lerp(60, 24, tag)}px color-mix(in oklch, var(--ignite) 55%, transparent)`,
-        }}
-      >
-        :ro
-      </span>
-    </div>
   );
 }
 
@@ -142,8 +102,7 @@ function body(flash: Flash, frames: number, frame: number): ReactNode {
       />
     );
   if (flash.kind === "cards") return <CardsFlash frame={frame} />;
-  if (flash.kind === "scroll") return <ScrollFlash frames={frames} frame={frame} />;
-  return <ReadOnly frame={frame} />;
+  return <ServerFlow frame={frame} />;
 }
 
 function FlashShot({ flash, frames }: { flash: Flash; frames: number }) {

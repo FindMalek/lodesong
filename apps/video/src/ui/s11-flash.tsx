@@ -1,4 +1,4 @@
-import { Disc3, ListMusic, Lock, Mic, MonitorSmartphone, Plane, Rows3, Share2, Stethoscope, Sun, Users } from "lucide-react";
+import { Disc3, ListMusic, Mic, MonitorSmartphone, Plane, Server, Share2, Stethoscope, Users } from "lucide-react";
 import { plateSrc } from "../captures/film-manifest";
 import { Camera } from "../design/camera";
 import { ease, lerp, ramp } from "../design/motion";
@@ -8,16 +8,14 @@ import type { Box } from "../design/probe";
 const LAYOUT = plateLayout({ w: 1440, h: 810 });
 const WHOLE: Box = { x: 0, y: 0, w: 1440, h: 810 };
 
-export type FlashIcon = "plane" | "share" | "sun" | "rows" | "users" | "lock" | "doctor" | "queue" | "lyrics" | "mixes" | "devices";
+export type FlashIcon = "plane" | "share" | "users" | "doctor" | "server" | "queue" | "lyrics" | "mixes" | "devices";
 
 const ICONS: Record<FlashIcon, typeof Plane> = {
   plane: Plane,
   share: Share2,
-  sun: Sun,
-  rows: Rows3,
   users: Users,
-  lock: Lock,
   doctor: Stethoscope,
+  server: Server,
   queue: ListMusic,
   lyrics: Mic,
   mixes: Disc3,
