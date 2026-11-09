@@ -24,7 +24,7 @@ const OPEN_PICKER = 20;
 const PICK_PHONE = 72;
 const WHIP_AT = 78;
 const WHIP_LENGTH = 10;
-const LISTEN_AT = SHOT.beat(9.25);
+const LISTEN_AT = SHOT.beat(6.25);
 const START_SESSION = { x: 220, y: 251, w: 100, h: 26 };
 
 const LINE_AT = 6;

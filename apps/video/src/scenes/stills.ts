@@ -27,6 +27,7 @@ export const STILLS: Record<string, StillPlan> = {
   "shot-find-line": shotStills("find-line", [10, 30, 60, 100, 150, 190, 212, 236, 262], [190, 212]),
   "shot-play-line": shotStills("play-line", [3, 8, 14, 28, 44, 70, 100, 150, 200, 266], [30, 200, 266]),
   "shot-lyrics": shotStills("lyrics"),
+  "shot-lyterion": shotStills("lyterion"),
   "shot-queue": shotStills("queue"),
   "shot-mixes": shotStills("mixes"),
   "shot-mood": shotStills("mood"),
@@ -34,6 +35,7 @@ export const STILLS: Record<string, StillPlan> = {
   "shot-shells": shotStills("shells"),
   "shot-notch": shotStills("notch"),
   "shot-keys": shotStills("keys"),
+  "shot-themes": shotStills("themes"),
   "shot-yours": shotStills("yours"),
   "shot-land": shotStills("land"),
   "scene-open": {

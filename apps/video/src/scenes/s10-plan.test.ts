@@ -15,13 +15,13 @@ test("the keyboard storm is eight cuts that tile the shot, every key landing ins
   expect(S10_CUES.filter((cue) => cue.kind === "key")).toHaveLength(S10_CUTS.reduce((sum, cut) => sum + cut.keys.length, 0));
 });
 
-test("the flashes tile the shot, 17 to 40 frames, and the shot ends on 8 silent frames", () => {
+test("the flashes are one beat each, 17 to 27 frames, and the shot ends on 8 silent frames", () => {
   const shot = shotOf("yours");
   expect(S11_FLASHES).toHaveLength(8);
   const lengths = S11_FLASHES.map((_, i) => flashFrames(i).frames);
   for (const frames of lengths) {
     expect(frames).toBeGreaterThanOrEqual(17);
-    expect(frames).toBeLessThanOrEqual(40);
+    expect(frames).toBeLessThanOrEqual(27);
   }
   expect(lengths.reduce((sum, frames) => sum + frames, 0)).toBe(shot.frames);
   expect(S11_CUES.find((cue) => cue.kind === "rest")?.at).toBe(shot.frames - REST_FRAMES);

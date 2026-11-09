@@ -83,8 +83,7 @@ export function flashFrames(index: number): { from: number; frames: number } {
 
 export const REST_FRAMES = 8;
 
-/** The shot is 12 beats long, so each of the eight flashes holds one and a half. */
-const FLASH_BEATS = 1.5;
+const FLASH_BEATS = 1;
 
 export const S11_CUES: readonly ShotCue[] = [
   ...S11_FLASHES.map((flash, i): ShotCue => ({ shot: "yours", at: flashFrames(i).from, kind: "hit", label: `${flash.id}: flash` })),
