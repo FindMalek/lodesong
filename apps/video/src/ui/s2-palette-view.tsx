@@ -1,4 +1,4 @@
-import { useCurrentFrame } from "remotion";
+import { Img, useCurrentFrame } from "remotion";
 import { addCam, Camera, camAt, handheld } from "../design/camera";
 import { Cursor, cursorAt } from "../design/cursor";
 import { Bracket, ConnectLine } from "../design/draw";
@@ -6,14 +6,17 @@ import { ease, lerp, ramp } from "../design/motion";
 import { Plate } from "../design/plate";
 import { typedCount } from "../design/typing";
 import {
+  ALBUM,
   BRACKET_AT,
   CARET,
-  CLICK_AT,
   CURSOR_STOPS,
+  DOWN_AT,
+  ENTER_AT,
   KEY_AT,
   LANDINGS,
   MARK,
   OPEN_AT,
+  PALETTE,
   PLATE,
   plateAt,
   RESULTS_AT,
@@ -40,17 +43,35 @@ export function PaletteView() {
   const pool = mix(toCaret, pointer, ramp(frame, RESULTS_AT, 14, ease.inOut));
   const open = ramp(frame, KEY_AT, 22, ease.inOut);
   const settled = frame >= RESULTS_AT;
-  const select = ramp(frame, RESULTS_AT + 34, 12);
-  const clicked = frame >= CLICK_AT;
+  const select = ramp(frame, DOWN_AT, 8);
+  const entered = frame >= ENTER_AT;
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       <Camera cam={cam}>
         <Plate
-          src={plateAt(frame)}
+          src={ALBUM}
           layout={PLATE}
           brightness={1.7}
           light={{ x: pool.x, y: pool.y, radius: lerp(1500, 700, open), dim: lerp(0.9, 0.68, open), wash: 0.03 }}
         >
+          {frame >= OPEN_AT ? (
+            <div
+              style={{
+                position: "absolute",
+                left: PALETTE.x,
+                top: PALETTE.y,
+                width: PALETTE.w,
+                height: PALETTE.h,
+                overflow: "hidden",
+                filter: "brightness(1.7)",
+              }}
+            >
+              <Img
+                src={plateAt(frame)}
+                style={{ position: "absolute", left: -PALETTE.x, top: -PALETTE.y, width: 1440, height: 810, maxWidth: "none" }}
+              />
+            </div>
+          ) : null}
           {settled ? (
             <div
               style={{
@@ -59,7 +80,7 @@ export function PaletteView() {
                 top: ROW1.y,
                 width: ROW1.w * select,
                 height: ROW1.h,
-                background: `color-mix(in oklch, var(--ignite) ${clicked ? 14 : 6}%, transparent)`,
+                background: `color-mix(in oklch, var(--ignite) ${entered ? 16 : 8}%, transparent)`,
                 borderLeft: "3px solid var(--ignite)",
                 overflow: "hidden",
               }}

@@ -52,6 +52,7 @@ interface BokehProps {
   width?: number;
   height?: number;
   opacity?: number;
+  tint?: string;
 }
 
 const DOTS = "radial-gradient(circle, #000 60%, rgb(0 0 0 / 0.55) 66%)";
@@ -67,6 +68,7 @@ export function Bokeh({
   width = 1920,
   height = 1080,
   opacity = 0.3,
+  tint: base = "var(--ignite)",
 }: BokehProps) {
   const frame = useCurrentFrame();
   const filter = blurOf(defocus(z, focusZ, aperture));
@@ -80,7 +82,7 @@ export function Bokeh({
         const x = (((travel % span) + span) % span) - r;
         const y = hash(i * 7 + seed * 5) * height + Math.sin(frame * 0.012 + i) * 14 - r;
         const alpha = opacity * (0.5 + hash(i * 13 + seed) * 0.8) * (speck ? 2.2 : 1);
-        const tint = hash(i * 17 + seed) > 0.5 ? "var(--ignite)" : "color-mix(in oklch, var(--ignite) 82%, white)";
+        const tint = hash(i * 17 + seed) > 0.5 ? base : `color-mix(in oklch, ${base} 82%, white)`;
         const tone = (pct: number): string => `color-mix(in oklch, ${tint} ${Math.min(100, Math.round(alpha * pct))}%, transparent)`;
         return (
           <i

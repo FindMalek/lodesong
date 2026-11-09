@@ -3,7 +3,7 @@ import { useCurrentFrame } from "remotion";
 import { gridBeat as beat } from "./beat";
 import { ease, lerp, ramp } from "./motion";
 
-export const VOID = "color-mix(in oklch, var(--background), black 55%)";
+export const VOID = "color-mix(in oklch, var(--background), black 22%)";
 
 interface MaskLineProps {
   children: ReactNode;

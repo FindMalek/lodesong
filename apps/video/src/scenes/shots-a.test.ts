@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { CLICK_AT, LANDINGS, RESULTS_AT, WHIP_AT } from "./s2-palette";
+import { DOWN_AT, ENTER_AT, LANDINGS, RESULTS_AT, WHIP_AT } from "./s2-palette";
 import { S1_CUES } from "./shot-cold-open";
 import { S2_CUES } from "./shot-find-line";
 import { S3_CUES } from "./shot-play-line";
@@ -22,7 +22,8 @@ test("every cue of S1 to S3 lands inside its shot, in order", () => {
   }
 });
 
-test("the lyric is typed before the results land, and the click comes before the whip", () => {
+test("the lyric is typed before the results land, and the keys come before the whip", () => {
   expect(LANDINGS.at(-1)).toBeLessThan(RESULTS_AT);
-  expect(CLICK_AT).toBeLessThan(WHIP_AT);
+  expect(DOWN_AT).toBeLessThan(ENTER_AT);
+  expect(ENTER_AT).toBeLessThan(WHIP_AT);
 });
