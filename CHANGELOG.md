@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.18.0](https://github.com/FindMalek/lodesong/compare/v1.17.0...v1.18.0) (2026-11-09)
+
+
+### Features
+
+* **video:** capture rig and manifest ([#527](https://github.com/FindMalek/lodesong/issues/527)) ([2f0b881](https://github.com/FindMalek/lodesong/commit/2f0b881ac46518770f74411d03c8fd624dd9008c))
+* **video:** coherent score ([#540](https://github.com/FindMalek/lodesong/issues/540)) ([091f022](https://github.com/FindMalek/lodesong/commit/091f022d306ec634a567fa2d346e9d8d8c5bc926))
+* **video:** group studio compositions ([#529](https://github.com/FindMalek/lodesong/issues/529)) ([206692a](https://github.com/FindMalek/lodesong/commit/206692a7355446928efeeef8337a255d4c5e3e4c))
+* **video:** hero v3 ([#547](https://github.com/FindMalek/lodesong/issues/547)) ([94e80c7](https://github.com/FindMalek/lodesong/commit/94e80c7abcc747f3d2857b44e18fe1015d76f210))
+* **video:** lens engine and 108 beat hero ([#524](https://github.com/FindMalek/lodesong/issues/524)) ([56a0267](https://github.com/FindMalek/lodesong/commit/56a0267be58ba3c28735fed557df1d899965fa0f))
+* **video:** notch shot, slower pace ([#537](https://github.com/FindMalek/lodesong/issues/537)) ([966ec61](https://github.com/FindMalek/lodesong/commit/966ec610e8ce29f84b096907295cef64d9193471))
+* **video:** review fixes s1 to s3 ([#539](https://github.com/FindMalek/lodesong/issues/539)) ([907ede5](https://github.com/FindMalek/lodesong/commit/907ede5fbd37759cf7a347e13acb0e403068ff2b))
+* **video:** review fixes s4 to s6 ([#536](https://github.com/FindMalek/lodesong/issues/536)) ([2c885ba](https://github.com/FindMalek/lodesong/commit/2c885bae6bdb2f183cf90a3c4970b0eeca17414a))
+* **video:** score from shot cues ([#535](https://github.com/FindMalek/lodesong/issues/535)) ([13dcbba](https://github.com/FindMalek/lodesong/commit/13dcbbae9f5954e04efcefaf0ce79deea009381f))
+* **video:** score v2 ([#526](https://github.com/FindMalek/lodesong/issues/526)) ([f743447](https://github.com/FindMalek/lodesong/commit/f743447867cb02fd0824660475b5f3cfd0859f50))
+* **video:** shots s1 to s3 ([#532](https://github.com/FindMalek/lodesong/issues/532)) ([485b23f](https://github.com/FindMalek/lodesong/commit/485b23f6e5b6647b326f03e8a7dceac0c1ebfee8))
+* **video:** shots s10 to s12 ([#530](https://github.com/FindMalek/lodesong/issues/530)) ([11f972a](https://github.com/FindMalek/lodesong/commit/11f972afef952c63f02919d7ebdf6a2e5edcd103))
+* **video:** shots s4 to s6 ([#533](https://github.com/FindMalek/lodesong/issues/533)) ([8c482d5](https://github.com/FindMalek/lodesong/commit/8c482d53ebce1556090b7540ffcaf2225a3ef6a0))
+* **video:** shots s7 to s9 ([#531](https://github.com/FindMalek/lodesong/issues/531)) ([534341b](https://github.com/FindMalek/lodesong/commit/534341bf5bd633c95bd711810594354c8e262d22))
+* **video:** slower s10 to s12 ([#538](https://github.com/FindMalek/lodesong/issues/538)) ([ef6b2f2](https://github.com/FindMalek/lodesong/commit/ef6b2f20f6aac0bdbe087e9b57575211e369242b))
+* **video:** tempo-mapped shot table ([#525](https://github.com/FindMalek/lodesong/issues/525)) ([d8bb382](https://github.com/FindMalek/lodesong/commit/d8bb3827f888d884375681f21984e15142d06c91))
+* **video:** tour of every feature ([#534](https://github.com/FindMalek/lodesong/issues/534)) ([24a9fe5](https://github.com/FindMalek/lodesong/commit/24a9fe5e325c0f56efe9c2fa9da7e98d7feb61f1))
+
+
+### Bug Fixes
+
+* **video:** docs images load in studio ([#541](https://github.com/FindMalek/lodesong/issues/541)) ([8c2f0b9](https://github.com/FindMalek/lodesong/commit/8c2f0b92d0e34d5f40146a158932db17991ab33a))
+
 ## [1.17.0](https://github.com/FindMalek/lodesong/compare/v1.16.1...v1.17.0) (2026-11-08)
 
 
