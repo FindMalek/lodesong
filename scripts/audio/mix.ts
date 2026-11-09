@@ -153,7 +153,13 @@ function place(dst: Stereo, e: ScoreEvent, src: Stereo): void {
   }
 }
 
-export function mixScore(score: Score): Stems {
+/** The six stems that sum to the mix, plus the kicks alone: not part of the sum, only there so timing can be measured without snares, toms and claps in the way. */
+export interface Mix {
+  stems: Stems;
+  kicks: Stereo;
+}
+
+export function mixScore(score: Score): Mix {
   const length = score.clock.totalFrames * (RATE / FPS);
   const groups = new Map<Group, Stereo>();
   const group = (g: Group): Stereo => {
@@ -225,6 +231,7 @@ export function mixScore(score: Score): Stems {
   for (const wet of [hall, plate]) highShelf(wet, 3000, -5);
   highShelf(room, 5000, -4);
 
+  const kicks = groups.has("kick") ? scaled(group("kick"), BUS_GAIN.drums) : stereo(length);
   const drums = stereo(length);
   for (const g of ["kick", "drums", "hats"] as const) if (groups.has(g)) addStereo(drums, group(g), 0, 1);
   highShelf(drums, 6000, -3);
@@ -265,8 +272,8 @@ export function mixScore(score: Score): Stems {
       stem.r[i] = (stem.r[i] ?? 0) * gain;
     }
   }
-  for (const key of ["drums", "bass", "music", "space", "ui"] as const) {
-    const stem = stems[key];
+  for (const key of ["kicks", "drums", "bass", "music", "space", "ui"] as const) {
+    const stem = key === "kicks" ? kicks : stems[key];
     const share = key === "ui" ? 0.7 : 1;
     for (let i = 0; i < length; i += 1) {
       const g = dbGain((trim[i] ?? 0) * share);
@@ -274,7 +281,7 @@ export function mixScore(score: Score): Stems {
       stem.r[i] = (stem.r[i] ?? 0) * g;
     }
   }
-  return stems;
+  return { stems, kicks };
 }
 
 export function applyGates(audio: Stereo, gates: readonly [number, number][]): void {
