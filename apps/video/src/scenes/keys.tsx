@@ -1,7 +1,7 @@
 import { SearchIcon } from "lucide-react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { FILM } from "../copy";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { Camera, camAt, Layer } from "../design/camera";
 import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
@@ -11,7 +11,7 @@ import { useSongSeconds } from "../design/song-clock";
 import { Caret, typedCount, typingFrames } from "../design/typing";
 import { APP_VIEW, AppStage, type AppView } from "../ui/app-stage";
 import { Keycap, pressAt } from "../ui/keycap";
-import { KEYS } from "./timelines";
+import { KEYS } from "./legacy-timelines";
 
 const LANDINGS = typingFrames(FILM.keys.query, beat(KEYS.type), 3);
 const CHORD_AT = beat(KEYS.chord);

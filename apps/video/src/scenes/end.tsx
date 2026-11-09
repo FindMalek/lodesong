@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { COPY, FILM } from "../copy";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { Camera, camAt, Layer } from "../design/camera";
 import { DitherWipe } from "../design/dither-wipe";
 import { glowOf, gold } from "../design/gold";
@@ -9,7 +9,7 @@ import { useLayout } from "../design/layout";
 import { ease, ramp } from "../design/motion";
 import { DitherCover } from "../ui/dither-cover";
 import { GoldTransit } from "../ui/gold-transit";
-import { END } from "./timelines";
+import { END } from "./legacy-timelines";
 
 const VEIN = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
 const QUICK = beat(0.5);

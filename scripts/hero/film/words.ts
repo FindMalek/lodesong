@@ -11,7 +11,6 @@ function stamp(ms: number): string {
   return `${minutes}:${seconds}.${hundredths}`;
 }
 
-/** Enhanced LRC: every word carries its own stamp, spread over the first part of the line. */
 export function enhanced(lines: Line[]): string {
   return lines
     .map((line, index) => {
@@ -25,10 +24,7 @@ export function enhanced(lines: Line[]): string {
 
 const key = (title: string, album: string, duration: number): string => `${title}|${album}|${Math.round(duration)}`;
 
-/**
- * Sits between the app and the hero fixture. Navidrome's lyrics carry no word timings, so every synced song is
- * handed to the app through LRCLIB instead, as Enhanced LRC built from the very same lines.
- */
+/** Navidrome's lyrics have no word timings, so synced songs reach the app through LRCLIB as Enhanced LRC instead. */
 export function startWords(port: number, upstream: string): { stop: () => void } {
   const songs = new Map<string, string>();
   let auth = "";

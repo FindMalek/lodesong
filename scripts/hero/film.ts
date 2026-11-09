@@ -103,6 +103,8 @@ try {
   manifest.features = sorted;
   const report = coverage(manifest);
   writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
+  // CI checks the committed manifest against biome's formatting, so write it the way biome will want it.
+  Bun.spawnSync(["bunx", "biome", "format", "--write", MANIFEST]);
   console.log(`film: ${Object.keys(sorted).length} recipes, manifest at ${MANIFEST}`);
   console.log(`film: coverage ${report.have}/${report.total} captures, ${report.features}/${report.featureTotal} features`);
   if (report.missing.length) console.log(`film: no plate yet for ${report.missing.join(", ")}`);

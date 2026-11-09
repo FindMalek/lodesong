@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { useCurrentFrame, useVideoConfig } from "remotion";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { ease, ramp } from "./motion";
 
 const CELL = 10;

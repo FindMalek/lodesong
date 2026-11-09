@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { FILM } from "../copy";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { Camera, camAt, Layer } from "../design/camera";
 import { Caption } from "../design/caption";
 import { DitherWipe } from "../design/dither-wipe";
@@ -9,7 +9,7 @@ import { glowOf, gold } from "../design/gold";
 import { Label } from "../design/kinetic";
 import { ease, lerp, ramp } from "../design/motion";
 import { DitherCover } from "../ui/dither-cover";
-import { MIXES as T } from "./timelines";
+import { MIXES as T } from "./legacy-timelines";
 
 const NATIVE = 300;
 const SOURCES = ["satellite-garden", "north-echo", "silver-atlas"] as const;

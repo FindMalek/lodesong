@@ -3,7 +3,7 @@ import { BEDS } from "../../../scripts/audio/bed";
 import { highpass, lowpass, RATE, type Stereo } from "../../../scripts/audio/dsp";
 import { measureLoudness } from "../../../scripts/audio/loudness";
 import { AUDIO_CUES, FILM_BEATS, FILM_FRAMES, type Film, SECTIONS } from "../src/audio-cues";
-import { BPM, beat, FPS } from "../src/design/beat";
+import { BPM, gridBeat as beat, FPS } from "../src/design/beat";
 
 const TARGET_LUFS = -14;
 const TRUE_PEAK_CEILING = -1.5;

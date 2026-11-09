@@ -1,86 +1,141 @@
-import { beat } from "../design/beat";
-import { T as OPEN_WIDE } from "./open-timeline";
+import { CUT_MAP, HERO_MAP, type TempoMap } from "../design/beat";
 
-export interface Shot {
-  id: string;
+export type ChapterId = "hook" | "listen" | "discover" | "everywhere" | "yours";
+
+export const HERO_IDS = [
+  "cold-open",
+  "find-line",
+  "play-line",
+  "lyrics",
+  "queue",
+  "mixes",
+  "mood",
+  "session",
+  "shells",
+  "keys",
+  "yours",
+  "land",
+] as const;
+export type ShotId = (typeof HERO_IDS)[number];
+
+export const CUT_IDS = ["hook", "find", "mixes", "session", "shells", "land"] as const;
+export type CutId = (typeof CUT_IDS)[number];
+
+export interface ShotPlan<Id extends string = string> {
+  id: Id;
+  number: number;
+  label: string;
+  chapter?: string | undefined;
   beats: number;
+  bpm: number;
+  startBeat: number;
+  start: number;
+  frames: number;
+  beat: (localBeat: number) => number;
 }
 
-/** Shot boundaries follow the score's sections (audio-cues.ts): the cuts land on its hits. */
-export const HERO_SHOTS: readonly Shot[] = [
-  { id: "open", beats: 16 },
-  { id: "keys", beats: 10 },
-  { id: "mixes", beats: 10 },
-  { id: "session", beats: 10 },
-  { id: "terminal", beats: 8 },
-  { id: "end", beats: 6 },
-];
-
-export const CUT_SHOTS: readonly Shot[] = [
-  { id: "open", beats: 18 },
-  { id: "session", beats: 7 },
-  { id: "end", beats: 5 },
-];
-
-export function starts(shots: readonly Shot[]): Record<string, number> {
-  const out: Record<string, number> = {};
-  let at = 0;
-  for (const shot of shots) {
-    out[shot.id] = beat(at);
-    at += shot.beats;
-  }
-  return out;
+export interface Plan<Id extends string> {
+  shots: readonly ShotPlan<Id>[];
+  tempo: TempoMap;
+  frames: number;
 }
 
-export const frames = (shots: readonly Shot[]): number => beat(shots.reduce((sum, shot) => sum + shot.beats, 0));
-
-export interface OpenTimeline {
-  music: number;
-  server: number;
-  label: number;
-  headlineOut: number;
-  chip: number;
-  press: number;
-  ignite: number;
-  advance: number;
-  cut: number;
-  lift: number;
-  end: number;
-  scroll?: readonly number[];
+/** Builds a film from any shot list: ids and labels zipped with one tempo segment per shot, optionally grouped in chapters. */
+export function planFilm<Id extends string>(
+  ids: readonly Id[],
+  labels: Record<Id, string>,
+  tempo: TempoMap,
+  chapters?: Record<Id, string>,
+): Plan<Id> {
+  let startBeat = 0;
+  const shots = ids.map((id, i): ShotPlan<Id> => {
+    const { beats, bpm } = tempo.table[i] ?? { beats: 0, bpm: 0 };
+    const from = startBeat;
+    startBeat += beats;
+    const start = tempo.beat(from);
+    return {
+      id,
+      number: i + 1,
+      label: labels[id],
+      chapter: chapters?.[id],
+      beats,
+      bpm,
+      startBeat: from,
+      start,
+      frames: tempo.beat(from + beats) - start,
+      beat: (localBeat) => tempo.beat(from + localBeat) - start,
+    };
+  });
+  return { shots, tempo, frames: tempo.totalFrames };
 }
 
-export const OPEN: { wide: OpenTimeline; tall: OpenTimeline } = {
-  wide: OPEN_WIDE,
-  tall: {
-    music: 0,
-    server: 1,
-    label: 0.75,
-    headlineOut: 4.25,
-    chip: 5,
-    press: 7,
-    ignite: 9,
-    advance: 11,
-    scroll: [13, 15, 17],
-    cut: 18,
-    lift: 18,
-    end: 18,
-  },
+const CHAPTER_OF: Record<ShotId, ChapterId> = {
+  "cold-open": "hook",
+  "find-line": "hook",
+  "play-line": "listen",
+  lyrics: "listen",
+  queue: "listen",
+  mixes: "discover",
+  mood: "discover",
+  session: "everywhere",
+  shells: "everywhere",
+  keys: "yours",
+  yours: "yours",
+  land: "yours",
 };
 
-export const KEYS = { chord: 1, type: 1.25, enter: 3, cut: 4.75, caption: 4.75, sheet: 5, rows: 5, end: 10 } as const;
+export const HERO = planFilm(
+  HERO_IDS,
+  {
+    "cold-open": "cold open",
+    "find-line": "find the line",
+    "play-line": "play from the line",
+    lyrics: "lyrics, full screen",
+    queue: "queue, gapless",
+    mixes: "mixes and radio",
+    mood: "a sentence, a recap",
+    session: "one session",
+    shells: "everywhere",
+    keys: "keyboard storm",
+    yours: "yours",
+    land: "land",
+  },
+  HERO_MAP,
+  CHAPTER_OF,
+);
 
-export const MIXES = { cover: 0, merge: 2, mergeEnd: 3, caption: 4, chip: 3, row: 5, rowEnd: 7, ignite: 9, end: 10 } as const;
+export const CUTDOWN = planFilm(
+  CUT_IDS,
+  { hook: "the lyric hook", find: "search and ignite", mixes: "mixes", session: "handoff", shells: "everywhere", land: "front-on end" },
+  CUT_MAP,
+);
 
-export const SESSION = {
-  wide: { windows: 0, phone: 0.5, picker: 1, caption: 2, select: 3, flyEnd: 4, chips: 4, end: 10 },
-  tall: { windows: 0, phone: 0.5, picker: 0.25, caption: 0.25, select: 1, flyEnd: 2, chips: 2, end: 7 },
-} as const;
+export function shotOf(id: ShotId): ShotPlan<ShotId> {
+  const shot = HERO.shots.find((one) => one.id === id);
+  if (!shot) throw new Error(`no hero shot ${id}`);
+  return shot;
+}
 
-export const TERMINAL = { caption: 0, type: 0.5, enter: 3, again: 5.25, pause: 7, end: 8 } as const;
+/** Film frame of a beat counted from the start of a shot: the one conversion scenes, cues and captures share. */
+export const shotFrame = (id: ShotId, localBeat: number): number => shotOf(id).start + shotOf(id).beat(localBeat);
 
-export const END = {
-  wide: { orb: 0.5, mark: 1, song: 1.5, tagline: 1.5, lines: 1.5, url: 2, end: 6 },
-  tall: { orb: 1, mark: 2, song: 2.5, tagline: 0.5, lines: 0, url: 3, end: 5 },
-} as const;
+export interface ChapterSpan {
+  id: string;
+  start: number;
+  frames: number;
+  shots: readonly string[];
+}
 
-export const LOOP = { lyrics: 0, ignite: 3, advance: 5, mixes: 10, end: 20 } as const;
+/** Consecutive shots that share a chapter, as film frame spans: the unit for per-chapter sections in the score. */
+export function chapterSpans(film: Plan<string>): ChapterSpan[] {
+  const spans: ChapterSpan[] = [];
+  for (const shot of film.shots) {
+    const id = shot.chapter ?? shot.id;
+    const last = spans.at(-1);
+    if (last && last.id === id) {
+      last.frames = shot.start + shot.frames - last.start;
+      last.shots = [...last.shots, shot.id];
+    } else spans.push({ id, start: shot.start, frames: shot.frames, shots: [shot.id] });
+  }
+  return spans;
+}

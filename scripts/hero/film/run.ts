@@ -7,6 +7,7 @@ import { type Found, signIn } from "../seed";
 import type { Box, Ctx, Device, Lyrics, Recipe, Step, Take } from "./types";
 
 export const FPS = 30;
+const TRACE = process.argv.includes("--trace");
 export const VIEWPORTS: Record<Device, { w: number; h: number; dsf: number }> = {
   desktop: { w: 1440, h: 810, dsf: 2 },
   phone: { w: 390, h: 844, dsf: 3 },
@@ -220,12 +221,12 @@ export async function runRecipe(recipe: Recipe, session: Session): Promise<Take>
         return other;
       },
     };
-    if (process.env.FILM_TRACE) console.log(`  ${recipe.id} signed in`);
+    if (TRACE) console.log(`  ${recipe.id} signed in`);
     if (recipe.needs?.includes("playing")) await playFeatured(page, session.base, session.found, session.starts);
     page.setDefaultTimeout(12_000);
     for (const [index, step] of recipe.steps.entries()) {
       try {
-        if (process.env.FILM_TRACE) console.log(`  ${recipe.id} step ${index}`);
+        if (TRACE) console.log(`  ${recipe.id} step ${index}`);
         await runStep(step, ctx);
       } catch (error) {
         await page.screenshot({ path: `${dir}/_failed.png` }).catch(() => null);
