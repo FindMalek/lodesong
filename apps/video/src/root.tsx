@@ -37,9 +37,9 @@ function solo(Shot: ComponentType): Scene {
   };
 }
 
-function filmOf<Id extends string>(plan: Plan<Id>, scenes: Record<Id, ComponentType>, audio: string): Scene {
+function filmOf<Id extends string>(plan: Plan<Id>, scenes: Record<Id, ComponentType>, audio: string, grainOut = false): Scene {
   return function Rendered({ probe }: Props) {
-    return <Film plan={plan} scenes={scenes} audio={audio} probe={probe} />;
+    return <Film plan={plan} scenes={scenes} audio={audio} probe={probe} grainOut={grainOut} />;
   };
 }
 
@@ -53,7 +53,7 @@ interface Item {
 
 /** Every film is one row: a plan (shot table on a tempo map), its scenes, its score, its size. A new film needs only a row here. */
 const FILMS: Item[] = [
-  { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav"), frames: HERO.frames, size: WIDE },
+  { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav", true), frames: HERO.frames, size: WIDE },
   { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav"), frames: CUTDOWN.frames, size: TALL },
   { id: "loop-readme", component: Loop, frames: gridBeat(LOOP.end), size: WIDE },
 ];

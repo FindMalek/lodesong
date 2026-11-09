@@ -37,12 +37,13 @@ interface FilmProps<Id extends string> {
   scenes: Record<Id, ComponentType>;
   audio: string;
   probe?: boolean;
+  grainOut?: boolean;
 }
 
 /** The whole film: the shots back to back on the tempo map, one shell, one score. Any plan works, so a second film only needs its own table. */
-export function Film<Id extends string>({ plan, scenes, audio, probe }: FilmProps<Id>) {
+export function Film<Id extends string>({ plan, scenes, audio, probe, grainOut }: FilmProps<Id>) {
   return (
-    <Shell audio={audio} probe={probe}>
+    <Shell audio={audio} probe={probe} grainOutAt={grainOut ? plan.frames - 12 : undefined}>
       {plan.shots.map((shot) => {
         const Scene: ComponentType = scenes[shot.id];
         return (
