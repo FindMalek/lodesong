@@ -15,9 +15,9 @@ const SHOT = shotOf("shells");
 const g = (frame: number): number => frame / 30;
 const LIFT = "brightness(1.35)";
 
-const CUT_ANDROID = SHOT.beat(2.5);
-const CUT_DESKTOP = SHOT.beat(5);
-const CUT_TERMINAL = SHOT.beat(7.5);
+const CUT_ANDROID = SHOT.beat(2);
+const CUT_DESKTOP = SHOT.beat(4);
+const CUT_TERMINAL = SHOT.beat(5.5);
 
 const TYPE_FROM = 6;
 const TYPE_STEP = 2.2;
