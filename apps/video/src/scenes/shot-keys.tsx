@@ -11,7 +11,7 @@ import { type CutMove, cutFrames, type KeyCut, S10_CUTS, STRIKE } from "./s10-pl
 const LAYOUT = plateLayout({ w: 1440, h: 810 });
 const STAGE_W = 1920;
 const STAGE_H = 1080;
-const SHIFT = 300;
+const SHIFT = 240;
 const KEY = 216;
 const WHIP_FRAMES = 6;
 const FILTER_ID = "s10-whip";
@@ -68,12 +68,12 @@ function Cut({ cut, frames, strikes }: { cut: KeyCut; frames: number; strikes: n
           <Plate
             src={plateSrc(cut.take, cut.plate)}
             layout={LAYOUT}
-            brightness={2.1}
+            brightness={2.4}
             light={{
               x: cut.focus.x + cut.focus.w / 2,
               y: cut.focus.y + cut.focus.h / 2,
               radius: 700,
-              dim: 0.7,
+              dim: 0.85,
               wash: 0.02,
             }}
           >
@@ -98,7 +98,7 @@ function Cut({ cut, frames, strikes }: { cut: KeyCut; frames: number; strikes: n
         style={{
           position: "absolute",
           inset: 0,
-          background: "linear-gradient(90deg, rgb(0 0 0 / 0.92) 0, rgb(0 0 0 / 0.9) 640px, rgb(0 0 0 / 0.45) 920px, transparent 1160px)",
+          background: "linear-gradient(90deg, rgb(0 0 0 / 0.92) 0, rgb(0 0 0 / 0.9) 460px, rgb(0 0 0 / 0.4) 760px, transparent 980px)",
         }}
       />
       <div style={{ position: "absolute", left: 110, top: 300, display: "flex", flexDirection: "column", gap: 44 }}>
@@ -108,7 +108,7 @@ function Cut({ cut, frames, strikes }: { cut: KeyCut; frames: number; strikes: n
           ))}
         </div>
         <div style={{ opacity: ramp(frame, STRIKE + 1, 5), transform: `translateY(${lerp(14, 0, ramp(frame, STRIKE + 1, 6))}px)` }}>
-          <Label legible style={{ fontSize: 42, color: "var(--foreground)", letterSpacing: "0.06em" }}>
+          <Label legible style={{ fontSize: 44, color: "var(--foreground)", letterSpacing: "0.04em", textTransform: "none" }}>
             {cut.chip}
           </Label>
         </div>
