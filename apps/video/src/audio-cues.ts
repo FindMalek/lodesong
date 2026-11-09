@@ -1,13 +1,13 @@
-import { beat } from "./design/beat";
+import { buildScore, type FilmSpec, type Score, type UiEvent, type UiKind } from "./audio-plan";
+import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
 
-type CueKind = "kick" | "hit" | "riser" | "tick" | "key" | "ping" | "whoosh" | "impact" | "swell";
-export type Film = "hero" | "cutdown";
-type Style = "cut" | "drop" | "gold" | "brand" | "reverse" | "bloom" | "down" | "plain" | "quiet" | "enter" | "typed";
+export type Film = "hero" | "tour" | "cutdown";
+export const FILMS: readonly Film[] = ["hero", "tour", "cutdown"];
 
 export interface AudioCue {
   id: string;
   frame: number;
-  kind: CueKind;
+  kind: string;
   label: string;
   film: Film;
   /** frames, for sounds that last (riser, swell, whoosh) */
@@ -18,209 +18,265 @@ export interface SheetCue extends AudioCue {
   note?: number;
   gain: number;
   pan: number;
-  style?: Style;
+  style?: string;
 }
 
-export const FILM_BEATS: Record<Film, number> = { hero: 60, cutdown: 30 };
-export const FILM_FRAMES: Record<Film, number> = { hero: beat(60), cutdown: beat(30) };
+type Row = readonly [id: string, beats: number, bpm: number, mood: string, enter?: Segment["enter"], extra?: Partial<Segment>];
 
-export const SECTIONS: Record<Film, readonly { id: string; from: number; to: number }[]> = {
-  hero: [
-    { id: "intro", from: 0, to: 6 },
-    { id: "drop", from: 6, to: 12 },
-    { id: "wide app", from: 12, to: 16 },
-    { id: "queue", from: 16, to: 26 },
-    { id: "mixes", from: 26, to: 36 },
-    { id: "session", from: 36, to: 46 },
-    { id: "terminal", from: 46, to: 52 },
-    { id: "build", from: 52, to: 54 },
-    { id: "end card", from: 54, to: 60 },
-  ],
-  cutdown: [
-    { id: "hook", from: 0, to: 5 },
-    { id: "lyrics", from: 5, to: 18 },
-    { id: "strip", from: 18, to: 25 },
-    { id: "end card", from: 25, to: 30 },
-  ],
+const segments = (rows: readonly Row[]): Segment[] =>
+  rows.map(([id, beats, bpm, mood, enter, extra]) => ({ id, beats, bpm, mood, enter: enter ?? "none", ...extra }));
+
+/**
+ * Default hero tempo map: the 100 to 138 BPM ramp from the director's storyboard, each shot a tempo segment.
+ * Replace with the edit's own TEMPO table (design/beat.ts) when it lands: the score only needs beats and bpm per shot.
+ */
+const HERO: readonly Row[] = [
+  ["cold open", 8, 100, "void"],
+  ["find the line", 8, 104, "tension", "cut"],
+  ["play from the line", 16, 108, "drop", "drop"],
+  ["the lyrics", 8, 112, "calm", "cut"],
+  ["the queue", 8, 116, "groove", "hit", { db: -4 }],
+  ["mixes", 8, 120, "groove", "cut", { variant: 1, db: -1 }],
+  ["ask for a mood", 4, 124, "lift", "cut", { db: -7 }],
+  ["one session", 16, 128, "peak", "drop", { db: 4 }],
+  ["everywhere", 6, 132, "peak", "hit", { variant: 1, db: 1 }],
+  ["terminal", 2, 132, "pocket", "cut"],
+  ["keyboard storm", 4, 136, "storm", "drop"],
+  ["yours", 4, 138, "flash", "hit", { db: 3 }],
+  ["docker run", 2, 138, "hush", "cut", { gap: 8 }],
+  ["land", 2, 138, "land", "hit"],
+  ["afterglow", 6, 138, "afterglow"],
+];
+
+const TOUR: readonly Row[] = [
+  ["tour open", 8, 96, "void"],
+  ["lyrics", 24, 104, "drop", "drop"],
+  ["search", 8, 108, "tension", "cut"],
+  ["search play", 12, 108, "groove", "hit", { db: -3 }],
+  ["queue", 8, 104, "calm", "cut", { variant: 1 }],
+  ["gapless", 16, 112, "groove", "hit", { db: -4 }],
+  ["mixes", 4, 116, "lift", "cut", { db: -4 }],
+  ["mixes drop", 16, 120, "peak", "drop", { variant: 1, db: 2 }],
+  ["mood", 8, 112, "calm", "cut"],
+  ["mood lift", 8, 116, "lift", "hit", { db: -6 }],
+  ["session", 24, 120, "drop", "drop", { key: 2, db: -2 }],
+  ["devices", 20, 124, "peak", "hit", { key: 2, variant: 1, db: 3 }],
+  ["terminal", 4, 120, "pocket", "cut", { key: 2 }],
+  ["terminal type", 12, 124, "tension", "hit", { key: 2 }],
+  ["keys", 12, 132, "storm", "drop", { key: 2 }],
+  ["keys peak", 8, 136, "flash", "hit", { key: 2, db: 3 }],
+  ["offline", 12, 128, "groove", "cut", { variant: 1, db: -3 }],
+  ["upload doctor", 8, 112, "calm", "cut", { variant: 0 }],
+  ["share themes", 12, 132, "lift", "hit", { db: -2 }],
+  ["speed", 12, 138, "flash", "hit", { db: 3 }],
+  ["self host", 4, 120, "hush", "cut", { gap: 8 }],
+  ["land", 2, 138, "land", "hit"],
+  ["afterglow", 6, 138, "afterglow"],
+];
+
+const CUTDOWN: readonly Row[] = [
+  ["hook", 4, 108, "tension", "none", { db: -10 }],
+  ["find and ignite", 8, 112, "drop", "drop"],
+  ["mixes", 4, 120, "groove", "hit", { db: -4 }],
+  ["handoff", 4, 126, "lift", "cut", { db: -7 }],
+  ["flashes", 4, 132, "storm", "drop", { db: 3 }],
+  ["land", 2, 132, "land", "hit"],
+  ["afterglow", 4, 132, "afterglow"],
+];
+
+type Pin = readonly [id: string, beat: number, kind: UiKind, label?: string];
+
+function manifest(
+  rows: readonly Row[],
+  pins: readonly Pin[],
+  runs: readonly (readonly [id: string, from: number, count: number, step: number])[] = [],
+): UiEvent[] {
+  const table = segments(rows);
+  const clock = createClock(table);
+  const startOf = (id: string): number => clock.starts[table.findIndex((s) => s.id === id)] ?? 0;
+  const out: UiEvent[] = [];
+  for (const [id, beat, kind, label] of pins) out.push({ frame: clock.frame(startOf(id) + beat), kind, ...(label ? { label } : {}) });
+  for (const [id, from, count, step] of runs) {
+    const first = clock.frame(startOf(id) + from);
+    for (let i = 0; i < count; i += 1) out.push({ frame: first + i * step, kind: "type", label: "typed" });
+  }
+  return out.sort((a, b) => a.frame - b.frame);
+}
+
+/** Placeholder events at the storyboard's moments. The capture manifest replaces this: every {frame, kind} owns a sound. */
+const HERO_UI: readonly Pin[] = [
+  ["cold open", 0, "draw", "hairline draws"],
+  ["find the line", 0.5, "key", "cmd-k"],
+  ["find the line", 4.5, "draw", "match underline draws"],
+  ["find the line", 5, "row", "result row 1"],
+  ["find the line", 5.25, "row", "result row 2"],
+  ["find the line", 5.5, "row", "result row 3"],
+  ["find the line", 6.5, "key", "arrow down"],
+  ["find the line", 7.5, "key", "enter"],
+  ["play from the line", 0.5, "seek", "seek bar jumps"],
+  ["play from the line", 1, "ignite", "cover ignites gold"],
+  ["play from the line", 3, "chip", "label chip"],
+  ["play from the line", 15.5, "seek", "match cut to the lyrics"],
+  ["the lyrics", 0, "key", "shift f"],
+  ["the lyrics", 1.5, "line", "lyric line 1"],
+  ["the lyrics", 3, "line", "lyric line 2"],
+  ["the lyrics", 4.25, "key", "nudge ]"],
+  ["the lyrics", 4.5, "chip", "nudge toast"],
+  ["the lyrics", 5.5, "line", "lyric line 3"],
+  ["the lyrics", 6.5, "click", "click a line"],
+  ["the lyrics", 6.6, "seek", "playback jumps"],
+  ["the queue", 0, "key", "q"],
+  ["the queue", 0.5, "row", "queue row 1"],
+  ["the queue", 0.75, "row", "queue row 2"],
+  ["the queue", 1, "row", "queue row 3"],
+  ["the queue", 1.25, "row", "queue row 4"],
+  ["the queue", 1.5, "row", "queue row 5"],
+  ["the queue", 3, "key", "cmd-z"],
+  ["the queue", 3.1, "row", "undo"],
+  ["the queue", 5, "seek", "crossfade"],
+  ["the queue", 7, "chip", "eq chip"],
+  ["mixes", 0.5, "tile", "mix tile 1"],
+  ["mixes", 1.5, "tile", "mix tile 2"],
+  ["mixes", 2.5, "tile", "mix tile 3"],
+  ["mixes", 3.5, "tile", "mix tile 4"],
+  ["mixes", 4.5, "tile", "mix tile 5"],
+  ["mixes", 5.5, "tile", "mix tile 6"],
+  ["mixes", 7, "click", "open daily mix"],
+  ["ask for a mood", 3, "enter", "enter"],
+  ["ask for a mood", 3.5, "chip", "playlist lands"],
+  ["one session", 1, "click", "devices"],
+  ["one session", 1.5, "row", "picker row 1"],
+  ["one session", 1.75, "row", "picker row 2"],
+  ["one session", 3.25, "click", "select iphone"],
+  ["one session", 4, "draw", "gold line draws"],
+  ["one session", 6, "device", "pulse arrives"],
+  ["one session", 8, "chip", "chip 1"],
+  ["one session", 8.5, "chip", "chip 2"],
+  ["one session", 9, "chip", "chip 3"],
+  ["one session", 9.5, "chip", "chip 4"],
+  ["one session", 10, "chip", "chip 5"],
+  ["one session", 10.5, "chip", "chip 6"],
+  ["everywhere", 2, "flash", "iphone"],
+  ["everywhere", 4, "flash", "android"],
+  ["terminal", 1.5, "enter", "terminal enter"],
+  ["keyboard storm", 0, "key", "question mark"],
+  ["keyboard storm", 1, "key", "g"],
+  ["keyboard storm", 1.5, "key", "h"],
+  ["keyboard storm", 2, "key", "g"],
+  ["keyboard storm", 2.5, "key", "a"],
+  ["keyboard storm", 3, "key", "b"],
+  ["keyboard storm", 3.5, "key", "shift c"],
+  ["yours", 0, "flash", "offline"],
+  ["yours", 0.67, "flash", "upload"],
+  ["yours", 1.33, "flash", "doctor"],
+  ["yours", 2, "flash", "share"],
+  ["yours", 2.67, "flash", "light theme"],
+  ["yours", 3.33, "flash", "speed"],
+  ["docker run", 1.5, "enter", "docker run enter"],
+  ["land", 1, "draw", "wordmark draws"],
+];
+
+const HERO_RUNS = [
+  ["find the line", 1, 9, 3],
+  ["ask for a mood", 0.2, 28, 3],
+  ["terminal", 0, 14, 3],
+  ["docker run", 0, 34, 2],
+] as const;
+
+function generated(rows: readonly Row[]): readonly Pin[] {
+  const table = segments(rows);
+  const pins: Pin[] = [];
+  for (const s of table) {
+    if (s.mood === "afterglow" || s.mood === "void") continue;
+    const n = Math.floor(s.beats / 2);
+    for (let i = 0; i < n; i += 1) {
+      const kind: UiKind[] = ["key", "row", "tile", "click", "chip", "line"];
+      pins.push([s.id, 0.5 + i * 2 + (i % 2) * 0.25, kind[(i + s.beats) % kind.length] as UiKind, `${s.id} ${i + 1}`]);
+    }
+  }
+  return pins;
+}
+
+interface Def {
+  rows: readonly Row[];
+  pins: readonly Pin[];
+  runs?: readonly (readonly [string, number, number, number])[];
+  /** the ritardando lands on the first beat of this segment */
+  final: string;
+  over: number;
+  slow: number;
+  finalGap: number;
+}
+
+const DEFS: Record<Film, Def> = {
+  hero: { rows: HERO, pins: HERO_UI, runs: HERO_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  tour: { rows: TOUR, pins: generated(TOUR), runs: [["terminal type", 0.5, 14, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  cutdown: { rows: CUTDOWN, pins: generated(CUTDOWN), runs: [["hook", 1, 9, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };
 
-interface Spec {
-  at: number;
-  kind: CueKind;
-  label: string;
-  note?: number;
-  gain?: number;
-  pan?: number;
-  beats?: number;
-  style?: Style;
+function specOf(film: Film): FilmSpec {
+  const def = DEFS[film];
+  const table = segments(def.rows);
+  const base = createClock(table);
+  const final = base.starts[table.findIndex((s) => s.id === def.final)] ?? base.totalBeats;
+  const ritard: Ritard = { final, over: def.over, slow: def.slow };
+  return { id: film, segments: table, ritard, ui: manifest(def.rows, def.pins, def.runs), finalGap: def.finalGap };
 }
 
-const range = (from: number, to: number, step = 1): number[] =>
-  Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
+export const SPECS: Record<Film, FilmSpec> = { hero: specOf("hero"), tour: specOf("tour"), cutdown: specOf("cutdown") };
+export const SCORES: Record<Film, Score> = {
+  hero: buildScore(SPECS.hero),
+  tour: buildScore(SPECS.tour),
+  cutdown: buildScore(SPECS.cutdown),
+};
 
-const TYPED_GAPS = [4, 5, 4, 6, 4, 5, 7, 4, 5, 4, 6] as const;
-const TYPED_START = 1395;
-const TYPED_FRAMES: readonly number[] = TYPED_GAPS.reduce<number[]>(
-  (frames, gap) => frames.concat((frames.at(-1) ?? 0) + gap),
-  [TYPED_START],
-);
-const TYPED_CHARS = [..."lodesong now"];
+export const FILM_FRAMES: Record<Film, number> = {
+  hero: SCORES.hero.clock.totalFrames,
+  tour: SCORES.tour.clock.totalFrames,
+  cutdown: SCORES.cutdown.clock.totalFrames,
+};
 
-const kicks = (from: number, to: number, label: string, gain: number, out: readonly number[] = []): Spec[] =>
-  range(from, to)
-    .filter((at) => !out.includes(at))
-    .map((at): Spec => ({ at, kind: "kick", label, gain }));
+export const SECTIONS: Record<Film, readonly { id: string; from: number; to: number }[]> = {
+  hero: sectionsOf("hero"),
+  tour: sectionsOf("tour"),
+  cutdown: sectionsOf("cutdown"),
+};
 
-const HERO: readonly Spec[] = [
-  { at: 0, kind: "tick", label: "hairline starts drawing", note: 96, gain: 0.5 },
-  { at: 1, kind: "ping", label: "your music. lands (motif, first note)", note: 76 },
-  { at: 2, kind: "ping", label: "your server. lands (motif, second note)", note: 81 },
-  { at: 4, kind: "riser", label: "riser into the drop", beats: 1.75 },
-  { at: 5.5, kind: "whoosh", label: "headline leaves", beats: 0.5, gain: 0.7 },
-  { at: 6, kind: "hit", label: "the drop: lyrics close-up", style: "drop" },
-  { at: 6, kind: "whoosh", label: "key chip rises", beats: 0.75 },
-  ...kicks(6, 35, "kick", 0.85, [10, 11, 14, 15, 24, 25, 34, 35]),
-  ...kicks(36, 45, "kick", 1, [44, 45]),
-  { at: 7, kind: "key", label: "y key press" },
-  { at: 7.5, kind: "ping", label: "lyric lines land", note: 88 },
-  { at: 8.5, kind: "swell", label: "gold builds", beats: 0.4, style: "reverse" },
-  { at: 9, kind: "impact", label: "cover turns gold", style: "gold", gain: 0.7 },
-  { at: 9, kind: "ping", label: "line: i keep the lights on", note: 84 },
-  { at: 11, kind: "ping", label: "line: hold the signal violet", note: 81 },
-  { at: 12, kind: "hit", label: "hard cut to the wide app", style: "cut" },
-  { at: 11.75, kind: "whoosh", label: "whoosh into the cut", beats: 0.5 },
-  { at: 12.25, kind: "tick", label: "sidebar lands", note: 91, gain: 0.6, pan: -0.4 },
-  { at: 12.5, kind: "tick", label: "player bar lands", note: 88, gain: 0.6, pan: 0.4 },
-  { at: 13, kind: "tick", label: "lyrics panel lifts forward", note: 96, gain: 0.7 },
-  { at: 14, kind: "riser", label: "riser into the queue", beats: 2 },
-  { at: 16, kind: "hit", label: "hard cut to the queue", style: "cut" },
-  { at: 16, kind: "whoosh", label: "queue panel rises", beats: 0.75 },
-  { at: 17, kind: "key", label: "q key press" },
-  ...[84, 86, 88, 91, 93].map(
-    (note, i): Spec => ({
-      at: 17.25 + i * 0.25,
-      kind: "tick",
-      label: `queue row ${i + 2} rises`,
-      note,
-      gain: 0.55,
-      pan: i % 2 ? 0.3 : -0.3,
-    }),
-  ),
-  { at: 19, kind: "tick", label: "row 4 drags to position 2", note: 79, gain: 0.9 },
-  { at: 21, kind: "tick", label: "next up slides in", note: 91, gain: 0.7, pan: 0.4 },
-  { at: 24, kind: "riser", label: "riser into the mixes", beats: 2 },
-  { at: 26, kind: "hit", label: "hard cut to the mixes", style: "cut" },
-  { at: 26, kind: "swell", label: "mix chord", beats: 2, style: "bloom" },
-  { at: 26.25, kind: "tick", label: "second source cover develops", note: 84, gain: 0.55, pan: -0.3 },
-  { at: 26.5, kind: "tick", label: "third source cover develops", note: 88, gain: 0.55, pan: 0.3 },
-  { at: 28, kind: "whoosh", label: "covers slide together", beats: 1, gain: 1.4 },
-  { at: 29, kind: "tick", label: "covers merge into the mix", note: 74, gain: 0.9 },
-  ...[84, 86, 88, 91].map(
-    (note, i): Spec => ({
-      at: 31 + i * 0.5,
-      kind: "tick",
-      label: `mix label ${i + 1} resolves`,
-      note,
-      gain: 0.5,
-      pan: i % 2 ? 0.35 : -0.35,
-    }),
-  ),
-  { at: 34, kind: "riser", label: "riser into the session", beats: 2 },
-  { at: 36, kind: "impact", label: "the full drop: one session", style: "drop" },
-  { at: 36, kind: "whoosh", label: "laptop window mask-in", beats: 1 },
-  { at: 36.5, kind: "tick", label: "phone frame lands", note: 93, gain: 0.7, pan: 0.4 },
-  { at: 37, kind: "key", label: "play key press" },
-  { at: 39, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5, gain: 2 },
-  { at: 39.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5, gain: 1.5 },
-  { at: 39.25, kind: "tick", label: "terminal blip", note: 100, gain: 0.7, pan: 0.2 },
-  ...[81, 84, 86, 88, 91].map(
-    (note, i): Spec => ({ at: 40 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.9, pan: i % 2 ? 0.3 : -0.3 }),
-  ),
-  { at: 44, kind: "riser", label: "riser out of the session", beats: 2, gain: 1.5 },
-  { at: 46, kind: "swell", label: "music filters down", beats: 0.5, style: "down" },
-  ...TYPED_FRAMES.map(
-    (frame, i): Spec => ({
-      at: frame / beat(1),
-      kind: "key",
-      label: `terminal types "${TYPED_CHARS[i]}"`,
-      gain: 0.45,
-      style: "typed",
-    }),
-  ),
-  { at: 49, kind: "key", label: "terminal enter", gain: 0.8, style: "enter" },
-  { at: 49.5, kind: "ping", label: "now-playing block resolves", note: 76, gain: 0.7 },
-  { at: 50, kind: "ping", label: "your server. echoes", note: 81, gain: 0.7 },
-  { at: 52, kind: "riser", label: "build to the end card", beats: 2, style: "quiet" },
-  ...[52, 53, 53.5].map((at): Spec => ({ at, kind: "kick", label: "kick roll into the silence", gain: 0.7 })),
-  { at: 54.5, kind: "hit", label: "end card sub hit", style: "brand", gain: 0.55 },
-  { at: 55, kind: "ping", label: "lodesong: lode (motif, first note)", note: 76, gain: 1.1 },
-  { at: 55.5, kind: "ping", label: "lodesong: song (motif, second note)", note: 81, gain: 1.1 },
-  { at: 56, kind: "tick", label: "url line fades in", note: 93, gain: 0.45 },
-];
+function sectionsOf(film: Film): { id: string; from: number; to: number }[] {
+  const { clock } = SCORES[film];
+  return clock.segments.map((s, i) => ({ id: s.id, from: clock.starts[i] ?? 0, to: (clock.starts[i] ?? 0) + s.beats }));
+}
 
-const CUTDOWN: readonly Spec[] = [
-  { at: 0, kind: "ping", label: "your music. lands (motif, first note)", note: 76 },
-  { at: 1, kind: "ping", label: "your server. lands (motif, second note)", note: 81 },
-  { at: 3.5, kind: "riser", label: "riser into the drop", beats: 1.25 },
-  { at: 3, kind: "whoosh", label: "headline leaves", beats: 0.5, gain: 0.7 },
-  { at: 5, kind: "hit", label: "the drop: lyrics", style: "drop" },
-  { at: 5, kind: "whoosh", label: "key chip rises", beats: 0.75 },
-  ...kicks(5, 17, "kick", 0.85, [16, 17]),
-  { at: 7, kind: "key", label: "y key press", gain: 1.4 },
-  { at: 7.5, kind: "ping", label: "lyric lines land", note: 88 },
-  { at: 8.5, kind: "swell", label: "gold builds", beats: 0.4, style: "reverse" },
-  { at: 9, kind: "impact", label: "cover turns gold", style: "gold", gain: 0.7 },
-  { at: 9, kind: "ping", label: "line: i keep the lights on", note: 84 },
-  { at: 11, kind: "ping", label: "line: hold the signal violet", note: 81 },
-  { at: 13, kind: "ping", label: "lyrics scroll: line 4", note: 79, gain: 0.8 },
-  { at: 15, kind: "ping", label: "lyrics scroll: line 5", note: 76, gain: 0.8 },
-  { at: 17, kind: "ping", label: "lyrics scroll: line 6", note: 74, gain: 1.2 },
-  { at: 18, kind: "hit", label: "cut to phone and terminal", style: "cut" },
-  { at: 18, kind: "whoosh", label: "strip slides in", beats: 0.75 },
-  ...kicks(18, 24, "kick", 1, [23, 24]),
-  { at: 19, kind: "ping", label: "handoff: laptop", note: 81, pan: -0.5, gain: 2 },
-  { at: 19.25, kind: "ping", label: "handoff: phone", note: 88, pan: 0.5, gain: 1.5 },
-  { at: 19.25, kind: "tick", label: "terminal blip", note: 100, gain: 0.7, pan: 0.2 },
-  ...[81, 84, 86, 88, 91].map(
-    (note, i): Spec => ({ at: 20 + i, kind: "tick", label: `device chip ${i + 1}`, note, gain: 0.9, pan: i % 2 ? 0.3 : -0.3 }),
-  ),
-  { at: 23, kind: "riser", label: "riser into the end card", beats: 2, gain: 1.5 },
-  { at: 26, kind: "hit", label: "end card sub hit", style: "brand", gain: 0.55 },
-  { at: 27, kind: "ping", label: "lodesong: lode (motif, first note)", note: 76, gain: 1.1 },
-  { at: 27.5, kind: "ping", label: "lodesong: song (motif, second note)", note: 81, gain: 1.1 },
-  { at: 28, kind: "tick", label: "url line fades in", note: 93, gain: 0.45 },
-];
+const SHEETED = new Set(["kick", "snare", "impact", "riser", "whoosh", "reverse", "down", "ui"]);
 
-const SHEETS: Record<Film, readonly Spec[]> = { hero: HERO, cutdown: CUTDOWN };
-
-function build(film: Film): SheetCue[] {
+function sheetOf(film: Film): SheetCue[] {
   const seen = new Map<string, number>();
-  return [...SHEETS[film]]
-    .map((spec): SheetCue => {
-      const frame = beat(spec.at);
-      const base = `${film}-${spec.kind}-${frame}`;
+  return SCORES[film].events
+    .filter((e) => e.label && SHEETED.has(e.track) && !(e.track === "kick" && e.vel < 0.8))
+    .map((e): SheetCue => {
+      const frame = Math.round(e.t * FPS);
+      const kind = e.track === "ui" ? (e.style ?? "ui") : e.track;
+      const base = `${film}-${kind}-${frame}`;
       const count = seen.get(base) ?? 0;
       seen.set(base, count + 1);
       return {
         id: count === 0 ? base : `${base}-${count}`,
         frame,
-        kind: spec.kind,
-        label: spec.label,
+        kind,
+        label: e.label as string,
         film,
-        gain: spec.gain ?? 1,
-        pan: spec.pan ?? 0,
-        ...(spec.note === undefined ? {} : { note: spec.note }),
-        ...(spec.beats === undefined ? {} : { length: beat(spec.at + spec.beats) - frame }),
-        ...(spec.style === undefined ? {} : { style: spec.style }),
+        gain: e.vel,
+        pan: e.pan,
+        note: e.midi,
+        ...(e.track === "ui" ? { style: e.style === "type" ? "typed" : e.style } : e.style ? { style: e.style } : {}),
+        ...(["riser", "whoosh", "reverse", "down"].includes(e.track) ? { length: Math.round(e.dur * FPS) } : {}),
       };
-    })
-    .sort((a, b) => a.frame - b.frame);
+    });
 }
 
-/** Everything the score plays, with the synthesis parameters. The audio script renders this table. */
-export const SHEET: readonly SheetCue[] = [...build("hero"), ...build("cutdown")];
+/** Everything the score plays that the picture can touch, with frames at 60 fps. The audio script renders the same events. */
+export const SHEET: readonly SheetCue[] = FILMS.flatMap(sheetOf).sort((a, b) => a.frame - b.frame);
 
-/** What the visuals read: one row per sound, frames at 60 fps, derived from SHEET so it cannot drift from the WAV. */
 export const AUDIO_CUES: readonly AudioCue[] = SHEET.map(({ id, frame, kind, label, film, length }) => ({
   id,
   frame,
@@ -229,3 +285,10 @@ export const AUDIO_CUES: readonly AudioCue[] = SHEET.map(({ id, frame, kind, lab
   film,
   ...(length === undefined ? {} : { length }),
 }));
+
+/** Named frames the picture can land on: segment starts, the breath, the final hit. */
+export const LANDMARKS: Record<Film, readonly { id: string; frame: number }[]> = {
+  hero: SCORES.hero.landmarks,
+  tour: SCORES.tour.landmarks,
+  cutdown: SCORES.cutdown.landmarks,
+};
