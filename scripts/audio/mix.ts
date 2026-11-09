@@ -9,7 +9,6 @@ import {
   highpass,
   highShelf,
   lowpass,
-  lowShelf,
   makeIR,
   noiseBuffer,
   peakEq,
@@ -128,6 +127,18 @@ function pumpEnvelope(score: Score, length: number): Float32Array {
   return env;
 }
 
+/** under a riser the music thins out so the riser is what grows: a quadratic pull that lets go at the hit */
+function riserEnvelope(score: Score, length: number): Float32Array {
+  const env = new Float32Array(length);
+  for (const e of score.events) {
+    if (e.track !== "riser") continue;
+    const start = Math.round(e.t * RATE);
+    const span = Math.round(e.dur * RATE);
+    for (let i = 0; i < span && start + i < length; i += 1) env[start + i] = Math.max(env[start + i] ?? 0, (i / span) ** 1.6);
+  }
+  return env;
+}
+
 function segmentAtTime(score: Score, t: number): number {
   let index = 0;
   for (const [i, start] of score.clock.starts.entries()) if (score.clock.at(start) <= t + 1e-6) index = i;
@@ -191,18 +202,22 @@ export function mixScore(score: Score): Mix {
   }
 
   const pump = pumpEnvelope(score, length);
+  const clearing = riserEnvelope(score, length);
   const padCut = interpolate(score.curves.padCut, length, true);
   const padBus = group("pad");
   const warm = { l: lowpass(padBus.l, (i) => padCut[i] ?? 1000, 0.8), r: lowpass(padBus.r, (i) => padCut[i] ?? 1000, 0.8) };
   const pad = chorus({ l: highpass(warm.l, 130), r: highpass(warm.r, 130) }, 2.2, 0.27, 0.2);
   duck(pad, pump, 0.9);
+  duck(pad, clearing, 0.85);
   const hallPad = scaled(pad, 0.2);
   addStereo(sends.hall, hallPad, 0, 1);
 
   const arp = group("arp");
   duck(arp, pump, 0.6);
+  duck(arp, clearing, 0.95);
   const lead = group("lead");
   duck(lead, pump, 0.3);
+  duck(lead, clearing, 0.8);
   const bass = group("bass");
   duck(bass, pump, 0.92);
 
@@ -233,6 +248,7 @@ export function mixScore(score: Score): Mix {
 
   const kicks = groups.has("kick") ? scaled(group("kick"), BUS_GAIN.drums) : stereo(length);
   const drums = stereo(length);
+  if (groups.has("hats")) duck(group("hats"), clearing, 0.9);
   for (const g of ["kick", "drums", "hats"] as const) if (groups.has(g)) addStereo(drums, group(g), 0, 1);
   highShelf(drums, 6000, -3);
   compress(drums, { threshold: -17, ratio: 3.5, attack: 0.012, release: 0.09, makeup: 2.5, mix: 0.85 });
@@ -305,7 +321,6 @@ export function sumStems(stems: Stems): Stereo {
 export function masterChain(total: Stereo): void {
   compress(total, { threshold: -12, ratio: 1.7, attack: 0.03, release: 0.2, makeup: 1 });
   saturate(total, 1.25);
-  lowShelf(total, 75, 1.6);
   peakEq(total, 320, -1.6, 0.9);
   peakEq(total, 3300, -3.5, 0.6);
   highShelf(total, 5000, -3);
