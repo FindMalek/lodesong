@@ -132,6 +132,8 @@ function envelope(signal: Float32Array, window: number): Float32Array {
 type Group = "low" | "mid" | "high" | "wide";
 type StemName = "drums" | "bass" | "music" | "fx" | "ui" | "space";
 const STEM_NAMES: readonly StemName[] = ["drums", "bass", "music", "fx", "ui", "space"];
+/** Kick timing is read from the kicks alone (stems/<film>-kicks.wav): snares, toms and claps share the drums stem and their low end moves the threshold crossing by up to 12 ms, which is the measurement and not the score. */
+type Stems = Record<StemName, Source> & { kicks: Source };
 
 const TRANSIENT_KINDS = new Set([
   "kick",
@@ -191,7 +193,9 @@ const MIN_MEDIAN_DB: Record<string, number> = {
   tile: -6,
   enter: -6,
 };
-const MAX_KICK_GAP_MS = 4;
+const MAX_KICK_GAP_MS = 1;
+/** a kick that starts while the last one still rings has no clean onset to measure, ghost notes included */
+const KICK_TAIL_SECONDS = 0.27;
 /** an onset can hide under the ring of the previous sound; more than this share of cues doing it is a mix problem */
 const MAX_MASKED = 0.04;
 
@@ -256,8 +260,6 @@ function onsetOffset(env: Float32Array, sample: number): number | undefined {
   return undefined;
 }
 
-type Stems = Record<StemName, Source>;
-
 function silenced(frame: number, film: Film): boolean {
   const t = frame / FPS;
   return SCORES[film].gates.some(([from, to]) => t >= from - 0.04 && t <= to + 0.04);
@@ -276,10 +278,13 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
     const sample = Math.round(secondsOf(cue.frame) * RATE);
     const group = groupOf(cue.kind);
     const own = stemOf(cue.kind);
+    const timing = cue.kind === "kick" ? stems.kicks : stems[own];
     const span = Math.max(1, cue.length ?? 30) * (RATE / FPS);
     const tailing =
       cue.kind === "kick" &&
-      SCORES[film].events.some((e) => e.track === "kick" && e.t < secondsOf(cue.frame) - 0.002 && secondsOf(cue.frame) - e.t < 0.27);
+      SCORES[film].events.some(
+        (e) => e.track === "kick" && e.t < secondsOf(cue.frame) - 0.002 && secondsOf(cue.frame) - e.t < KICK_TAIL_SECONDS,
+      );
     const crowded =
       tailing ||
       cues.some(
@@ -291,7 +296,7 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
           (o.kind === cue.kind || stemOf(cue.kind) === "ui"),
       );
     if (TRANSIENT_KINDS.has(cue.kind) && !crowded) {
-      const offset = onsetOffset(stems[own].env(group), sample);
+      const offset = onsetOffset(timing.env(group), sample);
       checked += 1;
       const delta = offset === undefined ? undefined : offset / RATE / FRAME_SECONDS;
       if (delta === undefined) masked.push(`${cue.id} (${cue.label})`);
@@ -336,8 +341,10 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
 /** consecutive kicks one beat apart must be one beat apart in the audio, whatever the tempo of the shot */
 function kickGrid(stems: Stems, film: Film): number {
   const { clock, events } = SCORES[film];
-  const kicks = events.filter((e) => e.track === "kick" && e.vel >= 0.8 && !silenced(Math.round(e.t * FPS), film));
-  const env = stems.drums.env("low");
+  const every = events.filter((e) => e.track === "kick");
+  const clear = (t: number): boolean => !every.some((o) => o.t < t - 0.002 && t - o.t < KICK_TAIL_SECONDS);
+  const kicks = every.filter((e) => e.vel >= 0.8 && clear(e.t) && !silenced(Math.round(e.t * FPS), film));
+  const env = stems.kicks.env("low");
   const errors: number[] = [];
   const onset = (t: number): number | undefined => {
     const sample = Math.round(t * RATE);
@@ -573,9 +580,10 @@ async function auditFilm(film: Film): Promise<number> {
     }
   }
 
-  const stems = Object.fromEntries(
+  const sources = Object.fromEntries(
     await Promise.all(STEM_NAMES.map(async (n) => [n, new Source(await decode(`public/audio/stems/${film}-${n}.wav`))])),
-  ) as Stems;
+  ) as Record<StemName, Source>;
+  const stems: Stems = { ...sources, kicks: new Source(await decode(`public/audio/stems/${film}-kicks.wav`)) };
   failures += kickGrid(stems, film);
   failures += reportCues(stems, film, FILM_FRAMES[film]);
   return failures;
@@ -590,6 +598,6 @@ export async function audio(films: Film[]): Promise<number> {
 
 export async function onsets(file: string, film: Film): Promise<number> {
   const source = new Source(await decode(file));
-  const stems = { drums: source, bass: source, music: source, fx: source, ui: source, space: source };
+  const stems = { drums: source, bass: source, music: source, fx: source, ui: source, space: source, kicks: source };
   return reportCues(stems, film, Math.round(source.band("wide").length / (RATE / FPS)));
 }

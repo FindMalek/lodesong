@@ -7,8 +7,8 @@ import { Bracket } from "../design/draw";
 import { ease, ramp } from "../design/motion";
 import { Plate, type PlateSlice, plateKeys } from "../design/plate";
 import { Whip } from "../design/whip";
-import { Chip, grid, KeyStamp, LAYOUT, plateFile, ShotTransit } from "../ui/s4-kit";
-import { CrossfadeDeck, CrossfadeSlider, NormalizationAuto, Schematic } from "../ui/s5-crossfade";
+import { Chip, flat, grid, KeyStamp, LAYOUT, LIFT, plateFile, ShotTransit } from "../ui/s4-kit";
+import { CrossfadeDeck, CrossfadeSlider, NormalizationAuto } from "../ui/s5-crossfade";
 import { BASS_PRESET, CHIPS, EqBands, type PresetChange, TREBLE_PRESET } from "../ui/s5-eq";
 import { dragProgress, QueueRows, reorderFrames, slotY } from "../ui/s5-queue-rows";
 import { shotOf } from "./timelines";
@@ -95,7 +95,8 @@ function QueueScene() {
         slices={SLICES}
         focusZ={110}
         aperture={0.012}
-        light={{ x: pointer.x, y: pointer.y, radius: 520, dim: 0.58, wash: 0.05 }}
+        brightness={LIFT}
+        light={{ x: pointer.x, y: pointer.y, radius: 700, dim: 0.85, wash: 0.05 }}
       >
         <div
           style={{
@@ -104,7 +105,7 @@ function QueueScene() {
             top: 44,
             width: 321,
             height: 701,
-            background: "rgb(24 24 24)",
+            background: flat(16),
             transform: `translateX(${(1 - slide) * 321}px)`,
             opacity: slide < 1 ? 1 : 0,
           }}
@@ -140,15 +141,15 @@ function CrossfadeScene() {
           layout={LAYOUT}
           slices={SETTINGS_SLICE}
           focusZ={60}
-          aperture={0.014}
-          light={{ x: 960, y: 270, radius: 560, dim: 0.5, wash: 0.05 }}
+          aperture={0.002}
+          brightness={LIFT}
+          light={{ x: 900, y: 300, radius: 900, dim: 0.9, wash: 0.04 }}
         >
           <CrossfadeSlider from={X.slider} length={X.sliderLength} />
           <Bracket box={{ x: 756, y: 232, w: 340, h: 76 }} at={grid(X.slider + X.sliderLength)} pad={4} arm={12} width={2} length={0.4} />
           <NormalizationAuto from={X.norm} />
           <Bracket box={{ x: 843, y: 343, w: 247, h: 44 }} at={grid(X.norm)} pad={4} arm={10} width={2} length={0.4} />
         </Plate>
-        <Bokeh focusZ={0} z={300} count={5} seed={11} opacity={0.1} />
       </Camera>
       <CrossfadeDeck from={X.deck} play={X.play} playLength={X.playLength} />
     </>
@@ -159,8 +160,8 @@ const EQ_SLICE: PlateSlice[] = [{ name: "equalizer", box: { x: 1056, y: 0, w: 38
 
 const E_KEYS = plateKeys(LAYOUT, [
   { at: 0, box: WHOLE, scale: 1.05, ry: -6, rx: 0 },
-  { at: grid(8), box: { x: 1056, y: 100, w: 384, h: 340 }, scale: 1.75, ry: -3 },
-  { at: grid(60), box: { x: 1056, y: 120, w: 384, h: 330 }, scale: 1.65, ry: 1 },
+  { at: grid(8), box: { x: 1056, y: 110, w: 384, h: 310 }, scale: 1.95, ry: -3 },
+  { at: grid(60), box: { x: 1056, y: 130, w: 384, h: 300 }, scale: 1.85, ry: 1 },
 ]);
 
 const EQ_CURSOR: CursorStop[] = [
@@ -175,24 +176,21 @@ function EqScene() {
   const cam = addCam(camAt(frame, E_KEYS), handheld(frame, 0.6));
   const chip = frame < E.treble ? CHIPS.bass : CHIPS.treble;
   return (
-    <>
-      <Camera cam={cam}>
-        <Plate
-          src={plateFile("equalizer/eq")}
-          layout={LAYOUT}
-          slices={EQ_SLICE}
-          focusZ={110}
-          aperture={0.012}
-          light={{ x: 1250, y: 260, radius: 520, dim: 0.5, wash: 0.05 }}
-        >
-          <EqBands changes={EQ_CHANGES} />
-          {chip ? <Bracket box={chip} at={grid(frame < E.treble ? E.bass : E.treble)} pad={4} arm={8} width={2} length={0.3} /> : null}
-          <Cursor stops={EQ_CURSOR} size={38 / (LAYOUT.k * cam.scale)} />
-        </Plate>
-        <Bokeh focusZ={0} z={300} count={5} seed={2} opacity={0.1} />
-      </Camera>
-      <Schematic />
-    </>
+    <Camera cam={cam}>
+      <Plate
+        src={plateFile("equalizer/eq")}
+        layout={LAYOUT}
+        slices={EQ_SLICE}
+        focusZ={110}
+        aperture={0.002}
+        brightness={LIFT}
+        light={{ x: 1250, y: 280, radius: 800, dim: 0.9, wash: 0.04 }}
+      >
+        <EqBands changes={EQ_CHANGES} />
+        {chip ? <Bracket box={chip} at={grid(frame < E.treble ? E.bass : E.treble)} pad={4} arm={8} width={2} length={0.3} /> : null}
+        <Cursor stops={EQ_CURSOR} size={38 / (LAYOUT.k * cam.scale)} />
+      </Plate>
+    </Camera>
   );
 }
 
@@ -225,14 +223,13 @@ function Segments() {
 /** S5, the queue: `q` slides the panel in, a row is dragged up over its neighbours and `⌘Z` puts it back, the crossfade slider goes to 6 s and the two songs overlap with no gap, a preset reshapes the ten bands. */
 export function QueueShot() {
   const frame = useCurrentFrame();
-  const local = frame - WHIP_1;
-  const lit = frame >= WHIP_2 ? 3 : local < X.deck ? 0 : local < X.norm ? 1 : 2;
+  const lit = frame >= WHIP_2 ? 1 : 0;
   return (
     <ShotTransit frames={SHOT.frames} leave={null} arrive="right">
       <Segments />
       <KeyStamp label="q" at={Q.key} />
       <KeyStamp label="⌘Z" at={Q.undoKey} wide hold={14} />
-      <Chip text="crossfade  gapless  replaygain  eq" from={WHIP_1 + 4} x={96} y={960} lit={lit} />
+      <Chip text="gapless  eq" from={WHIP_1 + 4} x={96} y={960} lit={lit} />
     </ShotTransit>
   );
 }

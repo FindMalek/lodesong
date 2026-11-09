@@ -31,11 +31,12 @@ function fadeTail(audio: Stereo, seconds: number): void {
 async function masterFilm(film: Film): Promise<void> {
   const started = performance.now();
   const score = SCORES[film];
-  const stems: Stems = mixScore(score);
-  for (const stem of Object.values(stems)) fadeTail(stem, 1.2);
+  const { stems, kicks }: { stems: Stems; kicks: Stereo } = mixScore(score);
+  const every = [...Object.values(stems), kicks];
+  for (const stem of every) fadeTail(stem, 1.2);
   const total = sumStems(stems);
   masterChain(total);
-  for (const audio of [total, ...Object.values(stems)]) applyGates(audio, score.gates);
+  for (const audio of [total, ...every]) applyGates(audio, score.gates);
   const mixed = performance.now();
 
   let gainDb = 0;
@@ -54,7 +55,7 @@ async function masterFilm(film: Film): Promise<void> {
     gainDb += lufsError * 0.9;
   }
   const gain = dbGain(gainDb);
-  for (const [name, stem] of Object.entries(stems)) await write(`stems/${film}-${name}.wav`, scaled(stem, gain));
+  for (const [name, stem] of Object.entries({ ...stems, kicks })) await write(`stems/${film}-${name}.wav`, scaled(stem, gain));
   if (film === "hero") {
     const open = stereo(FPS * 8 * (RATE / FPS));
     addStereo(open, master, 0, 1);

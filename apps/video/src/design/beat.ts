@@ -61,8 +61,9 @@ export const TEMPO: readonly Tempo[] = [
   { beats: 8, bpm: 124 },
   { beats: 12, bpm: 128 },
   { beats: 12, bpm: 132 },
-  { beats: 8, bpm: 136 },
-  { beats: 8, bpm: 138 },
+  { beats: 8, bpm: 132 },
+  { beats: 12, bpm: 136 },
+  { beats: 12, bpm: 138 },
   { beats: 12, bpm: 138 },
 ];
 

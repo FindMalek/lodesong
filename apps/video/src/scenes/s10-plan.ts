@@ -22,10 +22,9 @@ export interface KeyCut {
 const DIALOG = plateBox("shortcuts-sheet", "sheet", "dialog");
 const TOAST = plateBox("moments-save", "saved", "toast");
 const SEEK = plateBox("moments-save", "saved", "seek");
-const BAR = plateBox("transport-keys", "paused", "bar");
 const PENCIL = eventsOf("rebind").find((event) => event.target)?.target ?? { x: 684, y: 204, w: 24, h: 24 };
 
-/** Eight one-beat cuts at 136 bpm: every cut is a keystroke, every keystroke is a drum hit. */
+/** Six two-beat moments at 136 bpm: a keycap and a plate held for about 0.9 s, every keystroke a drum hit. */
 export const S10_CUTS: readonly KeyCut[] = [
   {
     id: "sheet",
@@ -40,29 +39,18 @@ export const S10_CUTS: readonly KeyCut[] = [
   },
   {
     id: "albums",
-    beat: 1,
+    beat: 2,
     take: "chords",
     plate: "albums",
     keys: ["g", "a"],
     chip: "albums",
     focus: { x: 220, y: 50, w: 720, h: 330 },
     scale: [1.5, 1.3],
-    move: "pull",
-  },
-  {
-    id: "artists",
-    beat: 2,
-    take: "chords",
-    plate: "artists",
-    keys: ["g", "r"],
-    chip: "artists",
-    focus: { x: 220, y: 40, w: 760, h: 300 },
-    scale: [1.6, 1.4],
     move: "whip-left",
   },
   {
     id: "stats",
-    beat: 3,
+    beat: 4,
     take: "chords",
     plate: "stats",
     keys: ["g", "t"],
@@ -73,7 +61,7 @@ export const S10_CUTS: readonly KeyCut[] = [
   },
   {
     id: "moment",
-    beat: 4,
+    beat: 6,
     take: "moments-save",
     plate: "saved",
     keys: ["b"],
@@ -84,30 +72,19 @@ export const S10_CUTS: readonly KeyCut[] = [
     mark: SEEK,
   },
   {
-    id: "moments",
-    beat: 5,
-    take: "moments-save",
-    plate: "moments",
-    keys: ["g", "m"],
-    chip: "moments",
-    focus: { x: 200, y: 60, w: 800, h: 300 },
-    scale: [2, 1.7],
-    move: "pull",
-  },
-  {
-    id: "play",
-    beat: 6,
-    take: "transport-keys",
-    plate: "paused",
-    keys: ["space"],
-    chip: "play pause",
-    focus: { x: BAR.x + 300, y: BAR.y - 185, w: 840, h: 250 },
-    scale: [1.7, 1.5],
+    id: "list",
+    beat: 8,
+    take: "list-keys",
+    plate: "focused",
+    keys: ["j", "k"],
+    chip: "move through lists",
+    focus: { x: 220, y: 180, w: 1000, h: 420 },
+    scale: [1.45, 1.65],
     move: "whip-left",
   },
   {
     id: "rebind",
-    beat: 7,
+    beat: 10,
     take: "rebind",
     plate: "rebinding",
     keys: ["?"],
@@ -120,11 +97,12 @@ export const S10_CUTS: readonly KeyCut[] = [
 ];
 
 export const STRIKE = 2;
+export const MOMENT_BEATS = 2;
 
 export function cutFrames(cut: KeyCut): { from: number; frames: number; strikes: number[] } {
   const shot = shotOf("keys");
   const from = shot.beat(cut.beat);
-  const end = shot.beat(cut.beat + 1);
+  const end = shot.beat(cut.beat + MOMENT_BEATS);
   const eighth = shot.beat(cut.beat + 0.5) - from;
   return { from, frames: end - from, strikes: cut.keys.map((_, i) => STRIKE + i * eighth) };
 }
@@ -145,5 +123,8 @@ export const S10_CUES: readonly ShotCue[] = [
     );
   }),
   ...WHIP_CUTS.map((cut): ShotCue => ({ shot: "keys", at: cutFrames(cut).from, kind: "whoosh", label: `${cut.id}: ${cut.move}` })),
-  { shot: "keys", at: shotOf("keys").beat(6.5), kind: "riser", label: "snare roll into the flashes" },
+  ...S10_CUTS.map(
+    (cut): ShotCue => ({ shot: "keys", at: shotOf("keys").beat(cut.beat + 1), kind: "tick", label: `${cut.id}: chip settles` }),
+  ),
+  { shot: "keys", at: shotOf("keys").beat(10.5), kind: "riser", label: "snare roll into the flashes" },
 ].sort((a, b) => a.at - b.at);
