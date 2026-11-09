@@ -22,6 +22,7 @@ import {
 import type { CSSProperties } from "react";
 import { BrandMark } from "../../../player/src/components/brand";
 import { ALBUM_MINUTES, COPY, clock, FIXTURE } from "../copy";
+import { edgeFade } from "../design/motion";
 import { DitherCover } from "./dither-cover";
 
 export const STAGE = { width: 1280, height: 800 };
@@ -156,10 +157,7 @@ export function Lyrics({ focus }: { focus: number }) {
   return (
     <div style={{ ...panel, left: STAGE.width - LYRICS, top: 0, width: LYRICS, height: STAGE.height - BAR }}>
       <div className="flex h-11 items-center border-b px-5 font-mono text-small">lyrics</div>
-      <div
-        className="absolute inset-x-0 top-11 bottom-0 overflow-hidden"
-        style={{ maskImage: "linear-gradient(to bottom, transparent, black 18%, black 70%, transparent)" }}
-      >
+      <div className="absolute inset-x-0 top-11 bottom-0 overflow-hidden">
         <div className="flex flex-col gap-6 p-6" style={{ transform: `translateY(${60 - focus * LINE_STEP}px)` }}>
           {COPY.lyrics.map((line, index) => {
             const weight = Math.max(0, 1 - Math.abs(index - focus));
@@ -167,7 +165,12 @@ export function Lyrics({ focus }: { focus: number }) {
               <div
                 key={line}
                 className="font-medium text-lead"
-                style={{ opacity: 0.35 + 0.65 * weight, transform: `translateX(${weight * 8}px)` }}
+                style={{
+                  opacity:
+                    (0.35 + 0.65 * weight) *
+                    edgeFade((84 + LINE_STEP / 2 + (index - focus) * LINE_STEP) / (STAGE.height - BAR - 44), [0, 0.18, 0.7, 1]),
+                  transform: `translateX(${weight * 8}px)`,
+                }}
               >
                 {line}
               </div>

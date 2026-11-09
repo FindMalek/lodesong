@@ -24,8 +24,8 @@ const shotStills = (id: ShotId, frames?: number[], hero: number[] = []): StillPl
 
 export const STILLS: Record<string, StillPlan> = {
   "shot-cold-open": shotStills("cold-open", [4, 20, 40, 60, 100, 143], [100, 143]),
-  "shot-find-line": shotStills("find-line", [10, 30, 60, 100, 150, 190, 230, 262], [150, 230]),
-  "shot-play-line": shotStills("play-line", [14, 40, 80, 110, 150, 200, 266], [40, 200, 266]),
+  "shot-find-line": shotStills("find-line", [10, 30, 60, 100, 150, 190, 212, 236, 262], [190, 212]),
+  "shot-play-line": shotStills("play-line", [3, 8, 14, 28, 44, 70, 100, 150, 200, 266], [30, 200, 266]),
   "shot-lyrics": shotStills("lyrics"),
   "shot-queue": shotStills("queue"),
   "shot-mixes": shotStills("mixes"),
