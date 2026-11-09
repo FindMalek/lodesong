@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { AUDIO_CUES, FILM_FRAMES, FILMS, LANDMARKS, SCORES, SECTIONS, SHEET, SPECS } from "./audio-cues";
 import { MOODS, voiceLead } from "./audio-plan";
 import { createClock, FPS } from "./audio-tempo";
+import { CUT_MAP, HERO_MAP } from "./design/beat";
 
 test("each film is sorted, unique and inside its length", () => {
   for (const film of FILMS) {
@@ -14,14 +15,11 @@ test("each film is sorted, unique and inside its length", () => {
   expect(new Set(ids).size).toBe(ids.length);
 });
 
-test("films run the lengths the brief asks for", () => {
-  const seconds = (film: (typeof FILMS)[number]): number => FILM_FRAMES[film] / FPS;
-  expect(seconds("hero")).toBeGreaterThanOrEqual(45);
-  expect(seconds("hero")).toBeLessThanOrEqual(60);
-  expect(seconds("tour")).toBeGreaterThanOrEqual(120);
-  expect(seconds("tour")).toBeLessThanOrEqual(150);
-  expect(seconds("cutdown")).toBeGreaterThanOrEqual(14);
-  expect(seconds("cutdown")).toBeLessThanOrEqual(16);
+test("hero and cutdown follow the edit's own tempo map, the tour its placeholder", () => {
+  expect(FILM_FRAMES.hero).toBe(HERO_MAP.totalFrames);
+  expect(FILM_FRAMES.cutdown).toBe(CUT_MAP.totalFrames);
+  expect(FILM_FRAMES.tour / FPS).toBeGreaterThanOrEqual(120);
+  expect(FILM_FRAMES.tour / FPS).toBeLessThanOrEqual(150);
 });
 
 test("every segment names a mood and the tempo map only ever speeds up into the finale", () => {

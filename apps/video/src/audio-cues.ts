@@ -1,5 +1,6 @@
 import { buildScore, type FilmSpec, type Score, type UiEvent, type UiKind } from "./audio-plan";
 import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
+import { CUT_MAP, TEMPO, type Tempo } from "./design/beat";
 
 export type Film = "hero" | "tour" | "cutdown";
 export const FILMS: readonly Film[] = ["hero", "tour", "cutdown"];
@@ -26,27 +27,38 @@ type Row = readonly [id: string, beats: number, bpm: number, mood: string, enter
 const segments = (rows: readonly Row[]): Segment[] =>
   rows.map(([id, beats, bpm, mood, enter, extra]) => ({ id, beats, bpm, mood, enter: enter ?? "none", ...extra }));
 
-/**
- * Default hero tempo map: the 100 to 138 BPM ramp from the director's storyboard, each shot a tempo segment.
- * Replace with the edit's own TEMPO table (design/beat.ts) when it lands: the score only needs beats and bpm per shot.
- */
-const HERO: readonly Row[] = [
-  ["cold open", 8, 100, "void"],
-  ["find the line", 8, 104, "tension", "cut"],
-  ["play from the line", 16, 108, "drop", "drop"],
-  ["the lyrics", 8, 112, "calm", "cut"],
-  ["the queue", 8, 116, "groove", "hit", { db: -4 }],
-  ["mixes", 8, 120, "groove", "cut", { variant: 1, db: -1 }],
-  ["ask for a mood", 4, 124, "lift", "cut", { db: -7 }],
-  ["one session", 16, 128, "peak", "drop", { db: 4 }],
-  ["everywhere", 6, 132, "peak", "hit", { variant: 1, db: 1 }],
-  ["terminal", 2, 132, "pocket", "cut"],
-  ["keyboard storm", 4, 136, "storm", "drop"],
-  ["yours", 4, 138, "flash", "hit", { db: 3 }],
-  ["docker run", 2, 138, "hush", "cut", { gap: 8 }],
-  ["land", 2, 138, "land", "hit"],
-  ["afterglow", 6, 138, "afterglow"],
-];
+type Part = readonly [id: string, beats: number, mood: string, enter?: Segment["enter"], extra?: Partial<Segment>];
+
+/** The score reads the edit's own tempo table: one entry of parts per shot, whose beats must add up to the shot. */
+function overTempo(table: readonly Tempo[], plan: readonly (readonly Part[])[]): Row[] {
+  return plan.flatMap((parts, i) => {
+    const shot = table[i];
+    if (!shot || parts.reduce((sum, part) => sum + part[1], 0) !== shot.beats) throw new Error(`score plan does not fit tempo shot ${i}`);
+    return parts.map(([id, beats, mood, enter, extra]): Row => [id, beats, shot.bpm, mood, enter, extra]);
+  });
+}
+
+const HERO: readonly Row[] = overTempo(TEMPO, [
+  [["cold open", 4, "void"]],
+  [["find the line", 8, "tension", "cut"]],
+  [["play from the line", 8, "drop", "drop"]],
+  [["the lyrics", 8, "calm", "cut"]],
+  [["the queue", 4, "groove", "hit", { db: -4 }]],
+  [["mixes", 8, "groove", "cut", { variant: 1, db: -1 }]],
+  [["ask for a mood", 4, "lift", "cut", { db: -7 }]],
+  [["one session", 8, "peak", "drop", { db: 4 }]],
+  [
+    ["everywhere", 6, "peak", "hit", { variant: 1, db: 1 }],
+    ["terminal", 2, "pocket", "cut"],
+  ],
+  [["keyboard storm", 4, "storm", "drop"]],
+  [["yours", 4, "flash", "hit", { db: 3 }]],
+  [
+    ["docker run", 2, "hush", "cut", { gap: 8 }],
+    ["land", 2, "land", "hit"],
+    ["afterglow", 4, "afterglow"],
+  ],
+]);
 
 const TOUR: readonly Row[] = [
   ["tour open", 8, 96, "void"],
@@ -74,15 +86,17 @@ const TOUR: readonly Row[] = [
   ["afterglow", 6, 138, "afterglow"],
 ];
 
-const CUTDOWN: readonly Row[] = [
-  ["hook", 4, 108, "tension", "none", { db: -10 }],
-  ["find and ignite", 8, 112, "drop", "drop"],
-  ["mixes", 4, 120, "groove", "hit", { db: -4 }],
-  ["handoff", 4, 126, "lift", "cut", { db: -7 }],
-  ["flashes", 4, 132, "storm", "drop", { db: 3 }],
-  ["land", 2, 132, "land", "hit"],
-  ["afterglow", 4, 132, "afterglow"],
-];
+const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
+  [["hook", 4, "tension", "none", { db: -10 }]],
+  [["find and ignite", 8, "drop", "drop"]],
+  [["mixes", 4, "groove", "hit", { db: -4 }]],
+  [["handoff", 4, "lift", "cut", { db: -7 }]],
+  [["flashes", 4, "storm", "drop", { db: 3 }]],
+  [
+    ["land", 2, "land", "hit"],
+    ["afterglow", 4, "afterglow"],
+  ],
+]);
 
 type Pin = readonly [id: string, beat: number, kind: UiKind, label?: string];
 
@@ -116,7 +130,7 @@ const HERO_UI: readonly Pin[] = [
   ["play from the line", 0.5, "seek", "seek bar jumps"],
   ["play from the line", 1, "ignite", "cover ignites gold"],
   ["play from the line", 3, "chip", "label chip"],
-  ["play from the line", 15.5, "seek", "match cut to the lyrics"],
+  ["play from the line", 7.5, "seek", "match cut to the lyrics"],
   ["the lyrics", 0, "key", "shift f"],
   ["the lyrics", 1.5, "line", "lyric line 1"],
   ["the lyrics", 3, "line", "lyric line 2"],
@@ -126,15 +140,15 @@ const HERO_UI: readonly Pin[] = [
   ["the lyrics", 6.5, "click", "click a line"],
   ["the lyrics", 6.6, "seek", "playback jumps"],
   ["the queue", 0, "key", "q"],
-  ["the queue", 0.5, "row", "queue row 1"],
-  ["the queue", 0.75, "row", "queue row 2"],
-  ["the queue", 1, "row", "queue row 3"],
-  ["the queue", 1.25, "row", "queue row 4"],
-  ["the queue", 1.5, "row", "queue row 5"],
-  ["the queue", 3, "key", "cmd-z"],
-  ["the queue", 3.1, "row", "undo"],
-  ["the queue", 5, "seek", "crossfade"],
-  ["the queue", 7, "chip", "eq chip"],
+  ["the queue", 0.25, "row", "queue row 1"],
+  ["the queue", 0.5, "row", "queue row 2"],
+  ["the queue", 0.75, "row", "queue row 3"],
+  ["the queue", 1, "row", "queue row 4"],
+  ["the queue", 1.25, "row", "queue row 5"],
+  ["the queue", 2.25, "key", "cmd-z"],
+  ["the queue", 2.35, "row", "undo"],
+  ["the queue", 3, "seek", "crossfade"],
+  ["the queue", 3.5, "chip", "eq chip"],
   ["mixes", 0.5, "tile", "mix tile 1"],
   ["mixes", 1.5, "tile", "mix tile 2"],
   ["mixes", 2.5, "tile", "mix tile 3"],
@@ -148,14 +162,14 @@ const HERO_UI: readonly Pin[] = [
   ["one session", 1.5, "row", "picker row 1"],
   ["one session", 1.75, "row", "picker row 2"],
   ["one session", 3.25, "click", "select iphone"],
-  ["one session", 4, "draw", "gold line draws"],
-  ["one session", 6, "device", "pulse arrives"],
-  ["one session", 8, "chip", "chip 1"],
-  ["one session", 8.5, "chip", "chip 2"],
-  ["one session", 9, "chip", "chip 3"],
-  ["one session", 9.5, "chip", "chip 4"],
-  ["one session", 10, "chip", "chip 5"],
-  ["one session", 10.5, "chip", "chip 6"],
+  ["one session", 3.5, "draw", "gold line draws"],
+  ["one session", 5, "device", "pulse arrives"],
+  ["one session", 5.5, "chip", "chip 1"],
+  ["one session", 5.75, "chip", "chip 2"],
+  ["one session", 6, "chip", "chip 3"],
+  ["one session", 6.25, "chip", "chip 4"],
+  ["one session", 6.5, "chip", "chip 5"],
+  ["one session", 6.75, "chip", "chip 6"],
   ["everywhere", 2, "flash", "iphone"],
   ["everywhere", 4, "flash", "android"],
   ["terminal", 1.5, "enter", "terminal enter"],
@@ -180,7 +194,7 @@ const HERO_RUNS = [
   ["find the line", 1, 9, 3],
   ["ask for a mood", 0.2, 28, 3],
   ["terminal", 0, 14, 3],
-  ["docker run", 0, 34, 2],
+  ["docker run", 0, 24, 2],
 ] as const;
 
 function generated(rows: readonly Row[]): readonly Pin[] {

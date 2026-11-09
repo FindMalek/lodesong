@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useCurrentFrame } from "remotion";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { ease, lerp, ramp } from "./motion";
 
 export const VOID = "color-mix(in oklch, var(--background), black 55%)";

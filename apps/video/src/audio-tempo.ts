@@ -1,4 +1,6 @@
-export const FPS = 60;
+import { FPS } from "./design/beat";
+
+export { FPS };
 
 /** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor */
 export interface Segment {

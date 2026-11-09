@@ -640,7 +640,9 @@ export function buildScore(spec: FilmSpec): Score {
     if (mood.motif) {
       const m = mood.motif;
       const bar = m.every;
-      for (let n = 0; (m.offset ?? 0) + n * bar + 4 * m.rate <= segment.beats + 0.001; n += 1) {
+      const last = MOTIF[m.take - 1] ?? MOTIF[0];
+      const span = ((last?.[0] ?? 0) + (last?.[2] ?? 0)) * m.rate;
+      for (let n = 0; (m.offset ?? 0) + n * bar + span <= segment.beats + 0.001; n += 1) {
         const shift = m.shifts[n % m.shifts.length] as number;
         const origin = start + (m.offset ?? 0) + n * bar;
         for (const [off, midi, dur] of MOTIF.slice(0, m.take)) {
@@ -769,7 +771,7 @@ export function buildScore(spec: FilmSpec): Score {
     line: 1.6,
     tile: 1.6,
     device: 3,
-    type: 1.2,
+    type: 0.8,
   };
   let run = 0;
   let lastFrame = -999;
