@@ -391,14 +391,15 @@ function impact(style: string | undefined, dur: number, midi: number, seed: numb
   const thump = lowpass(noiseBuffer(n, seed), 240);
   const mid = bandpass(noiseBuffer(n, seed + 1), 1100, 1);
   const tau = big ? 1.5 : medium ? 0.7 : 0.3;
+  const weight = big ? 1.1 : medium ? 0.8 : 0.4;
   for (let i = 0; i < n; i += 1) {
     const t = i / RATE;
     phase += (TAU * (31 + 34 * env(t, 0.09))) / RATE;
     const boom = Math.sin(phase) * env(t, tau) * rise(t, 0.003);
     sub[i] = boom;
     const hit = (thump[i] ?? 0) * env(t, 0.07) * 1.6 + (mid[i] ?? 0) * env(t, 0.012) * 0.7;
-    out.l[i] = boom * 1.1 + hit;
-    out.r[i] = boom * 1.1 + hit;
+    out.l[i] = boom * weight + hit;
+    out.r[i] = boom * weight + hit;
   }
   if (big) {
     for (const [semi, pan] of [
@@ -602,7 +603,7 @@ export const LEVELS: Record<Track, number> = {
   keys: 0.22,
   pluck: 0.2,
   riser: 0.3,
-  impact: 0.8,
+  impact: 0.95,
   whoosh: 0.2,
   down: 0.22,
   reverse: 0.28,

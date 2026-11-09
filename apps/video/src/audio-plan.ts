@@ -294,8 +294,8 @@ export const MOODS: Record<string, Mood> = {
     loops: [["i", "V"]],
     hb: 2,
     db: -8,
-    pad: 0.8,
-    padCut: [500, 900],
+    pad: 1.2,
+    padCut: [1000, 1700],
     padAttack: 0.3,
     kick: "none",
     hats: "none",
@@ -346,7 +346,7 @@ export const MOODS: Record<string, Mood> = {
     hb: 4,
     db: -10,
     pad: 0.8,
-    padCut: [800, 1500],
+    padCut: [1200, 2000],
     padAttack: 0.5,
     kick: "none",
     hats: "none",
@@ -547,7 +547,7 @@ export function buildScore(spec: FilmSpec): Score {
         const bars = mood.bass === "drone" ? 1 : Math.max(1, Math.round(mood.hb / 4));
         const each = dur / bars;
         for (let k = 0; k < bars; k += 1)
-          push({ track: "sub", t: span.from + k * each, dur: each, midi: bass, vel: mood.bass === "drone" ? 0.4 : 0.8, style: "long" });
+          push({ track: "sub", t: span.from + k * each, dur: each, midi: bass, vel: mood.bass === "drone" ? 0.28 : 0.8, style: "long" });
       }
     }
     const spanAt = (beat: number): ChordSpan => {
@@ -760,8 +760,8 @@ export function buildScore(spec: FilmSpec): Score {
   };
   const vel: Partial<Record<UiKind, number>> = {
     ignite: 3.2,
-    enter: 2,
-    key: 6,
+    enter: 3,
+    key: 7,
     click: 4.5,
     chip: 1.8,
     draw: 1.8,
@@ -771,7 +771,7 @@ export function buildScore(spec: FilmSpec): Score {
     line: 1.6,
     tile: 1.6,
     device: 3,
-    type: 0.8,
+    type: 0.6,
   };
   let run = 0;
   let lastFrame = -999;

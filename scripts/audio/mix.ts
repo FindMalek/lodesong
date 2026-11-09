@@ -85,7 +85,7 @@ const SENDS: Partial<Record<Track, { hall?: number; room?: number; plate?: numbe
 };
 
 /** final balance between the buses, tuned against the stem loudness table */
-const BUS_GAIN: Record<keyof Stems, number> = { drums: 0.9, bass: 1, music: 1.15, fx: 1, ui: 0.6, space: 0.55 };
+const BUS_GAIN: Record<keyof Stems, number> = { drums: 0.9, bass: 0.92, music: 1.15, fx: 1, ui: 0.6, space: 0.55 };
 
 const scaled = (audio: Stereo, gain: number): Stereo => {
   const out = stereo(audio.l.length);
