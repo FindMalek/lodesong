@@ -24,6 +24,8 @@ const OPEN_PICKER = 34;
 const PICK_PHONE = 66;
 const WHIP_AT = 72;
 const WHIP_LENGTH = 10;
+const LISTEN_AT = SHOT.beat(10);
+const START_SESSION = { x: 220, y: 251, w: 100, h: 26 };
 
 const LINE_AT = 6;
 const FLIGHT_FROM = 40;
@@ -41,6 +43,8 @@ export const S8_CUES: readonly ShotCue[] = [
   { shot: "session", at: WHIP_AT + LINE_AT, kind: "riser", label: "gold line draws" },
   { shot: "session", at: WHIP_AT + FLIGHT_FROM, kind: "swell", label: "cover lifts off" },
   { shot: "session", at: WHIP_AT + ARRIVE, kind: "hit", label: "phone takes over" },
+  { shot: "session", at: LISTEN_AT, kind: "hit", label: "listen together" },
+  { shot: "session", at: SHOT.frames - 6, kind: "click", label: "start a session" },
   ...CLIENTS.map((label, i): ShotCue => ({ shot: "session", at: WHIP_AT + CHIPS_FROM + i * CHIP_STEP, kind: "tick", label })),
 ];
 
@@ -164,7 +168,7 @@ function Devices() {
       { at: g(0), scale: 1.05, ry: -9, rx: 1, x: 0, y: 0 },
       { at: g(120), scale: 1, ry: 3, rx: 0, x: 0, y: 0 },
       {
-        at: g(SHOT.frames - WHIP_AT),
+        at: g(LISTEN_AT - WHIP_AT),
         ...camTo({ x: 1220, y: 600, w: 560, h: 340 }, { scale: 1.75, ry: 7 }),
       },
     ]),
@@ -277,7 +281,45 @@ function Devices() {
   );
 }
 
-/** S8: the desktop hands its queue to the phone. Picker, click, whip to both devices, a gold line draws and the real cover rides it onto the phone. */
+const CURSOR_LISTEN: CursorStop[] = [
+  { at: g(0), x: 900, y: 420 },
+  { at: g(SHOT.frames - LISTEN_AT - 6), x: START_SESSION.x + 60, y: START_SESSION.y + 13, click: true },
+];
+
+function Listen() {
+  const frame = useCurrentFrame();
+  const span = SHOT.frames - LISTEN_AT;
+  const pointer = cursorAt(frame, CURSOR_LISTEN);
+  const cam = addCam(
+    camAt(
+      frame,
+      plateKeys(LAYOUT, [
+        { at: g(0), box: { x: 220, y: 100, w: 700, h: 220 }, scale: 1.7, ry: -4 },
+        { at: g(span), box: { x: 220, y: 150, w: 500, h: 150 }, scale: 2.1, ry: 2 },
+      ]),
+    ),
+    handheld(frame, 0.7),
+  );
+  return (
+    <>
+      <div style={{ position: "absolute", inset: 0, background: "#050505" }} />
+      <Camera cam={cam}>
+        <Plate
+          src={film("listen-together/listen-together")}
+          layout={LAYOUT}
+          brightness={1.3}
+          light={{ x: pointer.x, y: pointer.y, radius: 560, dim: 0.74, wash: 0 }}
+        >
+          <Bracket box={START_SESSION} at={g(8)} pad={7} arm={12} width={2.5} length={0.4} />
+          <Cursor stops={CURSOR_LISTEN} size={pointerSize(cam.scale)} />
+        </Plate>
+      </Camera>
+      <Chip text="listen together" from={4} style={{ left: 70, top: 950 }} />
+    </>
+  );
+}
+
+/** S8: the desktop hands its queue to the phone, then a listen together session starts. Picker, click, whip to both devices, a gold line draws and the real cover rides it onto the phone. */
 export function SessionShot() {
   return (
     <>
@@ -287,12 +329,17 @@ export function SessionShot() {
         direction="left"
         from={<Desktop />}
         to={
-          <Sequence layout="none" from={WHIP_AT}>
+          <Sequence layout="none" from={WHIP_AT} durationInFrames={LISTEN_AT - WHIP_AT}>
             <Devices />
           </Sequence>
         }
       />
-      <Chip text="one session" from={10} style={{ left: 70, top: 34 }} />
+      <Sequence layout="none" from={LISTEN_AT}>
+        <Listen />
+      </Sequence>
+      <Sequence layout="none" durationInFrames={LISTEN_AT}>
+        <Chip text="one session" from={10} style={{ left: 70, top: 34 }} />
+      </Sequence>
     </>
   );
 }

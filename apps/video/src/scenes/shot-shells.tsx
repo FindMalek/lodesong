@@ -181,6 +181,21 @@ function PhoneScene({ frames, kind, src, chip, ry, left, seed }: PhoneSceneProps
   );
 }
 
+function PhonePair({ frames }: { frames: number }) {
+  return (
+    <Scene frames={frames} chip="android app" from={{ scale: 1.15, ry: 9 }} to={{ scale: 1, ry: -3 }} seed={6}>
+      <Halation fill strength={0.1} radius={40}>
+        <DeviceFrame kind="android" width={470} note={false} src={film("phone-home/home")} style={{ left: 430, top: 70 }} />
+      </Halation>
+      <Layer z={90}>
+        <Halation fill strength={0.1} radius={40}>
+          <DeviceFrame kind="android" width={470} note={false} src={film("phone-player/queue")} style={{ left: 990, top: 24 }} />
+        </Halation>
+      </Layer>
+    </Scene>
+  );
+}
+
 function Desktop({ frames }: { frames: number }) {
   return (
     <Scene
@@ -225,7 +240,7 @@ function Terminal({ frames }: { frames: number }) {
   );
 }
 
-/** S9: one gold cover, five surfaces, a hard cut every two beats: the mac notch, an iphone, an android, the linux and windows shells, then Claude Code in a terminal. */
+/** S9: one gold cover, five surfaces, a hard cut every two beats: the mac notch, an iphone on lyrics, two androids on albums and the queue, the linux and windows shells, then Claude Code in a terminal. */
 export function ShellsShot() {
   return (
     <>
@@ -236,15 +251,7 @@ export function ShellsShot() {
         <PhoneScene frames={CUT_ANDROID - CUT_IOS} kind="iphone" src="phone-lyrics/lyrics" chip="iphone app" ry={-9} left={610} seed={4} />
       </Sequence>
       <Sequence layout="none" from={CUT_ANDROID} durationInFrames={CUT_DESKTOP - CUT_ANDROID}>
-        <PhoneScene
-          frames={CUT_DESKTOP - CUT_ANDROID}
-          kind="android"
-          src="phone-player/album"
-          chip="android app"
-          ry={9}
-          left={610}
-          seed={6}
-        />
+        <PhonePair frames={CUT_DESKTOP - CUT_ANDROID} />
       </Sequence>
       <Sequence layout="none" from={CUT_DESKTOP} durationInFrames={CUT_TERMINAL - CUT_DESKTOP}>
         <Desktop frames={CUT_TERMINAL - CUT_DESKTOP} />
