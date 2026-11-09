@@ -14,20 +14,19 @@ import { shotOf } from "./timelines";
 const SHOT = shotOf("notch");
 const g = (frame: number): number => frame / 30;
 
-const HOVER = 50;
-const CLICK_OPEN = 116;
-const PRESS_PAUSE = 186;
-const COLLAPSE = 190;
-const HIDE = 202;
-const GROW = 12;
+const OPEN_AT = 52;
+const LYRICS_AT = 110;
+const COLLAPSE = 184;
+const HIDE = 198;
+const GROW = 16;
+const SWITCH = 10;
 
 export const NOTCH_CUES: readonly ShotCue[] = [
   { shot: "notch", at: 0, kind: "hit", label: "the notch" },
-  { shot: "notch", at: HOVER, kind: "swell", label: "island grows on hover" },
-  { shot: "notch", at: CLICK_OPEN, kind: "click", label: "click the island" },
-  { shot: "notch", at: CLICK_OPEN + GROW, kind: "ping", label: "now playing opens" },
-  { shot: "notch", at: PRESS_PAUSE, kind: "click", label: "pause" },
-  { shot: "notch", at: COLLAPSE, kind: "swell", label: "island hides" },
+  { shot: "notch", at: OPEN_AT, kind: "click", label: "click the island" },
+  { shot: "notch", at: OPEN_AT + GROW, kind: "ping", label: "now playing opens" },
+  { shot: "notch", at: LYRICS_AT, kind: "click", label: "lyrics tab" },
+  { shot: "notch", at: COLLAPSE, kind: "swell", label: "paused, the island hides" },
 ];
 
 const WIDTH = 1536;
@@ -37,9 +36,9 @@ const stage = (x: number, y: number) => ({ x: LEFT + x * K, y: y * K });
 
 const CURSOR: CursorStop[] = [
   { at: g(0), x: 1560, y: 520 },
-  { at: g(HOVER - 4), ...stage(640, 40), dwell: 0.4 },
-  { at: g(CLICK_OPEN), ...stage(640, 250), click: true, dwell: 0.3 },
-  { at: g(PRESS_PAUSE), ...stage(640, 411), click: true },
+  { at: g(OPEN_AT), ...stage(640, 38), click: true, dwell: 0.3 },
+  { at: g(LYRICS_AT), ...stage(672, 214), click: true, dwell: 0.3 },
+  { at: g(LYRICS_AT + 40), x: 1560, y: 420 },
 ];
 
 const cameraAt = (scale: number, ry: number, x = 0) => ({ scale, ry, x, y: 540 * (1 - scale) });
@@ -47,7 +46,7 @@ const cameraAt = (scale: number, ry: number, x = 0) => ({ scale, ry, x, y: 540 *
 /** The island's pose on a frame: grow on hover, grow on click, press pause, fold into the notch. */
 function islandAt(frame: number): IslandState {
   const grow = (from: number, length: number) => ramp(frame, from, length, ease.inOut);
-  const p = grow(HOVER, GROW) + grow(CLICK_OPEN, GROW + 2) - 2 * grow(COLLAPSE, GROW);
+  const p = 2 * grow(OPEN_AT, GROW) - 2 * grow(COLLAPSE, GROW);
   const hide = ramp(frame, HIDE, GROW, ease.inOut);
   const seconds = 74 + frame / 60;
   const awake = frame < COLLAPSE;
@@ -62,22 +61,22 @@ function islandAt(frame: number): IslandState {
     played: clock(seconds),
     left: `-${clock(222 - seconds)}`,
     bars,
-    press: ramp(frame, PRESS_PAUSE, 4) * (1 - ramp(frame, PRESS_PAUSE + 8, 8)),
+    lyrics: grow(LYRICS_AT, SWITCH),
     title: "signal violet pt. 2",
     artist: "satellite garden",
   };
 }
 
-/** The macOS notch island is the whole picture: compact, hover, open, then pause folds it away. */
+/** The macOS notch island is the whole picture: compact, a click opens now playing, the lyrics tab follows along, then pause folds it away. */
 export function NotchShot() {
   const frame = useCurrentFrame();
   const cam = addCam(
     camAt(frame, [
-      { at: g(0), ...cameraAt(1.25, -2) },
-      { at: g(HOVER), ...cameraAt(1.45, 1) },
-      { at: g(CLICK_OPEN), ...cameraAt(1.35, -1) },
-      { at: g(CLICK_OPEN + 20), ...cameraAt(1.2, 1) },
-      { at: g(PRESS_PAUSE), ...cameraAt(1.22, 0) },
+      { at: g(0), ...cameraAt(1.5, -2) },
+      { at: g(OPEN_AT), ...cameraAt(1.5, 1) },
+      { at: g(OPEN_AT + 26), ...cameraAt(1.2, -1) },
+      { at: g(LYRICS_AT), ...cameraAt(1.24, 1) },
+      { at: g(COLLAPSE), ...cameraAt(1.26, 0) },
       { at: g(SHOT.frames - 2), ...cameraAt(1.55, 0) },
     ]),
     handheld(frame, 0.6),

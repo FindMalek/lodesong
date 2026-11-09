@@ -1,8 +1,8 @@
 import { plateBox, plateSrc } from "../captures/film-manifest";
 import { Camera, type CamKey, camAt, Layer, STAGE } from "../design/camera";
 import { Bokeh, DofLayer } from "../design/dof";
+import { gold } from "../design/gold";
 import { Halation } from "../design/halation";
-import { KaraokeLine, wordsOf } from "../design/karaoke-fill";
 import { MaskLine } from "../design/kinetic";
 import { ease, edgeFade, lerp, ramp } from "../design/motion";
 import { Plate } from "../design/plate";
@@ -16,11 +16,9 @@ export const IGNITE_AT = 4;
 const IGNITE_FRAMES = 18;
 export const LIFT_AT = 28;
 const LIFT_FRAMES = 40;
-const LINE_AT = 84;
-const LINE_FRAMES = 60;
-const NEXT_AT = 156;
-const NEXT_FRAMES = 48;
-const SCROLL_AT = 148;
+const LIT_AT = [72, 124] as const;
+const LIT_FRAMES = 8;
+const SCROLL_AT = 112;
 const LYRICS = ["turn it up and let it ring", "I keep the lights on for you", "the quiet between the neon"] as const;
 const PITCH = 98;
 
@@ -41,13 +39,11 @@ const BAR_KEYS: CamKey[] = [
 
 const END_KEYS = [
   { at: g(LIFT_AT), scale: 1 },
-  { at: g(LIFT_AT + LIFT_FRAMES), scale: 1.02 },
+  { at: g(140), scale: 1.045 },
   { at: g(267), scale: 1 },
 ];
 
-const sung = [wordsOf(LYRICS[1], g(LINE_AT), g(LINE_FRAMES)), wordsOf(LYRICS[2], g(NEXT_AT), g(NEXT_FRAMES))] as const;
-
-export const lyricCues = sung.flat().map((word) => ({ at: Math.round(word.at * 30), text: word.text }));
+export const lyricCues = LIT_AT.map((at, i) => ({ at, text: LYRICS[i + 1] ?? "" }));
 
 const mix = (a: { x: number; y: number }, b: { x: number; y: number }, t: number): { x: number; y: number } => ({
   x: lerp(a.x, b.x, t),
@@ -169,7 +165,7 @@ function Finale({ t }: { t: number }) {
           const focus = ramp(t, SCROLL_AT, 20, ease.inOut);
           const y = 540 - PITCH / 2 + (index - 1 - focus) * PITCH;
           const weight = index === 1 + Math.round(focus) ? 1 : 0.62;
-          const rows = index === 1 ? sung[0] : index === 2 ? sung[1] : null;
+          const lit = index === 0 ? 0 : ramp(t, LIT_AT[index - 1] ?? 0, LIT_FRAMES);
           return (
             <div
               key={line}
@@ -181,23 +177,20 @@ function Finale({ t }: { t: number }) {
                 opacity: weight * edgeFade(y / 1080, [0.1, 0.26, 0.74, 0.9]),
               }}
             >
-              <MaskLine from={LINE_AT - 26 + index * 10} length={22}>
-                <Halation strength={weight === 1 ? 0.3 : 0} radius={22}>
-                  {rows ? (
-                    <KaraokeLine words={rows} size={LYRIC_SIZE} />
-                  ) : (
-                    <div
-                      style={{
-                        fontSize: LYRIC_SIZE,
-                        fontWeight: 650,
-                        letterSpacing: "-0.02em",
-                        lineHeight: 1.12,
-                        color: "color-mix(in oklch, var(--foreground) 46%, transparent)",
-                      }}
-                    >
-                      {line}
-                    </div>
-                  )}
+              <MaskLine from={LIT_AT[0] - 26 + index * 10} length={22}>
+                <Halation strength={lit * 0.34} radius={22}>
+                  <div
+                    style={{
+                      fontSize: LYRIC_SIZE,
+                      fontWeight: 650,
+                      letterSpacing: "-0.02em",
+                      lineHeight: 1.12,
+                      color: lit > 0 ? gold(lit) : "color-mix(in oklch, var(--foreground) 46%, transparent)",
+                    }}
+                    data-legible=""
+                  >
+                    {line}
+                  </div>
                 </Halation>
               </MaskLine>
             </div>

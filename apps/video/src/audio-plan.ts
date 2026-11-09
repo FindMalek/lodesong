@@ -289,6 +289,22 @@ export const MOODS: Record<string, Mood> = {
     tex: 0.15,
     pump: 0.7,
   },
+  glow: {
+    loops: [["III", "VII", "VI", "III"]],
+    hb: 2,
+    db: 0,
+    pad: 1,
+    padCut: [1800, 4200],
+    padAttack: 0.12,
+    air: true,
+    kick: "half",
+    hats: "off",
+    bass: "pulse",
+    arp: "p8",
+    motif: { voice: "keys", double: "bell", oct: 0, rate: 1, take: 6, every: 4, shifts: [0], vel: 1 },
+    tex: 0.3,
+    pump: 0.4,
+  },
   strip: {
     loops: [["i", "VII", "VI", "V"]],
     hb: 2,
@@ -555,7 +571,7 @@ export function buildScore(spec: FilmSpec): Score {
     if (segment.beats >= 16) curves.trim.push([at(start + 8), level + 2.5 * DYNAMICS]);
     if (segment.beats >= 24) curves.trim.push([at(start + 16), level + 5 * DYNAMICS]);
     const grow = segment.beats >= 16 ? 8 : 0;
-    curves.padCut.push([at(start), mood.padCut[0]], [at(end) - 0.01, mood.padCut[1]]);
+    curves.padCut.push([at(start), mood.padCut[0]], [at(end) - 0.01, segment.ignite === undefined ? mood.padCut[1] : 2600]);
     curves.tex.push([at(start), mood.tex]);
 
     const spans: ChordSpan[] = [];
@@ -675,9 +691,13 @@ export function buildScore(spec: FilmSpec): Score {
       const bar = m.every;
       const last = MOTIF[m.take - 1] ?? MOTIF[0];
       const span = ((last?.[0] ?? 0) + (last?.[2] ?? 0)) * m.rate;
-      for (let n = 0; (m.offset ?? 0) + n * bar + span <= segment.beats + 0.001; n += 1) {
+      for (
+        let n = 0;
+        (segment.ignite === undefined ? (m.offset ?? 0) : segment.ignite + 2) + n * bar + span <= segment.beats + 0.001;
+        n += 1
+      ) {
         const shift = m.shifts[n % m.shifts.length] as number;
-        const origin = start + (m.offset ?? 0) + n * bar;
+        const origin = start + (segment.ignite === undefined ? (m.offset ?? 0) : segment.ignite + 2) + n * bar;
         for (const [off, midi, dur] of MOTIF.slice(0, m.take)) {
           const note = shiftDiatonic(midi, shift) + key + m.oct * 12;
           const b = origin + off * m.rate;
@@ -690,6 +710,22 @@ export function buildScore(spec: FilmSpec): Score {
       }
     }
 
+    if (segment.ignite !== undefined) {
+      const hit = at(start + segment.ignite);
+      const label = `${segment.id}: ignition`;
+      gates.push([hit - 3 / FPS, hit]);
+      push({
+        track: "reverse",
+        t: at(start + 0.5),
+        dur: hit - at(start + 0.5) - 3 / FPS,
+        midi: 80,
+        vel: 0.55,
+        label: `${label} dark swell`,
+      });
+      push({ track: "riser", t: at(start + 1), dur: hit - at(start + 1) - 3 / FPS, midi: (spans[0]?.root ?? 33) + 12, vel: 0.35 });
+      push({ track: "impact", t: hit, dur: 3, midi: spans[0]?.root ?? 33, vel: 0.9, style: "hit", label });
+      push({ track: "bell", t: hit, dur: 3, midi: 105, vel: 1.4, pan: 0 });
+    }
     const intro = segment.enter ?? "none";
     if (intro !== "none" && index > 0) {
       const t0 = at(start);

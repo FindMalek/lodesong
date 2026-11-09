@@ -1,12 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
-import { staticFile } from "remotion";
+import { Img, staticFile } from "remotion";
+import { ease, lerp, ramp } from "../design/motion";
+import { filmPlate, RealCrop } from "./s8-real-crop";
 
 const compact = staticFile("docs/macos/compact.png");
 const open = staticFile("docs/macos/open.png");
 const peek = staticFile("docs/macos/peek.png");
-
-import { ease, lerp, ramp } from "../design/motion";
-import { filmPlate, RealCrop } from "./s8-real-crop";
 
 export const ASSET = { w: 1280, h: 520 };
 
@@ -34,7 +33,7 @@ export interface IslandState {
   played: string;
   left: string;
   bars: readonly number[];
-  press: number;
+  lyrics: number;
   title: string;
   artist: string;
 }
@@ -103,7 +102,7 @@ function Layer({ src, height, island, opacity, children }: LayerProps): ReactNod
         clipPath: `inset(0 ${ASSET.w - island.x1}px ${ASSET.h - island.h}px ${island.x0}px round 0 0 ${island.r}px ${island.r}px)`,
       }}
     >
-      <img src={src} alt="" style={{ width: ASSET.w, height, display: "block" }} />
+      <Img src={src} style={{ width: ASSET.w, height, display: "block" }} />
       {children}
     </div>
   );
@@ -111,7 +110,7 @@ function Layer({ src, height, island, opacity, children }: LayerProps): ReactNod
 
 /** The island from the real docs/macos captures, grown between compact, hover and open, with our cover, title and clock painted over the third-party ones. */
 export function NotchIsland({ state, width }: { state: IslandState; width: number }): ReactNode {
-  const { p, hide, progress, played, left, bars, press, title, artist } = state;
+  const { p, hide, progress, played, left, bars, lyrics, title, artist } = state;
   const k = width / ASSET.w;
   const shape = shapeAt(p, hide);
   const live = 1 - hide;
@@ -163,19 +162,63 @@ export function NotchIsland({ state, width }: { state: IslandState; width: numbe
           <div style={{ ...FONT, position: "absolute", left: 168, top: 310, fontSize: 21, color: GREY }}>{played}</div>
           <div style={patch(1030, 306, 90, 30)} />
           <div style={{ ...FONT, position: "absolute", right: ASSET.w - 1112, top: 310, fontSize: 21, color: GREY }}>{left}</div>
-          <i
-            style={{
-              position: "absolute",
-              left: 640 - 44,
-              top: 411 - 44,
-              width: 88,
-              height: 88,
-              borderRadius: "50%",
-              border: "4px solid var(--ignite)",
-              opacity: press,
-              boxShadow: "0 0 30px 6px var(--ignite)",
-            }}
-          />
+          <div style={{ opacity: lyrics }}>
+            <div style={patch(374, 188, 218, 52)} />
+            <div style={{ ...FONT, position: "absolute", left: 374, top: 198, width: 218, textAlign: "center", fontSize: 22, color: GREY }}>
+              Now Playing
+            </div>
+            <div style={{ ...patch(608, 188, 128, 52), background: "#3a3a3a", borderRadius: 26 }} />
+            <div
+              style={{ ...FONT, position: "absolute", left: 608, top: 198, width: 128, textAlign: "center", fontSize: 22, color: "#fff" }}
+            >
+              Lyrics
+            </div>
+            <div style={patch(150, 262, 980, 210)} />
+            <div
+              style={{
+                ...FONT,
+                position: "absolute",
+                left: 150,
+                top: 282,
+                width: 980,
+                textAlign: "center",
+                fontSize: 28,
+                fontWeight: 500,
+                color: "#6a6a6a",
+              }}
+            >
+              the quiet between neon
+            </div>
+            <div
+              style={{
+                ...FONT,
+                position: "absolute",
+                left: 150,
+                top: 330,
+                width: 980,
+                textAlign: "center",
+                fontSize: 40,
+                color: "var(--ignite)",
+              }}
+            >
+              i keep the lights on
+            </div>
+            <div
+              style={{
+                ...FONT,
+                position: "absolute",
+                left: 150,
+                top: 392,
+                width: 980,
+                textAlign: "center",
+                fontSize: 28,
+                fontWeight: 500,
+                color: "#6a6a6a",
+              }}
+            >
+              hold the signal violet
+            </div>
+          </div>
         </Layer>
       </div>
     </div>
