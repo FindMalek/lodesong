@@ -3,7 +3,6 @@ import { plateBox, plateSrc } from "../captures/film-manifest";
 import type { ShotCue } from "../captures/types";
 import { Camera, camAt, Layer } from "../design/camera";
 import { Bokeh, DofLayer, focusAt } from "../design/dof";
-import { Halation } from "../design/halation";
 import { MaskLine } from "../design/kinetic";
 import { ease, ramp } from "../design/motion";
 import { DitherCover } from "../ui/dither-cover";
@@ -32,7 +31,7 @@ export const S1_CUES: readonly ShotCue[] = [
 const g = (frame: number): number => frame / 30;
 
 const CAM = [
-  { at: 0, scale: 1.05, x: -16 },
+  { at: 0, scale: 1.04, x: -12 },
   { at: g(144), scale: 1, x: 0 },
 ];
 
@@ -48,7 +47,7 @@ const BAR_K = 1.75;
 /** S1: a hairline opens like a lid onto the monochrome dither cover, then the two-line promise rises beside it. */
 export function ColdOpenShot() {
   const frame = useCurrentFrame();
-  const cam = camAt(frame, CAM, ease.out);
+  const cam = camAt(frame, CAM, (t) => t);
   const focusZ = focusAt(frame, RACK);
   const line = ramp(frame, 0, HAIRLINE_FRAMES, ease.inOut);
   const lid = ramp(frame, COVER_FROM, COVER_FRAMES, ease.out);
@@ -64,15 +63,16 @@ export function ColdOpenShot() {
             top: MID - 1,
             height: 2,
             width: 1920 * line,
-            background: "color-mix(in oklch, var(--ignite) 46%, transparent)",
+            background: "color-mix(in oklch, var(--foreground) 42%, transparent)",
           }}
         />
         <div style={{ position: "absolute", left: COVER_AT.x, top: COVER_AT.y, width: COVER, height: COVER, clipPath: `inset(${rest} 0)` }}>
-          <Halation fill strength={0.14} radius={30}>
+          <DitherCover id="signal violet pt. 2" size={COVER} develop={develop} time={frame / 90} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, mixBlendMode: "plus-lighter", opacity: 0.16, filter: "blur(30px)" }}>
             <DitherCover id="signal violet pt. 2" size={COVER} develop={develop} time={frame / 90} />
-          </Halation>
+          </div>
         </div>
-        <div style={{ position: "absolute", left: 930, top: MID - HEADLINE * 1.05, width: 900 }}>
+        <div style={{ position: "absolute", left: 890, top: MID - HEADLINE * 1.05, width: 900 }}>
           <MaskLine from={MUSIC_AT} length={20}>
             <div
               style={{ fontSize: HEADLINE, fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.05, color: "var(--foreground)" }}
@@ -107,7 +107,7 @@ export function ColdOpenShot() {
             width: 1920,
             height: BAR.h * BAR_K,
             overflow: "hidden",
-            filter: "brightness(1.5)",
+            filter: "grayscale(1) brightness(1.5)",
           }}
         >
           <Img
@@ -116,7 +116,7 @@ export function ColdOpenShot() {
           />
         </div>
       </Layer>
-      <Bokeh focusZ={focusZ} z={300} count={14} seed={7} />
+      <Bokeh focusZ={focusZ} z={300} count={14} seed={7} tint="var(--foreground)" />
     </Camera>
   );
 }

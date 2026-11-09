@@ -1,6 +1,8 @@
-import { Sequence, useCurrentFrame } from "remotion";
-import albumLyrics from "../../../../docs/album-lyrics.png";
-import phone from "../../../../docs/phone.png";
+import { Sequence, staticFile, useCurrentFrame } from "remotion";
+
+const albumLyrics = staticFile("docs/album-lyrics.png");
+const phone = staticFile("docs/phone.png");
+
 import { gridBeat as beat } from "../design/beat";
 import { addCam, Camera, CameraBlur, camAt, handheld, Layer } from "../design/camera";
 import { Cursor, type CursorStop, cursorAt } from "../design/cursor";

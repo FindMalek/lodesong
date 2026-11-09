@@ -23,3 +23,7 @@ export function hash(n: number): number {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
+
+/** Opacity of something sitting at `p` (0 to 1) along a strip that fades out at both ends: per-item opacity instead of a CSS mask, so nothing depends on mask rendering. */
+export const edgeFade = (p: number, edges: readonly [number, number, number, number]): number =>
+  interpolate(p, [...edges], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });

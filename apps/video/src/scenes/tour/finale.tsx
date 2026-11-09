@@ -1,5 +1,7 @@
-import { AbsoluteFill, Img, useCurrentFrame, useVideoConfig } from "remotion";
-import home from "../../../../../docs/home.png";
+import { AbsoluteFill, Img, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+
+const home = staticFile("docs/home.png");
+
 import { COPY, FILM } from "../../copy";
 import { ease, lerp, ramp } from "../../design/motion";
 import { Caret } from "../../design/typing";

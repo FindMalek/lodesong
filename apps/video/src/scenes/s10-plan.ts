@@ -88,7 +88,7 @@ export const S10_CUTS: readonly KeyCut[] = [
     take: "rebind",
     plate: "rebinding",
     keys: ["?"],
-    chip: "rebind any key",
+    chip: "change any key",
     focus: { x: PENCIL.x - 204, y: PENCIL.y - 44, w: 480, h: 220 },
     scale: [1.7, 2],
     move: "push",

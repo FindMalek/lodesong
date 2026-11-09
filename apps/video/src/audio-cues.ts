@@ -50,12 +50,12 @@ const HERO: readonly Row[] = overTempo(TEMPO, [
   [["ask for a mood", 8, "lift", "cut", { db: -6 }]],
   [["one session", 12, "peak", "drop", { db: 4 }]],
   [
-    ["everywhere", 6, "peak", "hit", { variant: 1, db: 1 }],
-    ["terminal", 6, "pocket", "cut"],
+    ["everywhere", 7.5, "peak", "hit", { variant: 1, db: 3, hb: 2.5 }],
+    ["terminal", 4.5, "strip", "none", { db: 1 }],
   ],
-  [["the notch", 8, "calm", "cut", { db: -2 }]],
-  [["keyboard storm", 12, "storm", "drop"]],
-  [["yours", 12, "flash", "hit", { db: 3 }]],
+  [["the notch", 8, "breather", "cut"]],
+  [["keyboard storm", 12, "storm", "drop", { hb: 1.5, build: { hats: 4, snare: 8, arp: 8, stab: 8 } }]],
+  [["yours", 12, "flash", "drop", { key: 2, hb: 1.5, db: 10 }]],
   [
     ["docker run", 3, "hush", "cut", { gap: 8 }],
     ["land", 5, "land", "hit"],
@@ -106,7 +106,7 @@ const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
   [["find and ignite", 8, "drop", "drop"]],
   [["mixes", 4, "groove", "hit", { db: -4 }]],
   [["handoff", 4, "lift", "cut", { db: -7 }]],
-  [["flashes", 4, "storm", "drop", { db: 3 }]],
+  [["flashes", 4, "storm", "drop", { db: 9 }]],
   [
     ["land", 2, "land", "hit"],
     ["afterglow", 4, "afterglow"],

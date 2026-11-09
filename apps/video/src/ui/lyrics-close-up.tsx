@@ -2,6 +2,7 @@ import { Kbd } from "@lodesong/ui/components/kbd";
 import { COPY } from "../copy";
 import { Label, VOID } from "../design/kinetic";
 import type { Layout } from "../design/layout";
+import { edgeFade } from "../design/motion";
 import { DitherCover } from "./dither-cover";
 
 const GEOM = {
@@ -66,7 +67,6 @@ export function LyricsCloseUp({ layout = "wide", focus, enter, ignite, pulse, de
           top: g.mid - g.span / 2,
           width: g.textW,
           height: g.span,
-          maskImage: "linear-gradient(to bottom, transparent 4%, black 30%, black 70%, transparent 96%)",
         }}
       >
         {COPY.lyrics.map((line, index) => {
@@ -82,7 +82,7 @@ export function LyricsCloseUp({ layout = "wide", focus, enter, ignite, pulse, de
                 overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
-                opacity: 0.3 + 0.7 * weight,
+                opacity: (0.3 + 0.7 * weight) * edgeFade(0.5 + (index - focus) * (g.line / g.span), [0.04, 0.3, 0.7, 0.96]),
               }}
             >
               <div

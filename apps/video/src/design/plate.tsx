@@ -1,5 +1,6 @@
+import { Video } from "@remotion/media";
 import type { CSSProperties, ReactNode } from "react";
-import { Img, OffthreadVideo } from "remotion";
+import { Img } from "remotion";
 import { type CamKey, type CamToOptions, camTo, PERSPECTIVE, STAGE, type Stage } from "./camera";
 import { defocus } from "./dof";
 import { LightPool, type Pool } from "./light-pool";
@@ -36,6 +37,8 @@ const boxToStage = (layout: PlateLayout, box: Box): Box => ({
 const EDGE_MARGIN = 24;
 
 const LIFT = 1.5;
+
+const LEVEL = 1.7;
 
 function clampAxis(center: number, half: number, from: number, to: number): number {
   const lo = from + half + EDGE_MARGIN;
@@ -84,7 +87,7 @@ const planeFill: CSSProperties = { position: "absolute", inset: 0 };
 
 function Media({ src }: { src: string }) {
   const style: CSSProperties = { width: "100%", height: "100%", display: "block" };
-  return VIDEO.test(src) ? <OffthreadVideo src={src} muted style={style} /> : <Img src={src} style={style} />;
+  return VIDEO.test(src) ? <Video src={src} muted style={style} /> : <Img src={src} style={style} />;
 }
 
 /** A plane at depth z that still lines up with the base plate at a neutral camera (cancels the perspective scale). */
@@ -123,7 +126,8 @@ export function Plate({
 }: PlateProps) {
   const surface = (z: number, clip?: Box) => {
     const blur = defocus(z, focusZ, aperture);
-    const filters = [brightness === 1 ? "" : `brightness(${brightness})`, blur > 0.3 ? `blur(${blur.toFixed(2)}px)` : ""];
+    const lit = brightness > 1 ? brightness * LEVEL : brightness;
+    const filters = [lit === 1 ? "" : `brightness(${lit.toFixed(3)})`, blur > 0.3 ? `blur(${blur.toFixed(2)}px)` : ""];
     const content = <Media src={src} />;
     return (
       <div style={{ ...planeFill, clipPath: clip ? clipOf(clip, layout.size) : undefined, filter: filters.join(" ").trim() || undefined }}>

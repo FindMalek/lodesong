@@ -30,7 +30,7 @@ export function Shell({ children, audio, grain = true, probe = false, grainOutAt
   return (
     <FontGate>
       <AbsoluteFill className="dark" style={{ background: VOID, color: "var(--foreground)", fontFamily: "var(--font-sans)" }}>
-        {children}
+        <AbsoluteFill style={{ filter: "brightness(1.12)" }}>{children}</AbsoluteFill>
         <Vignette />
         {grain && grainOpacity > 0 ? <Grain opacity={grainOpacity} /> : null}
         {audio ? <Audio src={staticFile(audio)} /> : null}
