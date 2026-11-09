@@ -18,6 +18,7 @@
     "onsets": "bun scripts/check.ts onsets out/open.mp4",
     "audio:check": "bun scripts/check.ts audio",
     "test": "bun test src",
+    "coverage": "bun scripts/coverage.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {

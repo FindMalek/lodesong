@@ -1,6 +1,7 @@
 import { buildScore, type FilmSpec, type Score, type UiEvent, type UiKind } from "./audio-plan";
 import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
 import { CUT_MAP, TEMPO, type Tempo } from "./design/beat";
+import { CHAPTERS, type Chapter, chapterBeats, chapterRange, FEATURES, TOUR_MAP, TOUR_TEMPO } from "./features";
 
 export type Film = "hero" | "tour" | "cutdown";
 export const FILMS: readonly Film[] = ["hero", "tour", "cutdown"];
@@ -60,31 +61,43 @@ const HERO: readonly Row[] = overTempo(TEMPO, [
   ],
 ]);
 
-const TOUR: readonly Row[] = [
-  ["tour open", 8, 96, "void"],
-  ["lyrics", 24, 104, "drop", "drop"],
-  ["search", 8, 108, "tension", "cut"],
-  ["search play", 12, 108, "groove", "hit", { db: -3 }],
-  ["queue", 8, 104, "calm", "cut", { variant: 1 }],
-  ["gapless", 16, 112, "groove", "hit", { db: -4 }],
-  ["mixes", 4, 116, "lift", "cut", { db: -4 }],
-  ["mixes drop", 16, 120, "peak", "drop", { variant: 1, db: 2 }],
-  ["mood", 8, 112, "calm", "cut"],
-  ["mood lift", 8, 116, "lift", "hit", { db: -6 }],
-  ["session", 24, 120, "drop", "drop", { key: 2, db: -2 }],
-  ["devices", 20, 124, "peak", "hit", { key: 2, variant: 1, db: 3 }],
-  ["terminal", 4, 120, "pocket", "cut", { key: 2 }],
-  ["terminal type", 12, 124, "tension", "hit", { key: 2 }],
-  ["keys", 12, 132, "storm", "drop", { key: 2 }],
-  ["keys peak", 8, 136, "flash", "hit", { key: 2, db: 3 }],
-  ["offline", 12, 128, "groove", "cut", { variant: 1, db: -3 }],
-  ["upload doctor", 8, 112, "calm", "cut", { variant: 0 }],
-  ["share themes", 12, 132, "lift", "hit", { db: -2 }],
-  ["speed", 12, 138, "flash", "hit", { db: 3 }],
-  ["self host", 4, 120, "hush", "cut", { gap: 8 }],
-  ["land", 2, 138, "land", "hit"],
-  ["afterglow", 6, 138, "afterglow"],
-];
+const TOUR_MOODS: Record<Chapter, readonly [mood: string, enter: Segment["enter"], extra?: Partial<Segment>]> = {
+  lyrics: ["drop", "none", { db: -4 }],
+  search: ["groove", "cut"],
+  playback: ["groove", "hit", { variant: 1, db: 2 }],
+  queue: ["calm", "cut", { key: 1 }],
+  foryou: ["lift", "hit", { key: 1 }],
+  intake: ["groove", "cut", { key: 1, variant: 1 }],
+  listening: ["calm", "cut", { key: 2 }],
+  library: ["lift", "hit", { key: 2 }],
+  everywhere: ["peak", "hit", { key: 2 }],
+  keys: ["storm", "hit", { key: 3, db: 2 }],
+  polish: ["groove", "cut", { key: 3, variant: 1 }],
+  yours: ["flash", "hit", { key: 3, db: 3 }],
+};
+
+/** The tour's score table is the tour's own tempo table: one segment per chapter, then the finale's three parts. */
+const TOUR: readonly Row[] = overTempo(TOUR_TEMPO, [
+  ...CHAPTERS.map(({ id }): readonly Part[] => {
+    const [mood, enter, extra] = TOUR_MOODS[id];
+    return [[id, chapterBeats(id), mood, enter, extra]];
+  }),
+  [
+    ["docker run", 4, "hush", "cut", { gap: 8 }],
+    ["land", 2, "land", "hit"],
+    ["afterglow", 6, "afterglow"],
+  ],
+]);
+
+const TOUR_KIND: Partial<Record<Chapter, UiKind>> = { lyrics: "line", keys: "key", everywhere: "device" };
+
+const TOUR_PINS: readonly Pin[] = FEATURES.map((feature): Pin => {
+  const start = TOUR_MAP.beatAtFrame(chapterRange(feature.chapter)[0]);
+  const kind: UiKind = TOUR_KIND[feature.chapter] ?? (feature.wow === "A" ? "tile" : feature.wow === "B" ? "row" : "chip");
+  return [feature.chapter, TOUR_MAP.beatAtFrame(feature.tour[0]) - start, kind, `feature:${feature.id}`];
+});
+
+const TOUR_RUNS = CHAPTERS.map(({ id }) => [id, 0.15, 8, 3] as const);
 
 const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
   [["hook", 4, "tension", "none", { db: -10 }]],
@@ -227,7 +240,7 @@ interface Def {
 
 const DEFS: Record<Film, Def> = {
   hero: { rows: HERO, pins: HERO_UI, runs: HERO_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
-  tour: { rows: TOUR, pins: generated(TOUR), runs: [["terminal type", 0.5, 14, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  tour: { rows: TOUR, pins: TOUR_PINS, runs: TOUR_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   cutdown: { rows: CUTDOWN, pins: generated(CUTDOWN), runs: [["hook", 1, 9, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };
 
