@@ -6,43 +6,43 @@ import { Shell } from "../../design/shell";
 import { CHAPTERS, type Chapter, hostsOf } from "../../features";
 import type { TourId } from "../timelines";
 import { TOUR } from "../timelines";
-import { EVERYWHERE, EverywhereChapter } from "./chapter-everywhere";
-import { FORYOU, ForyouChapter } from "./chapter-foryou";
-import { INTAKE, IntakeChapter } from "./chapter-intake";
-import { KEYS, KeysChapter } from "./chapter-keys";
-import { LIBRARY, LibraryChapter } from "./chapter-library";
-import { LISTENING, ListeningChapter } from "./chapter-listening";
-import { LYRICS, LyricsChapter } from "./chapter-lyrics";
-import { PLAYBACK, PlaybackChapter } from "./chapter-playback";
-import { POLISH, PolishChapter } from "./chapter-polish";
-import { QUEUE, QueueChapter } from "./chapter-queue";
-import { SEARCH, SearchChapter } from "./chapter-search";
-import { YOURS, YoursChapter } from "./chapter-yours";
+import { EverywhereChapter } from "./chapter-everywhere";
+import { ForyouChapter } from "./chapter-foryou";
+import { IntakeChapter } from "./chapter-intake";
+import { KeysChapter } from "./chapter-keys";
+import { LibraryChapter } from "./chapter-library";
+import { ListeningChapter } from "./chapter-listening";
+import { LyricsChapter } from "./chapter-lyrics";
+import { PlaybackChapter } from "./chapter-playback";
+import { PolishChapter } from "./chapter-polish";
+import { QueueChapter } from "./chapter-queue";
+import { SearchChapter } from "./chapter-search";
+import { YoursChapter } from "./chapter-yours";
 import type { ChapterProps } from "./engine";
 import { FinaleScene } from "./finale";
 import { FeatureProbe } from "./probe";
-import type { ChapterSpec } from "./spec";
+import { SPECS } from "./specs";
 
-const VIEWS: Record<Chapter, { spec: ChapterSpec; View: ComponentType<ChapterProps> }> = {
-  lyrics: { spec: LYRICS, View: LyricsChapter },
-  search: { spec: SEARCH, View: SearchChapter },
-  playback: { spec: PLAYBACK, View: PlaybackChapter },
-  queue: { spec: QUEUE, View: QueueChapter },
-  foryou: { spec: FORYOU, View: ForyouChapter },
-  intake: { spec: INTAKE, View: IntakeChapter },
-  listening: { spec: LISTENING, View: ListeningChapter },
-  library: { spec: LIBRARY, View: LibraryChapter },
-  everywhere: { spec: EVERYWHERE, View: EverywhereChapter },
-  keys: { spec: KEYS, View: KeysChapter },
-  polish: { spec: POLISH, View: PolishChapter },
-  yours: { spec: YOURS, View: YoursChapter },
+const VIEWS: Record<Chapter, ComponentType<ChapterProps>> = {
+  lyrics: LyricsChapter,
+  search: SearchChapter,
+  playback: PlaybackChapter,
+  queue: QueueChapter,
+  foryou: ForyouChapter,
+  intake: IntakeChapter,
+  listening: ListeningChapter,
+  library: LibraryChapter,
+  everywhere: EverywhereChapter,
+  keys: KeysChapter,
+  polish: PolishChapter,
+  yours: YoursChapter,
 };
 
 function sceneOf(chapter: Chapter): ComponentType {
   const before = CHAPTERS[CHAPTERS.findIndex((one) => one.id === chapter) - 1]?.id;
   const last = before ? hostsOf(before).at(-1) : undefined;
-  const previous = before && last ? VIEWS[before].spec.hosts[last.id] : undefined;
-  const { View } = VIEWS[chapter];
+  const previous = before && last ? SPECS[before].hosts[last.id] : undefined;
+  const View = VIEWS[chapter];
   return function Chapter() {
     return <View previous={previous} />;
   };

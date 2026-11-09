@@ -30,13 +30,14 @@ import p28 from "../../../../../docs/playlist-folder-move.png";
 import p29 from "../../../../../docs/playlist-folders.png";
 import p30 from "../../../../../docs/public-demo.png";
 import p31 from "../../../../../docs/queue.png";
-import p32 from "../../../../../docs/scrobbling-setting.png";
-import p35 from "../../../../../docs/search.png";
-import p33 from "../../../../../docs/search-mood-fit.png";
-import p34 from "../../../../../docs/search-vibe.png";
-import p36 from "../../../../../docs/sidebar-resize.png";
-import p38 from "../../../../../docs/stats.png";
-import p37 from "../../../../../docs/stats-desktop-light.png";
+import p32 from "../../../../../docs/radio.png";
+import p33 from "../../../../../docs/scrobbling-setting.png";
+import p36 from "../../../../../docs/search.png";
+import p34 from "../../../../../docs/search-mood-fit.png";
+import p35 from "../../../../../docs/search-vibe.png";
+import p37 from "../../../../../docs/sidebar-resize.png";
+import p39 from "../../../../../docs/stats.png";
+import p38 from "../../../../../docs/stats-desktop-light.png";
 
 export interface DocPlate {
   src: string;
@@ -44,6 +45,7 @@ export interface DocPlate {
   h: number;
 }
 
+/** Real screenshots and assets already committed under docs/, keyed by their path there. */
 export const DOC_PLATES: Record<string, DocPlate> = {
   "a11y-radio.png": { src: p0, w: 1440, h: 900 },
   "album-lyrics-light.png": { src: p1, w: 2880, h: 1800 },
@@ -77,11 +79,12 @@ export const DOC_PLATES: Record<string, DocPlate> = {
   "playlist-folders.png": { src: p29, w: 1440, h: 900 },
   "public-demo.png": { src: p30, w: 1280, h: 720 },
   "queue.png": { src: p31, w: 2880, h: 1800 },
-  "scrobbling-setting.png": { src: p32, w: 768, h: 640 },
-  "search-mood-fit.png": { src: p33, w: 680, h: 512 },
-  "search-vibe.png": { src: p34, w: 680, h: 512 },
-  "search.png": { src: p35, w: 2880, h: 1800 },
-  "sidebar-resize.png": { src: p36, w: 1280, h: 760 },
-  "stats-desktop-light.png": { src: p37, w: 1100, h: 900 },
-  "stats.png": { src: p38, w: 2880, h: 1800 },
+  "radio.png": { src: p32, w: 2880, h: 1620 },
+  "scrobbling-setting.png": { src: p33, w: 768, h: 640 },
+  "search-mood-fit.png": { src: p34, w: 680, h: 512 },
+  "search-vibe.png": { src: p35, w: 680, h: 512 },
+  "search.png": { src: p36, w: 2880, h: 1800 },
+  "sidebar-resize.png": { src: p37, w: 1280, h: 760 },
+  "stats-desktop-light.png": { src: p38, w: 1100, h: 900 },
+  "stats.png": { src: p39, w: 2880, h: 1800 },
 };

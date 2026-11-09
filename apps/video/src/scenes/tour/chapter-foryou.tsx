@@ -7,8 +7,8 @@ export const FORYOU: ChapterSpec = {
     "mix-daylist": { focus: "daylist" },
     "radio-station": { plates: ["preview"], focus: "header" },
     "radio-tune": { plates: ["preview", "playing"], focus: "header" },
-    "home-jump": { focus: [0.1, 0.28, 0.85, 0.3] },
-    "home-rows": { focus: [0.1, 0.55, 0.85, 0.4] },
+    "home-jump": { focus: [0.18, 0.25, 0.8, 0.22] },
+    "home-rows": { focus: [0.18, 0.47, 0.8, 0.5] },
   },
 };
 

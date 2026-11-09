@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { openBrowser, renderStill, selectComposition } from "@remotion/renderer";
 import { enableTailwind } from "@remotion/tailwind-v4";
+import { SPECS as SCORE_SPECS } from "../src/audio-cues";
 import {
   CHAPTERS,
   CHIP_STEP,
@@ -17,8 +18,10 @@ import {
   TOUR_MAP,
 } from "../src/features";
 import { MOCK_IDS } from "../src/scenes/tour/mocks";
-import { mockIdOf, type PlateAsset, plateOf } from "../src/scenes/tour/plates";
+import { mockIdOf, type PlateAsset, plateOf, platesOf } from "../src/scenes/tour/plates";
 import { FEATURE_TAG, type FrameMeasure } from "../src/scenes/tour/probe";
+import type { HostSpec } from "../src/scenes/tour/spec";
+import { SPECS } from "../src/scenes/tour/specs";
 
 // bun scripts/coverage.ts [--static] [--json]
 // machine checks for the tour: the feature list, the frame table, the plates, the chips actually drawn, the cue sheet
@@ -80,15 +83,33 @@ function timing(): void {
 }
 
 function cues(): void {
+  const owned = new Map(SCORE_SPECS.tour.ui.map((event) => [event.label, event.frame]));
   for (const feature of FEATURES) {
     const cue = TOUR_CUES.find((one) => one.id === `feature:${feature.id}`);
     if (!cue || Math.abs(cue.frame - feature.tour[0]) > 1) fail("cues", `${feature.id} has no cue within 1 frame of ${feature.tour[0]}`);
+    const heard = owned.get(`feature:${feature.id}`);
+    if (heard === undefined || Math.abs(heard - feature.tour[0]) > 1)
+      fail("cues", `${feature.id} has no sound in the score within 1 frame of ${feature.tour[0]}`);
   }
 }
 
-async function luma(path: string): Promise<{ mean: number; spread: number }> {
+async function luma(path: string, region?: readonly [number, number, number, number]): Promise<{ mean: number; spread: number }> {
+  const crop = region ? `crop=iw*${region[2]}:ih*${region[3]}:iw*${region[0]}:ih*${region[1]},` : "";
   const run = Bun.spawn(
-    ["ffmpeg", "-v", "error", "-i", path, "-vf", "scale=480:270:flags=bilinear,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-i",
+      path,
+      "-vf",
+      `${crop}scale=480:270:flags=bilinear,format=gray`,
+      "-frames:v",
+      "1",
+      "-f",
+      "rawvideo",
+      "-",
+    ],
     {
       stdout: "pipe",
       stderr: "ignore",
@@ -108,41 +129,67 @@ function headerSize(path: string): [number, number] | null {
   return head[0] === 0x89 ? [head.readUInt32BE(16), head.readUInt32BE(20)] : null;
 }
 
+function regionOf(asset: PlateAsset, focus: HostSpec["focus"]): readonly [number, number, number, number] | undefined {
+  const box = typeof focus === "string" ? asset.boxes[focus] : undefined;
+  const raw = Array.isArray(focus)
+    ? (focus as readonly number[])
+    : box
+      ? [box.x / asset.w, box.y / asset.h, box.w / asset.w, box.h / asset.h]
+      : undefined;
+  if (!raw) return undefined;
+  const [x = 0, y = 0, w = 1, h = 1] = raw;
+  const [cx, cy] = [x + w / 2, y + h / 2];
+  const [rw, rh] = [Math.min(1, Math.max(w * 1.4, 0.3)), Math.min(1, Math.max(h * 1.4, 0.3))];
+  const [nx, ny] = [Math.min(1 - rw, Math.max(0, cx - rw / 2)), Math.min(1 - rh, Math.max(0, cy - rh / 2))];
+  return [nx, ny, rw, rh];
+}
+
 async function plates(): Promise<{ mocks: string[]; checked: number }> {
   const mocks: string[] = [];
   let checked = 0;
   const seen = new Set<string>();
   for (const feature of FEATURES) {
     const host = feature.wow !== "C";
+    const spec = host ? SPECS[feature.chapter].hosts[feature.id] : undefined;
     const mock = mockIdOf(feature.capture);
+    if (spec?.scene) {
+      mocks.push(`${feature.id}:scene`);
+      continue;
+    }
     if (mock) {
       if (host && !MOCK_IDS.includes(mock)) fail("plates", `${feature.id} wants mock ${mock}, no component`);
       if (host) mocks.push(`${feature.id}:${mock}`);
       continue;
     }
-    const asset = plateOf(feature.capture);
-    if (!asset) {
+    const all = platesOf(feature.capture);
+    const primary = plateOf(feature.capture);
+    if (!primary) {
       fail("plates", `${feature.id} capture ${feature.capture} does not resolve`);
       continue;
     }
-    const path = pathOf(asset);
-    if (seen.has(path)) continue;
-    seen.add(path);
-    if (!existsSync(path)) {
-      fail("plates", `${feature.id} file missing: ${path}`);
-      continue;
+    const named = spec?.plates?.flatMap((name) => all.find((plate) => plate.name === name) ?? []) ?? [];
+    for (const asset of named.length > 0 ? named : [primary]) {
+      const path = pathOf(asset);
+      const region = regionOf(asset, spec?.focus);
+      const key = `${path}|${region?.join(",") ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!existsSync(path)) {
+        fail("plates", `${feature.id} file missing: ${path}`);
+        continue;
+      }
+      checked += 1;
+      const size = headerSize(path);
+      if (size) {
+        const [w, h] = size;
+        if (!Number.isInteger(w) || !Number.isInteger(h) || Math.abs(w / h - asset.w / asset.h) > 0.01)
+          fail("plates", `${feature.id} is ${w}x${h}, expected ratio of ${asset.w}x${asset.h}`);
+      }
+      const { mean, spread } = await luma(path, region);
+      if (mean < MIN_LUMA || spread < MIN_SPREAD)
+        fail("plates", `${feature.id} looks blank (mean ${mean.toFixed(1)}, spread ${spread.toFixed(1)}): ${asset.file}`);
+      else if (spread < SPARSE_SPREAD) warnings.push(`${feature.id} is a sparse screen (spread ${spread.toFixed(1)}): ${asset.file}`);
     }
-    checked += 1;
-    const size = headerSize(path);
-    if (size) {
-      const [w, h] = size;
-      if (!Number.isInteger(w) || !Number.isInteger(h) || Math.abs(w / h - asset.w / asset.h) > 0.01)
-        fail("plates", `${feature.id} is ${w}x${h}, expected ratio of ${asset.w}x${asset.h}`);
-    }
-    const { mean, spread } = await luma(path);
-    if (mean < MIN_LUMA || spread < MIN_SPREAD)
-      fail("plates", `${feature.id} looks blank (mean ${mean.toFixed(1)}, spread ${spread.toFixed(1)}): ${path}`);
-    else if (spread < SPARSE_SPREAD) warnings.push(`${feature.id} is a sparse screen (spread ${spread.toFixed(1)})`);
   }
   return { mocks, checked };
 }

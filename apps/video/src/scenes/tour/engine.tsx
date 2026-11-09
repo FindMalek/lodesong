@@ -14,6 +14,9 @@ import type { ChapterSpec, Frac, HostSpec } from "./spec";
 import { Counter, DitherVeil } from "./stinger";
 
 const MAX_SCALE_UP = 2.2;
+const MAX_SCALE_LOWRES = 1.5;
+const LOWRES_ZOOM = 1.25;
+const isLowRes = (asset: PlateAsset): boolean => asset.kind === "doc" && asset.w < 1300;
 const WIDE = 16 / 9;
 
 /** Captures that are 16:9 fill the stage; anything else (phones, docs crops, tiles) sits whole on a blurred copy of itself. */
@@ -21,8 +24,9 @@ function layoutOf(asset: PlateAsset): PlateLayout {
   const size = { w: asset.w, h: asset.h };
   const cover = Math.abs(asset.w / asset.h - WIDE) < 0.06;
   const base = plateLayout(size, STAGE, cover ? "cover" : "contain");
-  if (base.k <= MAX_SCALE_UP || cover) return base;
-  return { ...base, k: MAX_SCALE_UP, left: (STAGE.w - asset.w * MAX_SCALE_UP) / 2, top: (STAGE.h - asset.h * MAX_SCALE_UP) / 2 };
+  const ceiling = isLowRes(asset) ? MAX_SCALE_LOWRES : MAX_SCALE_UP;
+  if (base.k <= ceiling || cover) return base;
+  return { ...base, k: ceiling, left: (STAGE.w - asset.w * ceiling) / 2, top: (STAGE.h - asset.h * ceiling) / 2 };
 }
 
 const srcOf = (asset: PlateAsset): string => (asset.kind === "film" ? staticFile(`film/${asset.file}`) : (asset.src ?? ""));
@@ -75,18 +79,31 @@ function resolveFocus(asset: PlateAsset, primary: PlateAsset, focus: HostSpec["f
   return { box: { x: x * asset.w, y: y * asset.h, w: w * asset.w, h: h * asset.h }, named };
 }
 
-function hostCam(layout: PlateLayout, focus: Box, frame: number, frames: number, wow: Feature["wow"], push?: number): Cam {
-  const reach = wow === "A" ? { fill: 0.55, maxScale: 1.6 } : { fill: 0.72, maxScale: 1.25 };
-  const aim = camToBox(layout, focus, push ? { scale: push } : reach);
+function hostCam(
+  layout: PlateLayout,
+  focus: Box,
+  frame: number,
+  frames: number,
+  feature: Feature,
+  push: number | undefined,
+  lowres: boolean,
+): Cam {
+  const big = feature.wow === "A";
+  const fitted = (STAGE.w * (big ? 0.5 : 0.36)) / (focus.w * layout.k);
+  const tall = (STAGE.h * 0.9) / (focus.h * layout.k);
+  const auto = Math.min(tall, Math.max(big ? 1.15 : 1.08, Math.min(big ? 2 : 1.8, fitted)));
+  const scale = Math.min(push ?? auto, lowres ? LOWRES_ZOOM : 9);
+  const aim = camToBox(layout, focus, { scale });
   const t = ease.out(Math.min(1, frame / (frames * 0.85)));
   const creep = 1 + 0.025 * (frame / frames);
   const sway = handheld(frame, 0.35);
+  const side = feature.n % 2 === 0 ? 1 : -1;
   return {
-    x: lerp(0, aim.x, t) + sway.x,
-    y: lerp(0, aim.y, t) + sway.y,
+    x: lerp(side * 90, aim.x, t) + sway.x,
+    y: lerp(side * -30, aim.y, t) + sway.y,
     scale: lerp(1, aim.scale, t) * creep,
     rx: lerp(1, 0, t) + sway.rx,
-    ry: lerp(3, 0, t) + sway.ry,
+    ry: lerp(3 * side, 0, t) + sway.ry,
   };
 }
 
@@ -122,7 +139,7 @@ function PlateHost({ feature, spec = {}, frames }: HostViewProps) {
   if (!asset || !primary) return null;
   const layout = layoutOf(asset);
   const { box, named } = resolveFocus(asset, list[0] ?? primary, spec.focus);
-  const cam = hostCam(layout, box, frame, frames, feature.wow, spec.push);
+  const cam = hostCam(layout, box, frame, frames, feature, spec.push, isLowRes(asset));
   const src = srcOf(asset);
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
@@ -153,6 +170,8 @@ function PlateHost({ feature, spec = {}, frames }: HostViewProps) {
 }
 
 function HostView(props: HostViewProps) {
+  const Scene = props.spec?.scene;
+  if (Scene) return <Scene feature={props.feature} frames={props.frames} />;
   const mock = mockIdOf(props.feature.capture);
   return mock ? <MockHost mock={mock} featureId={props.feature.id} frames={props.frames} /> : <PlateHost {...props} />;
 }
@@ -227,7 +246,7 @@ export function TourChapter({ chapter, spec, previous }: TourChapterProps): Reac
           <HostView feature={host} spec={spec.hosts[host.id]} frames={host.tour[1] - host.tour[0]} />
         </Sequence>
       ))}
-      <ChipStack chapter={chapter} />
+      <ChipStack chapter={chapter} lanes={Object.fromEntries(Object.entries(spec.hosts).map(([id, host]) => [id, host.lane ?? "bl"]))} />
     </AbsoluteFill>
   );
 }

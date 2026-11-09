@@ -43,13 +43,9 @@ const LIGHT_DOCS = new Set([
   "og-share-menu.png",
 ]);
 
-/** docs/radio.png is committed as an empty file, so the radio station borrows the captured radio plate. */
-const SUBSTITUTE: Record<string, string> = { "doc:radio.png": "cap:radio-tune" };
-
 export function platesOf(capture: string): PlateAsset[] {
-  const ref = SUBSTITUTE[capture] ?? capture;
-  if (ref.startsWith("cap:")) {
-    const served = filmManifest.captures[ref.slice(4)];
+  if (capture.startsWith("cap:")) {
+    const served = filmManifest.captures[capture.slice(4)];
     if (!served) return [];
     const owner = take(served.recipe);
     return owner.plates.map((plate) => ({
@@ -61,20 +57,18 @@ export function platesOf(capture: string): PlateAsset[] {
       boxes: plate.boxes,
     }));
   }
-  const name = ref.slice(ref.indexOf(":") + 1);
+  const name = capture.slice(capture.indexOf(":") + 1);
   const doc = DOC_PLATES[name];
   return doc ? [{ kind: "doc", name, file: name, w: doc.w, h: doc.h, boxes: {}, src: doc.src, light: LIGHT_DOCS.has(name) }] : [];
 }
 
 export function plateOf(capture: string): PlateAsset | null {
-  const ref = SUBSTITUTE[capture] ?? capture;
-  const chosen = ref.startsWith("cap:") ? filmManifest.captures[ref.slice(4)]?.plate : undefined;
-  const plates = platesOf(ref);
+  const chosen = capture.startsWith("cap:") ? filmManifest.captures[capture.slice(4)]?.plate : undefined;
+  const plates = platesOf(capture);
   return plates.find((plate) => plate.name === chosen) ?? plates[0] ?? null;
 }
 
 export const mockIdOf = (capture: string): string | null => {
-  const ref = SUBSTITUTE[capture] ?? capture;
-  if (ref.startsWith("mock:")) return ref.slice(5);
-  return ref.startsWith("cap:") && !plateOf(ref) ? ref.slice(4) : null;
+  if (capture.startsWith("mock:")) return capture.slice(5);
+  return capture.startsWith("cap:") && !plateOf(capture) ? capture.slice(4) : null;
 };
