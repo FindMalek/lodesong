@@ -18,7 +18,11 @@ export const plateFile = (name: string): string => {
 
 export const grid = (frame: number): number => frame / 30;
 
-export const BRIGHT = "brightness(1.5)";
+export const LIFT = 1.8;
+export const BRIGHT = `brightness(${LIFT})`;
+
+/** A flat panel colour as the lifted plate shows it (the captured grey times the lift). */
+export const flat = (grey: number): string => `rgb(${Math.round(grey * LIFT)} ${Math.round(grey * LIFT)} ${Math.round(grey * LIFT)})`;
 
 const planeStyle: CSSProperties = { position: "absolute", transformOrigin: "0 0" };
 

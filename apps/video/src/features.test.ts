@@ -1,0 +1,50 @@
+import { expect, test } from "bun:test";
+import {
+  CHAPTERS,
+  CHIP_STEP,
+  chapterRange,
+  chipsOf,
+  FEATURES,
+  FINALE_RANGE,
+  hostsOf,
+  MAX_CHIPS,
+  MIN_FRAMES,
+  TOUR_CUES,
+  TOUR_MAP,
+} from "./features";
+
+const GOLDEN =
+  "72-144,144-216,216-288,288-342,342-396,396-450,450-504,504-558,510-558,456-504,628-698,698-768,768-838,838-908,908-960,960-1012,1012-1065,1065-1117,1117-1170,1123-1170,1071-1117,1018-1065,966-1012,914-960,844-908,1237-1304,1304-1372,1372-1439,1439-1489,1445-1489,1489-1540,1495-1540,1378-1439,1540-1590,1546-1590,1384-1439,1390-1439,1310-1372,1590-1641,1641-1708,1647-1708,1708-1758,1824-1889,1889-1938,1938-2004,1944-2004,2004-2053,2053-2102,2102-2151,2108-2151,2059-2102,2151-2200,2200-2249,2206-2249,2157-2200,2249-2315,2315-2380,2380-2429,2429-2478,2435-2478,2542-2605,2605-2668,2668-2731,2731-2778,2778-2826,2826-2873,2832-2873,2784-2826,2873-2921,2921-2984,2984-3031,2990-3031,3031-3078,3078-3142,3142-3205,3148-3205,3205-3252,3211-3252,3252-3299,3299-3347,3408-3470,3470-3531,3531-3578,3578-3624,3584-3624,3624-3670,3630-3670,3670-3731,3731-3778,3737-3778,3676-3731,3778-3824,3883-3943,3943-3987,3987-4032,3993-4032,4032-4092,4092-4136,4136-4181,4181-4225,4225-4285,4285-4330,4291-4330,4231-4285,4330-4374,4432-4490,4490-4534,4496-4534,4534-4577,4577-4621,4621-4665,4627-4665,4665-4723,4723-4781,4781-4824,4787-4824,4824-4882,4830-4882,4882-4940,4940-4984,4984-5042,5042-5100,5100-5144,5106-5144,5048-5100,5200-5256,5256-5312,5312-5354,5354-5397,5397-5453,5453-5495,5495-5551,5551-5594,5557-5594,5594-5650,5650-5692,5656-5692,5600-5650,5606-5650,5692-5748,5698-5748,5748-5790,5790-5833,5833-5875,5839-5875,5875-5917,5972-6027,6027-6082,6082-6123,6088-6123,6123-6164,6164-6206,6170-6206,6206-6247,6212-6247,6129-6164,6033-6082,6039-6082,6045-6082,5978-6027,5984-6027,6300-6340,6340-6380,6380-6420,6420-6460,6426-6460,6386-6420,6346-6380,6460-6500,6500-6540,6506-6540,6466-6500,6306-6340,6546-6593,6552-6593,6540-6593,6558-6593,6593-6647,6647-6687,6687-6727,6779-6831,6831-6870,6837-6870,6870-6909,6876-6909,6909-6962,6962-7001,6968-7001,7001-7040,7040-7079,7046-7079,7079-7118,7085-7118,7007-7040,7118-7170,7170-7209,7209-7248,7215-7248,7176-7209,7248-7288,7254-7288,7124-7170";
+
+test("202 features, unique ids, numbered 1 to 202", () => {
+  expect(FEATURES.length).toBe(202);
+  expect(new Set(FEATURES.map((feature) => feature.id)).size).toBe(202);
+  expect(FEATURES.map((feature) => feature.n)).toEqual(Array.from({ length: 202 }, (_, i) => i + 1));
+});
+
+test("the tour is 7601 frames and the frame table equals the storyboard", () => {
+  expect(TOUR_MAP.totalFrames).toBe(7601);
+  expect(FEATURES.map((feature) => feature.tour.join("-")).join(",")).toBe(GOLDEN);
+});
+
+test("every range sits in its chapter, lasts 30 frames, and chips fit their host", () => {
+  for (const feature of FEATURES) {
+    const [from, to] = chapterRange(feature.chapter);
+    expect(feature.tour[0]).toBeGreaterThanOrEqual(from);
+    expect(feature.tour[1]).toBeLessThanOrEqual(to);
+    expect(feature.tour[1] - feature.tour[0]).toBeGreaterThanOrEqual(MIN_FRAMES);
+  }
+  for (const chapter of CHAPTERS) {
+    for (const host of hostsOf(chapter.id)) {
+      const chips = chipsOf(host.id);
+      expect(chips.length).toBeLessThanOrEqual(MAX_CHIPS[host.wow === "A" ? "A" : "B"]);
+      for (const [k, chip] of chips.entries()) expect(chip.tour[0]).toBe(host.tour[0] + CHIP_STEP * (k + 1));
+    }
+  }
+  expect(chapterRange("yours")[1]).toBe(FINALE_RANGE[0]);
+});
+
+test("each feature owns one cue on its first frame", () => {
+  expect(TOUR_CUES.length).toBe(202);
+  expect(TOUR_CUES.every((cue, i) => cue.frame === FEATURES[i]?.tour[0])).toBe(true);
+});
