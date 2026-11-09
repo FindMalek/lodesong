@@ -105,7 +105,7 @@ const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
   [["find and ignite", 8, "drop", "drop"]],
   [["mixes", 4, "groove", "hit", { db: -4 }]],
   [["handoff", 4, "lift", "cut", { db: -7 }]],
-  [["flashes", 4, "storm", "drop", { db: 3 }]],
+  [["flashes", 4, "storm", "drop", { db: 6 }]],
   [
     ["land", 2, "land", "hit"],
     ["afterglow", 4, "afterglow"],

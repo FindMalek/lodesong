@@ -178,7 +178,7 @@ export const MOODS: Record<string, Mood> = {
   void: {
     loops: [["i"]],
     hb: 4,
-    db: -9,
+    db: 1,
     pad: 0.6,
     padCut: [300, 900],
     padAttack: 1.2,
@@ -192,7 +192,7 @@ export const MOODS: Record<string, Mood> = {
   tension: {
     loops: [["i", "i", "VI", "V"]],
     hb: 4,
-    db: -7,
+    db: -3,
     pad: 0.55,
     padCut: [500, 1800],
     padAttack: 0.5,
@@ -227,7 +227,7 @@ export const MOODS: Record<string, Mood> = {
       ["VI", "III", "VII", "i"],
     ],
     hb: 4,
-    db: -8,
+    db: -2,
     pad: 0.75,
     padCut: [900, 1700],
     padAttack: 0.6,
@@ -293,7 +293,7 @@ export const MOODS: Record<string, Mood> = {
   pocket: {
     loops: [["i", "V"]],
     hb: 2,
-    db: -8,
+    db: -9,
     pad: 1.2,
     padCut: [1000, 1700],
     padAttack: 0.3,
@@ -307,7 +307,7 @@ export const MOODS: Record<string, Mood> = {
   storm: {
     loops: [["i", "VI", "III", "VII"]],
     hb: 1,
-    db: 1,
+    db: 4,
     pad: 0.9,
     padCut: [2400, 4600],
     padAttack: 0.03,
@@ -325,7 +325,7 @@ export const MOODS: Record<string, Mood> = {
   flash: {
     loops: [["iv", "VI", "V", "V"]],
     hb: 1,
-    db: 2,
+    db: 4,
     pad: 1,
     padCut: [3000, 6000],
     padAttack: 0.03,
@@ -344,7 +344,7 @@ export const MOODS: Record<string, Mood> = {
   hush: {
     loops: [["i"]],
     hb: 4,
-    db: -10,
+    db: -7,
     pad: 1.3,
     padCut: [1200, 2000],
     padAttack: 0.5,
@@ -375,7 +375,7 @@ export const MOODS: Record<string, Mood> = {
   afterglow: {
     loops: [["i"]],
     hb: 8,
-    db: -3,
+    db: 2,
     pad: 0.9,
     padCut: [2200, 700],
     padAttack: 0.1,
@@ -432,6 +432,8 @@ const STABS: readonly Hit[] = [
   [10, 0.75],
 ];
 const SWING = 0.16;
+/** share of the per-segment level offsets that survives: the section spread and loudness range stay under 6 LU */
+const DYNAMICS = 0.34;
 
 function rng(seed: number): () => number {
   let a = seed >>> 0;
@@ -519,10 +521,10 @@ export function buildScore(spec: FilmSpec): Score {
     landmarks.push({ id: segment.id, frame: clock.frame(start) });
     const at = (beat: number): number => clock.at(beat);
 
-    const level = segment.db ?? mood.db;
+    const level = (segment.db ?? mood.db) * DYNAMICS;
     curves.trim.push([at(start), level]);
-    if (segment.beats >= 16) curves.trim.push([at(start + 8), level + 2.5]);
-    if (segment.beats >= 24) curves.trim.push([at(start + 16), level + 5]);
+    if (segment.beats >= 16) curves.trim.push([at(start + 8), level + 2.5 * DYNAMICS]);
+    if (segment.beats >= 24) curves.trim.push([at(start + 16), level + 5 * DYNAMICS]);
     const grow = segment.beats >= 16 ? 8 : 0;
     curves.padCut.push([at(start), mood.padCut[0]], [at(end) - 0.01, mood.padCut[1]]);
     curves.tex.push([at(start), mood.tex]);
@@ -685,7 +687,7 @@ export function buildScore(spec: FilmSpec): Score {
           vel: intro === "drop" ? 1 : 0.7,
           label: `${label} reverse swell`,
         });
-      const rise = intro === "drop" ? 2 : intro === "hit" ? 1 : 0.5;
+      const rise = intro === "drop" ? 2 : intro === "hit" ? 2 : 0.5;
       const riseSeconds = t0 - at(start - rise);
       if (intro !== "cut")
         push({

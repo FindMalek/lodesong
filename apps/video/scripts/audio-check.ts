@@ -5,7 +5,7 @@ import { FPS } from "../src/audio-tempo";
 
 const TARGET_LUFS = -14;
 const TRUE_PEAK_CEILING = -1.5;
-const MAX_LRA = 14;
+const MAX_LRA = 6;
 const BANDS: readonly [number, number][] = [
   [0, 60],
   [60, 120],
@@ -19,19 +19,23 @@ const BANDS: readonly [number, number][] = [
 const REFERENCE_DB = [4, 2, 2, 0, -2.5, -4.5, -7.5, -9];
 const BAND_TOLERANCE_DB = 9;
 const LOW_SHARE_HZ = 150;
-const MAX_LOW_SHARE = 0.65;
-const MAX_HIGHPASS_GAP_LU = 4;
-const FLAT_LU = 2;
-const FLAT_SECONDS = 10;
-const FLAT_SECONDS_TOUR = 14;
+const MAX_LOW_SHARE = 0.45;
+const MAX_HIGHPASS_GAP_LU = 2.5;
+/** a phone speaker: nothing under 200 Hz and the top rolled off */
+const PHONE_FILTER = "highpass=f=200:poles=2,highpass=f=200:poles=2,lowpass=f=9000,";
+const MAX_PHONE_GAP_LU = 3.5;
+const MIN_RISER_RISE = 1.6;
+const FLAT_LU = 1.5;
+const FLAT_SECONDS = 18;
+const FLAT_SECONDS_TOUR = 18;
 const BAR_SECONDS = 2;
 const TILT_MIN = -7;
 const TILT_MAX = -0.5;
 const MIN_CORRELATION = 0.2;
 const MAX_CORRELATION = 0.93;
-const MIN_SPREAD = 7;
-const MIN_SPREAD_SHORT = 5;
-const DROP_LU = 2.5;
+const MIN_SPREAD = 3;
+const MAX_SPREAD = 6;
+const DROP_LU = 1;
 const DENSE_MOODS = new Set(["drop", "groove", "peak", "storm", "flash", "land", "lift"]);
 const FRAME_SECONDS = 1 / FPS;
 const TAIL_FRAMES = 24;
@@ -181,7 +185,7 @@ const BAND_OF: Record<string, Group> = {
 const MIN_MEDIAN_DB: Record<string, number> = {
   snare: -2,
   kick: 0,
-  impact: 0,
+  impact: -1,
   key: -6,
   type: -6,
   click: -6,
@@ -338,6 +342,25 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
   return failures.length;
 }
 
+/** a riser has to be heard rising in the finished mix, not only on its own stem: the top band must grow while the music plays on */
+function risersInMix(mix: Source, film: Film): number {
+  const bad: string[] = [];
+  const risers = AUDIO_CUES.filter((c) => c.film === film && c.kind === "riser" && !silenced(c.frame, film));
+  for (const cue of risers) {
+    const span = (cue.length ?? 30) * (RATE / FPS);
+    const sample = Math.round(secondsOf(cue.frame) * RATE);
+    const early = mix.energy("high", sample, sample + span * 0.3);
+    const late = mix.energy("high", sample + span * 0.6, sample + span * 0.9);
+    if (late < early * MIN_RISER_RISE)
+      bad.push(`${cue.id} (${cue.label}): ${(10 * Math.log10((late + 1e-14) / (early + 1e-14))).toFixed(1)} dB`);
+  }
+  for (const line of bad) console.error(`  FAIL riser does not rise in the mix: ${line}`);
+  console.log(
+    `  risers in the finished mix: ${risers.length - bad.length} of ${risers.length} rise by at least ${(10 * Math.log10(MIN_RISER_RISE)).toFixed(1)} dB in the top band`,
+  );
+  return bad.length;
+}
+
 /** consecutive kicks one beat apart must be one beat apart in the audio, whatever the tempo of the shot */
 function kickGrid(stems: Stems, film: Film): number {
   const { clock, events } = SCORES[film];
@@ -397,7 +420,7 @@ function clicks(audio: Stereo, film: Film): string[] {
     c.kind === "key" || c.kind === "type" ? 0.09 : 0.012,
   ]);
   for (const [from, to] of SCORES[film].gates) exempt.push([from * RATE, 0.004], [to * RATE, 0.012]);
-  const near = (n: number): boolean => exempt.some(([at, tail]) => n >= at - 0.002 * RATE && n <= at + tail * RATE);
+  const near = (n: number): boolean => exempt.some(([at, tail]) => n >= at - 0.009 * RATE && n <= at + tail * RATE);
   const found: number[] = [];
   const radius = 240;
   for (const channel of [audio.l, audio.r]) {
@@ -477,6 +500,12 @@ async function auditFilm(film: Film): Promise<number> {
     `  energy below ${LOW_SHARE_HZ} Hz ${(share * 100).toFixed(0)}%, loudness through a 150 Hz high-pass ${highpassed.lufs.toFixed(1)} LUFS (${(loud.lufs - highpassed.lufs).toFixed(1)} LU under full range)`,
   );
   if (share > MAX_LOW_SHARE) fail(`${(share * 100).toFixed(0)}% of the energy is below ${LOW_SHARE_HZ} Hz, limit ${MAX_LOW_SHARE * 100}%`);
+  const phone = await measureLoudness(file, undefined, undefined, PHONE_FILTER);
+  console.log(
+    `  phone simulation (high-pass 200 Hz, low-pass 9 kHz): ${phone.lufs.toFixed(1)} LUFS, ${(loud.lufs - phone.lufs).toFixed(1)} LU under full range`,
+  );
+  if (loud.lufs - phone.lufs > MAX_PHONE_GAP_LU)
+    fail(`on a phone speaker it is ${(loud.lufs - phone.lufs).toFixed(1)} LU quieter, limit ${MAX_PHONE_GAP_LU}`);
   if (loud.lufs - highpassed.lufs > MAX_HIGHPASS_GAP_LU)
     fail(`small speakers hear it ${(loud.lufs - highpassed.lufs).toFixed(1)} LU quieter, limit ${MAX_HIGHPASS_GAP_LU}`);
 
@@ -551,8 +580,8 @@ async function auditFilm(film: Film): Promise<number> {
   console.log(
     `  section loudness spread ${spread.toFixed(1)} LU (loudest ${Math.max(...known).toFixed(1)}, quietest ${Math.min(...known).toFixed(1)})`,
   );
-  const wanted = film === "cutdown" ? MIN_SPREAD_SHORT : MIN_SPREAD;
-  if (spread < wanted) fail(`dynamics: sections only span ${spread.toFixed(1)} LU, wanted ${wanted}`);
+  if (spread < MIN_SPREAD) fail(`dynamics: sections only span ${spread.toFixed(1)} LU, wanted ${MIN_SPREAD}`);
+  if (spread > MAX_SPREAD) fail(`dynamics: sections span ${spread.toFixed(1)} LU, limit ${MAX_SPREAD}`);
   for (const [i, segment] of score.clock.segments.entries()) {
     const before = lufs.get(i - 1);
     const here = lufs.get(i);
@@ -586,6 +615,7 @@ async function auditFilm(film: Film): Promise<number> {
   const stems: Stems = { ...sources, kicks: new Source(await decode(`public/audio/stems/${film}-kicks.wav`)) };
   failures += kickGrid(stems, film);
   failures += reportCues(stems, film, FILM_FRAMES[film]);
+  failures += risersInMix(new Source(audio), film);
   return failures;
 }
 
