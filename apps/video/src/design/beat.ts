@@ -55,15 +55,15 @@ export const TEMPO: readonly Tempo[] = [
   { beats: 4, bpm: 100 },
   { beats: 8, bpm: 104 },
   { beats: 8, bpm: 108 },
-  { beats: 8, bpm: 112 },
-  { beats: 4, bpm: 116 },
+  { beats: 12, bpm: 112 },
+  { beats: 8, bpm: 116 },
   { beats: 8, bpm: 120 },
-  { beats: 4, bpm: 124 },
-  { beats: 8, bpm: 128 },
-  { beats: 8, bpm: 132 },
-  { beats: 4, bpm: 136 },
-  { beats: 4, bpm: 138 },
+  { beats: 8, bpm: 124 },
+  { beats: 12, bpm: 128 },
+  { beats: 12, bpm: 132 },
+  { beats: 8, bpm: 136 },
   { beats: 8, bpm: 138 },
+  { beats: 12, bpm: 138 },
 ];
 
 const CUT_TEMPO: readonly Tempo[] = [
