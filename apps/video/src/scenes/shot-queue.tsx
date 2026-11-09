@@ -96,7 +96,7 @@ function QueueScene() {
         focusZ={110}
         aperture={0.012}
         brightness={LIFT}
-        light={{ x: pointer.x, y: pointer.y, radius: 700, dim: 0.85, wash: 0.05 }}
+        light={{ x: pointer.x, y: pointer.y, radius: 700, dim: 0.85, wash: 0 }}
       >
         <div
           style={{
@@ -143,7 +143,7 @@ function CrossfadeScene() {
           focusZ={60}
           aperture={0.002}
           brightness={LIFT}
-          light={{ x: 900, y: 300, radius: 900, dim: 0.9, wash: 0.04 }}
+          light={{ x: 900, y: 300, radius: 900, dim: 0.9, wash: 0 }}
         >
           <CrossfadeSlider from={X.slider} length={X.sliderLength} />
           <Bracket box={{ x: 756, y: 232, w: 340, h: 76 }} at={grid(X.slider + X.sliderLength)} pad={4} arm={12} width={2} length={0.4} />
@@ -184,7 +184,7 @@ function EqScene() {
         focusZ={110}
         aperture={0.002}
         brightness={LIFT}
-        light={{ x: 1250, y: 280, radius: 800, dim: 0.9, wash: 0.04 }}
+        light={{ x: 1250, y: 280, radius: 800, dim: 0.9, wash: 0 }}
       >
         <EqBands changes={EQ_CHANGES} />
         {chip ? <Bracket box={chip} at={grid(frame < E.treble ? E.bass : E.treble)} pad={4} arm={8} width={2} length={0.3} /> : null}

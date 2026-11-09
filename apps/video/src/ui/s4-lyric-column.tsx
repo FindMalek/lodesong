@@ -1,39 +1,21 @@
 import type { ReactNode } from "react";
 import { Img, useCurrentFrame } from "remotion";
 import { ease, ramp } from "../design/motion";
+import type { Box } from "../design/probe";
 import { GoldText, Patch, PLATE_PX, plateFile } from "./s4-kit";
-import { fillOf, LINE_SAY, LINE_STAY, type LyricLine, SCROLL_DY, wordSpans } from "./s4-lyric-data";
+import { LINE_HOLD, LINE_SAY, LINE_STAY, SCROLL_DY } from "./s4-lyric-data";
 
 const GLOW = "drop-shadow(0 0 8px color-mix(in oklch, var(--ignite) 50%, transparent))";
 
 const COLUMN = { x: 560, y: 0, w: 880, h: 810 };
 
-interface GoldLineProps {
-  src: string;
-  line: LyricLine;
-  start: number;
-}
-
-function GoldLine({ src, line, start }: GoldLineProps) {
+function GoldLine({ src, box, from }: { src: string; box: Box; from: number }) {
   const frame = useCurrentFrame();
-  const spans = wordSpans(line, start);
+  const t = ramp(frame, from, 8);
+  if (t <= 0) return null;
   return (
-    <div style={{ position: "absolute", inset: 0, filter: GLOW }}>
-      {line.words.map((word, i) => {
-        const p = fillOf(frame, spans[i] ?? { from: 0, to: 0 });
-        if (p <= 0) return null;
-        const w = word.x1 - word.x0 + 4;
-        return (
-          <div key={word.text + word.at}>
-            <Patch
-              src={src}
-              box={{ x: word.x0 - 2, y: line.y - 2, w, h: line.h + 4 }}
-              filter="url(#s4-gold)"
-              style={{ clipPath: `inset(0 ${(1 - p) * 100}% 0 0)` }}
-            />
-          </div>
-        );
-      })}
+    <div style={{ position: "absolute", inset: 0, filter: GLOW, opacity: t }}>
+      <Patch src={src} box={{ x: box.x - 4, y: box.y - 3, w: box.w + 8, h: box.h + 6 }} filter="url(#s4-gold)" />
     </div>
   );
 }
@@ -59,32 +41,41 @@ function Column({ src, shift, opacity = 1, children }: ColumnProps) {
 }
 
 interface FullScreenLyricsProps {
-  singAt: number;
+  /** frame the highlight moves from the first line to the second */
+  advanceAt: number;
+  /** frame of the click on a far line, the column scrolls from there */
   clickAt: number;
   scrollFrames?: number;
 }
 
+const HOLD = "lyrics-full/line-02";
 const SAY = "lyrics-full/word-04-0";
 const STAY = "lyrics-full/click-line";
 
-/** The real full-screen lyrics view: two captured plates, the column scrolled between them by the same distance the app scrolled, gold word fill laid on the line that is being sung. */
-export function FullScreenLyrics({ singAt, clickAt, scrollFrames = 22 }: FullScreenLyricsProps) {
+/** The real full-screen lyrics view from three captured plates: the highlight follows the song line by line, then a click scrolls the column the distance the app scrolled and lights the clicked line. */
+export function FullScreenLyrics({ advanceAt, clickAt, scrollFrames = 22 }: FullScreenLyricsProps) {
   const frame = useCurrentFrame();
+  const holdFile = plateFile(HOLD);
   const sayFile = plateFile(SAY);
   const stayFile = plateFile(STAY);
   const s = ramp(frame, clickAt, scrollFrames, ease.out);
-  const showB = frame >= clickAt;
   const bOpacity = ramp(frame, clickAt, 8, ease.out);
   return (
     <>
       <GoldText />
       <Patch src={sayFile} box={{ x: 0, y: 0, w: COLUMN.x, h: PLATE_PX.h }} />
-      <Column src={sayFile} shift={-SCROLL_DY * s}>
-        <GoldLine src={sayFile} line={LINE_SAY} start={singAt} />
-      </Column>
-      {showB ? (
+      {frame < advanceAt ? (
+        <Column src={holdFile} shift={0}>
+          <GoldLine src={holdFile} box={LINE_HOLD} from={2} />
+        </Column>
+      ) : (
+        <Column src={sayFile} shift={-SCROLL_DY * s}>
+          <GoldLine src={sayFile} box={LINE_SAY} from={advanceAt} />
+        </Column>
+      )}
+      {frame >= clickAt ? (
         <Column src={stayFile} shift={SCROLL_DY * (1 - s)} opacity={bOpacity}>
-          <GoldLine src={stayFile} line={LINE_STAY} start={clickAt + 3} />
+          <GoldLine src={stayFile} box={LINE_STAY} from={clickAt + 3} />
         </Column>
       ) : null}
     </>

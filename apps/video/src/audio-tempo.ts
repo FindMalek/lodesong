@@ -2,7 +2,7 @@ import { FPS } from "./design/beat";
 
 export { FPS };
 
-/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor */
+/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor; hb is beats per chord, to change harmony on the cuts; build is the beat each layer comes in */
 export interface Segment {
   id: string;
   beats: number;
@@ -13,6 +13,8 @@ export interface Segment {
   variant?: number;
   gap?: number;
   db?: number;
+  hb?: number;
+  build?: { hats?: number; snare?: number; arp?: number; stab?: number };
 }
 
 export interface Ritard {
@@ -21,7 +23,7 @@ export interface Ritard {
   slow: number;
 }
 
-/** seconds and frame are the straight grid the picture cuts on; at() is when the score plays a beat, with the ritardando applied */
+/** seconds and frame are the straight grid the picture cuts on; at() is when the score plays a beat: the ritardando widens the last beats but ends on the same frame as the picture */
 export interface Clock {
   segments: readonly Segment[];
   starts: readonly number[];
@@ -56,14 +58,12 @@ export function createClock(segments: readonly Segment[], ritard?: Ritard): Cloc
     return (startSeconds[i] ?? 0) + ((beat - (starts[i] ?? 0)) * 60) / segment.bpm;
   };
   const bpmAt = (beat: number): number => (segments[Math.min(segmentAt(beat), segments.length - 1)] as Segment).bpm;
-  const warp = (beat: number): number => {
-    if (!ritard) return 0;
+  const at = (beat: number): number => {
+    if (!ritard || beat <= ritard.final - ritard.over || beat >= ritard.final) return straight(beat);
     const from = ritard.final - ritard.over;
-    if (beat <= from) return 0;
-    const k = 1 - ritard.slow;
-    const u = Math.min(1, (beat - from) / ritard.over);
-    const bpm = bpmAt(from);
-    return ((60 * ritard.over) / bpm) * (-Math.log(1 - k * u) / k - u);
+    const u = (beat - from) / ritard.over;
+    const spread = (1 - ritard.slow) / 2;
+    return straight(from) + (straight(ritard.final) - straight(from)) * (u + spread * (u - u * u));
   };
   return {
     segments,
@@ -72,7 +72,7 @@ export function createClock(segments: readonly Segment[], ritard?: Ritard): Cloc
     totalFrames: Math.round(seconds * FPS),
     seconds: straight,
     frame: (beat) => Math.round(straight(beat) * FPS),
-    at: (beat) => straight(beat) + warp(beat),
+    at,
     bpmAt,
     segmentAt,
   };

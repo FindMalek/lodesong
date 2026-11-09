@@ -67,7 +67,17 @@ export function DeviceFrame({ kind, width, src, children, label, note = DEFAULT_
         }}
       >
         {src ? (
-          <Img src={src} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+          <Img
+            src={src}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "top",
+              display: "block",
+              filter: "brightness(1.6)",
+            }}
+          />
         ) : (
           children
         )}

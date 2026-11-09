@@ -50,7 +50,7 @@ function kick(): Stereo {
     const t = i / RATE;
     phase += (TAU * (52 + 175 * env(t, 0.016))) / RATE;
     punchPhase += (TAU * (110 + 420 * env(t, 0.009))) / RATE;
-    const x = Math.sin(phase) * env(t, 0.105) + Math.sin(punchPhase) * env(t, 0.028) * 0.55 + (click[i] ?? 0) * env(t, 0.0022) * 0.5;
+    const x = Math.sin(phase) * env(t, 0.105) * 0.6 + Math.sin(punchPhase) * env(t, 0.028) * 0.7 + (click[i] ?? 0) * env(t, 0.0022) * 0.6;
     body[i] = softClip(x * rise(t, 0.0006) * 1.5, 1.9);
   }
   return fadeEnds(peakNormalise(mono(lowpass(body, 11000))), 0.02);
@@ -166,7 +166,7 @@ function sub(midi: number, dur: number, soft: boolean): Stereo {
 
 function bass(midi: number, dur: number): Stereo {
   const n = secs(dur + 0.06);
-  const hz = midiHz(midi);
+  const hz = midiHz(midi + 12);
   const saw = new Float32Array(n);
   const fund = new Float32Array(n);
   let p1 = 0;
@@ -178,14 +178,14 @@ function bass(midi: number, dur: number): Stereo {
     p2 = (p2 + dt * 1.003) % 1;
     ps += (TAU * hz) / RATE;
     saw[i] = (sawBlep(p1, dt) + sawBlep(p2, dt)) * 0.5;
-    fund[i] = Math.sin(ps);
+    fund[i] = Math.sin(ps) * 0.75 + Math.sin(2 * ps) * 0.5 + Math.sin(3 * ps) * 0.3;
   }
-  const body = lowpass(saw, (i) => 220 + 1900 * env(i / RATE, 0.11), 1.3);
+  const body = lowpass(saw, (i) => 300 + 2600 * env(i / RATE, 0.11), 1.3);
   const out = new Float32Array(n);
   for (let i = 0; i < n; i += 1) {
     const t = i / RATE;
     const g = rise(t, 0.004) * (t > dur ? Math.max(0, 1 - (t - dur) / 0.06) : 1);
-    out[i] = softClip((fund[i] ?? 0) * 0.95 + (body[i] ?? 0) * 0.5, 1.5) * g;
+    out[i] = softClip((fund[i] ?? 0) * 0.8 + (body[i] ?? 0) * 0.7, 1.7) * g;
   }
   return mono(out);
 }
@@ -328,7 +328,7 @@ function riser(dur: number, midi: number, seed: number): Stereo {
     pitch = (pitch + hz / RATE) % 1;
     pitch2 = (pitch2 + (hz * 1.006) / RATE) % 1;
     const tone = (sawBlep(pitch, hz / RATE) + sawBlep(pitch2, (hz * 1.006) / RATE)) * 0.5;
-    const level = u ** 2.3;
+    const level = u ** 1.9;
     const s = (sweepA[i] ?? 0) * pulse * level * 1.1 + (air[i] ?? 0) * level * level * 0.22;
     out.l[i] = s + tone * level * 0.24;
     out.r[i] = s * 0.92 + tone * level * 0.24 * 0.9;
@@ -391,7 +391,7 @@ function impact(style: string | undefined, dur: number, midi: number, seed: numb
   const thump = lowpass(noiseBuffer(n, seed), 240);
   const mid = bandpass(noiseBuffer(n, seed + 1), 1100, 1);
   const tau = big ? 1.5 : medium ? 0.7 : 0.3;
-  const weight = big ? 1.1 : medium ? 0.8 : 0.4;
+  const weight = big ? 1.1 : medium ? 0.8 : 0.55;
   for (let i = 0; i < n; i += 1) {
     const t = i / RATE;
     phase += (TAU * (31 + 34 * env(t, 0.09))) / RATE;
@@ -541,7 +541,8 @@ function ui(kind: string, midi: number, seed: number): Stereo {
       return plain(
         Float32Array.from(
           { length: n },
-          (_, i) => (noise[i] ?? 0) * Math.sin((Math.PI * i) / n) ** 2 + Math.sin(TAU * 3200 * (i / RATE)) * env(i / RATE, 0.006) * 0.4,
+          (_, i) =>
+            (noise[i] ?? 0) * rise(i / RATE, 0.002) * env(i / RATE, 0.08) + Math.sin(TAU * 3200 * (i / RATE)) * env(i / RATE, 0.006) * 0.9,
         ),
       );
     }
@@ -593,8 +594,8 @@ export const LEVELS: Record<Track, number> = {
   tom: 0.45,
   shaker: 0.04,
   crash: 0.13,
-  sub: 0.36,
-  bass: 0.3,
+  sub: 0.2,
+  bass: 0.34,
   pad: 0.17,
   arp: 0.18,
   stab: 0.16,
@@ -602,7 +603,7 @@ export const LEVELS: Record<Track, number> = {
   bell: 0.2,
   keys: 0.22,
   pluck: 0.2,
-  riser: 0.3,
+  riser: 2.1,
   impact: 0.95,
   whoosh: 0.2,
   down: 0.22,

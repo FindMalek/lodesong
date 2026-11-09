@@ -15,15 +15,15 @@ const SHOT = shotOf("mixes");
 
 const T = {
   first: 12,
-  stagger: 8,
-  length: 26,
-  pullback: 84,
-  click: 116,
-  rush: 118,
-  cut: 140,
-  radio: 196,
-  radioPlay: 206,
-  folders: 220,
+  stagger: 14,
+  length: 44,
+  pullback: 140,
+  click: 176,
+  rush: 178,
+  cut: 198,
+  radio: 252,
+  radioPlay: 276,
+  folders: 304,
 } as const;
 const WIPE = 12;
 
@@ -41,7 +41,7 @@ export const S6_CUES: ShotCue[] = [
   { shot: "mixes", at: T.rush, kind: "whoosh", label: "tile rushes forward" },
   { shot: "mixes", at: T.cut, kind: "hit", label: "mix page opens" },
   { shot: "mixes", at: T.cut + 2, kind: "ping", label: "cover ignites gold" },
-  { shot: "mixes", at: T.cut + 34, kind: "tick", label: "saved to navidrome" },
+  { shot: "mixes", at: T.cut + 44, kind: "tick", label: "saved to navidrome" },
   { shot: "mixes", at: T.radio, kind: "hit", label: "radio station flash" },
   { shot: "mixes", at: T.radioPlay, kind: "click", label: "radio play, gold on the bar" },
   { shot: "mixes", at: T.folders, kind: "hit", label: "folder flash" },
@@ -73,8 +73,8 @@ const SIDEBAR_ROW = { x: 8, y: 447, w: 183, h: 28 };
 
 const MIX_KEYS = plateKeys(LAYOUT, [
   { at: 0, box: COVER, scale: 3.4, rx: 0, ry: -2 },
-  { at: grid(18), box: { x: 200, y: 50, w: 520, h: 170 }, scale: 2.1, rx: 0, ry: 2 },
-  { at: grid(34), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.1, rx: 0, ry: 4 },
+  { at: grid(26), box: { x: 200, y: 50, w: 520, h: 170 }, scale: 2.1, rx: 0, ry: 2 },
+  { at: grid(44), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.1, rx: 0, ry: 4 },
   { at: grid(T.radio - T.cut), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.25, rx: 0, ry: 3 },
 ]);
 
@@ -95,7 +95,7 @@ function HomeScene() {
     y: here.y,
     radius: 460,
     dim: 0.85,
-    wash: 0.06,
+    wash: 0,
   };
   const rush = ramp(frame, T.rush, T.cut - 1 - T.rush, ease.in);
   const centreX = (STAGE.w / 2 + cam.x / cam.scale - LAYOUT.left) / LAYOUT.k;
@@ -146,26 +146,11 @@ const MIX_SLICES: PlateSlice[] = [
 function MixScene() {
   const frame = useCurrentFrame() - T.cut;
   const cam = addCam(camAt(frame, MIX_KEYS), handheld(frame, 0.5));
-  const t = ramp(frame, 0, 18);
-  const pool = {
-    x: lerp(lerp(296, 440, ramp(frame, 12, 12)), 100, ramp(frame, 28, 12)),
-    y: lerp(lerp(138, 130, ramp(frame, 12, 12)), 462, ramp(frame, 28, 12)),
-    radius: 420,
-    dim: 0.85,
-    wash: 0.07,
-  };
+  const t = ramp(frame, 0, 24);
   const scale = COVER.w / tileBox(0).w;
   return (
     <Camera cam={cam}>
-      <Plate
-        src={plateFile("home-mixes/mix")}
-        layout={LAYOUT}
-        slices={MIX_SLICES}
-        focusZ={60}
-        aperture={0.003}
-        brightness={LIFT}
-        light={pool}
-      >
+      <Plate src={plateFile("home-mixes/mix")} layout={LAYOUT} slices={MIX_SLICES} focusZ={60} aperture={0.003} brightness={LIFT}>
         <div
           style={{
             position: "absolute",
@@ -177,7 +162,7 @@ function MixScene() {
             <Ignite t={t} />
           </TileCrop>
         </div>
-        <Bracket box={SIDEBAR_ROW} at={grid(T.cut + 34)} pad={5} arm={10} width={2} length={0.5} />
+        <Bracket box={SIDEBAR_ROW} at={grid(T.cut + 44)} pad={5} arm={10} width={2} length={0.5} />
       </Plate>
       <Bokeh focusZ={0} z={300} count={5} seed={9} opacity={0.1} />
     </Camera>
@@ -202,17 +187,10 @@ function RadioScene() {
   const frame = useCurrentFrame();
   const cam = addCam(camAt(frame, RADIO_KEYS), handheld(frame, 0.5));
   const playing = frame >= T.radioPlay;
-  const t = ramp(frame, T.radioPlay, 12);
-  const pool = playing ? { x: 140, y: 778 } : { x: 320, y: 150 };
+  const t = ramp(frame, T.radioPlay, 20);
   return (
     <Camera cam={cam}>
-      <Plate
-        src={plateFile(playing ? "radio-tune/playing" : "radio-tune/preview")}
-        layout={LAYOUT}
-        focusZ={0}
-        brightness={LIFT}
-        light={{ ...pool, radius: 600, dim: 0.85, wash: 0.07 }}
-      >
+      <Plate src={plateFile(playing ? "radio-tune/playing" : "radio-tune/preview")} layout={LAYOUT} focusZ={0} brightness={LIFT}>
         {playing ? (
           <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 20, t)}px var(--ignite))` }}>
             <Patch src={plateFile("radio-tune/playing")} box={RADIO_COVER} filter={BRIGHT} style={{ isolation: "isolate" }}>
@@ -241,16 +219,10 @@ const FOLDER_KEYS = plateKeys(LAYOUT, [
 function FoldersScene() {
   const frame = useCurrentFrame();
   const cam = addCam(camAt(frame, FOLDER_KEYS), handheld(frame, 0.5));
-  const t = ramp(frame, T.folders + 2, 12);
+  const t = ramp(frame, T.folders + 2, 20);
   return (
     <Camera cam={cam}>
-      <Plate
-        src={plateFile("folders-new/created")}
-        layout={LAYOUT}
-        focusZ={0}
-        brightness={LIFT}
-        light={{ x: 300, y: 180, radius: 640, dim: 0.85, wash: 0.07 }}
-      >
+      <Plate src={plateFile("folders-new/created")} layout={LAYOUT} focusZ={0} brightness={LIFT}>
         <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 28, t)}px var(--ignite))` }}>
           <Patch src={plateFile("folders-new/created")} box={AURA} filter={BRIGHT} style={{ isolation: "isolate" }}>
             <Ignite t={t} />
@@ -269,8 +241,8 @@ export function MixesShot() {
   return (
     <ShotTransit frames={SHOT.frames} leave={null}>
       {frame < T.cut ? <HomeScene /> : frame < T.radio ? <MixScene /> : frame < T.folders ? <RadioScene /> : <FoldersScene />}
-      <Chip text="saved to navidrome" from={T.cut + 30} out={T.radio - 10} x={96} y={960} />
-      <Chip text="radio" from={T.radio} out={T.folders - 6} x={96} y={960} />
+      <Chip text="saved to navidrome" from={T.cut + 34} out={T.radio - 8} x={96} y={960} />
+      <Chip text="radio" from={T.radio} out={T.folders - 6} x={1480} y={960} />
       <Chip text="folders" from={T.folders + 2} x={96} y={960} />
       <DitherWipe from={0} length={WIPE} />
     </ShotTransit>
