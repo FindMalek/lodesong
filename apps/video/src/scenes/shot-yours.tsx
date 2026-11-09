@@ -74,17 +74,17 @@ function PlateFlash({ flash, frames, frame }: { flash: Flash; frames: number; fr
       <Plate
         src={plateSrc(flash.take ?? "", flash.plate ?? "")}
         layout={LAYOUT}
-        brightness={flash.bright ? 1 : 1.55}
-        light={flash.bright ? undefined : { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2, radius: 760, dim: 0.85, wash: 0.04 }}
+        brightness={flash.bright ? 1 : 2}
+        light={flash.bright ? undefined : { x: focus.x + focus.w / 2, y: focus.y + focus.h / 2, radius: 760, dim: 0.75, wash: 0.02 }}
       />
     </Camera>
   );
 }
 
 const CARDS = [
-  { src: ogAlbum, x: 64, y: 70, at: 0 },
-  { src: ogArtist, x: 330, y: 230, at: 5 },
-  { src: ogSong, x: 640, y: 380, at: 10 },
+  { src: ogAlbum, x: 64, y: 70, at: 0, gold: false },
+  { src: ogArtist, x: 330, y: 230, at: 5, gold: false },
+  { src: ogSong, x: 640, y: 380, at: 10, gold: true },
 ] as const;
 
 function CardsFlash({ frame }: { frame: number }) {
@@ -102,7 +102,8 @@ function CardsFlash({ frame }: { frame: number }) {
               top: card.y,
               width: CARD.w,
               height: CARD.h,
-              border: "1px solid color-mix(in oklch, var(--foreground) 35%, transparent)",
+              border: card.gold ? "2px solid var(--ignite)" : "1px solid color-mix(in oklch, var(--foreground) 35%, transparent)",
+              filter: card.gold ? "grayscale(1) sepia(1) saturate(2.4) hue-rotate(-12deg) contrast(1.05)" : "grayscale(1) brightness(0.8)",
               opacity: p > 0 ? 1 : 0,
               transform: `translate(${lerp(90, 0, p)}px, ${lerp(60, 0, p)}px)`,
             }}

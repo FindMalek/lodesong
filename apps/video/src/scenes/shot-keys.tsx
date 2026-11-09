@@ -68,13 +68,13 @@ function Cut({ cut, frames, strikes }: { cut: KeyCut; frames: number; strikes: n
           <Plate
             src={plateSrc(cut.take, cut.plate)}
             layout={LAYOUT}
-            brightness={1.55}
+            brightness={2.1}
             light={{
               x: cut.focus.x + cut.focus.w / 2,
               y: cut.focus.y + cut.focus.h / 2,
               radius: 700,
-              dim: 0.82,
-              wash: 0.05,
+              dim: 0.7,
+              wash: 0.02,
             }}
           >
             {mark ? (
