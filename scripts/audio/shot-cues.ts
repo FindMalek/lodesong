@@ -20,7 +20,7 @@ const MODULES = [
   "s12-plan",
 ];
 
-const SKIPPED_PINGS = /your (music|server)|bell on the ignite/;
+const SKIPPED_PINGS = /(?:your (?:music|server)|bell on the ignite)/;
 
 /** what a shot cue sounds like: structural kinds (risers, rests, swells) are the score's own transitions */
 function uiKind(cue: ShotCue): UiKind | undefined {
@@ -40,7 +40,7 @@ function uiKind(cue: ShotCue): UiKind | undefined {
   if (kind === "tick") {
     if (/hairline|underline|draws/.test(label)) return "draw";
     if (/seek/.test(label)) return "seek";
-    if (/^word |row \d|undo/.test(label)) return "row";
+    if (/(?:^word |row \d|undo)/.test(label)) return "row";
     if (/^key /.test(label)) return "type";
     return "chip";
   }
