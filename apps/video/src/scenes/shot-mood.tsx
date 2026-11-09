@@ -18,15 +18,15 @@ const FULL = { x: 0, y: 0, ...PLATE };
 const g = (frame: number): number => frame / 30;
 
 const PROMPT = "late night drive, 90s, no vocals";
-const TYPE_FROM = 3;
-const TYPE_STEP = 1.5;
+const TYPE_FROM = 4;
+const TYPE_STEP = 2;
 const LANDINGS = [...PROMPT].map((_, i) => TYPE_FROM + Math.floor(i * TYPE_STEP + hash(i * 3.1) * 1.1));
 const TYPED_END = (LANDINGS.at(-1) ?? 0) + 2;
 
-const MAKE_AT = SHOT.beat(2.5);
-const CREATE_AT = SHOT.beat(4);
-const STATS_AT = SHOT.beat(5.5);
-const RECAP_AT = STATS_AT + 26;
+const MAKE_AT = SHOT.beat(3);
+const CREATE_AT = SHOT.beat(5.5);
+const STATS_AT = SHOT.beat(8);
+const RECAP_AT = STATS_AT + 40;
 const RECAP_BUTTON = { x: 1349, y: 51, w: 71, h: 28 };
 
 const FIELD = { x: 513, y: 296, w: 322, h: 28 };
@@ -95,7 +95,7 @@ function Prompt() {
     frame,
     plateKeys(LAYOUT, [
       { at: g(0), box: FULL, scale: 1.12, ry: -5, rx: 1.2 },
-      { at: g(22), box: { x: 496, y: 292, w: 448, h: 140 }, scale: 2.3, ry: -1.5, rx: 0 },
+      { at: g(28), box: { x: 496, y: 292, w: 448, h: 140 }, scale: 2.3, ry: -1.5, rx: 0 },
       { at: g(MAKE_AT), box: { x: 560, y: 292, w: 448, h: 140 }, scale: 2.5, ry: 2, rx: 0 },
     ]),
   );
@@ -133,8 +133,8 @@ function Made() {
   return (
     <Rig cam={cam}>
       <Plate src={film("ai-prompt/made")} layout={LAYOUT} brightness={LIFT} light={{ x: 700, y: 400, radius: 680, dim: 0.74, wash: 0 }}>
-        <Bracket box={{ x: 513, y: 333, w: 322, h: 16 }} at={g(3)} pad={6} arm={12} width={2.5} length={0.5} />
-        <Bracket box={{ x: 513, y: 383, w: 322, h: 30 }} at={g(10)} pad={5} arm={14} width={2.5} length={0.5} />
+        <Bracket box={{ x: 513, y: 333, w: 322, h: 16 }} at={g(8)} pad={6} arm={12} width={2.5} length={0.5} />
+        <Bracket box={{ x: 513, y: 383, w: 322, h: 30 }} at={g(30)} pad={5} arm={14} width={2.5} length={0.5} />
         <Cursor stops={CURSOR_B} size={pointerSize(cam.scale)} />
       </Plate>
     </Rig>
@@ -148,7 +148,8 @@ function Landed() {
     frame,
     plateKeys(LAYOUT, [
       { at: g(0), box: FULL, scale: 1.02, ry: 2 },
-      { at: g(8), box: { x: 219, y: 60, w: 820, h: 260 }, scale: 1.7, ry: -2 },
+      { at: g(10), box: { x: 219, y: 60, w: 820, h: 260 }, scale: 1.7, ry: -2 },
+      { at: g(34), box: { x: 219, y: 60, w: 820, h: 260 }, scale: 1.75, ry: -1 },
       { at: g(STATS_AT - CREATE_AT), box: { x: 0, y: 640, w: 420, h: 170 }, scale: 2.2, ry: 3 },
     ]),
     ease.out,
@@ -162,7 +163,7 @@ function Landed() {
           brightness={LIFT}
           light={{ x: 560, y: 200, radius: 760, dim: 0.78, wash: 0 }}
         >
-          <Bracket box={{ x: 8, y: 734, w: 183, h: 27 }} at={g(14)} pad={5} arm={12} width={2.5} length={0.4} />
+          <Bracket box={{ x: 8, y: 734, w: 183, h: 27 }} at={g(36)} pad={5} arm={12} width={2.5} length={0.4} />
         </Plate>
       </div>
       {reveal < 1 ? (
