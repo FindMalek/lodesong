@@ -248,7 +248,7 @@ export const TOUR: Recipe[] = [
     id: "mix-saved",
     steps: [
       { go: "/", ready: "text=made for you" },
-      { shot: "sidebar", boxes: { mix1: "aside >> text=daily mix 1", mixes: "aside >> text=daylist" } },
+      { shot: "sidebar", boxes: { mix1: 'role=link[name="daily mix 1"] >> nth=0', daylist: 'role=link[name="daylist"] >> nth=0' } },
     ],
   },
   {

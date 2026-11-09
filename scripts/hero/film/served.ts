@@ -44,9 +44,7 @@ const SERVED_BY: Record<string, Served> = {
   "api-token": { recipe: "settings-sync" },
   update: { recipe: "settings-about" },
   listen: { recipe: "listen-together" },
-  "phone-player": { recipe: "phone-player" },
   skeleton: { recipe: "loading" },
-  states: { recipe: "states" },
 };
 
 /** What the real UI or the mock cannot show, so there is nothing to capture. */
