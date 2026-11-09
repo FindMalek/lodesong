@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Easing, Img, useCurrentFrame } from "remotion";
 import { plateSrc } from "../captures/film-manifest";
-import { FPS } from "../design/beat";
 import { ease, lerp, ramp } from "../design/motion";
 import { type PlateLayout, plateLayout } from "../design/plate";
 import type { Box } from "../design/probe";
@@ -199,5 +198,3 @@ export function ShotTransit({ frames, leave = "left", arrive = null, length = 7,
     </div>
   );
 }
-
-export const songFrames = (ms: number, rate: number): number => Math.round(((ms / 1000) * FPS) / rate);
