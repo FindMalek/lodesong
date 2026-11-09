@@ -41,23 +41,27 @@ function overTempo(table: readonly Tempo[], plan: readonly (readonly Part[])[]):
 }
 
 const HERO: readonly Row[] = overTempo(TEMPO, [
-  [["cold open", 8, "void"]],
+  [["cold open", 8, "void", "none", { ignite: 3 }]],
   [["find the line", 8, "tension", "cut"]],
   [["play from the line", 8, "drop", "drop"]],
   [["the lyrics", 8, "calm", "cut"]],
-  [["every song", 8, "calm", "cut", { db: -2 }]],
+  [
+    ["every song", 4, "tension", "cut", { db: 3 }],
+    ["every song released", 4, "calm", "none", { db: -2 }],
+  ],
   [["the queue", 8, "groove", "hit", { db: -4 }]],
   [["mixes", 12, "groove", "cut", { variant: 1, db: -1 }]],
   [["ask for a mood", 12, "lift", "cut", { db: -6 }]],
   [["one session", 8, "peak", "drop", { db: 4 }]],
   [
-    ["everywhere", 4.5, "peak", "hit", { variant: 1, db: 3, hb: 2.5 }],
-    ["terminal", 3.5, "strip", "none", { db: 1 }],
+    ["everywhere", 4, "peak", "hit", { variant: 1, db: 3, hb: 2 }],
+    ["desktop", 1.5, "peak", "none", { variant: 1, db: 3, hb: 1.5 }],
+    ["terminal", 2.5, "strip", "none", { db: 1 }],
   ],
   [["the notch", 8, "breather", "cut"]],
-  [["keyboard storm", 12, "storm", "drop", { hb: 1.5, build: { hats: 4, snare: 8, arp: 8, stab: 8 } }]],
-  [["dark and light", 8, "lift", "cut", { db: 1 }]],
-  [["yours", 8, "flash", "drop", { key: 2, hb: 1.5, db: 10 }]],
+  [["keyboard storm", 12, "storm", "drop", { hb: 2, build: { hats: 4, snare: 8, arp: 8, stab: 8 } }]],
+  [["dark and light", 8, "glow", "cut", { db: 1 }]],
+  [["yours", 8, "flash", "drop", { key: 2, hb: 2, db: 10 }]],
   [
     ["docker run", 3, "hush", "cut", { gap: 8 }],
     ["land", 5, "land", "hit"],
