@@ -14,7 +14,7 @@ const S3_UNSORTED: readonly ShotCue[] = [
   { shot: "play-line", at: IGNITE_AT, kind: "kick", label: "kick enters, cover ignites gold" },
   { shot: "play-line", at: IGNITE_AT + 3, kind: "ping", label: "bell on the ignite" },
   { shot: "play-line", at: IGNITE_AT + 8, kind: "tick", label: "seek fill jumps to the line" },
-  { shot: "play-line", at: 148, kind: "tick", label: "lyric scrolls to the next line" },
+  { shot: "play-line", at: 112, kind: "tick", label: "lyric scrolls to the next line" },
   { shot: "play-line", at: LIFT_AT, kind: "swell", label: "cover lifts out of the bar" },
   ...lyricCues.map((cue): ShotCue => ({ shot: "play-line", at: cue.at, kind: "ping", label: `sung: ${cue.text}` })),
 ];

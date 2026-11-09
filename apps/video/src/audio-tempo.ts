@@ -2,7 +2,7 @@ import { FPS } from "./design/beat";
 
 export { FPS };
 
-/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor; hb is beats per chord, to change harmony on the cuts; build is the beat each layer comes in */
+/** enter: how a segment opens (cut, hit with riser, or full drop); gap: frames of true silence before it; db overrides the mood level; key is semitones above A minor; hb is beats per chord, to change harmony on the cuts; build is the beat each layer comes in; ignite is the beat of a single gold-point hit after a dark swell */
 export interface Segment {
   id: string;
   beats: number;
@@ -14,6 +14,7 @@ export interface Segment {
   gap?: number;
   db?: number;
   hb?: number;
+  ignite?: number;
   build?: { hats?: number; snare?: number; arp?: number; stab?: number };
 }
 
