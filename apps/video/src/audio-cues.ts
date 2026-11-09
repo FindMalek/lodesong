@@ -50,11 +50,12 @@ const HERO: readonly Row[] = overTempo(TEMPO, [
   [["ask for a mood", 8, "lift", "cut", { db: -6 }]],
   [["one session", 12, "peak", "drop", { db: 4 }]],
   [
-    ["everywhere", 8, "peak", "hit", { variant: 1, db: 1 }],
-    ["terminal", 4, "pocket", "cut"],
+    ["everywhere", 6, "peak", "hit", { variant: 1, db: 1 }],
+    ["terminal", 6, "pocket", "cut"],
   ],
-  [["keyboard storm", 8, "storm", "drop"]],
-  [["yours", 8, "flash", "hit", { db: 3 }]],
+  [["the notch", 8, "calm", "cut", { db: -2 }]],
+  [["keyboard storm", 12, "storm", "drop"]],
+  [["yours", 12, "flash", "hit", { db: 3 }]],
   [
     ["docker run", 3, "hush", "cut", { gap: 8 }],
     ["land", 5, "land", "hit"],

@@ -77,11 +77,14 @@ export const S11_FLASHES: readonly Flash[] = [
 
 export function flashFrames(index: number): { from: number; frames: number } {
   const shot = shotOf("yours");
-  const from = shot.beat(index);
-  return { from, frames: shot.beat(index + 1) - from };
+  const from = shot.beat(index * FLASH_BEATS);
+  return { from, frames: shot.beat((index + 1) * FLASH_BEATS) - from };
 }
 
 export const REST_FRAMES = 8;
+
+/** The shot is 12 beats long, so each of the eight flashes holds one and a half. */
+const FLASH_BEATS = 1.5;
 
 export const S11_CUES: readonly ShotCue[] = [
   ...S11_FLASHES.map((flash, i): ShotCue => ({ shot: "yours", at: flashFrames(i).from, kind: "hit", label: `${flash.id}: flash` })),

@@ -121,11 +121,14 @@ export const S10_CUTS: readonly KeyCut[] = [
 
 export const STRIKE = 2;
 
+/** The storm now runs 12 beats, so each of its eight cuts holds one and a half. */
+const CUT_BEATS = 1.5;
+
 export function cutFrames(cut: KeyCut): { from: number; frames: number; strikes: number[] } {
   const shot = shotOf("keys");
-  const from = shot.beat(cut.beat);
-  const end = shot.beat(cut.beat + 1);
-  const eighth = shot.beat(cut.beat + 0.5) - from;
+  const from = shot.beat(cut.beat * CUT_BEATS);
+  const end = shot.beat((cut.beat + 1) * CUT_BEATS);
+  const eighth = shot.beat((cut.beat + 0.5) * CUT_BEATS) - from;
   return { from, frames: end - from, strikes: cut.keys.map((_, i) => STRIKE + i * eighth) };
 }
 
@@ -145,5 +148,5 @@ export const S10_CUES: readonly ShotCue[] = [
     );
   }),
   ...WHIP_CUTS.map((cut): ShotCue => ({ shot: "keys", at: cutFrames(cut).from, kind: "whoosh", label: `${cut.id}: ${cut.move}` })),
-  { shot: "keys", at: shotOf("keys").beat(6.5), kind: "riser", label: "snare roll into the flashes" },
+  { shot: "keys", at: shotOf("keys").beat(6.5 * CUT_BEATS), kind: "riser", label: "snare roll into the flashes" },
 ].sort((a, b) => a.at - b.at);
