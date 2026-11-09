@@ -54,8 +54,8 @@ const LINE_PITCH = 71.4;
 /** The column scrolls up by this much when the click on the second line lands: where that line sat on word-04 (three rows down) minus where the click plate has it. */
 export const SCROLL_DY = LINE_SAY.y + 3 * LINE_PITCH - LINE_STAY.y;
 
-/** How much faster than the real song the film sings: the line takes 2.3 s instead of 5. */
-export const SING_RATE = 2.2;
+/** How much faster than the real song the film sings: the line takes 4.2 s instead of 5. */
+export const SING_RATE = 1.2;
 
 export interface WordSpan {
   from: number;

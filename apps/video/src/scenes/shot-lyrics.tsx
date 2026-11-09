@@ -16,30 +16,30 @@ import { shotOf } from "./timelines";
 const SHOT = shotOf("lyrics");
 
 const F = {
-  yKey: 4,
-  nudge: 52,
-  shiftF: 94,
-  cut: 100,
-  sing: 110,
-  click: 232,
+  sing: 8,
+  click: 240,
   scroll: 22,
+  shiftF: 262,
+  cut: 270,
+  nudge: 304,
 } as const;
 
 const SAY_SPANS = wordSpans(LINE_SAY, F.sing);
 const STAY_SPANS = wordSpans(LINE_STAY, F.click + 3);
 
-/** What the score needs from S4, in shot-local frames: keys on the strike, a pluck on each line start, a tick on each word. */
+/** What the score needs from S4, in shot-local frames: a pluck on each line start, a tick on each word, the keys on the strike. */
 export const S4_CUES: ShotCue[] = [
-  { shot: "lyrics", at: F.yKey, kind: "key", label: "y lyrics panel" },
-  { shot: "lyrics", at: F.nudge, kind: "key", label: "] nudge later 0.25 s" },
-  { shot: "lyrics", at: F.shiftF, kind: "key", label: "shift f full screen" },
-  { shot: "lyrics", at: F.cut, kind: "hit", label: "full screen cut" },
   { shot: "lyrics", at: F.sing, kind: "pluck", label: "line say it slowly" },
   ...SAY_SPANS.slice(1).map((span, i) => ({ shot: "lyrics", at: span.from, kind: "tick", label: `word ${LINE_SAY.words[i + 1]?.text}` })),
   { shot: "lyrics", at: F.click, kind: "click", label: "click line" },
   { shot: "lyrics", at: F.click + 3, kind: "pluck", label: "line stay until" },
-  ...STAY_SPANS.slice(1).map((span, i) => ({ shot: "lyrics", at: span.from, kind: "tick", label: `word ${LINE_STAY.words[i + 1]?.text}` })),
-];
+  ...STAY_SPANS.slice(1)
+    .map((span, i) => ({ shot: "lyrics", at: span.from, kind: "tick", label: `word ${LINE_STAY.words[i + 1]?.text}` }))
+    .filter((cue) => cue.at < F.cut),
+  { shot: "lyrics", at: F.shiftF, kind: "key", label: "shift f leaves full screen" },
+  { shot: "lyrics", at: F.cut, kind: "hit", label: "back to the panel" },
+  { shot: "lyrics", at: F.nudge, kind: "key", label: "] nudge later 0.25 s" },
+].sort((a, b) => a.at - b.at);
 
 const SLICES: PlateSlice[] = [
   { name: "sidebar", box: { x: 0, y: 45, w: 199, h: 765 }, z: 25 },
@@ -50,21 +50,24 @@ const SLICES: PlateSlice[] = [
 const WHOLE = { x: 0, y: 0, w: 1440, h: 810 };
 
 const PANEL_KEYS = plateKeys(LAYOUT, [
-  { at: 0, box: WHOLE, scale: 1.04, ry: -5, rx: 1 },
-  { at: grid(44), box: { x: 1120, y: 130, w: 320, h: 560 }, scale: 1.4, ry: 3, rx: 0 },
-  { at: grid(F.nudge + 6), box: { x: 1120, y: 560, w: 320, h: 250 }, scale: 1.8, ry: 2, rx: 0 },
-  { at: grid(F.cut - 1), box: { x: 1120, y: 600, w: 320, h: 210 }, scale: 1.9, ry: 1, rx: 0 },
+  { at: grid(F.cut), box: WHOLE, scale: 1.04, ry: -5, rx: 1 },
+  { at: grid(F.cut + 24), box: { x: 1120, y: 130, w: 320, h: 560 }, scale: 1.4, ry: 3, rx: 0 },
+  { at: grid(F.nudge + 8), box: { x: 1120, y: 560, w: 320, h: 250 }, scale: 1.8, ry: 2, rx: 0 },
+  { at: grid(SHOT.frames - 1), box: { x: 1120, y: 600, w: 320, h: 210 }, scale: 1.9, ry: 1, rx: 0 },
 ]);
 
-const SCREEN_KEYS = plateKeys(LAYOUT, [
-  { at: grid(F.cut), box: WHOLE, scale: 1.02, ry: 3.5 },
-  { at: grid(180), box: { x: 440, y: 300, w: 900, h: 160 }, scale: 1.18, ry: -1 },
-  { at: grid(F.click + 14), box: { x: 520, y: 330, w: 880, h: 200 }, scale: 1.28, ry: 0.5 },
-  { at: grid(372), box: { x: 520, y: 340, w: 880, h: 200 }, scale: 1.36, ry: 0 },
-]);
+/** The cover sits at (54, 66), 646 px: where S3 ends, so the cut from S3 does not move it. Front-on, the neutral camera shifted two pixels. */
+const SCREEN_KEYS = [
+  { at: 0, scale: 1, x: -2, y: -2, rx: 0, ry: 0 },
+  ...plateKeys(LAYOUT, [
+    { at: grid(70), box: { x: 440, y: 300, w: 900, h: 160 }, scale: 1.1, ry: -1 },
+    { at: grid(F.click + 14), box: { x: 520, y: 330, w: 880, h: 200 }, scale: 1.18, ry: 0.5 },
+    { at: grid(F.cut - 1), box: { x: 520, y: 340, w: 880, h: 200 }, scale: 1.24, ry: 0 },
+  ]),
+];
 
 const CURSOR: CursorStop[] = [
-  { at: grid(176), x: 1290, y: 650 },
+  { at: grid(190), x: 1290, y: 650 },
   { at: grid(F.click), x: 880, y: 584, click: true, dwell: 1 },
 ];
 
@@ -95,10 +98,10 @@ function PanelScene() {
 
 function ScreenScene() {
   const frame = useCurrentFrame();
-  const cam = addCam(camAt(frame, SCREEN_KEYS), handheld(frame, 0.5));
+  const cam = addCam(camAt(frame, SCREEN_KEYS), handheld(frame, 0.4));
   const scroll = ramp(frame - F.click, 0, F.scroll, ease.out);
   const pool = { x: 900, y: lerp(366, 405, scroll), radius: 760, dim: 0.66, wash: 0.04 };
-  const cursorOpacity = ramp(frame, 176, 8) * (1 - ramp(frame, F.click + 18, 8, ease.in));
+  const cursorOpacity = ramp(frame, 190, 8) * (1 - ramp(frame, F.click + 18, 8, ease.in));
   return (
     <Camera cam={cam}>
       <PlateFrame>
@@ -119,17 +122,16 @@ function ScreenScene() {
   );
 }
 
-/** S4, the lyrics: `y` opens the panel, `]` shifts the timing, `⇧F` goes full screen, the gold fill sings word by word on the real timings, a click jumps the song to another line. */
+/** S4, the lyrics: opens on the full-screen view with the cover where S3 left it, the gold fill sings a line word by word on the real timings, a click jumps the song to another line, `⇧F` drops back to the panel and `]` shifts the timing. */
 export function LyricsShot() {
   const frame = useCurrentFrame();
   return (
     <ShotTransit frames={SHOT.frames} leave="left">
-      {frame < F.cut ? <PanelScene /> : <ScreenScene />}
-      <KeyStamp label="y" at={F.yKey} x={KEY_X} />
-      <KeyStamp label="]" at={F.nudge} x={KEY_X} />
+      {frame < F.cut ? <ScreenScene /> : <PanelScene />}
       <KeyStamp label="⇧F" at={F.shiftF} x={KEY_X} wide hold={12} />
-      <Chip text="[ ] fix timing" from={F.nudge + 8} out={F.cut - 6} x={96} y={930} />
-      <Chip text="word by word" from={F.sing + 6} out={F.click - 8} x={1480} y={960} />
+      <KeyStamp label="]" at={F.nudge} x={KEY_X} />
+      <Chip text="word by word" from={F.sing + 10} out={F.click - 8} x={1480} y={960} />
+      <Chip text="[ ] fix timing" from={F.nudge + 8} x={96} y={930} />
     </ShotTransit>
   );
 }

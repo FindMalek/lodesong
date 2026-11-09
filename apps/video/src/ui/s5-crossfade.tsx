@@ -36,14 +36,62 @@ export function CrossfadeSlider({ from, length }: SliderProps) {
   );
 }
 
-const DECK = { x: 150, y: 580, w: 1620, h: 340 };
+export function Schematic() {
+  return (
+    <div
+      data-legible=""
+      style={{
+        position: "absolute",
+        right: 120,
+        bottom: 60,
+        fontFamily: "var(--font-mono)",
+        fontSize: 28,
+        letterSpacing: "0.04em",
+        color: "var(--muted-foreground)",
+      }}
+    >
+      schematic
+    </div>
+  );
+}
+
+const AUTO = { x: 1033, y: 351, w: 50, h: 28 };
+
+export function NormalizationAuto({ from }: { from: number }) {
+  const frame = useCurrentFrame();
+  if (frame < from) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: AUTO.x,
+        top: AUTO.y,
+        width: AUTO.w,
+        height: AUTO.h,
+        boxSizing: "border-box",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgb(235 235 235)",
+        color: "rgb(16 16 16)",
+        border: "1px solid rgb(235 235 235)",
+        fontFamily: "var(--font-mono)",
+        fontSize: 14.5,
+      }}
+    >
+      auto
+    </div>
+  );
+}
+
+const DECK = { x: 150, y: 620, w: 1620, h: 300 };
 const LANE = { x0: 470, x1: 1700, h: 82 };
 const PX_PER_S = 62;
 const OVERLAP = 6 * PX_PER_S;
 const A_END = 1200;
 const B_START = A_END - OVERLAP;
-const A_Y = 682;
-const B_Y = 828;
+const A_Y = 706;
+const B_Y = 840;
 const STEPS = 24;
 
 const curve = (x0: number, x1: number, level: (u: number) => number, top: number): [number, number][] =>
@@ -159,6 +207,19 @@ export function CrossfadeDeck({ from, play, playLength }: DeckProps) {
           }}
         >
           6 s
+        </div>
+        <div
+          data-legible=""
+          style={{
+            position: "absolute",
+            right: 24,
+            top: 66,
+            fontFamily: "var(--font-mono)",
+            fontSize: 28,
+            color: "var(--muted-foreground)",
+          }}
+        >
+          schematic
         </div>
         <div
           style={{

@@ -7,13 +7,24 @@ import { Bokeh } from "../design/dof";
 import { Bracket } from "../design/draw";
 import { ease, lerp, ramp } from "../design/motion";
 import { Plate, type PlateSlice, plateKeys } from "../design/plate";
-import { Chip, grid, LAYOUT, plateFile, ShotTransit } from "../ui/s4-kit";
+import { BRIGHT, Chip, grid, LAYOUT, Patch, plateFile, ShotTransit } from "../ui/s4-kit";
 import { developOf, Ignite, TILE_COUNT, TileCrop, TileVeil, tileBox } from "../ui/s6-tiles";
 import { shotOf } from "./timelines";
 
 const SHOT = shotOf("mixes");
 
-const T = { first: 16, stagger: 14, length: 16, pullback: 112, click: 146, rush: 148, cut: 172 } as const;
+const T = {
+  first: 12,
+  stagger: 10,
+  length: 14,
+  pullback: 84,
+  click: 116,
+  rush: 118,
+  cut: 140,
+  radio: 196,
+  radioPlay: 206,
+  folders: 220,
+} as const;
 const WIPE = 12;
 
 const tileStart = (index: number): number => T.first + T.stagger * index;
@@ -30,8 +41,12 @@ export const S6_CUES: ShotCue[] = [
   { shot: "mixes", at: T.rush, kind: "whoosh", label: "tile rushes forward" },
   { shot: "mixes", at: T.cut, kind: "hit", label: "mix page opens" },
   { shot: "mixes", at: T.cut + 2, kind: "ping", label: "cover ignites gold" },
-  { shot: "mixes", at: T.cut + 48, kind: "tick", label: "saved to navidrome" },
-];
+  { shot: "mixes", at: T.cut + 34, kind: "tick", label: "saved to navidrome" },
+  { shot: "mixes", at: T.radio, kind: "hit", label: "radio station flash" },
+  { shot: "mixes", at: T.radioPlay, kind: "click", label: "radio play, gold on the bar" },
+  { shot: "mixes", at: T.folders, kind: "hit", label: "folder flash" },
+  { shot: "mixes", at: T.folders + 3, kind: "pluck", label: "folder aura ignites" },
+].sort((a, b) => a.at - b.at);
 
 const WHOLE = { x: 0, y: 0, w: 1440, h: 810 };
 const ROW = { x: 220, y: 548, w: 1200, h: 230 };
@@ -63,9 +78,9 @@ const SIDEBAR_ROW = { x: 8, y: 447, w: 183, h: 28 };
 
 const MIX_KEYS = plateKeys(LAYOUT, [
   { at: 0, box: COVER, scale: 3.4, rx: 0, ry: -2 },
-  { at: grid(24), box: { x: 200, y: 50, w: 520, h: 170 }, scale: 2.1, rx: 0, ry: 2 },
-  { at: grid(46), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.1, rx: 0, ry: 4 },
-  { at: grid(SHOT.frames - T.cut), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.25, rx: 0, ry: 3 },
+  { at: grid(18), box: { x: 200, y: 50, w: 520, h: 170 }, scale: 2.1, rx: 0, ry: 2 },
+  { at: grid(34), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.1, rx: 0, ry: 4 },
+  { at: grid(T.radio - T.cut), box: { x: 0, y: 380, w: 220, h: 220 }, scale: 2.25, rx: 0, ry: 3 },
 ]);
 
 const tileCentre = (index: number): { x: number; y: number } => {
@@ -128,10 +143,10 @@ const MIX_SLICES: PlateSlice[] = [
 function MixScene() {
   const frame = useCurrentFrame() - T.cut;
   const cam = addCam(camAt(frame, MIX_KEYS), handheld(frame, 0.5));
-  const t = ramp(frame, 0, 20);
+  const t = ramp(frame, 0, 18);
   const pool = {
-    x: lerp(lerp(296, 440, ramp(frame, 14, 14)), 100, ramp(frame, 38, 12)),
-    y: lerp(lerp(138, 130, ramp(frame, 14, 14)), 462, ramp(frame, 38, 12)),
+    x: lerp(lerp(296, 440, ramp(frame, 12, 12)), 100, ramp(frame, 28, 12)),
+    y: lerp(lerp(138, 130, ramp(frame, 12, 12)), 462, ramp(frame, 28, 12)),
     radius: 420,
     dim: 0.5,
     wash: 0.07,
@@ -151,20 +166,99 @@ function MixScene() {
             <Ignite t={t} />
           </TileCrop>
         </div>
-        <Bracket box={SIDEBAR_ROW} at={grid(T.cut + 46)} pad={5} arm={10} width={2} length={0.5} />
+        <Bracket box={SIDEBAR_ROW} at={grid(T.cut + 34)} pad={5} arm={10} width={2} length={0.5} />
       </Plate>
       <Bokeh focusZ={0} z={300} count={5} seed={9} opacity={0.1} />
     </Camera>
   );
 }
 
-/** S6, the mixes: the made-for-you tiles open dot by dot, one beat apart, the cursor takes daily mix 1, the tile rushes at the camera and the mix page opens with that same tile as its cover, catching gold. It is saved to the server, in the sidebar like any playlist. */
+const RADIO_KEYS = plateKeys(LAYOUT, [
+  { at: grid(T.radio), box: { x: 220, y: 60, w: 520, h: 170 }, scale: 1.6, ry: 3 },
+  { at: grid(T.radioPlay), box: { x: 220, y: 60, w: 520, h: 170 }, scale: 1.75, ry: 1 },
+  { at: grid(T.radioPlay + 1), box: { x: 0, y: 690, w: 720, h: 120 }, scale: 2, ry: -2 },
+  { at: grid(T.folders - 1), box: { x: 0, y: 690, w: 720, h: 120 }, scale: 2.15, ry: -1 },
+]);
+
+const RADIO_CURSOR: CursorStop[] = [
+  { at: grid(T.radio), x: 780, y: 270 },
+  { at: grid(T.radioPlay), x: 414, y: 199, click: true, dwell: 1 },
+];
+
+const RADIO_COVER = { x: 13.5, y: 757, w: 43, h: 43 };
+
+function RadioScene() {
+  const frame = useCurrentFrame();
+  const cam = addCam(camAt(frame, RADIO_KEYS), handheld(frame, 0.5));
+  const playing = frame >= T.radioPlay;
+  const t = ramp(frame, T.radioPlay, 12);
+  const pool = playing ? { x: 140, y: 778 } : { x: 320, y: 150 };
+  return (
+    <Camera cam={cam}>
+      <Plate
+        src={plateFile(playing ? "radio-tune/playing" : "radio-tune/preview")}
+        layout={LAYOUT}
+        focusZ={0}
+        light={{ ...pool, radius: 420, dim: 0.55, wash: 0.07 }}
+      >
+        {playing ? (
+          <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 20, t)}px var(--ignite))` }}>
+            <Patch src={plateFile("radio-tune/playing")} box={RADIO_COVER} filter={BRIGHT} style={{ isolation: "isolate" }}>
+              <Ignite t={t} />
+            </Patch>
+          </div>
+        ) : (
+          <div style={{ opacity: 1 - ramp(frame, T.radioPlay, 1) }}>
+            <Cursor stops={RADIO_CURSOR} size={38 / (LAYOUT.k * cam.scale)} />
+          </div>
+        )}
+      </Plate>
+      <Bokeh focusZ={0} z={300} count={4} seed={12} opacity={0.1} />
+    </Camera>
+  );
+}
+
+const AURA = { x: 220, y: 102, w: 160, h: 160 };
+const FOLDER_ROW = { x: 8, y: 413, w: 183, h: 28 };
+
+const FOLDER_KEYS = plateKeys(LAYOUT, [
+  { at: grid(T.folders), box: { x: 200, y: 90, w: 520, h: 190 }, scale: 1.9, ry: 3 },
+  { at: grid(SHOT.frames - 1), box: { x: 160, y: 90, w: 520, h: 190 }, scale: 2.1, ry: 0 },
+]);
+
+function FoldersScene() {
+  const frame = useCurrentFrame();
+  const cam = addCam(camAt(frame, FOLDER_KEYS), handheld(frame, 0.5));
+  const t = ramp(frame, T.folders + 2, 12);
+  return (
+    <Camera cam={cam}>
+      <Plate
+        src={plateFile("folders-new/created")}
+        layout={LAYOUT}
+        focusZ={0}
+        light={{ x: 300, y: 180, radius: 460, dim: 0.55, wash: 0.07 }}
+      >
+        <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 28, t)}px var(--ignite))` }}>
+          <Patch src={plateFile("folders-new/created")} box={AURA} filter={BRIGHT} style={{ isolation: "isolate" }}>
+            <Ignite t={t} />
+          </Patch>
+        </div>
+        <Bracket box={FOLDER_ROW} at={grid(T.folders + 4)} pad={5} arm={10} width={2} length={0.4} />
+      </Plate>
+      <Bokeh focusZ={0} z={300} count={4} seed={14} opacity={0.1} />
+    </Camera>
+  );
+}
+
+/** S6, the mixes: the made-for-you tiles open dot by dot, one beat apart, the cursor takes daily mix 1, the tile rushes at the camera and the mix page opens with that same tile as its cover, catching gold. It is saved to the server, in the sidebar like any playlist; then flashes of a radio station starting and a new folder's aura igniting. */
 export function MixesShot() {
   const frame = useCurrentFrame();
   return (
     <ShotTransit frames={SHOT.frames} leave={null}>
-      {frame < T.cut ? <HomeScene /> : <MixScene />}
-      <Chip text="saved to navidrome" from={T.cut + 40} x={96} y={960} />
+      {frame < T.cut ? <HomeScene /> : frame < T.radio ? <MixScene /> : frame < T.folders ? <RadioScene /> : <FoldersScene />}
+      <Chip text="saved to navidrome" from={T.cut + 30} out={T.radio - 10} x={96} y={960} />
+      <Chip text="radio" from={T.radio} out={T.folders - 6} x={96} y={960} />
+      <Chip text="folders" from={T.folders + 2} x={96} y={960} />
       <DitherWipe from={0} length={WIPE} />
     </ShotTransit>
   );

@@ -46,7 +46,7 @@ export function Film<Id extends string>({ plan, scenes, audio, probe }: FilmProp
       {plan.shots.map((shot) => {
         const Scene: ComponentType = scenes[shot.id];
         return (
-          <Sequence key={shot.id} from={shot.start} durationInFrames={shot.frames} name={`S${shot.number} ${shot.id}`}>
+          <Sequence key={shot.id} from={shot.start} durationInFrames={shot.frames} premountFor={30} name={`S${shot.number} ${shot.id}`}>
             <ShotStart.Provider value={shot.start}>
               <Scene />
             </ShotStart.Provider>

@@ -106,7 +106,7 @@ export function Chip({ text, from, out, x, y, lit = -1 }: ChipProps) {
   return (
     <div style={{ position: "absolute", left: x, top: y, overflow: "hidden", paddingBottom: 2 }}>
       <div
-        data-legible=""
+        data-legible={entering >= 1 && leaving <= 0 ? "" : undefined}
         style={{
           transform: `translateY(${rise}%)`,
           display: "inline-flex",
@@ -150,7 +150,7 @@ export function KeyStamp({ label, at, hold = 26, x = 96, y = 786, size = 108, wi
   return (
     <div style={{ position: "absolute", left: x, top: y, overflow: "hidden", paddingBottom: 8 }}>
       <div style={{ transform: `translateY(${shift}%)` }}>
-        <Keycap label={label} size={size} wide={wide} bright press={pressAt(frame, at, 3, 8)} legible />
+        <Keycap label={label} size={size} wide={wide} bright press={pressAt(frame, at, 3, 8)} legible={rise >= 1 && leave <= 0} />
       </div>
     </div>
   );
