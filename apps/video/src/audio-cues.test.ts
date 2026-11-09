@@ -139,6 +139,14 @@ test("risers, whooshes and swells carry a length that ends inside the film", () 
   expect(bad).toEqual([]);
 });
 
+test("the ritardando ends on the picture's own frame, so the last hit lands where the shot expects it", () => {
+  for (const film of FILMS) {
+    const { clock, landmarks } = SCORES[film];
+    const last = clock.starts.at(-1) ?? 0;
+    expect(landmarks.find((l) => l.id === "final hit")?.frame).toBe(clock.frame(last));
+  }
+});
+
 test("every tour feature owns a sound within one frame of its first frame", () => {
   const owned = new Map(SPECS.tour.ui.map((event) => [event.label, event.frame]));
   for (const feature of FEATURES) expect(Math.abs((owned.get(`feature:${feature.id}`) ?? -9) - feature.tour[0])).toBeLessThanOrEqual(1);

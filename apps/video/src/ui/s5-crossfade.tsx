@@ -2,11 +2,11 @@ import { useCurrentFrame } from "remotion";
 import { gold } from "../design/gold";
 import { ease, lerp, ramp } from "../design/motion";
 import { DitherCover } from "./dither-cover";
-import { BRIGHT, Patch, plateFile } from "./s4-kit";
+import { BRIGHT, flat, Patch, plateFile } from "./s4-kit";
 
 const OFF = plateFile("crossfade/off");
 const SIX = plateFile("crossfade/six-seconds");
-const FLAT = "rgb(37 37 37)";
+const FLAT = flat(25);
 
 const THUMB_FROM = 861;
 const THUMB_TO = 945;
@@ -33,25 +33,6 @@ export function CrossfadeSlider({ from, length }: SliderProps) {
       {t > 0.82 ? <Patch src={SIX} box={{ x: 1058, y: 258, w: 36, h: 24 }} filter={BRIGHT} /> : null}
       {t <= 0.82 ? <Patch src={OFF} box={{ x: 1058, y: 258, w: 36, h: 24 }} filter={BRIGHT} /> : null}
     </>
-  );
-}
-
-export function Schematic() {
-  return (
-    <div
-      data-legible=""
-      style={{
-        position: "absolute",
-        right: 120,
-        bottom: 60,
-        fontFamily: "var(--font-mono)",
-        fontSize: 28,
-        letterSpacing: "0.04em",
-        color: "var(--muted-foreground)",
-      }}
-    >
-      schematic
-    </div>
   );
 }
 
@@ -207,19 +188,6 @@ export function CrossfadeDeck({ from, play, playLength }: DeckProps) {
           }}
         >
           6 s
-        </div>
-        <div
-          data-legible=""
-          style={{
-            position: "absolute",
-            right: 24,
-            top: 66,
-            fontFamily: "var(--font-mono)",
-            fontSize: 28,
-            color: "var(--muted-foreground)",
-          }}
-        >
-          schematic
         </div>
         <div
           style={{

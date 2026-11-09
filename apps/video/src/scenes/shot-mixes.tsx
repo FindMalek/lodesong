@@ -7,7 +7,7 @@ import { Bokeh } from "../design/dof";
 import { Bracket } from "../design/draw";
 import { ease, lerp, ramp } from "../design/motion";
 import { Plate, type PlateSlice, plateKeys } from "../design/plate";
-import { BRIGHT, Chip, grid, LAYOUT, Patch, plateFile, ShotTransit } from "../ui/s4-kit";
+import { BRIGHT, Chip, grid, LAYOUT, LIFT, Patch, plateFile, ShotTransit } from "../ui/s4-kit";
 import { developOf, Ignite, TILE_COUNT, TileCrop, TileVeil, tileBox } from "../ui/s6-tiles";
 import { shotOf } from "./timelines";
 
@@ -15,8 +15,8 @@ const SHOT = shotOf("mixes");
 
 const T = {
   first: 12,
-  stagger: 10,
-  length: 14,
+  stagger: 8,
+  length: 26,
   pullback: 84,
   click: 116,
   rush: 118,
@@ -56,15 +56,10 @@ const HOME_SLICES: PlateSlice[] = [
   { name: "main", box: { x: 199, y: 45, w: 1241, h: 765 }, z: 60 },
 ];
 
-const lane = (index: number): { x: number; y: number; w: number; h: number } => {
-  const box = tileBox(index);
-  return { x: box.x - 50, y: box.y - 28, w: box.w + 100, h: box.h + 56 };
-};
-
 const HOME_KEYS = plateKeys(LAYOUT, [
   { at: 0, box: WHOLE, scale: 1.04, rx: 5, ry: -3 },
-  { at: grid(tileStart(0) + 4), box: lane(0), scale: 2, rx: 2, ry: 3 },
-  { at: grid(tileStart(TILE_COUNT - 1) + 10), box: lane(TILE_COUNT - 1), scale: 2, rx: 1, ry: -3 },
+  { at: grid(tileStart(0) + 6), box: ROW, scale: 1.14, rx: 2, ry: 2 },
+  { at: grid(tileStart(TILE_COUNT - 1) + 12), box: ROW, scale: 1.26, rx: 1, ry: -2 },
   { at: grid(T.pullback + 18), box: ROW, scale: 1.45, rx: 0, ry: 1 },
 ]);
 
@@ -99,7 +94,7 @@ function HomeScene() {
     x: lerp(here.x, there.x, ease.inOut(frac)),
     y: here.y,
     radius: 460,
-    dim: 0.55,
+    dim: 0.85,
     wash: 0.06,
   };
   const rush = ramp(frame, T.rush, T.cut - 1 - T.rush, ease.in);
@@ -110,7 +105,15 @@ function HomeScene() {
   const cursorOpacity = ramp(frame, T.pullback - 4, 8) * (1 - ramp(frame, T.rush, 6, ease.in));
   return (
     <Camera cam={cam}>
-      <Plate src={plateFile("home-mixes/home")} layout={LAYOUT} slices={HOME_SLICES} focusZ={60} aperture={0.012} light={pool}>
+      <Plate
+        src={plateFile("home-mixes/home")}
+        layout={LAYOUT}
+        slices={HOME_SLICES}
+        focusZ={60}
+        aperture={0.003}
+        brightness={LIFT}
+        light={pool}
+      >
         {Array.from({ length: TILE_COUNT }, (_, i) => (
           <TileVeil key={tileBox(i).x} box={tileBox(i)} develop={developOf(frame, tileStart(i), T.length)} />
         ))}
@@ -148,13 +151,21 @@ function MixScene() {
     x: lerp(lerp(296, 440, ramp(frame, 12, 12)), 100, ramp(frame, 28, 12)),
     y: lerp(lerp(138, 130, ramp(frame, 12, 12)), 462, ramp(frame, 28, 12)),
     radius: 420,
-    dim: 0.5,
+    dim: 0.85,
     wash: 0.07,
   };
   const scale = COVER.w / tileBox(0).w;
   return (
     <Camera cam={cam}>
-      <Plate src={plateFile("home-mixes/mix")} layout={LAYOUT} slices={MIX_SLICES} focusZ={60} aperture={0.012} light={pool}>
+      <Plate
+        src={plateFile("home-mixes/mix")}
+        layout={LAYOUT}
+        slices={MIX_SLICES}
+        focusZ={60}
+        aperture={0.003}
+        brightness={LIFT}
+        light={pool}
+      >
         <div
           style={{
             position: "absolute",
@@ -199,7 +210,8 @@ function RadioScene() {
         src={plateFile(playing ? "radio-tune/playing" : "radio-tune/preview")}
         layout={LAYOUT}
         focusZ={0}
-        light={{ ...pool, radius: 420, dim: 0.55, wash: 0.07 }}
+        brightness={LIFT}
+        light={{ ...pool, radius: 600, dim: 0.85, wash: 0.07 }}
       >
         {playing ? (
           <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 20, t)}px var(--ignite))` }}>
@@ -236,7 +248,8 @@ function FoldersScene() {
         src={plateFile("folders-new/created")}
         layout={LAYOUT}
         focusZ={0}
-        light={{ x: 300, y: 180, radius: 460, dim: 0.55, wash: 0.07 }}
+        brightness={LIFT}
+        light={{ x: 300, y: 180, radius: 640, dim: 0.85, wash: 0.07 }}
       >
         <div style={{ position: "absolute", inset: 0, filter: `drop-shadow(0 0 ${lerp(0, 28, t)}px var(--ignite))` }}>
           <Patch src={plateFile("folders-new/created")} box={AURA} filter={BRIGHT} style={{ isolation: "isolate" }}>

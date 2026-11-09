@@ -2,12 +2,13 @@ import type { CSSProperties } from "react";
 import { useCurrentFrame } from "remotion";
 import { ease, lerp, ramp } from "../design/motion";
 import type { Box } from "../design/probe";
+import { flat } from "./s4-kit";
 
 const BANDS = [1088, 1124, 1159, 1195, 1231, 1266, 1302, 1337, 1372, 1407];
 const CENTER_Y = 304;
 const PX_PER_DB = 6.4;
 const SPAN = 12 * PX_PER_DB;
-const FLAT = "rgb(37 37 37)";
+const FLAT = flat(25);
 const TRACK = { x: 1068, y: 196, w: 362, h: 194 };
 
 const FLAT_PRESET = Array.from({ length: 10 }, () => 0);
