@@ -194,6 +194,8 @@ const MIN_MEDIAN_DB: Record<string, number> = {
   enter: -6,
 };
 const MAX_KICK_GAP_MS = 4;
+/** a kick that starts while the last one still rings has no clean onset to measure, ghost notes included */
+const KICK_TAIL_SECONDS = 0.27;
 /** an onset can hide under the ring of the previous sound; more than this share of cues doing it is a mix problem */
 const MAX_MASKED = 0.04;
 
@@ -280,7 +282,9 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
     const span = Math.max(1, cue.length ?? 30) * (RATE / FPS);
     const tailing =
       cue.kind === "kick" &&
-      SCORES[film].events.some((e) => e.track === "kick" && e.t < secondsOf(cue.frame) - 0.002 && secondsOf(cue.frame) - e.t < 0.27);
+      SCORES[film].events.some(
+        (e) => e.track === "kick" && e.t < secondsOf(cue.frame) - 0.002 && secondsOf(cue.frame) - e.t < KICK_TAIL_SECONDS,
+      );
     const crowded =
       tailing ||
       cues.some(
@@ -337,7 +341,9 @@ function reportCues(stems: Stems, film: Film, maxFrame: number): number {
 /** consecutive kicks one beat apart must be one beat apart in the audio, whatever the tempo of the shot */
 function kickGrid(stems: Stems, film: Film): number {
   const { clock, events } = SCORES[film];
-  const kicks = events.filter((e) => e.track === "kick" && e.vel >= 0.8 && !silenced(Math.round(e.t * FPS), film));
+  const every = events.filter((e) => e.track === "kick");
+  const clear = (t: number): boolean => !every.some((o) => o.t < t - 0.002 && t - o.t < KICK_TAIL_SECONDS);
+  const kicks = every.filter((e) => e.vel >= 0.8 && clear(e.t) && !silenced(Math.round(e.t * FPS), film));
   const env = stems.kicks.env("low");
   const errors: number[] = [];
   const onset = (t: number): number | undefined => {
