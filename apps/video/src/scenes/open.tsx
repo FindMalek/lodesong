@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { COPY } from "../copy";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { DitherWipe } from "../design/dither-wipe";
 import { Label, MaskLine } from "../design/kinetic";
 import { useLayout } from "../design/layout";
@@ -11,8 +11,8 @@ import { ALBUM_SLOT, APP_VIEW, AppStage, type AppView, stageToScreen } from "../
 import { DitherCover } from "../ui/dither-cover";
 import { GoldTransit, type Spot } from "../ui/gold-transit";
 import { LYRICS_COVER, LyricsCloseUp } from "../ui/lyrics-close-up";
+import { OPEN, type OpenTimeline } from "./legacy-timelines";
 import { LABEL_FADE } from "./open-timeline";
-import { OPEN, type OpenTimeline } from "./timelines";
 
 const FOCUS_FROM = 2;
 

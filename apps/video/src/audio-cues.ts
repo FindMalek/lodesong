@@ -1,4 +1,4 @@
-import { beat } from "./design/beat";
+import { gridBeat as beat } from "./design/beat";
 
 type CueKind = "kick" | "hit" | "riser" | "tick" | "key" | "ping" | "whoosh" | "impact" | "swell";
 export type Film = "hero" | "cutdown";
