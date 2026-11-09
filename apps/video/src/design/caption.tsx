@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { MaskLine } from "./kinetic";
 
 interface CaptionProps {

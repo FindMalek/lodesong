@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { beat } from "./beat";
+import { gridBeat as beat } from "./beat";
 import { ease, lerp } from "./motion";
 
 export interface Cam {

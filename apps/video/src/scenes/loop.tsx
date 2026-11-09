@@ -1,10 +1,10 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { beat, FPS } from "../design/beat";
+import { gridBeat as beat, FPS } from "../design/beat";
 import { ease, ramp } from "../design/motion";
 import { Shell } from "../design/shell";
 import { DitherCover } from "../ui/dither-cover";
 import { LyricsCloseUp } from "../ui/lyrics-close-up";
-import { LOOP } from "./timelines";
+import { LOOP } from "./legacy-timelines";
 
 const FOCUS_FROM = 2;
 const SCROLLS = [7, 9, 11] as const;

@@ -1,4 +1,4 @@
-import { beat } from "../design/beat";
+import { gridBeat as beat } from "../design/beat";
 
 export const FRAMES = beat(16);
 
