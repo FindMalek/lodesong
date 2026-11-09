@@ -10,1068 +10,1113 @@
     "label": "2 frames of silence, then the cut"
   },
   {
-    "frame": 158,
+    "frame": 302,
     "kind": "key",
     "label": "cmd k keycap thock"
   },
   {
-    "frame": 162,
+    "frame": 306,
     "kind": "chip",
     "label": "palette opens"
   },
   {
-    "frame": 174,
+    "frame": 318,
     "kind": "type",
     "label": "key l"
   },
   {
-    "frame": 180,
+    "frame": 324,
     "kind": "type",
     "label": "key i"
   },
   {
-    "frame": 185,
+    "frame": 329,
     "kind": "type",
     "label": "key g"
   },
   {
-    "frame": 190,
+    "frame": 334,
     "kind": "type",
     "label": "key h"
   },
   {
-    "frame": 196,
+    "frame": 340,
     "kind": "type",
     "label": "key t"
   },
   {
-    "frame": 203,
+    "frame": 347,
     "kind": "type",
     "label": "key s"
   },
   {
-    "frame": 209,
+    "frame": 353,
     "kind": "type",
     "label": "key space"
   },
   {
-    "frame": 216,
+    "frame": 360,
     "kind": "type",
     "label": "key o"
   },
   {
-    "frame": 221,
+    "frame": 365,
     "kind": "type",
     "label": "key n"
   },
   {
-    "frame": 231,
+    "frame": 375,
     "kind": "chip",
     "label": "results land"
   },
   {
-    "frame": 239,
+    "frame": 383,
     "kind": "draw",
     "label": "underline 1"
   },
   {
-    "frame": 244,
+    "frame": 388,
     "kind": "draw",
     "label": "underline 2"
   },
   {
-    "frame": 249,
+    "frame": 393,
     "kind": "draw",
     "label": "underline 3"
   },
   {
-    "frame": 294,
+    "frame": 438,
     "kind": "draw",
     "label": "bracket draws round the match"
   },
   {
-    "frame": 402,
-    "kind": "click",
-    "label": "click the line"
+    "frame": 494,
+    "kind": "key",
+    "label": "arrow down selects the line"
   },
   {
-    "frame": 412,
+    "frame": 540,
+    "kind": "key",
+    "label": "enter plays from it"
+  },
+  {
+    "frame": 556,
     "kind": "seek",
     "label": "whip up to the player bar"
   },
   {
-    "frame": 430,
+    "frame": 569,
     "kind": "ignite",
     "label": "kick enters, cover ignites gold"
   },
   {
-    "frame": 438,
+    "frame": 577,
     "kind": "seek",
     "label": "seek fill jumps to the line"
   },
   {
-    "frame": 561,
+    "frame": 649,
     "kind": "line",
     "label": "sung: I"
   },
   {
-    "frame": 567,
+    "frame": 653,
     "kind": "line",
     "label": "sung: keep"
   },
   {
-    "frame": 581,
+    "frame": 663,
     "kind": "line",
     "label": "sung: the"
   },
   {
-    "frame": 593,
+    "frame": 672,
     "kind": "line",
     "label": "sung: lights"
   },
   {
-    "frame": 613,
+    "frame": 686,
     "kind": "line",
     "label": "sung: on"
   },
   {
-    "frame": 622,
+    "frame": 692,
     "kind": "line",
     "label": "sung: for"
   },
   {
-    "frame": 633,
+    "frame": 701,
     "kind": "line",
     "label": "sung: you"
   },
   {
-    "frame": 696,
+    "frame": 713,
+    "kind": "chip",
+    "label": "lyric scrolls to the next line"
+  },
+  {
+    "frame": 721,
+    "kind": "line",
+    "label": "sung: the"
+  },
+  {
+    "frame": 728,
+    "kind": "line",
+    "label": "sung: quiet"
+  },
+  {
+    "frame": 739,
+    "kind": "line",
+    "label": "sung: between"
+  },
+  {
+    "frame": 753,
+    "kind": "line",
+    "label": "sung: the"
+  },
+  {
+    "frame": 760,
+    "kind": "line",
+    "label": "sung: neon"
+  },
+  {
+    "frame": 840,
     "kind": "line",
     "label": "line say it slowly"
   },
   {
-    "frame": 731,
+    "frame": 875,
     "kind": "row",
     "label": "word it"
   },
   {
-    "frame": 767,
+    "frame": 911,
     "kind": "row",
     "label": "word slowly,"
   },
   {
-    "frame": 802,
+    "frame": 946,
     "kind": "row",
     "label": "word say"
   },
   {
-    "frame": 838,
+    "frame": 982,
     "kind": "row",
     "label": "word it"
   },
   {
-    "frame": 873,
+    "frame": 1017,
     "kind": "row",
     "label": "word twice"
   },
   {
-    "frame": 928,
+    "frame": 1072,
     "kind": "click",
     "label": "click line"
   },
   {
-    "frame": 931,
+    "frame": 1075,
     "kind": "line",
     "label": "line stay until"
   },
   {
-    "frame": 974,
-    "kind": "row",
-    "label": "word until"
-  },
-  {
-    "frame": 1016,
-    "kind": "row",
-    "label": "word the"
-  },
-  {
-    "frame": 1059,
-    "kind": "row",
-    "label": "word signal"
-  },
-  {
-    "frame": 1079,
+    "frame": 1347,
     "kind": "key",
     "label": "q queue"
   },
   {
-    "frame": 1109,
+    "frame": 1377,
     "kind": "click",
     "label": "grab row"
   },
   {
-    "frame": 1122,
+    "frame": 1390,
     "kind": "row",
     "label": "row 4 gives way, rising"
   },
   {
-    "frame": 1126,
+    "frame": 1394,
     "kind": "row",
     "label": "row 3 gives way, rising"
   },
   {
-    "frame": 1129,
+    "frame": 1397,
     "kind": "row",
     "label": "row 2 gives way, rising"
   },
   {
-    "frame": 1134,
+    "frame": 1402,
     "kind": "row",
     "label": "row 1 gives way, rising"
   },
   {
-    "frame": 1151,
+    "frame": 1419,
     "kind": "click",
     "label": "drop row"
   },
   {
-    "frame": 1171,
+    "frame": 1439,
     "kind": "key",
     "label": "cmd z undo"
   },
   {
-    "frame": 1173,
+    "frame": 1441,
     "kind": "row",
     "label": "undo, reverse tick"
   },
   {
-    "frame": 1191,
+    "frame": 1459,
     "kind": "seek",
     "label": "whip to settings"
   },
   {
-    "frame": 1199,
+    "frame": 1467,
     "kind": "chip",
     "label": "crossfade slider to 6 s"
   },
   {
-    "frame": 1233,
+    "frame": 1501,
     "kind": "chip",
     "label": "next song takes the gold"
   },
   {
-    "frame": 1243,
+    "frame": 1511,
     "kind": "chip",
     "label": "replaygain auto"
   },
   {
-    "frame": 1259,
+    "frame": 1527,
     "kind": "seek",
     "label": "whip to equalizer"
   },
   {
-    "frame": 1269,
+    "frame": 1537,
     "kind": "key",
     "label": "bass boost"
   },
   {
-    "frame": 1297,
+    "frame": 1565,
     "kind": "key",
     "label": "treble boost"
   },
   {
-    "frame": 1334,
+    "frame": 1602,
     "kind": "tile",
     "label": "tile 1 develops, chord tone 1"
   },
   {
-    "frame": 1342,
+    "frame": 1610,
     "kind": "tile",
     "label": "tile 2 develops, chord tone 2"
   },
   {
-    "frame": 1350,
+    "frame": 1618,
     "kind": "tile",
     "label": "tile 3 develops, chord tone 3"
   },
   {
-    "frame": 1358,
+    "frame": 1626,
     "kind": "tile",
     "label": "tile 4 develops, chord tone 4"
   },
   {
-    "frame": 1366,
+    "frame": 1634,
     "kind": "tile",
     "label": "tile 5 develops, chord tone 5"
   },
   {
-    "frame": 1374,
+    "frame": 1642,
     "kind": "tile",
     "label": "tile 6 develops, chord tone 6"
   },
   {
-    "frame": 1382,
+    "frame": 1650,
     "kind": "tile",
     "label": "tile 7 develops, chord tone 7"
   },
   {
-    "frame": 1438,
+    "frame": 1706,
     "kind": "click",
     "label": "open daily mix 1"
   },
   {
-    "frame": 1440,
+    "frame": 1708,
     "kind": "seek",
     "label": "tile rushes forward"
   },
   {
-    "frame": 1462,
+    "frame": 1730,
     "kind": "flash",
     "label": "mix page opens"
   },
   {
-    "frame": 1464,
+    "frame": 1732,
     "kind": "ignite",
     "label": "cover ignites gold"
   },
   {
-    "frame": 1496,
+    "frame": 1764,
     "kind": "chip",
     "label": "saved to navidrome"
   },
   {
-    "frame": 1518,
+    "frame": 1786,
     "kind": "flash",
     "label": "radio station flash"
   },
   {
-    "frame": 1528,
+    "frame": 1796,
     "kind": "click",
     "label": "radio play, gold on the bar"
   },
   {
-    "frame": 1542,
+    "frame": 1810,
     "kind": "flash",
     "label": "folder flash"
   },
   {
-    "frame": 1545,
+    "frame": 1813,
     "kind": "tile",
     "label": "folder aura ignites"
   },
   {
-    "frame": 1565,
+    "frame": 1953,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1567,
+    "frame": 1955,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1568,
+    "frame": 1956,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1570,
+    "frame": 1958,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1571,
+    "frame": 1959,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1573,
+    "frame": 1961,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1574,
+    "frame": 1962,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1575,
+    "frame": 1963,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1577,
+    "frame": 1965,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1578,
+    "frame": 1966,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1580,
+    "frame": 1968,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1581,
+    "frame": 1969,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1583,
+    "frame": 1971,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1585,
+    "frame": 1973,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1586,
+    "frame": 1974,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1588,
+    "frame": 1976,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1589,
+    "frame": 1977,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1590,
+    "frame": 1978,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1592,
+    "frame": 1980,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1593,
+    "frame": 1981,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1595,
+    "frame": 1983,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1597,
+    "frame": 1985,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1598,
+    "frame": 1986,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1600,
+    "frame": 1988,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1601,
+    "frame": 1989,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1602,
+    "frame": 1990,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1604,
+    "frame": 1992,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1606,
+    "frame": 1994,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1607,
+    "frame": 1995,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1609,
+    "frame": 1997,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1610,
+    "frame": 1998,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1612,
+    "frame": 2000,
     "kind": "type",
     "label": "prompt key"
   },
   {
-    "frame": 1634,
+    "frame": 2022,
     "kind": "click",
     "label": "make it"
   },
   {
-    "frame": 1634,
+    "frame": 2022,
     "kind": "chip",
     "label": "playlist drafted"
   },
   {
-    "frame": 1678,
+    "frame": 2066,
     "kind": "click",
     "label": "create"
   },
   {
-    "frame": 1678,
+    "frame": 2066,
     "kind": "chip",
     "label": "list lands"
   },
   {
-    "frame": 1721,
+    "frame": 2109,
     "kind": "chip",
     "label": "stats page"
   },
   {
-    "frame": 1747,
+    "frame": 2135,
     "kind": "click",
     "label": "recap"
   },
   {
-    "frame": 1814,
+    "frame": 2318,
     "kind": "click",
     "label": "devices"
   },
   {
-    "frame": 1814,
+    "frame": 2318,
     "kind": "chip",
     "label": "picker opens"
   },
   {
-    "frame": 1866,
+    "frame": 2370,
     "kind": "click",
     "label": "play on iphone"
   },
   {
-    "frame": 1872,
+    "frame": 2376,
     "kind": "seek",
     "label": "whip to the two devices"
   },
   {
-    "frame": 1894,
+    "frame": 2398,
     "kind": "chip",
     "label": "web"
   },
   {
-    "frame": 1903,
+    "frame": 2407,
     "kind": "chip",
     "label": "ios"
   },
   {
-    "frame": 1912,
+    "frame": 2416,
     "kind": "chip",
     "label": "android"
   },
   {
-    "frame": 1970,
+    "frame": 2474,
     "kind": "flash",
     "label": "phone takes over"
   },
   {
-    "frame": 2054,
+    "frame": 2474,
     "kind": "flash",
     "label": "listen together"
   },
   {
-    "frame": 2125,
+    "frame": 2517,
     "kind": "click",
     "label": "start a session"
   },
   {
-    "frame": 2131,
+    "frame": 2523,
     "kind": "flash",
     "label": "iphone"
   },
   {
-    "frame": 2200,
+    "frame": 2578,
     "kind": "flash",
     "label": "android"
   },
   {
-    "frame": 2268,
+    "frame": 2634,
     "kind": "flash",
     "label": "linux and windows"
   },
   {
-    "frame": 2336,
+    "frame": 2675,
     "kind": "flash",
     "label": "claude code"
   },
   {
-    "frame": 2342,
+    "frame": 2681,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2344,
+    "frame": 2683,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2346,
+    "frame": 2685,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2349,
+    "frame": 2688,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2351,
+    "frame": 2690,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2353,
+    "frame": 2692,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2355,
+    "frame": 2694,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2357,
+    "frame": 2696,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2360,
+    "frame": 2699,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2362,
+    "frame": 2701,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2364,
+    "frame": 2703,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2366,
+    "frame": 2705,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2368,
+    "frame": 2707,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2371,
+    "frame": 2710,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2373,
+    "frame": 2712,
     "kind": "type",
     "label": "command key"
   },
   {
-    "frame": 2381,
+    "frame": 2720,
     "kind": "click",
     "label": "pause"
   },
   {
-    "frame": 2459,
+    "frame": 2745,
     "kind": "flash",
     "label": "the notch"
   },
   {
-    "frame": 2575,
+    "frame": 2861,
     "kind": "click",
     "label": "click the island"
   },
   {
-    "frame": 2587,
+    "frame": 2873,
     "kind": "chip",
     "label": "now playing opens"
   },
   {
-    "frame": 2645,
+    "frame": 2931,
     "kind": "click",
     "label": "pause"
   },
   {
-    "frame": 2679,
+    "frame": 2965,
     "kind": "key",
     "label": "sheet: ?"
   },
   {
-    "frame": 2718,
+    "frame": 2989,
+    "kind": "chip",
+    "label": "sheet: chip settles"
+  },
+  {
+    "frame": 3016,
+    "kind": "seek",
+    "label": "albums: whip-left"
+  },
+  {
+    "frame": 3018,
     "kind": "key",
     "label": "albums: g"
   },
   {
-    "frame": 2738,
+    "frame": 3031,
     "kind": "key",
     "label": "albums: a"
   },
   {
-    "frame": 2756,
-    "kind": "seek",
-    "label": "artists: whip-left"
+    "frame": 3042,
+    "kind": "chip",
+    "label": "albums: chip settles"
   },
   {
-    "frame": 2758,
-    "kind": "key",
-    "label": "artists: g"
-  },
-  {
-    "frame": 2778,
-    "kind": "key",
-    "label": "artists: r"
-  },
-  {
-    "frame": 2796,
+    "frame": 3069,
     "kind": "seek",
     "label": "stats: whip-right"
   },
   {
-    "frame": 2798,
+    "frame": 3071,
     "kind": "key",
     "label": "stats: g"
   },
   {
-    "frame": 2818,
+    "frame": 3084,
     "kind": "key",
     "label": "stats: t"
   },
   {
-    "frame": 2838,
+    "frame": 3095,
+    "kind": "chip",
+    "label": "stats: chip settles"
+  },
+  {
+    "frame": 3124,
     "kind": "key",
     "label": "moment: b"
   },
   {
-    "frame": 2877,
-    "kind": "key",
-    "label": "moments: g"
+    "frame": 3148,
+    "kind": "chip",
+    "label": "moment: chip settles"
   },
   {
-    "frame": 2897,
-    "kind": "key",
-    "label": "moments: m"
-  },
-  {
-    "frame": 2915,
+    "frame": 3175,
     "kind": "seek",
-    "label": "play: whip-left"
+    "label": "list: whip-left"
   },
   {
-    "frame": 2917,
+    "frame": 3177,
     "kind": "key",
-    "label": "play: space"
+    "label": "list: j"
   },
   {
-    "frame": 2957,
+    "frame": 3190,
+    "kind": "key",
+    "label": "list: k"
+  },
+  {
+    "frame": 3201,
+    "kind": "chip",
+    "label": "list: chip settles"
+  },
+  {
+    "frame": 3229,
     "kind": "key",
     "label": "rebind: ?"
   },
   {
-    "frame": 2994,
+    "frame": 3254,
+    "kind": "chip",
+    "label": "rebind: chip settles"
+  },
+  {
+    "frame": 3489,
     "kind": "flash",
     "label": "offline: flash"
   },
   {
-    "frame": 3034,
+    "frame": 3515,
+    "kind": "chip",
+    "label": "offline: chip settles"
+  },
+  {
+    "frame": 3541,
     "kind": "flash",
     "label": "share: flash"
   },
   {
-    "frame": 3073,
-    "kind": "flash",
-    "label": "light: flash"
+    "frame": 3567,
+    "kind": "chip",
+    "label": "share: chip settles"
   },
   {
-    "frame": 3112,
+    "frame": 3593,
     "kind": "flash",
     "label": "scroll: flash"
   },
   {
-    "frame": 3151,
-    "kind": "flash",
-    "label": "following: flash"
+    "frame": 3620,
+    "kind": "chip",
+    "label": "scroll: chip settles"
   },
   {
-    "frame": 3190,
-    "kind": "flash",
-    "label": "themes: flash"
-  },
-  {
-    "frame": 3229,
-    "kind": "flash",
-    "label": "doctor: flash"
-  },
-  {
-    "frame": 3268,
+    "frame": 3646,
     "kind": "flash",
     "label": "privacy: flash"
   },
   {
-    "frame": 3310,
+    "frame": 3672,
+    "kind": "chip",
+    "label": "privacy: chip settles"
+  },
+  {
+    "frame": 3698,
+    "kind": "flash",
+    "label": "queue: quick cut"
+  },
+  {
+    "frame": 3724,
+    "kind": "flash",
+    "label": "mixes: quick cut"
+  },
+  {
+    "frame": 3750,
+    "kind": "flash",
+    "label": "session: quick cut"
+  },
+  {
+    "frame": 3778,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3311,
+    "frame": 3779,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3312,
+    "frame": 3780,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3314,
+    "frame": 3781,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3316,
+    "frame": 3783,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3318,
+    "frame": 3784,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3319,
+    "frame": 3785,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3320,
+    "frame": 3786,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3322,
+    "frame": 3787,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3323,
+    "frame": 3789,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3324,
+    "frame": 3790,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3326,
+    "frame": 3791,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3327,
+    "frame": 3792,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3328,
+    "frame": 3793,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3330,
+    "frame": 3794,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3332,
+    "frame": 3796,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3333,
+    "frame": 3796,
     "kind": "type",
     "label": "type: line 1"
   },
   {
-    "frame": 3338,
+    "frame": 3801,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3339,
+    "frame": 3802,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3341,
+    "frame": 3804,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3342,
+    "frame": 3804,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3344,
+    "frame": 3806,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3345,
+    "frame": 3807,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3347,
+    "frame": 3808,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3348,
+    "frame": 3809,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3349,
+    "frame": 3810,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3351,
+    "frame": 3811,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3352,
+    "frame": 3812,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3354,
+    "frame": 3814,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3355,
+    "frame": 3814,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3357,
+    "frame": 3816,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3358,
+    "frame": 3817,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3360,
+    "frame": 3819,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3361,
+    "frame": 3819,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3363,
+    "frame": 3821,
     "kind": "type",
     "label": "type: line 2"
   },
   {
-    "frame": 3367,
+    "frame": 3825,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3369,
+    "frame": 3826,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3369,
+    "frame": 3827,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3371,
+    "frame": 3828,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3373,
+    "frame": 3830,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3374,
+    "frame": 3831,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3376,
+    "frame": 3832,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3377,
+    "frame": 3833,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3378,
+    "frame": 3834,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3380,
+    "frame": 3835,
     "kind": "type",
     "label": "type: line 3"
   },
   {
-    "frame": 3443,
+    "frame": 3886,
     "kind": "draw",
     "label": "lodesong draws in"
   },
   {
-    "frame": 3461,
+    "frame": 3896,
     "kind": "chip",
     "label": "your music. your server."
-  },
-  {
-    "frame": 3480,
-    "kind": "chip",
-    "label": "gold thread draws"
   }
 ]
