@@ -10,7 +10,6 @@ const MONO = "var(--font-mono)";
 
 const DOCKER = FILM.end.docker.join("\n");
 
-/** Land: the app pulls back front-on and goes quiet, the wordmark and the one command arrive, the last frame holds sharp. */
 export function FinaleScene() {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
@@ -19,7 +18,9 @@ export function FinaleScene() {
   const lit = ramp(frame, 0, durationInFrames * 0.5);
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ transform: `scale(${lerp(1.18, 1, pull)})`, filter: `brightness(${lerp(1.1, 0.22, lit)}) blur(${lerp(0, 6, lit)}px)` }}>
+      <AbsoluteFill
+        style={{ transform: `scale(${lerp(1.18, 1, pull)})`, filter: `brightness(${lerp(1.1, 0.22, lit)}) blur(${lerp(0, 6, lit)}px)` }}
+      >
         <Img src={home} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
       </AbsoluteFill>
       <AbsoluteFill
@@ -30,7 +31,17 @@ export function FinaleScene() {
           background: "radial-gradient(ellipse 50% 50% at 50% 42%, color-mix(in oklch, var(--ignite) 10%, transparent), transparent)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 36, fontFamily: MONO, fontSize: 170, fontWeight: 500, letterSpacing: "-0.04em" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 36,
+            fontFamily: MONO,
+            fontSize: 170,
+            fontWeight: 500,
+            letterSpacing: "-0.04em",
+          }}
+        >
           <svg aria-hidden width={150} height={150} viewBox="8 8 48 48" fill="var(--ignite)">
             <path d={VEIN} />
           </svg>
@@ -57,7 +68,9 @@ export function FinaleScene() {
           {DOCKER.slice(0, shown)}
           <Caret frame={frame} typing={shown < DOCKER.length} size={36} color="var(--ignite)" />
         </div>
-        <div style={{ marginTop: 34, fontFamily: MONO, fontSize: 44, opacity: ramp(frame, durationInFrames * 0.78, 12) }}>{FILM.end.url}</div>
+        <div style={{ marginTop: 34, fontFamily: MONO, fontSize: 44, opacity: ramp(frame, durationInFrames * 0.78, 12) }}>
+          {FILM.end.url}
+        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

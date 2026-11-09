@@ -1,6 +1,6 @@
 import p0 from "../../../../../docs/a11y-radio.png";
-import p1 from "../../../../../docs/album-lyrics-light.png";
 import p2 from "../../../../../docs/album-lyrics.png";
+import p1 from "../../../../../docs/album-lyrics-light.png";
 import p3 from "../../../../../docs/albums.png";
 import p4 from "../../../../../docs/folder-dither.png";
 import p5 from "../../../../../docs/follow-sync.png";
@@ -19,24 +19,24 @@ import p17 from "../../../../../docs/new-from-follows.png";
 import p18 from "../../../../../docs/og-dither.png";
 import p19 from "../../../../../docs/og-share-menu.png";
 import p20 from "../../../../../docs/og-song.jpg";
-import p21 from "../../../../../docs/phone-albums-filters-open.png";
+import p26 from "../../../../../docs/phone.png";
 import p22 from "../../../../../docs/phone-albums-filters.png";
+import p21 from "../../../../../docs/phone-albums-filters-open.png";
 import p23 from "../../../../../docs/phone-artists-strip.png";
 import p24 from "../../../../../docs/phone-light.png";
 import p25 from "../../../../../docs/phone-lyrics-coverage.png";
-import p26 from "../../../../../docs/phone.png";
 import p27 from "../../../../../docs/playlist-folder-edit.png";
 import p28 from "../../../../../docs/playlist-folder-move.png";
 import p29 from "../../../../../docs/playlist-folders.png";
 import p30 from "../../../../../docs/public-demo.png";
 import p31 from "../../../../../docs/queue.png";
 import p32 from "../../../../../docs/scrobbling-setting.png";
+import p35 from "../../../../../docs/search.png";
 import p33 from "../../../../../docs/search-mood-fit.png";
 import p34 from "../../../../../docs/search-vibe.png";
-import p35 from "../../../../../docs/search.png";
 import p36 from "../../../../../docs/sidebar-resize.png";
-import p37 from "../../../../../docs/stats-desktop-light.png";
 import p38 from "../../../../../docs/stats.png";
+import p37 from "../../../../../docs/stats-desktop-light.png";
 
 export interface DocPlate {
   src: string;
@@ -44,7 +44,6 @@ export interface DocPlate {
   h: number;
 }
 
-/** Real screenshots and assets already committed under docs/, keyed by their path there. */
 export const DOC_PLATES: Record<string, DocPlate> = {
   "a11y-radio.png": { src: p0, w: 1440, h: 900 },
   "album-lyrics-light.png": { src: p1, w: 2880, h: 1800 },

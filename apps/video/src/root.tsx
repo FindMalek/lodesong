@@ -58,7 +58,6 @@ const FILMS: Item[] = [
   { id: "tour", component: TourFilm, frames: TOUR.frames, size: WIDE },
 ];
 
-/** Each tour chapter alone, at its own length, for polishing it in Studio. */
 const TOUR_STUDIO: Item[] = TOUR.shots.map((shot) => ({
   id: `tour-${shot.id}`,
   component: solo(TOUR_SCENES[shot.id]),

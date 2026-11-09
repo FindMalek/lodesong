@@ -13,12 +13,10 @@ const BAYER = [
 ];
 
 interface VeilProps {
-  /** 0 shows the picture, 1 hides it; the cover sweeps in from the left */
   cover: number;
   from: "left" | "right";
 }
 
-/** The brand's ordered dither as a curtain: pixels go dark in Bayer order along a sweep, so a plate dissolves into dots instead of fading. */
 export function DitherVeil({ cover, from }: VeilProps) {
   const { width, height } = useVideoConfig();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -50,7 +48,6 @@ export function DitherVeil({ cover, from }: VeilProps) {
   );
 }
 
-/** The chapter counter that draws on during the two-beat stinger: `05 / 12  made for you`, a gold rule growing under it. */
 export function Counter({ chapter, frames }: { chapter: Chapter; frames: number }) {
   const frame = useCurrentFrame();
   const at = CHAPTERS.findIndex((one) => one.id === chapter);
@@ -60,11 +57,22 @@ export function Counter({ chapter, frames }: { chapter: Chapter; frames: number 
   const rule = ramp(frame, 0, frames * 0.8, ease.inOut);
   return (
     <div style={{ position: "absolute", right: SAFE.x, bottom: SAFE.y + 16, textAlign: "right", fontFamily: "var(--font-mono)" }}>
-      <div style={{ fontSize: 44, fontWeight: 500, color: "var(--foreground)", whiteSpace: "pre", textShadow: "0 2px 18px rgb(0 0 0 / 0.8)" }}>
+      <div
+        style={{ fontSize: 44, fontWeight: 500, color: "var(--foreground)", whiteSpace: "pre", textShadow: "0 2px 18px rgb(0 0 0 / 0.8)" }}
+      >
         {text.slice(0, shown)}
         <Caret frame={frame} typing={shown < text.length} size={44} color="var(--ignite)" />
       </div>
-      <div style={{ marginTop: 12, marginLeft: "auto", height: 4, width: 520 * rule, background: "var(--ignite)", boxShadow: "0 0 18px var(--ignite)" }} />
+      <div
+        style={{
+          marginTop: 12,
+          marginLeft: "auto",
+          height: 4,
+          width: 520 * rule,
+          background: "var(--ignite)",
+          boxShadow: "0 0 18px var(--ignite)",
+        }}
+      />
     </div>
   );
 }

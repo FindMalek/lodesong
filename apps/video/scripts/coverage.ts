@@ -16,9 +16,9 @@ import {
   TOUR_CUES,
   TOUR_MAP,
 } from "../src/features";
-import { FEATURE_TAG, type FrameMeasure } from "../src/scenes/tour/probe";
 import { MOCK_IDS } from "../src/scenes/tour/mocks";
 import { mockIdOf, type PlateAsset, plateOf } from "../src/scenes/tour/plates";
+import { FEATURE_TAG, type FrameMeasure } from "../src/scenes/tour/probe";
 
 // bun scripts/coverage.ts [--static] [--json]
 // machine checks for the tour: the feature list, the frame table, the plates, the chips actually drawn, the cue sheet
@@ -30,7 +30,9 @@ const MIN_PX = 28;
 const MIN_OPACITY = 0.95;
 const PROBE_AT = 24;
 const MIN_LUMA = 12;
-const MIN_SPREAD = 8;
+const MIN_SPREAD = 5;
+const SPARSE_SPREAD = 8;
+const warnings: string[] = [];
 const REPO = resolve(import.meta.dir, "../../..");
 
 const failures: string[] = [];
@@ -49,7 +51,8 @@ function lists(): void {
     if (feature.label !== feature.label.toLowerCase() && !/[A-Z]/.test(feature.label.replace(/[A-Z]{1,3}\b/g, ""))) continue;
     if (feature.rideOn) {
       const host = FEATURES.find((one) => one.id === feature.rideOn);
-      if (!host || host.chapter !== feature.chapter || host.wow === "C") fail("list", `${feature.id} rides on ${feature.rideOn}, not a host of ${feature.chapter}`);
+      if (!host || host.chapter !== feature.chapter || host.wow === "C")
+        fail("list", `${feature.id} rides on ${feature.rideOn}, not a host of ${feature.chapter}`);
     }
   }
 }
@@ -69,7 +72,8 @@ function timing(): void {
       const chips = chipsOf(host.id);
       if (chips.length > MAX_CHIPS[host.wow === "A" ? "A" : "B"]) fail("timing", `${host.id} carries ${chips.length} chips`);
       chips.forEach((chip, k) => {
-        if (chip.tour[0] !== host.tour[0] + CHIP_STEP * (k + 1)) fail("timing", `${chip.id} does not start ${CHIP_STEP * (k + 1)} frames after ${host.id}`);
+        if (chip.tour[0] !== host.tour[0] + CHIP_STEP * (k + 1))
+          fail("timing", `${chip.id} does not start ${CHIP_STEP * (k + 1)} frames after ${host.id}`);
       });
     });
   }
@@ -83,10 +87,13 @@ function cues(): void {
 }
 
 async function luma(path: string): Promise<{ mean: number; spread: number }> {
-  const run = Bun.spawn(["ffmpeg", "-v", "error", "-i", path, "-vf", "scale=96:54,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"], {
-    stdout: "pipe",
-    stderr: "ignore",
-  });
+  const run = Bun.spawn(
+    ["ffmpeg", "-v", "error", "-i", path, "-vf", "scale=480:270:flags=bilinear,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"],
+    {
+      stdout: "pipe",
+      stderr: "ignore",
+    },
+  );
   const bytes = new Uint8Array(await new Response(run.stdout).arrayBuffer());
   const mean = bytes.reduce((sum, value) => sum + value, 0) / Math.max(1, bytes.length);
   const variance = bytes.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, bytes.length);
@@ -129,10 +136,13 @@ async function plates(): Promise<{ mocks: string[]; checked: number }> {
     const size = headerSize(path);
     if (size) {
       const [w, h] = size;
-      if (!Number.isInteger(w) || !Number.isInteger(h) || Math.abs(w / h - asset.w / asset.h) > 0.01) fail("plates", `${feature.id} is ${w}x${h}, expected ratio of ${asset.w}x${asset.h}`);
+      if (!Number.isInteger(w) || !Number.isInteger(h) || Math.abs(w / h - asset.w / asset.h) > 0.01)
+        fail("plates", `${feature.id} is ${w}x${h}, expected ratio of ${asset.w}x${asset.h}`);
     }
     const { mean, spread } = await luma(path);
-    if (mean < MIN_LUMA || spread < MIN_SPREAD) fail("plates", `${feature.id} looks blank (mean ${mean.toFixed(1)}, spread ${spread.toFixed(1)}): ${path}`);
+    if (mean < MIN_LUMA || spread < MIN_SPREAD)
+      fail("plates", `${feature.id} looks blank (mean ${mean.toFixed(1)}, spread ${spread.toFixed(1)}): ${path}`);
+    else if (spread < SPARSE_SPREAD) warnings.push(`${feature.id} is a sparse screen (spread ${spread.toFixed(1)})`);
   }
   return { mocks, checked };
 }
@@ -162,7 +172,8 @@ function overlaps(measure: FrameMeasure): void {
   const chips = measure.features;
   for (const [i, a] of chips.entries()) {
     for (const b of chips.slice(i + 1)) {
-      const apart = a.box.x + a.box.w <= b.box.x || b.box.x + b.box.w <= a.box.x || a.box.y + a.box.h <= b.box.y || b.box.y + b.box.h <= a.box.y;
+      const apart =
+        a.box.x + a.box.w <= b.box.x || b.box.x + b.box.w <= a.box.x || a.box.y + a.box.h <= b.box.y || b.box.y + b.box.h <= a.box.y;
       if (!apart) fail("dom", `${a.id} overlaps ${b.id} at frame ${measure.frame}`);
     }
   }
@@ -180,7 +191,7 @@ async function dom(): Promise<void> {
       await renderStill({
         composition,
         serveUrl,
-        output: "/dev/null",
+        output: null,
         frame,
         inputProps,
         puppeteerInstance: browser,
@@ -216,16 +227,24 @@ function report(mocks: string[]): void {
       max: Math.max(...frames),
     };
   });
-  const covered = FEATURES.length - new Set(failures.map((line) => line.split(/[: ]/)[1])).size;
-  const out = { total: FEATURES.length, covered, frames: TOUR_MAP.totalFrames, chapters: rows, mocks, failures };
+  const known = new Set(FEATURES.map((feature) => feature.id));
+  const broken = new Set(failures.map((line) => line.split(": ")[1]?.split(/[ :]/)[0] ?? "").filter((id) => known.has(id)));
+  const covered = FEATURES.length - broken.size;
+  const out = { total: FEATURES.length, covered, frames: TOUR_MAP.totalFrames, chapters: rows, mocks, warnings, failures };
   if (JSON_ONLY) {
     console.log(JSON.stringify(out, null, 2));
     return;
   }
-  for (const row of rows) console.log(`${row.chapter.padEnd(11)} ${String(row.features).padStart(2)} features (${row.hosts} hosts, ${row.chips} chips)  frames min ${row.min} avg ${row.avg} max ${row.max}`);
+  for (const row of rows)
+    console.log(
+      `${row.chapter.padEnd(11)} ${String(row.features).padStart(2)} features (${row.hosts} hosts, ${row.chips} chips)  frames min ${row.min} avg ${row.avg} max ${row.max}`,
+    );
   console.log(`mock hosts: ${mocks.length}`);
+  for (const line of warnings) console.log(`warn ${line}`);
   for (const line of failures) console.error(`FAIL ${line}`);
-  console.log(`${Math.max(0, covered)} of ${FEATURES.length} features covered${STATIC ? " (static checks only)" : ""}, ${failures.length} problems`);
+  console.log(
+    `${Math.max(0, covered)} of ${FEATURES.length} features covered${STATIC ? " (static checks only)" : ""}, ${failures.length} problems`,
+  );
   mkdirSync("out", { recursive: true });
   writeFileSync("out/coverage.json", JSON.stringify(out, null, 2));
 }

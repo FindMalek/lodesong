@@ -4,13 +4,12 @@ import { type Cam, Camera, handheld, STAGE } from "../../design/camera";
 import { Cursor, type CursorStop } from "../../design/cursor";
 import { Bracket } from "../../design/draw";
 import { ease, lerp, ramp } from "../../design/motion";
-import { Halation } from "../../design/halation";
-import { type PlateLayout, Plate, camToBox, plateLayout } from "../../design/plate";
+import { camToBox, Plate, type PlateLayout, plateLayout } from "../../design/plate";
 import type { Box } from "../../design/probe";
-import { CHAPTERS, type Chapter, type Feature, chapterRange, hostsOf } from "../../features";
+import { CHAPTERS, type Chapter, chapterRange, type Feature, hostsOf } from "../../features";
 import { ChipStack } from "./chip";
 import { MockHost } from "./mocks";
-import { type PlateAsset, mockIdOf, plateOf, platesOf } from "./plates";
+import { mockIdOf, type PlateAsset, plateOf, platesOf } from "./plates";
 import type { ChapterSpec, Frac, HostSpec } from "./spec";
 import { Counter, DitherVeil } from "./stinger";
 
@@ -18,7 +17,7 @@ const MAX_SCALE_UP = 2.2;
 const WIDE = 16 / 9;
 
 /** Captures that are 16:9 fill the stage; anything else (phones, docs crops, tiles) sits whole on a blurred copy of itself. */
-export function layoutOf(asset: PlateAsset): PlateLayout {
+function layoutOf(asset: PlateAsset): PlateLayout {
   const size = { w: asset.w, h: asset.h };
   const cover = Math.abs(asset.w / asset.h - WIDE) < 0.06;
   const base = plateLayout(size, STAGE, cover ? "cover" : "contain");
@@ -30,19 +29,55 @@ const srcOf = (asset: PlateAsset): string => (asset.kind === "film" ? staticFile
 
 const CENTER: Frac = [0.25, 0.22, 0.5, 0.5];
 
+const PREFER = [
+  "menu",
+  "dialog",
+  "toast",
+  "sliders",
+  "slider",
+  "shuffle",
+  "active",
+  "badge",
+  "heart",
+  "precached",
+  "seek",
+  "input",
+  "rows",
+  "panel",
+  "folder",
+  "health",
+  "fix",
+  "card",
+  "header",
+  "tile",
+  "form",
+  "drop",
+  "next",
+  "bar",
+];
+
+function autoBox(boxes: Record<string, Box>): Box | undefined {
+  const name = PREFER.find((one) => boxes[one]);
+  return name ? boxes[name] : Object.values(boxes)[0];
+}
+
 function resolveFocus(asset: PlateAsset, primary: PlateAsset, focus: HostSpec["focus"]): { box: Box; named: boolean } {
   if (typeof focus === "string") {
     const box = asset.boxes[focus] ?? primary.boxes[focus];
     if (box) return { box, named: true };
+  }
+  if (!focus) {
+    const auto = autoBox(asset.boxes);
+    if (auto) return { box: auto, named: true };
   }
   const named = Array.isArray(focus);
   const [x, y, w, h] = (Array.isArray(focus) ? (focus as Frac) : CENTER) as Frac;
   return { box: { x: x * asset.w, y: y * asset.h, w: w * asset.w, h: h * asset.h }, named };
 }
 
-/** A hosted plate's camera: starts wide with a three degree yaw and settles toward the focus, then keeps creeping so nothing is ever still. */
-export function hostCam(layout: PlateLayout, focus: Box, frame: number, frames: number, wow: Feature["wow"], push?: number): Cam {
-  const aim = camToBox(layout, focus, wow === "A" ? { fill: 0.5, maxScale: push ?? 1.5 } : { fill: 0.72, maxScale: push ?? 1.2 });
+function hostCam(layout: PlateLayout, focus: Box, frame: number, frames: number, wow: Feature["wow"], push?: number): Cam {
+  const reach = wow === "A" ? { fill: 0.55, maxScale: 1.6 } : { fill: 0.72, maxScale: 1.25 };
+  const aim = camToBox(layout, focus, push ? { scale: push } : reach);
   const t = ease.out(Math.min(1, frame / (frames * 0.85)));
   const creep = 1 + 0.025 * (frame / frames);
   const sway = handheld(frame, 0.35);
@@ -100,26 +135,24 @@ function PlateHost({ feature, spec = {}, frames }: HostViewProps) {
     x: cx,
     y: cy,
     radius: Math.max(360, Math.hypot(box.w, box.h) * 0.9),
-    dim: feature.wow === "A" ? 0.4 : 0.55,
-    wash: 0.14,
+    dim: feature.wow === "A" ? 0.6 : 0.78,
+    wash: 0.06,
   };
   return (
     <AbsoluteFill>
       {layout.k * asset.w < STAGE.w - 4 || layout.k * asset.h < STAGE.h - 4 ? <Backdrop src={src} /> : null}
       <Camera cam={cam}>
-        <Halation fill strength={0.08} radius={24}>
-          <Plate src={src} layout={layout} light={pool} aperture={0.016}>
-            {showBracket ? <Bracket box={box} at={(frames * 0.25) / 30} pad={8} width={3} /> : null}
-            {spec.cursor ? <Cursor stops={stops} size={38 / (layout.k * cam.scale)} /> : null}
-            {spec.overlay?.({ feature, frame, frames, asset, layout, focus: box })}
-          </Plate>
-        </Halation>
+        <Plate src={src} layout={layout} light={pool} brightness={asset.light ? 0.9 : spec.brightness}>
+          {showBracket ? <Bracket box={box} at={(frames * 0.25) / 30} pad={8} width={3} /> : null}
+          {spec.cursor ? <Cursor stops={stops} size={38 / (layout.k * cam.scale)} /> : null}
+          {spec.overlay?.({ feature, frame, frames, asset, layout, focus: box })}
+        </Plate>
       </Camera>
     </AbsoluteFill>
   );
 }
 
-export function HostView(props: HostViewProps) {
+function HostView(props: HostViewProps) {
   const mock = mockIdOf(props.feature.capture);
   return mock ? <MockHost mock={mock} featureId={props.feature.id} frames={props.frames} /> : <PlateHost {...props} />;
 }
@@ -134,13 +167,14 @@ interface StingerProps {
   previous?: { host: Feature; spec?: HostSpec };
 }
 
-/** Two beats between chapters: the old plate keeps pushing and dissolves into dots, the new one resolves out of them while the counter types. */
 function Stinger({ chapter, frames, first, firstSpec, previous }: StingerProps) {
   const frame = useCurrentFrame();
   const half = Math.round(frames / 2);
   const outgoing = Boolean(previous) && frame < half;
   const push = outgoing ? lerp(1, 1.05, frame / half) : lerp(0.95, 1, ease.out(ramp(frame, half, frames - half)));
-  const cover = outgoing ? ramp(frame, 0, half, ease.in) : 1 - ramp(frame, previous ? half : 4, frames - half - 2, ease.inOut);
+  const cover = outgoing
+    ? ramp(frame, 0, half, ease.in)
+    : 1 - (previous ? ramp(frame, half, frames - half - 2, ease.inOut) : ramp(frame, 6, frames - 8, ease.inOut));
   const hostFrames = (host: Feature): number => host.tour[1] - host.tour[0];
   return (
     <AbsoluteFill>
@@ -170,7 +204,6 @@ interface TourChapterProps extends ChapterProps {
   spec: ChapterSpec;
 }
 
-/** One chapter of the tour as a rapid montage: stinger, then every host plate back to back on the beat with its chips riding above. */
 export function TourChapter({ chapter, spec, previous }: TourChapterProps): ReactNode {
   const [start] = chapterRange(chapter);
   const hosts = hostsOf(chapter);

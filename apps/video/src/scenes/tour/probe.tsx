@@ -5,7 +5,7 @@ import type { Box } from "../../design/probe";
 
 export const FEATURE_TAG = "FEATURES ";
 
-export interface FeatureMeasure {
+interface FeatureMeasure {
   id: string;
   text: string;
   px: number;
@@ -38,7 +38,6 @@ function measure(frame: number): FrameMeasure {
   return { frame, features };
 }
 
-/** Logs every `[data-feature]` element the frame really draws (text, size, opacity, box) for scripts/coverage.ts to judge. */
 export function FeatureProbe() {
   const frame = useCurrentFrame();
   const [handle] = useState(() => delayRender("feature probe"));

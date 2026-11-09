@@ -1,82 +1,78 @@
-import manifest from "../../../public/film/manifest.json";
+import { filmManifest, take } from "../../captures/film-manifest";
 import type { Box } from "../../design/probe";
 import { DOC_PLATES } from "./docs-plates";
-
-interface ManifestPlate {
-  name: string;
-  file: string;
-  boxes: Record<string, Box>;
-  device?: string;
-  w?: number;
-  h?: number;
-}
-
-interface ManifestFeature {
-  w: number;
-  h: number;
-  plates: ManifestPlate[];
-}
-
-interface ManifestCapture {
-  recipe: string;
-  plate?: string;
-  features: string[];
-}
-
-interface Manifest {
-  captures: Record<string, ManifestCapture>;
-  features: Record<string, ManifestFeature>;
-}
-
-const MANIFEST = manifest as unknown as Manifest;
 
 export interface PlateAsset {
   kind: "film" | "doc";
   name: string;
-  /** film: path under public/film/; doc: the file name under docs/ */
   file: string;
-  /** the plate in the px its boxes use */
   w: number;
   h: number;
   boxes: Record<string, Box>;
   src?: string;
+  /** a light-theme screenshot: shown a step dimmer so it does not flash against the dark film */
+  light?: boolean;
 }
+
+const LIGHT_DOCS = new Set([
+  "phone-lyrics-coverage.png",
+  "search-mood-fit.png",
+  "search-vibe.png",
+  "mix-covers-dither.png",
+  "following-page.png",
+  "new-from-follows.png",
+  "follow-sync.png",
+  "import-ai-metadata.png",
+  "genres-inferred.png",
+  "stats-desktop-light.png",
+  "history-fr.png",
+  "scrobbling-setting.png",
+  "phone-albums-filters-open.png",
+  "phone-artists-strip.png",
+  "playlist-folders.png",
+  "playlist-folder-move.png",
+  "playlist-folder-edit.png",
+  "album-lyrics-light.png",
+  "sidebar-resize.png",
+  "macos/compact.png",
+  "phone-light.png",
+  "phone-albums-filters.png",
+  "language-setting.png",
+  "a11y-radio.png",
+  "public-demo.png",
+  "og-share-menu.png",
+]);
 
 /** docs/radio.png is committed as an empty file, so the radio station borrows the captured radio plate. */
 const SUBSTITUTE: Record<string, string> = { "doc:radio.png": "cap:radio-tune" };
 
-const filmPlate = (recipe: string, plate: ManifestPlate): PlateAsset | null => {
-  const feature = MANIFEST.features[recipe];
-  if (!feature) return null;
-  return { kind: "film", name: plate.name, file: plate.file, w: plate.w ?? feature.w, h: plate.h ?? feature.h, boxes: plate.boxes };
-};
-
-/** All plates of one capture, in order: the sequence a chapter can play through (a typed query, a word sweep, before and after). */
 export function platesOf(capture: string): PlateAsset[] {
   const ref = SUBSTITUTE[capture] ?? capture;
   if (ref.startsWith("cap:")) {
-    const entry = MANIFEST.captures[ref.slice(4)];
-    const feature = entry ? MANIFEST.features[entry.recipe] : undefined;
-    if (!entry || !feature) return [];
-    return feature.plates.flatMap((plate) => filmPlate(entry.recipe, plate) ?? []);
+    const served = filmManifest.captures[ref.slice(4)];
+    if (!served) return [];
+    const owner = take(served.recipe);
+    return owner.plates.map((plate) => ({
+      kind: "film",
+      name: plate.name,
+      file: plate.file,
+      w: plate.w ?? owner.w,
+      h: plate.h ?? owner.h,
+      boxes: plate.boxes,
+    }));
   }
   const name = ref.slice(ref.indexOf(":") + 1);
   const doc = DOC_PLATES[name];
-  return doc ? [{ kind: "doc", name, file: name, w: doc.w, h: doc.h, boxes: {}, src: doc.src }] : [];
+  return doc ? [{ kind: "doc", name, file: name, w: doc.w, h: doc.h, boxes: {}, src: doc.src, light: LIGHT_DOCS.has(name) }] : [];
 }
 
-/** The plate a feature stands on: the manifest's chosen plate for a capture, the whole image for a doc. */
 export function plateOf(capture: string): PlateAsset | null {
   const ref = SUBSTITUTE[capture] ?? capture;
-  if (ref.startsWith("cap:")) {
-    const entry = MANIFEST.captures[ref.slice(4)];
-    const plates = platesOf(ref);
-    return plates.find((plate) => plate.name === entry?.plate) ?? plates[0] ?? null;
-  }
-  return platesOf(ref)[0] ?? null;
+  const chosen = ref.startsWith("cap:") ? filmManifest.captures[ref.slice(4)]?.plate : undefined;
+  const plates = platesOf(ref);
+  return plates.find((plate) => plate.name === chosen) ?? plates[0] ?? null;
 }
 
-/** The mock a capture falls back to: a `mock:` id, or a `cap:` id the capture rig could not make. */
 export const mockIdOf = (capture: string): string | null => {
   const ref = SUBSTITUTE[capture] ?? capture;
   if (ref.startsWith("mock:")) return ref.slice(5);

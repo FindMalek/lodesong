@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from "remotion";
+import { Grain } from "../../design/grain";
 import { ease, ramp } from "../../design/motion";
 import { Shell } from "../../design/shell";
-import { Grain } from "../../design/grain";
 import { CHAPTERS, type Chapter, hostsOf } from "../../features";
 import type { TourId } from "../timelines";
 import { TOUR } from "../timelines";
@@ -48,7 +48,6 @@ function sceneOf(chapter: Chapter): ComponentType {
   };
 }
 
-/** One scene per chapter (also what Studio opens alone) and the finale. */
 export const TOUR_SCENES: Record<TourId, ComponentType> = {
   ...(Object.fromEntries(CHAPTERS.map((chapter) => [chapter.id, sceneOf(chapter.id)])) as Record<Chapter, ComponentType>),
   finale: FinaleScene,
@@ -60,7 +59,6 @@ function Fade() {
   return <Grain opacity={0.07 * (1 - ramp(frame, durationInFrames - 110, 70, ease.inOut))} />;
 }
 
-/** The whole tour: chapters back to back on the tour's tempo map, grain fading out over the finale so the last frame is sharp. */
 export function TourFilm({ probe }: { probe?: boolean }) {
   return (
     <Shell grain={false} probe={probe}>
