@@ -26,7 +26,7 @@ const PHONE_FILTER = "highpass=f=200:poles=2,highpass=f=200:poles=2,lowpass=f=90
 const MAX_PHONE_GAP_LU = 3.5;
 const MIN_RISER_RISE = 1.6;
 const FLAT_LU = 1.5;
-const FLAT_SECONDS = 18;
+const FLAT_SECONDS = 14;
 const FLAT_SECONDS_TOUR = 18;
 const BAR_SECONDS = 2;
 const TILT_MIN = -7;

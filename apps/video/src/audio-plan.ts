@@ -279,16 +279,45 @@ export const MOODS: Record<string, Mood> = {
     padCut: [3200, 5200],
     padAttack: 0.04,
     air: true,
-    kick: "drive",
+    kick: "four",
     snare: true,
     hats: "shuffle",
     shaker: true,
-    bass: "roll",
-    arp: "p16",
-    stab: true,
+    bass: "pulse",
+    arp: "gate",
     motif: { voice: "lead", double: "bell", oct: 0, rate: 1, take: 6, every: 4, shifts: [0, 2, 0, 3], vel: 1.1 },
     tex: 0.15,
     pump: 0.7,
+  },
+  strip: {
+    loops: [["i", "VII", "VI", "V"]],
+    hb: 2,
+    db: -1,
+    pad: 0.8,
+    padCut: [1100, 2200],
+    padAttack: 0.08,
+    kick: "four",
+    hats: "none",
+    bass: "pulse",
+    arp: "gate",
+    motif: { voice: "pluck", oct: 1, rate: 0.5, take: 3, every: 2, shifts: [0, 1], vel: 0.8 },
+    tex: 0.2,
+    pump: 0.5,
+  },
+  breather: {
+    loops: [["VI", "III", "VII", "i"]],
+    hb: 4,
+    db: -9,
+    pad: 1.1,
+    padCut: [900, 1500],
+    padAttack: 0.7,
+    kick: "none",
+    hats: "none",
+    bass: "sub",
+    arp: "none",
+    motif: { voice: "keys", double: "bell", oct: 0, rate: 2, take: 6, every: 8, shifts: [0], vel: 1.1 },
+    tex: 0.5,
+    pump: 0,
   },
   pocket: {
     loops: [["i", "V"]],
@@ -307,7 +336,7 @@ export const MOODS: Record<string, Mood> = {
   storm: {
     loops: [["i", "VI", "III", "VII"]],
     hb: 1,
-    db: 4,
+    db: 1,
     pad: 0.9,
     padCut: [2400, 4600],
     padAttack: 0.03,
@@ -316,28 +345,28 @@ export const MOODS: Record<string, Mood> = {
     hats: "shuffle",
     shaker: true,
     bass: "pulse",
-    arp: "p16",
+    arp: "gate",
     stab: true,
     motif: { voice: "lead", double: "pluck", oct: 0, rate: 0.5, take: 3, every: 1, shifts: [0, 0, 1, 2], vel: 1 },
     tex: 0.1,
     pump: 0.7,
   },
   flash: {
-    loops: [["iv", "VI", "V", "V"]],
+    loops: [["i", "VI", "III", "VII"]],
     hb: 1,
     db: 4,
     pad: 1,
     padCut: [3000, 6000],
     padAttack: 0.03,
     air: true,
-    kick: "drive",
+    kick: "four",
     snare: true,
     hats: "shuffle",
     shaker: true,
-    bass: "roll",
-    arp: "p16",
+    bass: "pulse",
+    arp: "gate",
     stab: true,
-    motif: { voice: "lead", double: "bell", oct: 1, rate: 0.5, take: 3, every: 1, shifts: [1, 2, 3, 4], vel: 1.1 },
+    motif: { voice: "lead", double: "bell", oct: 0, rate: 1, take: 6, every: 4, shifts: [0, 0, 0, 1], vel: 1.15 },
     tex: 0.1,
     pump: 0.75,
   },
@@ -355,7 +384,7 @@ export const MOODS: Record<string, Mood> = {
     tex: 1,
   },
   land: {
-    loops: [["i", "i", "VI", "VII"]],
+    loops: [["VI", "III", "VII", "V", "V"]],
     hb: 1,
     db: 1,
     pad: 1,
@@ -530,12 +559,13 @@ export function buildScore(spec: FilmSpec): Score {
     curves.tex.push([at(start), mood.tex]);
 
     const spans: ChordSpan[] = [];
-    for (let b = 0, n = 0; b < segment.beats; b += mood.hb, n += 1) {
+    const hb = segment.hb ?? mood.hb;
+    for (let b = 0, n = 0; b < segment.beats; b += hb, n += 1) {
       const name = loop[n % loop.length] as ChordName;
       const def = CHORDS[name];
       voicing = voiceLead(voicing, def, key);
       bass = bassRoot(def, key, bass);
-      const span: ChordSpan = { from: at(start + b), to: at(Math.min(end, start + b + mood.hb)), name, root: bass, voicing };
+      const span: ChordSpan = { from: at(start + b), to: at(Math.min(end, start + b + hb)), name, root: bass, voicing };
       spans.push(span);
       chords.push(span);
       const dur = span.to - span.from;
@@ -546,7 +576,7 @@ export function buildScore(spec: FilmSpec): Score {
           push({ track: "pad", t: span.from, dur: dur + release, midi: note + 12, vel: mood.pad * 0.35, a: mood.padAttack, style: "air" });
       }
       if (mood.bass === "drone" || mood.bass === "sub") {
-        const bars = mood.bass === "drone" ? 1 : Math.max(1, Math.round(mood.hb / 4));
+        const bars = mood.bass === "drone" ? 1 : Math.max(1, Math.round(hb / 4));
         const each = dur / bars;
         for (let k = 0; k < bars; k += 1)
           push({ track: "sub", t: span.from + k * each, dur: each, midi: bass, vel: mood.bass === "drone" ? 0.28 : 0.8, style: "long" });
@@ -588,19 +618,20 @@ export function buildScore(spec: FilmSpec): Score {
         if (s !== slot) continue;
         push({ track: "kick", t, dur: 0.4, midi: 33, vel, label: "kick" });
       }
-      if (mood.snare && (slot === 4 || slot === 12)) {
+      const on = (from: number | undefined): boolean => offset >= (from ?? 0);
+      if (mood.snare && on(segment.build?.snare) && (slot === 4 || slot === 12)) {
         push({ track: "snare", t, dur: 0.3, midi: 60, vel: 1, label: "snare" });
         push({ track: "clap", t: t + 0.002, dur: 0.3, midi: 60, vel: 0.8, pan: 0.05 });
       }
-      if (mood.hats === "shuffle") {
+      if (mood.hats === "shuffle" && on(segment.build?.hats)) {
         const accent = slot % 4 === 2 ? 1 : slot % 2 === 0 ? 0.65 : 0.38;
         const open = slot === 14 && (step / 16) % 2 === 1;
         const ht = at(swung(step)) + (human() - 0.5) * 0.003;
         push({ track: open ? "ohat" : "hat", t: ht, dur: 0.2, midi: 80, vel: accent * (0.85 + human() * 0.3), pan: slot % 2 ? 0.3 : -0.3 });
-      } else if (mood.hats === "off" && slot % 4 === 2) {
+      } else if (mood.hats === "off" && on(segment.build?.hats) && slot % 4 === 2) {
         push({ track: slot === 14 ? "ohat" : "hat", t, dur: 0.2, midi: 80, vel: 0.8 + human() * 0.2, pan: 0.2 });
       }
-      if (mood.shaker && slot % 2 === 1)
+      if (mood.shaker && on(segment.build?.hats) && slot % 2 === 1)
         push({ track: "shaker", t: at(swung(step)), dur: 0.08, midi: 80, vel: 0.4 + human() * 0.2, pan: slot % 4 === 1 ? -0.5 : 0.5 });
 
       if (mood.bass === "roll") {
@@ -617,7 +648,7 @@ export function buildScore(spec: FilmSpec): Score {
         });
       }
 
-      if (mood.arp !== "none" && step * stepBeats >= grow) {
+      if (mood.arp !== "none" && offset >= (segment.build?.arp ?? grow)) {
         const idx = ARP_PAT[mood.arp][slot] as number;
         if (idx >= 0) {
           const v = span.voicing;
@@ -632,7 +663,7 @@ export function buildScore(spec: FilmSpec): Score {
           });
         }
       }
-      if (mood.stab && step * stepBeats >= grow)
+      if (mood.stab && offset >= (segment.build?.stab ?? grow))
         for (const [s, vel] of STABS)
           if (s === slot)
             for (const [k, n] of span.voicing.entries())
