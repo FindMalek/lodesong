@@ -7,6 +7,7 @@ import { FindLineShot } from "./shot-find-line";
 import { KeysShot } from "./shot-keys";
 import { LandShot } from "./shot-land";
 import { LyricsShot } from "./shot-lyrics";
+import { LyterionShot } from "./shot-lyterion";
 import { MixesShot } from "./shot-mixes";
 import { MoodShot } from "./shot-mood";
 import { NotchShot } from "./shot-notch";
@@ -14,6 +15,7 @@ import { PlayLineShot } from "./shot-play-line";
 import { QueueShot } from "./shot-queue";
 import { SessionShot } from "./shot-session";
 import { ShellsShot } from "./shot-shells";
+import { ThemesShot } from "./shot-themes";
 import { YoursShot } from "./shot-yours";
 import type { Plan, ShotId } from "./timelines";
 
@@ -23,6 +25,7 @@ export const HERO_SCENES: Record<ShotId, ComponentType> = {
   "find-line": FindLineShot,
   "play-line": PlayLineShot,
   lyrics: LyricsShot,
+  lyterion: LyterionShot,
   queue: QueueShot,
   mixes: MixesShot,
   mood: MoodShot,
@@ -30,6 +33,7 @@ export const HERO_SCENES: Record<ShotId, ComponentType> = {
   shells: ShellsShot,
   notch: NotchShot,
   keys: KeysShot,
+  themes: ThemesShot,
   yours: YoursShot,
   land: LandShot,
 };

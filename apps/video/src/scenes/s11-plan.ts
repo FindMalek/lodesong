@@ -28,7 +28,7 @@ export interface Flash {
   right?: FlashHalf;
 }
 
-/** Six flashes of two beats at 138 bpm; library splits the frame in two, and the privacy line goes last because it is the why. */
+/** Four flashes of two beats at 138 bpm; light mode lives in the themes shot now, and the privacy line goes last because it is the why. */
 export const S11_FLASHES: readonly Flash[] = [
   {
     id: "offline",
@@ -42,38 +42,7 @@ export const S11_FLASHES: readonly Flash[] = [
     scale: [1.75, 1.45],
   },
   { id: "share", beats: 2, kind: "cards", chip: "share cards", icon: "share" },
-  {
-    id: "light",
-    beats: 2,
-    kind: "plate",
-    take: "theme-light",
-    plate: "home",
-    chip: "light mode",
-    icon: "sun",
-    focus: { x: 220, y: 40, w: 1200, h: 460 },
-    scale: [1.15, 1.35],
-    bright: true,
-  },
   { id: "scroll", beats: 2, kind: "scroll", chip: "10,000 songs", icon: "rows" },
-  {
-    id: "library",
-    beats: 2,
-    kind: "split",
-    take: "following",
-    plate: "following",
-    chip: "following",
-    icon: "users",
-    focus: { x: 200, y: 330, w: 1240, h: 440 },
-    scale: [1.4, 1.6],
-    right: {
-      take: "doctor",
-      plate: "fixed",
-      chip: "library doctor",
-      icon: "doctor",
-      focus: { x: 215, y: 40, w: 1000, h: 380 },
-      scale: [1.3, 1.45],
-    },
-  },
   { id: "privacy", beats: 2, kind: "ro", chip: "never touches your files", icon: "lock" },
 ];
 
