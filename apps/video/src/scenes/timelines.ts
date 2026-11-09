@@ -1,4 +1,5 @@
 import { CUT_MAP, HERO_MAP, type TempoMap } from "../design/beat";
+import { CHAPTERS, type Chapter, TOUR_MAP } from "../features";
 
 export type ChapterId = "hook" | "listen" | "discover" | "everywhere" | "yours";
 
@@ -12,6 +13,7 @@ export const HERO_IDS = [
   "mood",
   "session",
   "shells",
+  "notch",
   "keys",
   "yours",
   "land",
@@ -79,6 +81,7 @@ const CHAPTER_OF: Record<ShotId, ChapterId> = {
   mood: "discover",
   session: "everywhere",
   shells: "everywhere",
+  notch: "everywhere",
   keys: "yours",
   yours: "yours",
   land: "yours",
@@ -96,6 +99,7 @@ export const HERO = planFilm(
     mood: "a sentence, a recap",
     session: "one session",
     shells: "everywhere",
+    notch: "lives in your notch",
     keys: "keyboard storm",
     yours: "yours",
     land: "land",
@@ -108,6 +112,15 @@ export const CUTDOWN = planFilm(
   CUT_IDS,
   { hook: "the lyric hook", find: "search and ignite", mixes: "mixes", session: "handoff", shells: "everywhere", land: "front-on end" },
   CUT_MAP,
+);
+
+const TOUR_IDS = [...CHAPTERS.map((chapter) => chapter.id), "finale"] as const;
+export type TourId = (typeof TOUR_IDS)[number];
+
+export const TOUR: Plan<TourId> = planFilm(
+  TOUR_IDS,
+  { ...(Object.fromEntries(CHAPTERS.map((chapter) => [chapter.id, chapter.name])) as Record<Chapter, string>), finale: "land" },
+  TOUR_MAP,
 );
 
 export function shotOf(id: ShotId): ShotPlan<ShotId> {

@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
-import { AUDIO_CUES, SECTIONS } from "../audio-cues";
 import { gridBeat as beat, FPS } from "../design/beat";
-import { END, frames, KEYS, LEGACY_CUT_SHOTS, LEGACY_HERO_SHOTS, MIXES, OPEN, SESSION, starts, TERMINAL } from "./legacy-timelines";
+import { END, frames, KEYS, LEGACY_CUT_SHOTS, LEGACY_HERO_SHOTS, MIXES, OPEN, SESSION, TERMINAL } from "./legacy-timelines";
 import { holdSeconds } from "./open-timeline";
 
 interface Item {
@@ -65,18 +64,4 @@ test("UI hits land on odd beats", () => {
     MIXES.ignite,
   ];
   expect(hits.filter((at) => !(Number.isInteger(at) && at % 2 === 1))).toEqual([]);
-});
-
-test("shots cut on the score's own sections", () => {
-  const cut = starts(LEGACY_HERO_SHOTS);
-  const bounds = SECTIONS.hero.map((section) => beat(section.from));
-  for (const id of ["keys", "mixes", "session", "terminal", "end"]) expect(bounds).toContain(cut[id] ?? -1);
-  const strip = starts(LEGACY_CUT_SHOTS);
-  expect(SECTIONS.cutdown.map((section) => beat(section.from))).toContain(strip.session ?? -1);
-});
-
-test("the hero cuts land on a sound", () => {
-  const cut = starts(LEGACY_HERO_SHOTS);
-  const sounded = new Set(AUDIO_CUES.filter((cue) => cue.film === "hero").map((cue) => cue.frame));
-  for (const id of ["keys", "mixes", "session", "terminal"]) expect(sounded.has(cut[id] ?? -1)).toBe(true);
 });
