@@ -3,6 +3,7 @@ import { AUDIO_CUES, FILM_FRAMES, FILMS, LANDMARKS, SCORES, SECTIONS, SHEET, SPE
 import { MOODS, voiceLead } from "./audio-plan";
 import { createClock, FPS } from "./audio-tempo";
 import { CUT_MAP, HERO_MAP } from "./design/beat";
+import { FEATURES, TOUR_MAP } from "./features";
 
 test("each film is sorted, unique and inside its length", () => {
   for (const film of FILMS) {
@@ -15,11 +16,10 @@ test("each film is sorted, unique and inside its length", () => {
   expect(new Set(ids).size).toBe(ids.length);
 });
 
-test("hero and cutdown follow the edit's own tempo map, the tour its placeholder", () => {
+test("every film's score follows the edit's own tempo map", () => {
   expect(FILM_FRAMES.hero).toBe(HERO_MAP.totalFrames);
   expect(FILM_FRAMES.cutdown).toBe(CUT_MAP.totalFrames);
-  expect(FILM_FRAMES.tour / FPS).toBeGreaterThanOrEqual(120);
-  expect(FILM_FRAMES.tour / FPS).toBeLessThanOrEqual(150);
+  expect(FILM_FRAMES.tour).toBe(TOUR_MAP.totalFrames);
 });
 
 test("every segment names a mood and the tempo map only ever speeds up into the finale", () => {
@@ -145,4 +145,9 @@ test("the ritardando ends on the picture's own frame, so the last hit lands wher
     const last = clock.starts.at(-1) ?? 0;
     expect(landmarks.find((l) => l.id === "final hit")?.frame).toBe(clock.frame(last));
   }
+});
+
+test("every tour feature owns a sound within one frame of its first frame", () => {
+  const owned = new Map(SPECS.tour.ui.map((event) => [event.label, event.frame]));
+  for (const feature of FEATURES) expect(Math.abs((owned.get(`feature:${feature.id}`) ?? -9) - feature.tour[0])).toBeLessThanOrEqual(1);
 });
