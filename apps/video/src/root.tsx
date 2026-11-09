@@ -11,7 +11,8 @@ import { LENS_DEMO_BEATS, LensDemo } from "./scenes/lens-demo";
 import { Loop } from "./scenes/loop";
 import { Open } from "./scenes/open";
 import { FRAMES } from "./scenes/open-timeline";
-import { CUTDOWN, HERO, type Plan } from "./scenes/timelines";
+import { CUTDOWN, HERO, type Plan, TOUR } from "./scenes/timelines";
+import { TOUR_SCENES, TourFilm } from "./scenes/tour/film";
 
 interface Props {
   probe?: boolean;
@@ -54,7 +55,16 @@ interface Item {
 const FILMS: Item[] = [
   { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav"), frames: HERO.frames, size: WIDE },
   { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav"), frames: CUTDOWN.frames, size: TALL },
+  { id: "tour", component: TourFilm, frames: TOUR.frames, size: WIDE },
 ];
+
+/** Each tour chapter alone, at its own length, for polishing it in Studio. */
+const TOUR_STUDIO: Item[] = TOUR.shots.map((shot) => ({
+  id: `tour-${shot.id}`,
+  component: solo(TOUR_SCENES[shot.id]),
+  frames: shot.frames,
+  size: WIDE,
+}));
 
 /** Each shot alone, at its own length, for working on it in Studio. */
 const SHOT_STUDIO: Item[] = HERO.shots.map((shot) => ({
@@ -82,6 +92,7 @@ const COMPOSITIONS: Item[] = [
   ...FILMS,
   { id: "loop-readme", component: Loop, frames: gridBeat(LOOP.end), size: WIDE },
   ...SHOT_STUDIO,
+  ...TOUR_STUDIO,
   ...LEGACY,
 ];
 

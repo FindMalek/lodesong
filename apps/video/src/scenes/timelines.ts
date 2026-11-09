@@ -1,4 +1,5 @@
 import { CUT_MAP, HERO_MAP, type TempoMap } from "../design/beat";
+import { CHAPTERS, type Chapter, TOUR_MAP } from "../features";
 
 export type ChapterId = "hook" | "listen" | "discover" | "everywhere" | "yours";
 
@@ -108,6 +109,16 @@ export const CUTDOWN = planFilm(
   CUT_IDS,
   { hook: "the lyric hook", find: "search and ignite", mixes: "mixes", session: "handoff", shells: "everywhere", land: "front-on end" },
   CUT_MAP,
+);
+
+export const TOUR_IDS = [...CHAPTERS.map((chapter) => chapter.id), "finale"] as const;
+export type TourId = (typeof TOUR_IDS)[number];
+
+/** The tour: twelve chapters and the finale, one tempo segment each (100 to 138 BPM). */
+export const TOUR: Plan<TourId> = planFilm(
+  TOUR_IDS,
+  { ...(Object.fromEntries(CHAPTERS.map((chapter) => [chapter.id, chapter.name])) as Record<Chapter, string>), finale: "land" },
+  TOUR_MAP,
 );
 
 export function shotOf(id: ShotId): ShotPlan<ShotId> {
