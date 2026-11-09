@@ -1,10 +1,8 @@
 import { existsSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-// bun scripts/optimize-plates.ts
-// Writes `<plate>.opt.jpg` (4:4:4, q92) next to every opaque capture PNG in public/film and lists them in
-// public/film/optimised.json, which plateSrc() reads. Originals stay the source of truth, nothing here is committed
-// (public/film ignores everything but the manifest). Skips files whose .opt is newer; run it again after a capture.
+// Writes `<plate>.opt.jpg` (4:4:4, q92) beside every opaque capture PNG and lists them in public/film/optimised.json for Studio.
+// Originals stay the source; the output is git-ignored. Re-run after a capture.
 
 const ROOT = resolve(import.meta.dir, "../public/film");
 const MAP = join(ROOT, "optimised.json");
@@ -20,16 +18,26 @@ function pngsIn(dir: string): string[] {
 }
 
 function opaque(path: string): boolean {
-  const probe = Bun.spawnSync(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=pix_fmt", "-of", "csv=p=0", path]);
+  const probe = Bun.spawnSync([
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=pix_fmt",
+    "-of",
+    "csv=p=0",
+    path,
+  ]);
   const format = probe.stdout.toString().trim();
   return /^(rgb24|bgr24|rgb48be|gray|gray16be)$/.test(format);
 }
 
 async function encode(source: string, target: string): Promise<boolean> {
-  const run = Bun.spawn(
-    ["ffmpeg", "-v", "error", "-y", "-i", source, "-vf", "format=yuvj444p", "-q:v", "2", "-update", "1", target],
-    { stderr: "pipe" },
-  );
+  const run = Bun.spawn(["ffmpeg", "-v", "error", "-y", "-i", source, "-vf", "format=yuvj444p", "-q:v", "2", "-update", "1", target], {
+    stderr: "pipe",
+  });
   const failed = (await run.exited) !== 0;
   if (failed) console.error(`${relative(ROOT, source)}: ${await new Response(run.stderr).text()}`);
   return !failed;

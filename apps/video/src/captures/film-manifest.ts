@@ -6,7 +6,6 @@ export type { Box, Event, Manifest, Plate, Take };
 
 export const filmManifest = raw as unknown as Manifest;
 
-/** `scripts/optimize-plates.ts` writes public/film/optimised.json (plate file to its .opt.jpg twin); it is local and ignored, so a clean checkout and bun test fall back to the originals. */
 function optimisedFiles(): Record<string, string> {
   if (typeof require.context !== "function") return {};
   const context = require.context("../../public/film", false, /^\.\/optimised\.json$/);
@@ -15,7 +14,7 @@ function optimisedFiles(): Record<string, string> {
 
 const OPTIMISED = optimisedFiles();
 
-/** A file under public/film as a URL: in Studio the optimised twin when the optimise step has run, else (and in every render) the original. */
+/** Studio gets the optimised twin written by `film:optimize`; renders always read the original. */
 const filmFile = (file: string): string => staticFile(`film/${(getRemotionEnvironment().isStudio ? OPTIMISED[file] : undefined) ?? file}`);
 
 export interface Word {
@@ -56,7 +55,6 @@ export function plateSize(takeId: string, plateName: string): { w: number; h: nu
 export const featuresOf = (captureName: string): readonly string[] =>
   filmManifest.captures[captureName]?.features ?? missing(`capture "${captureName}"`);
 
-/** The capture that serves a FEATURES id, with the recipe and plate to use for it. */
 export function captureOf(featureId: string): { capture: string; recipe: string; plate?: string } {
   for (const [capture, served] of Object.entries(filmManifest.captures))
     if (served.features.includes(featureId)) return { capture, recipe: served.recipe, ...(served.plate ? { plate: served.plate } : {}) };

@@ -34,7 +34,6 @@ function coverPath(cols: number, seed: number, time: number, develop: number): s
   return path;
 }
 
-/** The app's own generated cover look: the shared ordered-dither glow, drawn as one SVG path, deterministic per frame. */
 export function DitherCover({
   id,
   size,

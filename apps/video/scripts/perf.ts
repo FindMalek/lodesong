@@ -7,12 +7,8 @@ import { openBrowser, renderFrames, renderStill, selectComposition } from "@remo
 import { enableTailwind } from "@remotion/tailwind-v4";
 import { HERO } from "../src/scenes/timelines";
 
-// bun scripts/perf.ts bench [--id hero] [--samples 6] [--window 6] [--json out/perf/x.json] [--shot id]
-// bun scripts/perf.ts stills <dir> [--id hero] [--samples 6]
-// bun scripts/perf.ts compare <dirA> <dirB>
-// bun scripts/perf.ts play [--shot id] [--soft] [--throttle 4]   real-time playback in the <Player> Studio uses, GPU raster (--soft: software), rAF intervals per shot
-// bench renders a window of consecutive frames at evenly spread sample points per shot in one warm browser page,
-// so the ms/frame is the scene cost (seek + paint + capture) with the images already cached, like Studio playback.
+// bun scripts/perf.ts bench|stills <dir>|compare <a> <b>|trace|play [--shot id] [--samples 6] [--throttle 4] [--gl angle]
+// play = real-time Player playback on the GPU (what Studio does), bench = frame renders with the page warm
 
 const args = process.argv.slice(2);
 const mode = args[0] ?? "bench";
@@ -36,7 +32,6 @@ interface Sample {
   warm: number[];
 }
 
-/** Evenly spread, never on the first or last frame of a shot. */
 function pointsOf(start: number, frames: number, count: number): number[] {
   return Array.from({ length: count }, (_, i) => start + Math.floor(((i + 0.5) / count) * Math.max(1, frames - WINDOW)));
 }
@@ -105,14 +100,19 @@ function report(samples: Sample[]): void {
   for (const [shot, ms] of perShot) {
     const sorted = [...ms].sort((a, b) => a - b);
     const p90 = sorted[Math.floor(sorted.length * 0.9)] ?? 0;
-    console.log(`${shot.padEnd(13)} ${median(ms).toFixed(0).padStart(6)} ${p90.toFixed(0).padStart(6)} ${(sorted.at(-1) ?? 0).toFixed(0).padStart(7)}`);
+    console.log(
+      `${shot.padEnd(13)} ${median(ms).toFixed(0).padStart(6)} ${p90.toFixed(0).padStart(6)} ${(sorted.at(-1) ?? 0).toFixed(0).padStart(7)}`,
+    );
   }
   const all = frames.map((one) => one.ms);
-  console.log(`overall median ${median(all).toFixed(0)} ms, max ${Math.max(...all).toFixed(0)} ms, mean ${(all.reduce((a, b) => a + b, 0) / all.length).toFixed(0)} ms over ${all.length} frames`);
+  console.log(
+    `overall median ${median(all).toFixed(0)} ms, max ${Math.max(...all).toFixed(0)} ms, mean ${(all.reduce((a, b) => a + b, 0) / all.length).toFixed(0)} ms over ${all.length} frames`,
+  );
   const cold = samples.map((s) => s.cold);
   console.log(`first frame of each window (cold seek): median ${median(cold).toFixed(0)} ms, max ${Math.max(...cold).toFixed(0)} ms`);
   console.log("slowest frames:");
-  for (const one of frames.sort((a, b) => b.ms - a.ms).slice(0, 12)) console.log(`  ${one.shot.padEnd(12)} f${String(one.frame).padEnd(6)} ${one.ms.toFixed(0)} ms`);
+  for (const one of frames.sort((a, b) => b.ms - a.ms).slice(0, 12))
+    console.log(`  ${one.shot.padEnd(12)} f${String(one.frame).padEnd(6)} ${one.ms.toFixed(0)} ms`);
   const json = flag("json", "");
   if (json) {
     mkdirSync(resolve(json, ".."), { recursive: true });
@@ -145,7 +145,6 @@ async function stills(): Promise<void> {
   process.stdout.write(`\n${dir}\n`);
 }
 
-/** PSNR per still pair through ffmpeg; the worst pair decides the exit code. */
 async function compare(): Promise<void> {
   const [a, b] = [resolve(args[1] ?? ""), resolve(args[2] ?? "")];
   const names = (await Array.fromAsync(new Bun.Glob("*.png").scan(a))).sort();
@@ -153,10 +152,9 @@ async function compare(): Promise<void> {
   let worst = { name: "", psnr: Number.POSITIVE_INFINITY };
   let failures = 0;
   for (const name of names) {
-    const run = Bun.spawnSync(
-      ["ffmpeg", "-v", "info", "-i", join(a, name), "-i", join(b, name), "-lavfi", "psnr", "-f", "null", "-"],
-      { stderr: "pipe" },
-    );
+    const run = Bun.spawnSync(["ffmpeg", "-v", "info", "-i", join(a, name), "-i", join(b, name), "-lavfi", "psnr", "-f", "null", "-"], {
+      stderr: "pipe",
+    });
     const match = /average:(\S+)/.exec(run.stderr.toString());
     const psnr = match?.[1] === "inf" ? 99 : Number(match?.[1] ?? 0);
     if (psnr < worst.psnr) worst = { name, psnr };
@@ -178,10 +176,11 @@ interface TraceEvent {
   args?: { name?: string };
 }
 
-/** Chrome trace of one shot's mid window, summed per thread and event name (self time is not split out, so nested events overlap). */
 async function trace(): Promise<void> {
   const wrapper = join(tmpdir(), "chrome-with-debug-port.sh");
-  const real = Bun.spawnSync(["find", resolve("node_modules/.remotion"), "-name", "chrome-headless-shell", "-type", "f"]).stdout.toString().trim();
+  const real = Bun.spawnSync(["find", resolve("node_modules/.remotion"), "-name", "chrome-headless-shell", "-type", "f"])
+    .stdout.toString()
+    .trim();
   writeFileSync(wrapper, `#!/bin/sh\nexec "${real}" --remote-debugging-port=9333 "$@"\n`, { mode: 0o755 });
   const serveUrl = await serve();
   const composition = await selectComposition({ serveUrl, id: ID });
@@ -231,7 +230,8 @@ async function trace(): Promise<void> {
   socket.send(JSON.stringify({ id: 2, method: "Tracing.end" }));
   await complete;
   const names = new Map<string, string>();
-  for (const event of events) if (event.ph === "M" && event.name === "thread_name") names.set(`${event.pid}:${event.tid}`, String(event.args?.name));
+  for (const event of events)
+    if (event.ph === "M" && event.name === "thread_name") names.set(`${event.pid}:${event.tid}`, String(event.args?.name));
   const totals = new Map<string, number>();
   for (const event of events) {
     if (event.ph !== "X" || !event.dur) continue;
@@ -239,7 +239,8 @@ async function trace(): Promise<void> {
     totals.set(key, (totals.get(key) ?? 0) + event.dur / 1000);
   }
   console.log(`trace of ${shot.id} f${frame}..${frame + WINDOW - 1}: ms per frame by thread | event`);
-  for (const [key, ms] of [...totals].sort((a, b) => b[1] - a[1]).slice(0, 40)) console.log(`${(ms / WINDOW).toFixed(1).padStart(8)}  ${key}`);
+  for (const [key, ms] of [...totals].sort((a, b) => b[1] - a[1]).slice(0, 40))
+    console.log(`${(ms / WINDOW).toFixed(1).padStart(8)}  ${key}`);
   socket.close();
   await browser.close({ silent: true });
 }
@@ -251,7 +252,6 @@ interface PlaySample {
 
 const percentile = (sorted: number[], share: number): number => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * share))] ?? 0;
 
-/** Runs of frames the Player never painted, as "from-to" in shot-local numbers. */
 function missingRuns(seen: Set<number>, start: number, end: number): string {
   const runs: string[] = [];
   let from = -1;
@@ -268,7 +268,11 @@ function missingRuns(seen: Set<number>, start: number, end: number): string {
 
 /** Plays the hero in the Player in real time and reports the interval between painted frames per shot; 16.7 ms is a perfect 60 fps. */
 async function play(): Promise<void> {
-  const out = await bundle({ entryPoint: resolve("scripts/perf-player.ts"), webpackOverride: enableTailwind, ignoreRegisterRootWarning: true });
+  const out = await bundle({
+    entryPoint: resolve("scripts/perf-player.ts"),
+    webpackOverride: enableTailwind,
+    ignoreRegisterRootWarning: true,
+  });
   const server = Bun.serve({
     port: 0,
     async fetch(request) {
@@ -280,7 +284,11 @@ async function play(): Promise<void> {
   const soft = args.includes("--soft");
   const browser = await chromium.launch({
     channel: "chromium",
-    args: ["--mute-audio", "--autoplay-policy=no-user-gesture-required", ...(soft ? ["--disable-gpu"] : ["--use-angle=metal", "--use-gl=angle", "--ignore-gpu-blocklist", "--enable-gpu-rasterization"])],
+    args: [
+      "--mute-audio",
+      "--autoplay-policy=no-user-gesture-required",
+      ...(soft ? ["--disable-gpu"] : ["--use-angle=metal", "--use-gl=angle", "--ignore-gpu-blocklist", "--enable-gpu-rasterization"]),
+    ],
   });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   page.on("pageerror", (error) => console.error(`page error: ${error.message}`));
