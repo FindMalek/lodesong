@@ -1,7 +1,7 @@
 export const FPS = 60;
 
-/** The old constant grid. Only the pre-v2 score and its checks still count on it. */
-export const BPM = 120;
+/** The old constant grid, kept for gridBeat. */
+const BPM = 120;
 
 export interface Tempo {
   beats: number;

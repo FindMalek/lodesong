@@ -20,13 +20,13 @@ const rowsOf = (chapter: Chapter): RawFeature[] => FEATURE_ROWS.filter((row) => 
 
 const hostBeats = (row: RawFeature): number => (row.wow === "A" ? HOST_BEATS.A : HOST_BEATS.B);
 
-const chapterBeats = (chapter: Chapter): number =>
+export const chapterBeats = (chapter: Chapter): number =>
   STINGER_BEATS +
   rowsOf(chapter)
     .filter(isHost)
     .reduce((sum, row) => sum + hostBeats(row), 0);
 
-const TOUR_TEMPO: readonly Tempo[] = [
+export const TOUR_TEMPO: readonly Tempo[] = [
   ...CHAPTERS.map((chapter) => ({ beats: chapterBeats(chapter.id), bpm: chapter.bpm })),
   { beats: FINALE_BEATS, bpm: FINALE_BPM },
 ];

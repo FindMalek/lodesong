@@ -99,76 +99,6 @@ export function softClip(x: number, drive: number): number {
   return Math.tanh(x * drive) / Math.tanh(drive);
 }
 
-export function reverb(send: Stereo, rt60: number, damp: number, preDelay: number, scale = 1): Stereo {
-  const lengths = [1031, 1187, 1303, 1471, 1609, 1787, 1931, 2087].map((n) => Math.round(n * scale));
-  const lines = lengths.map((n) => new Float32Array(n));
-  const feedback = lengths.map((n) => 10 ** ((-3 * n) / (rt60 * RATE)));
-  const heads = lengths.map(() => 0);
-  const lowpassed = lengths.map(() => 0);
-  const pre = Math.round(preDelay * RATE);
-  const out = stereo(send.l.length);
-  const taps = new Float64Array(8);
-  const diffusers = [new Float32Array(142), new Float32Array(379)];
-  const diffuserHeads = [0, 0];
-  const sign = [1, -1, 1, -1, -1, 1, -1, 1];
-  for (let n = 0; n < send.l.length; n += 1) {
-    let source = n >= pre ? ((send.l[n - pre] ?? 0) + (send.r[n - pre] ?? 0)) * 0.5 : 0;
-    for (const [k, line] of diffusers.entries()) {
-      const head = diffuserHeads[k] as number;
-      const delayed = line[head] ?? 0;
-      const inner = source - 0.6 * delayed;
-      line[head] = inner;
-      source = delayed + 0.6 * inner;
-      diffuserHeads[k] = (head + 1) % line.length;
-    }
-    for (let i = 0; i < 8; i += 1) {
-      const line = lines[i] as Float32Array;
-      const read = line[heads[i] as number] ?? 0;
-      lowpassed[i] = (lowpassed[i] as number) + damp * (read - (lowpassed[i] as number));
-      taps[i] = (lowpassed[i] as number) * (feedback[i] as number);
-    }
-    for (let step = 1; step < 8; step *= 2) {
-      for (let i = 0; i < 8; i += step * 2) {
-        for (let j = i; j < i + step; j += 1) {
-          const a = taps[j] as number;
-          const b = taps[j + step] as number;
-          taps[j] = a + b;
-          taps[j + step] = a - b;
-        }
-      }
-    }
-    let left = 0;
-    let right = 0;
-    for (let i = 0; i < 8; i += 1) {
-      const line = lines[i] as Float32Array;
-      const head = heads[i] as number;
-      const value = line[head] ?? 0;
-      if (i % 2 === 0) left += value * (sign[i] as number);
-      else right += value * (sign[i] as number);
-      line[head] = (taps[i] as number) * 0.3535 + source * 0.35 * (sign[(i + 3) % 8] as number);
-      heads[i] = (head + 1) % line.length;
-    }
-    out.l[n] = left * 0.5;
-    out.r[n] = right * 0.5;
-  }
-  return out;
-}
-
-export function pingPong(send: Stereo, seconds: number, feedback: number, damp: number): Stereo {
-  const delay = Math.round(seconds * RATE);
-  const out = stereo(send.l.length);
-  let lowL = 0;
-  let lowR = 0;
-  for (let n = delay; n < send.l.length; n += 1) {
-    const input = ((send.l[n - delay] ?? 0) + (send.r[n - delay] ?? 0)) * 0.5;
-    lowL += damp * (input + feedback * (out.r[n - delay] ?? 0) - lowL);
-    lowR += damp * (feedback * (out.l[n - delay] ?? 0) - lowR);
-    out.l[n] = lowL;
-    out.r[n] = lowR;
-  }
-  return out;
-}
-
 export function limit(audio: Stereo, ceiling: number, radius = 220): void {
   const length = audio.l.length;
   const floorGain = new Float32Array(length).fill(1);
@@ -225,4 +155,261 @@ export function wavBytes(audio: Stereo, seed: number): Uint8Array {
     bytes.setInt16(46 + i * 4, quantise(audio.r[i] ?? 0), true);
   }
   return new Uint8Array(bytes.buffer);
+}
+
+const twiddles = new Map<number, { cos: Float64Array; sin: Float64Array }>();
+
+export function fft(re: Float64Array, im: Float64Array, inverse = false): void {
+  const n = re.length;
+  let table = twiddles.get(n);
+  if (!table) {
+    const cos = new Float64Array(n / 2);
+    const sin = new Float64Array(n / 2);
+    for (let k = 0; k < n / 2; k += 1) {
+      cos[k] = Math.cos((2 * Math.PI * k) / n);
+      sin[k] = Math.sin((2 * Math.PI * k) / n);
+    }
+    table = { cos, sin };
+    twiddles.set(n, table);
+  }
+  for (let i = 1, j = 0; i < n; i += 1) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      const tr = re[i] as number;
+      re[i] = re[j] as number;
+      re[j] = tr;
+      const ti = im[i] as number;
+      im[i] = im[j] as number;
+      im[j] = ti;
+    }
+  }
+  const sign = inverse ? 1 : -1;
+  for (let size = 2; size <= n; size <<= 1) {
+    const half = size / 2;
+    const stride = n / size;
+    for (let start = 0; start < n; start += size) {
+      for (let k = 0; k < half; k += 1) {
+        const wr = table.cos[k * stride] as number;
+        const wi = sign * (table.sin[k * stride] as number);
+        const a = start + k;
+        const b = a + half;
+        const tr = (re[b] as number) * wr - (im[b] as number) * wi;
+        const ti = (re[b] as number) * wi + (im[b] as number) * wr;
+        re[b] = (re[a] as number) - tr;
+        im[b] = (im[a] as number) - ti;
+        re[a] = (re[a] as number) + tr;
+        im[a] = (im[a] as number) + ti;
+      }
+    }
+  }
+  if (inverse)
+    for (let i = 0; i < n; i += 1) {
+      re[i] = (re[i] as number) / n;
+      im[i] = (im[i] as number) / n;
+    }
+}
+
+/** stereo convolution with one complex FFT per signal: left rides in the real part, right in the imaginary part */
+export function convolve(signal: Stereo, ir: Stereo, length: number): Stereo {
+  let size = 1;
+  while (size < signal.l.length + ir.l.length) size <<= 1;
+  const xr = new Float64Array(size);
+  const xi = new Float64Array(size);
+  const hr = new Float64Array(size);
+  const hi = new Float64Array(size);
+  xr.set(signal.l);
+  xi.set(signal.r);
+  hr.set(ir.l);
+  hi.set(ir.r);
+  fft(xr, xi);
+  fft(hr, hi);
+  const yr = new Float64Array(size);
+  const yi = new Float64Array(size);
+  for (let k = 0; k < size; k += 1) {
+    const m = (size - k) % size;
+    const [ar, ai, br, bi] = [xr[k] as number, xi[k] as number, xr[m] as number, xi[m] as number];
+    const [cr, ci, dr, di] = [hr[k] as number, hi[k] as number, hr[m] as number, hi[m] as number];
+    const xlr = (ar + br) / 2;
+    const xli = (ai - bi) / 2;
+    const xrr = (ai + bi) / 2;
+    const xri = -(ar - br) / 2;
+    const hlr = (cr + dr) / 2;
+    const hli = (ci - di) / 2;
+    const hrr = (ci + di) / 2;
+    const hri = -(cr - dr) / 2;
+    const ylr = xlr * hlr - xli * hli;
+    const yli = xlr * hli + xli * hlr;
+    const yrr = xrr * hrr - xri * hri;
+    const yri = xrr * hri + xri * hrr;
+    yr[k] = ylr - yri;
+    yi[k] = yli + yrr;
+  }
+  fft(yr, yi, true);
+  const out = stereo(length);
+  for (let i = 0; i < length; i += 1) {
+    out.l[i] = yr[i] ?? 0;
+    out.r[i] = yi[i] ?? 0;
+  }
+  return out;
+}
+
+export interface ReverbShape {
+  rt60: number;
+  pre: number;
+  bright: [number, number];
+  early: number;
+  seed: number;
+  low: number;
+}
+
+/** an impulse response made from decaying noise that darkens as it dies, with early taps, decorrelated left and right */
+export function makeIR(shape: ReverbShape): Stereo {
+  const length = Math.round((shape.pre + shape.rt60 * 1.05) * RATE);
+  const out = stereo(length);
+  const common = rng(shape.seed + 999);
+  const shared = Float32Array.from({ length }, () => common() * 2 - 1);
+  for (const [c, channel] of [out.l, out.r].entries()) {
+    const next = rng(shape.seed + c * 101);
+    let state = 0;
+    for (let i = 0; i < length; i += 1) {
+      const t = i / RATE - shape.pre;
+      if (t < 0) continue;
+      const cutoff = shape.bright[0] * (shape.bright[1] / shape.bright[0]) ** Math.min(1, t / shape.rt60);
+      const a = 1 - Math.exp((-2 * Math.PI * cutoff) / RATE);
+      state += a * ((next() * 2 - 1) * 0.8 + (shared[i] ?? 0) * 0.5 - state);
+      channel[i] = state * Math.exp((-6.9078 * t) / shape.rt60) * Math.min(1, t / 0.012);
+    }
+    const taps = rng(shape.seed + 7 + c);
+    for (let k = 0; k < 9; k += 1) {
+      const at = Math.round((shape.pre + 0.004 + taps() * 0.07) * RATE);
+      channel[at] = (channel[at] ?? 0) + (taps() < 0.5 ? -1 : 1) * shape.early * (1 - k / 12) * 0.5;
+    }
+  }
+  const out2 = { l: highpass(out.l, shape.low), r: highpass(out.r, shape.low) };
+  let energy = 0;
+  for (let i = 0; i < length; i += 1) energy += (out2.l[i] as number) ** 2 + (out2.r[i] as number) ** 2;
+  const scale = 1 / Math.sqrt(energy / 2);
+  for (let i = 0; i < length; i += 1) {
+    out2.l[i] = (out2.l[i] as number) * scale;
+    out2.r[i] = (out2.r[i] as number) * scale;
+  }
+  return out2;
+}
+
+export interface Compressor {
+  threshold: number;
+  ratio: number;
+  attack: number;
+  release: number;
+  knee?: number;
+  makeup?: number;
+  /** listen to this signal instead of the input */
+  key?: Stereo;
+  /** share of the unprocessed signal kept (parallel compression) */
+  mix?: number;
+}
+
+/** feed-forward compressor with a stereo-linked peak detector; returns the deepest gain reduction in dB */
+export function compress(audio: Stereo, options: Compressor): number {
+  const { threshold, ratio, knee = 6, makeup = 0 } = options;
+  const key = options.key ?? audio;
+  const attack = Math.exp(-1 / (options.attack * RATE));
+  const release = Math.exp(-1 / (options.release * RATE));
+  const mix = options.mix ?? 1;
+  const post = dbGain(makeup);
+  let env = 0;
+  let deepest = 0;
+  for (let i = 0; i < audio.l.length; i += 1) {
+    const x = Math.max(Math.abs(key.l[i] ?? 0), Math.abs(key.r[i] ?? 0));
+    env = x > env ? attack * env + (1 - attack) * x : release * env + (1 - release) * x;
+    const level = 20 * Math.log10(Math.max(env, 1e-9));
+    const over = level - threshold;
+    const reduction =
+      over <= -knee / 2 ? 0 : over >= knee / 2 ? over * (1 - 1 / ratio) : ((over + knee / 2) ** 2 / (2 * knee)) * (1 - 1 / ratio);
+    deepest = Math.max(deepest, reduction);
+    const gain = dbGain(-reduction) * post;
+    audio.l[i] = (audio.l[i] ?? 0) * (mix * gain + (1 - mix));
+    audio.r[i] = (audio.r[i] ?? 0) * (mix * gain + (1 - mix));
+  }
+  return deepest;
+}
+
+/** asymmetric tanh saturation: adds even and odd harmonics the way tape and tubes do */
+export function saturate(audio: Stereo, drive: number, bias = 0.08): void {
+  const offset = Math.tanh(bias);
+  const norm = 1 / (drive * (1 - offset * offset));
+  for (let i = 0; i < audio.l.length; i += 1) {
+    audio.l[i] = (Math.tanh(drive * (audio.l[i] ?? 0) + bias) - offset) * norm;
+    audio.r[i] = (Math.tanh(drive * (audio.r[i] ?? 0) + bias) - offset) * norm;
+  }
+}
+
+export function lowShelf(audio: Stereo, hz: number, db: number): void {
+  const extra = dbGain(db) - 1;
+  const [lo, ro] = [lowpass(audio.l, hz), lowpass(audio.r, hz)];
+  for (let i = 0; i < audio.l.length; i += 1) {
+    audio.l[i] = (audio.l[i] ?? 0) + extra * (lo[i] ?? 0);
+    audio.r[i] = (audio.r[i] ?? 0) + extra * (ro[i] ?? 0);
+  }
+}
+
+export function highShelf(audio: Stereo, hz: number, db: number): void {
+  const extra = dbGain(db) - 1;
+  const [lo, ro] = [highpass(audio.l, hz), highpass(audio.r, hz)];
+  for (let i = 0; i < audio.l.length; i += 1) {
+    audio.l[i] = (audio.l[i] ?? 0) + extra * (lo[i] ?? 0);
+    audio.r[i] = (audio.r[i] ?? 0) + extra * (ro[i] ?? 0);
+  }
+}
+
+export function peakEq(audio: Stereo, hz: number, db: number, q: number): void {
+  const extra = dbGain(db) - 1;
+  const [lo, ro] = [bandpass(audio.l, hz, q), bandpass(audio.r, hz, q)];
+  for (let i = 0; i < audio.l.length; i += 1) {
+    audio.l[i] = (audio.l[i] ?? 0) + extra * (lo[i] ?? 0);
+    audio.r[i] = (audio.r[i] ?? 0) + extra * (ro[i] ?? 0);
+  }
+}
+
+/** a delay whose time follows the tempo; feedback bounces between the channels */
+export function pingPong(send: Stereo, seconds: (sample: number) => number, feedback: number, damp: number): Stereo {
+  const out = stereo(send.l.length);
+  let lowL = 0;
+  let lowR = 0;
+  let smooth = seconds(0) * RATE;
+  for (let n = 0; n < send.l.length; n += 1) {
+    smooth += 0.0005 * (seconds(n) * RATE - smooth);
+    const from = n - smooth;
+    if (from < 1) continue;
+    const i = Math.floor(from);
+    const f = from - i;
+    const read = (a: Float32Array): number => (a[i] ?? 0) * (1 - f) + (a[i + 1] ?? 0) * f;
+    const input = (read(send.l) + read(send.r)) * 0.5;
+    lowL += damp * (input + feedback * read(out.r) - lowL);
+    lowR += damp * (feedback * read(out.l) - lowR);
+    out.l[n] = lowL;
+    out.r[n] = lowR;
+  }
+  return out;
+}
+
+/** short modulated delays that thicken a signal and spread it across the stereo field */
+export function chorus(audio: Stereo, depthMs: number, rateHz: number, mix: number): Stereo {
+  const out = stereo(audio.l.length);
+  const base = 0.011 * RATE;
+  for (let n = 0; n < audio.l.length; n += 1) {
+    const sweepL = base + Math.sin(2 * Math.PI * rateHz * (n / RATE)) * depthMs * 0.001 * RATE;
+    const sweepR = base + Math.sin(2 * Math.PI * rateHz * 1.13 * (n / RATE) + 2) * depthMs * 0.001 * RATE;
+    const read = (a: Float32Array, d: number): number => {
+      const from = n - d;
+      if (from < 1) return 0;
+      const i = Math.floor(from);
+      return (a[i] ?? 0) * (1 - (from - i)) + (a[i + 1] ?? 0) * (from - i);
+    };
+    out.l[n] = (audio.l[n] ?? 0) * (1 - mix * 0.4) + read(audio.r, sweepL) * mix;
+    out.r[n] = (audio.r[n] ?? 0) * (1 - mix * 0.4) + read(audio.l, sweepR) * mix;
+  }
+  return out;
 }

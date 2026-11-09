@@ -59,9 +59,9 @@ function Fade() {
   return <Grain opacity={0.07 * (1 - ramp(frame, durationInFrames - 110, 70, ease.inOut))} />;
 }
 
-export function TourFilm({ probe }: { probe?: boolean }) {
+export function TourFilm({ probe, audio }: { probe?: boolean; audio?: string }) {
   return (
-    <Shell grain={false} probe={probe}>
+    <Shell grain={false} probe={probe} audio={audio}>
       {TOUR.shots.map((shot) => {
         const Scene = TOUR_SCENES[shot.id];
         return (
