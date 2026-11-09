@@ -3,7 +3,7 @@ import type { Box } from "../design/probe";
 import type { FlashIcon } from "../ui/s11-flash";
 import { shotOf } from "./timelines";
 
-type FlashKind = "plate" | "split" | "cards" | "scroll" | "ro";
+type FlashKind = "plate" | "split" | "cards" | "server";
 
 interface FlashHalf {
   take: string;
@@ -28,11 +28,13 @@ export interface Flash {
   right?: FlashHalf;
 }
 
-/** Four flashes of two beats at 138 bpm; light mode lives in the themes shot now, and the privacy line goes last because it is the why. */
+/** Four equal flashes: offline, share cards, a split library frame, and the plain-language one on who owns the files. */
+const EACH = shotOf("yours").beats / 4;
+
 export const S11_FLASHES: readonly Flash[] = [
   {
     id: "offline",
-    beats: 2,
+    beats: EACH,
     kind: "plate",
     take: "offline",
     plate: "offline",
@@ -41,9 +43,27 @@ export const S11_FLASHES: readonly Flash[] = [
     focus: { x: 200, y: 0, w: 900, h: 340 },
     scale: [1.75, 1.45],
   },
-  { id: "share", beats: 2, kind: "cards", chip: "share cards", icon: "share" },
-  { id: "scroll", beats: 2, kind: "scroll", chip: "10,000 songs", icon: "rows" },
-  { id: "privacy", beats: 2, kind: "ro", chip: "never touches your files", icon: "lock" },
+  { id: "share", beats: EACH, kind: "cards", chip: "share cards", icon: "share" },
+  {
+    id: "library",
+    beats: EACH,
+    kind: "split",
+    take: "following",
+    plate: "following",
+    chip: "following",
+    icon: "users",
+    focus: { x: 200, y: 330, w: 1240, h: 440 },
+    scale: [1.4, 1.6],
+    right: {
+      take: "doctor",
+      plate: "fixed",
+      chip: "fixes your library",
+      icon: "doctor",
+      focus: { x: 215, y: 40, w: 1000, h: 380 },
+      scale: [1.3, 1.45],
+    },
+  },
+  { id: "server", beats: EACH, kind: "server", chip: "your files stay yours", icon: "server" },
 ];
 
 const startBeat = (index: number): number => S11_FLASHES.slice(0, index).reduce((sum, flash) => sum + flash.beats, 0);
