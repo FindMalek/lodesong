@@ -193,7 +193,7 @@ const MIN_MEDIAN_DB: Record<string, number> = {
   tile: -6,
   enter: -6,
 };
-const MAX_KICK_GAP_MS = 4;
+const MAX_KICK_GAP_MS = 1;
 /** a kick that starts while the last one still rings has no clean onset to measure, ghost notes included */
 const KICK_TAIL_SECONDS = 0.27;
 /** an onset can hide under the ring of the previous sound; more than this share of cues doing it is a mix problem */
