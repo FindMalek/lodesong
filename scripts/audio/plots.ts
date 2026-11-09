@@ -152,7 +152,7 @@ export async function plotFilm(film: Film, dir: string, out: string): Promise<vo
   for (let w = 1; w < windows; w += 1) canvas.line(x(w - 1), c(corr[w - 1] ?? 0), x(w), c(corr[w] ?? 0), [120, 220, 140], 2);
   await Bun.write(`${out}/${film}-levels.png`, canvas.png());
 
-  for (const name of ["master", "drums", "bass", "music", "fx", "ui", "space"]) {
+  for (const name of ["master", "drums", "kicks", "bass", "music", "fx", "ui", "space"]) {
     const file = name === "master" ? `${dir}/${film}.wav` : `${dir}/stems/${film}-${name}.wav`;
     Bun.spawnSync([
       "ffmpeg",

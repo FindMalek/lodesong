@@ -391,7 +391,7 @@ function impact(style: string | undefined, dur: number, midi: number, seed: numb
   const thump = lowpass(noiseBuffer(n, seed), 240);
   const mid = bandpass(noiseBuffer(n, seed + 1), 1100, 1);
   const tau = big ? 1.5 : medium ? 0.7 : 0.3;
-  const weight = big ? 1.1 : medium ? 0.8 : 0.4;
+  const weight = big ? 1.1 : medium ? 0.8 : 0.55;
   for (let i = 0; i < n; i += 1) {
     const t = i / RATE;
     phase += (TAU * (31 + 34 * env(t, 0.09))) / RATE;
