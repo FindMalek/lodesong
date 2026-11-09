@@ -20,20 +20,20 @@ const LAYOUT = plateLayout(PLATE);
 const FULL = { x: 0, y: 0, ...PLATE };
 const g = (frame: number): number => frame / 30;
 
-const OPEN_PICKER = 34;
-const PICK_PHONE = 66;
-const WHIP_AT = 72;
+const OPEN_PICKER = 20;
+const PICK_PHONE = 72;
+const WHIP_AT = 78;
 const WHIP_LENGTH = 10;
-const LISTEN_AT = SHOT.beat(10);
+const LISTEN_AT = SHOT.beat(9.25);
 const START_SESSION = { x: 220, y: 251, w: 100, h: 26 };
 
 const LINE_AT = 6;
 const FLIGHT_FROM = 40;
 const FLIGHT_LENGTH = 58;
 const ARRIVE = FLIGHT_FROM + FLIGHT_LENGTH;
-const CHIPS_FROM = ARRIVE + 6;
-const CHIP_STEP = 7;
-const CLIENTS = ["web", "macos", "ios", "android", "desktop", "arpeggi"] as const;
+const CHIPS_FROM = 22;
+const CHIP_STEP = 9;
+const CLIENTS = ["web", "ios", "android"] as const;
 
 export const S8_CUES: readonly ShotCue[] = [
   { shot: "session", at: OPEN_PICKER, kind: "click", label: "devices" },
@@ -262,20 +262,6 @@ function Devices() {
             </div>
           );
         })}
-      </div>
-      <div
-        data-legible=""
-        style={{
-          position: "absolute",
-          left: 70,
-          top: 975,
-          fontFamily: "var(--font-mono)",
-          fontSize: 28,
-          color: "var(--muted-foreground)",
-          opacity: ramp(frame, 16, 14),
-        }}
-      >
-        device frames are art, screens are real captures
       </div>
     </>
   );

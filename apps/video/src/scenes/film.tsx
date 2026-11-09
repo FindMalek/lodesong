@@ -9,6 +9,7 @@ import { LandShot } from "./shot-land";
 import { LyricsShot } from "./shot-lyrics";
 import { MixesShot } from "./shot-mixes";
 import { MoodShot } from "./shot-mood";
+import { NotchShot } from "./shot-notch";
 import { PlayLineShot } from "./shot-play-line";
 import { QueueShot } from "./shot-queue";
 import { SessionShot } from "./shot-session";
@@ -27,6 +28,7 @@ export const HERO_SCENES: Record<ShotId, ComponentType> = {
   mood: MoodShot,
   session: SessionShot,
   shells: ShellsShot,
+  notch: NotchShot,
   keys: KeysShot,
   yours: YoursShot,
   land: LandShot,

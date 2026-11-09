@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ShotCue } from "../captures/types";
 import { S7_CUES } from "./shot-mood";
+import { NOTCH_CUES } from "./shot-notch";
 import { S8_CUES } from "./shot-session";
 import { S9_CUES } from "./shot-shells";
 import { shotOf } from "./timelines";
@@ -9,9 +10,10 @@ const SHOTS = [
   { cues: S7_CUES, id: "mood" },
   { cues: S8_CUES, id: "session" },
   { cues: S9_CUES, id: "shells" },
+  { cues: NOTCH_CUES, id: "notch" },
 ] as const;
 
-describe("S7 to S9 cue lists", () => {
+describe("S7 to S9 and notch cue lists", () => {
   for (const { cues, id } of SHOTS) {
     test(`${id}: every cue lands inside its shot`, () => {
       const { frames } = shotOf(id);
