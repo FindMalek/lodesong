@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Img, Sequence, staticFile, useCurrentFrame } from "remotion";
+import { Img, Sequence, useCurrentFrame } from "remotion";
 import type { ShotCue } from "../captures/types";
 import { addCam, Camera, camAt, handheld } from "../design/camera";
 import { Cursor, type CursorStop } from "../design/cursor";
@@ -8,6 +8,7 @@ import { ease, hash, ramp } from "../design/motion";
 import { Plate, plateKeys, plateLayout } from "../design/plate";
 import { Keycap, pressAt } from "../ui/keycap";
 import { Chip } from "../ui/s7-chip";
+import { filmPlate as film } from "../ui/s8-real-crop";
 import { shotOf } from "./timelines";
 
 const SHOT = shotOf("mood");
@@ -16,7 +17,6 @@ const LAYOUT = plateLayout(PLATE);
 const LIFT = 1.3;
 const FULL = { x: 0, y: 0, ...PLATE };
 const g = (frame: number): number => frame / 30;
-const film = (name: string): string => staticFile(`film/${name}.png`);
 
 const PROMPT = "late night drive, 90s, no vocals";
 const TYPE_FROM = 6;
@@ -241,7 +241,7 @@ export function MoodShot() {
       <Sequence layout="none" from={GYM_AT} durationInFrames={SHOT.frames - GYM_AT}>
         <Gym />
       </Sequence>
-      <Chip text="ask for a mood" from={8} style={{ left: 70, top: 950 }} />
+      <Chip text="ask for a mood" from={8} style={{ left: 70, top: 34 }} />
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { Img } from "remotion";
+import { plateSrc } from "../captures/film-manifest";
 
 interface PlateBox {
   x: number;
@@ -25,4 +26,9 @@ export function RealCrop({ src, box, plate, width }: RealCropProps) {
       />
     </div>
   );
+}
+
+export function filmPlate(id: string): string {
+  const [take = "", plate = ""] = id.split("/");
+  return plateSrc(take, plate);
 }

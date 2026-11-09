@@ -1,4 +1,5 @@
-import { Img, Sequence, staticFile, useCurrentFrame } from "remotion";
+import { Img, Sequence, useCurrentFrame } from "remotion";
+import { plateBox } from "../captures/film-manifest";
 import type { ShotCue } from "../captures/types";
 import { addCam, Camera, camAt, camTo, handheld, Layer } from "../design/camera";
 import { Cursor, type CursorStop, cursorAt } from "../design/cursor";
@@ -10,7 +11,7 @@ import { ease, lerp, ramp } from "../design/motion";
 import { Plate, plateKeys, plateLayout } from "../design/plate";
 import { Whip } from "../design/whip";
 import { Chip } from "../ui/s7-chip";
-import { RealCrop } from "../ui/s8-real-crop";
+import { filmPlate as film, RealCrop } from "../ui/s8-real-crop";
 import { shotOf } from "./timelines";
 
 const SHOT = shotOf("session");
@@ -18,7 +19,6 @@ const PLATE = { w: 1440, h: 810 };
 const LAYOUT = plateLayout(PLATE);
 const FULL = { x: 0, y: 0, ...PLATE };
 const g = (frame: number): number => frame / 30;
-const film = (name: string): string => staticFile(`film/${name}.png`);
 
 const OPEN_PICKER = 34;
 const PICK_PHONE = 66;
@@ -46,8 +46,8 @@ export const S8_CUES: readonly ShotCue[] = [
 
 const pointerSize = (scale: number): number => 38 / (LAYOUT.k * scale);
 
-const DEVICES_BTN = { x: 1206, y: 762, w: 32, h: 32 };
-const IPHONE_ROW = { x: 1014, y: 726, w: 224, h: 32 };
+const DEVICES_BTN = plateBox("devices", "picker", "devices");
+const IPHONE_ROW = plateBox("devices", "picker", "iphone");
 
 const CURSOR: CursorStop[] = [
   { at: g(0), x: 330, y: 160 },
@@ -62,7 +62,8 @@ function Desktop() {
     camAt(
       frame,
       plateKeys(LAYOUT, [
-        { at: g(0), box: FULL, scale: 1.04, ry: -4, rx: 1 },
+        { at: g(0), box: FULL, scale: 1, ry: -3, rx: 0.6 },
+        { at: g(8), box: FULL, scale: 1.02, ry: -3, rx: 0.6 },
         { at: g(OPEN_PICKER), box: { x: 880, y: 610, w: 560, h: 200 }, scale: 2, ry: -3 },
         { at: g(PICK_PHONE), box: { x: 940, y: 640, w: 420, h: 150 }, scale: 2.3, ry: -1 },
       ]),
@@ -72,7 +73,7 @@ function Desktop() {
   const src = frame < OPEN_PICKER ? "queue/queue" : frame < PICK_PHONE ? "devices/picker" : "devices/handed-off";
   return (
     <Camera cam={cam}>
-      <Plate src={film(src)} layout={LAYOUT} brightness={1.3} light={{ x: pointer.x, y: pointer.y, radius: 560, dim: 0.62, wash: 0.2 }}>
+      <Plate src={film(src)} layout={LAYOUT} brightness={1.3} light={{ x: pointer.x, y: pointer.y, radius: 560, dim: 0.62, wash: 0 }}>
         <Bracket box={DEVICES_BTN} at={g(OPEN_PICKER - 6)} pad={8} arm={12} width={2.5} length={0.4} />
         <Bracket box={IPHONE_ROW} at={g(PICK_PHONE - 8)} pad={6} arm={12} width={2.5} length={0.4} />
         <Cursor stops={CURSOR} size={pointerSize(cam.scale)} />
@@ -170,99 +171,109 @@ function Devices() {
     handheld(frame, 0.8),
   );
   return (
-    <Camera cam={cam}>
-      <Layer z={-140}>
-        <div
-          style={{
-            position: "absolute",
-            left: 420,
-            top: 120,
-            width: 1100,
-            height: 800,
-            background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 30%, transparent), transparent)",
-            opacity: 0.75,
-          }}
-        />
-      </Layer>
-      <Layer z={0}>
-        <div style={{ position: "absolute", inset: 0, filter: macBlur > 0.3 ? `blur(${macBlur.toFixed(2)}px)` : undefined }}>
-          <DeviceFrame kind="mac" width={MAC.width} note={false} style={{ left: MAC.left, top: MAC.top }}>
-            <MacScreen src={film("devices/handed-off")} />
-          </DeviceFrame>
-        </div>
-        <div style={{ position: "absolute", inset: 0, filter: phoneBlur > 0.3 ? `blur(${phoneBlur.toFixed(2)}px)` : undefined }}>
-          <DeviceFrame
-            kind="iphone"
-            width={PHONE.width}
-            note={false}
-            src={film(arrived ? "devices/phone-after" : "devices/phone-before")}
-            style={{ left: PHONE.left, top: PHONE.top }}
+    <>
+      <Camera cam={cam}>
+        <Layer z={-140}>
+          <div
+            style={{
+              position: "absolute",
+              left: 420,
+              top: 120,
+              width: 1100,
+              height: 800,
+              background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 30%, transparent), transparent)",
+              opacity: 0.75,
+            }}
           />
-        </div>
-        <ConnectLine
-          from={FROM}
-          to={TO}
-          at={g(LINE_AT)}
-          length={1.1}
-          bend={BEND}
-          width={5}
-          size={STAGE}
-          pulse={{ at: g(FLIGHT_FROM - 8), length: 1.2 }}
-        />
-        <Flight frame={frame} />
-        <Landing frame={frame} />
-        {frame >= ARRIVE ? (
-          <Bracket
-            box={{ x: phoneScreen.x, y: phoneScreen.y + 771 * phoneScreen.k, w: phoneScreen.w, h: 73 * phoneScreen.k }}
-            at={g(ARRIVE + 2)}
-            pad={4}
-            arm={30}
-            width={3}
-            length={0.5}
+        </Layer>
+        <Layer z={0}>
+          <div
+            style={{ position: "absolute", inset: 0, filter: `brightness(1.3)${macBlur > 0.3 ? ` blur(${macBlur.toFixed(2)}px)` : ""}` }}
+          >
+            <DeviceFrame kind="mac" width={MAC.width} note={false} style={{ left: MAC.left, top: MAC.top }}>
+              <MacScreen src={film("devices/handed-off")} />
+            </DeviceFrame>
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              filter: `brightness(1.3)${phoneBlur > 0.3 ? ` blur(${phoneBlur.toFixed(2)}px)` : ""}`,
+            }}
+          >
+            <DeviceFrame
+              kind="iphone"
+              width={PHONE.width}
+              note={false}
+              src={film(arrived ? "devices/phone-after" : "devices/phone-before")}
+              style={{ left: PHONE.left, top: PHONE.top }}
+            />
+          </div>
+          <ConnectLine
+            from={FROM}
+            to={TO}
+            at={g(LINE_AT)}
+            length={1.1}
+            bend={BEND}
+            width={5}
+            size={STAGE}
+            pulse={{ at: g(FLIGHT_FROM - 8), length: 1.2 }}
           />
-        ) : null}
-        <div style={{ position: "absolute", left: MAC.left, top: 880, display: "flex", gap: 14 }}>
-          {CLIENTS.map((label, i) => {
-            const t = ramp(frame, CHIPS_FROM + i * CHIP_STEP, 12, ease.out);
-            return (
-              <div key={label} style={{ overflow: "hidden", paddingBottom: 6 }}>
-                <div
-                  data-legible=""
-                  style={{
-                    transform: `translateY(${lerp(120, 0, t)}%)`,
-                    padding: "8px 16px",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 28,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "var(--foreground)",
-                    border: "1px solid color-mix(in oklch, var(--foreground) 30%, transparent)",
-                    background: "rgb(0 0 0 / 0.7)",
-                  }}
-                >
-                  {label}
-                </div>
+          <Flight frame={frame} />
+          <Landing frame={frame} />
+          {frame >= ARRIVE ? (
+            <Bracket
+              box={{ x: phoneScreen.x, y: phoneScreen.y + 771 * phoneScreen.k, w: phoneScreen.w, h: 73 * phoneScreen.k }}
+              at={g(ARRIVE + 2)}
+              pad={4}
+              arm={30}
+              width={3}
+              length={0.5}
+            />
+          ) : null}
+        </Layer>
+        <Bokeh focusZ={0} z={300} count={14} seed={9} opacity={0.26} />
+      </Camera>
+      <div style={{ position: "absolute", left: 70, top: 884, display: "flex", gap: 14 }}>
+        {CLIENTS.map((label, i) => {
+          const t = ramp(frame, CHIPS_FROM + i * CHIP_STEP, 12, ease.out);
+          return (
+            <div key={label} style={{ overflow: "hidden", paddingBottom: 6 }}>
+              <div
+                data-legible=""
+                style={{
+                  transform: `translateY(${lerp(120, 0, t)}%)`,
+                  padding: "8px 16px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 28,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--foreground)",
+                  border: "1px solid color-mix(in oklch, var(--foreground) 30%, transparent)",
+                  background: "rgb(0 0 0 / 0.7)",
+                }}
+              >
+                {label}
               </div>
-            );
-          })}
-        </div>
-        <div
-          data-legible=""
-          style={{
-            position: "absolute",
-            left: MAC.left,
-            top: 975,
-            fontFamily: "var(--font-mono)",
-            fontSize: 28,
-            color: "var(--muted-foreground)",
-            opacity: ramp(frame, 16, 14),
-          }}
-        >
-          device frames are art, screens are real captures
-        </div>
-      </Layer>
-      <Bokeh focusZ={0} z={300} count={14} seed={9} opacity={0.26} />
-    </Camera>
+            </div>
+          );
+        })}
+      </div>
+      <div
+        data-legible=""
+        style={{
+          position: "absolute",
+          left: 70,
+          top: 975,
+          fontFamily: "var(--font-mono)",
+          fontSize: 28,
+          color: "var(--muted-foreground)",
+          opacity: ramp(frame, 16, 14),
+        }}
+      >
+        device frames are art, screens are real captures
+      </div>
+    </>
   );
 }
 

@@ -1,8 +1,7 @@
-import { staticFile } from "remotion";
 import compact from "../../../../docs/macos/compact.png";
 import open from "../../../../docs/macos/open.png";
 import { ease, lerp, ramp } from "../design/motion";
-import { RealCrop } from "./s8-real-crop";
+import { filmPlate, RealCrop } from "./s8-real-crop";
 
 const ASSET = { w: 1280, h: 520 };
 const COMPACT = { x0: 336, x1: 944, h: 76 };
@@ -27,7 +26,7 @@ interface NotchIslandProps {
 function Cover({ size, radius }: { size: number; radius: number }) {
   return (
     <div style={{ width: size, height: size, borderRadius: radius, overflow: "hidden" }}>
-      <RealCrop src={staticFile("film/queue/queue.png")} box={COVER_BOX} plate={PLATE} width={size} />
+      <RealCrop src={filmPlate("queue/queue")} box={COVER_BOX} plate={PLATE} width={size} />
     </div>
   );
 }

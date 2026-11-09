@@ -1,11 +1,10 @@
 import { PauseIcon, PlayIcon, SkipBackIcon, SkipForwardIcon } from "lucide-react";
-import { staticFile } from "remotion";
 import { clock } from "../copy";
 import { gold } from "../design/gold";
 import { ease, ramp } from "../design/motion";
 import { Caret, typedCount } from "../design/typing";
 import { DitherCover } from "./dither-cover";
-import { RealCrop } from "./s8-real-crop";
+import { filmPlate, RealCrop } from "./s8-real-crop";
 
 const COVER_BOX = { x: 219, y: 74, w: 154, h: 154 };
 const PLATE = { w: 1440, h: 810 };
@@ -49,7 +48,7 @@ export function TerminalMock({ frame, first, second, enterFirst, enterSecond, po
           {nextDone ? (
             <DitherCover id="static-echo-at-night" size={COVER} develop={swap} time={frame / 60} color={gold(1)} />
           ) : (
-            <RealCrop src={staticFile("film/queue/queue.png")} box={COVER_BOX} plate={PLATE} width={COVER} />
+            <RealCrop src={filmPlate("queue/queue")} box={COVER_BOX} plate={PLATE} width={COVER} />
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 8 }}>
