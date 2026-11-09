@@ -7,6 +7,7 @@ import { CUT_SCENES } from "./scenes/cutdown";
 import { Film, HERO_SCENES } from "./scenes/film";
 import { LEGACY_SCENES } from "./scenes/legacy";
 import { LEGACY_HERO_SHOTS, LOOP } from "./scenes/legacy-timelines";
+import { LENS_DEMO_BEATS, LensDemo } from "./scenes/lens-demo";
 import { Loop } from "./scenes/loop";
 import { Open } from "./scenes/open";
 import { FRAMES } from "./scenes/open-timeline";
@@ -66,6 +67,7 @@ const SHOT_STUDIO: Item[] = HERO.shots.map((shot) => ({
 /** The pre-v2 scenes keep their old ids and their constant 120 bpm grid until the new shots replace them. */
 const LEGACY: Item[] = [
   { id: "scene-open", component: Open, frames: FRAMES, size: WIDE },
+  { id: "scene-lens-demo", component: LensDemo, frames: gridBeat(LENS_DEMO_BEATS), size: WIDE },
   ...Object.entries(LEGACY_SCENES)
     .filter(([id]) => id !== "open")
     .map(([id, Shot]) => ({
