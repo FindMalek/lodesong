@@ -1,4 +1,4 @@
-import { Img, useCurrentFrame } from "remotion";
+import { Img, Sequence, useCurrentFrame } from "remotion";
 import { plateSrc } from "../captures/film-manifest";
 import { COPY, FILM } from "../copy";
 import { FPS } from "../design/beat";
@@ -8,21 +8,24 @@ import { MaskLine, VOID } from "../design/kinetic";
 import { ease, lerp, ramp } from "../design/motion";
 import { Caret, typedCount } from "../design/typing";
 import { DitherCover } from "../ui/dither-cover";
-import { S12_LINES, S12_TIMES, S12_TYPED } from "./s12-plan";
+import { FlashChip, PlateFlash } from "../ui/s11-flash";
+import { type Intercut as IntercutPlan, S12_INTERCUTS, S12_LINES, S12_TIMES, S12_TYPED } from "./s12-plan";
+import { shotOf } from "./timelines";
+
+const shot = shotOf("land");
 
 const VEIN = "M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z";
 
-const WINDOW = { x: 800, y: 60, w: 1060 };
 const PLATE = { w: 1440, h: 810 };
-const K = WINDOW.w / PLATE.w;
-const WINDOW_H = PLATE.h * K;
+const K = 1920 / PLATE.w;
 const COVER = { x: 38, y: 40, w: 487, h: 487 };
-const COVER_WORLD = { x: WINDOW.x + COVER.x * K, y: WINDOW.y + COVER.y * K, size: COVER.w * K };
-const CODE = { x: WINDOW.x, y: 690, w: WINDOW.w, font: 31 };
-const CODE_H = 216;
-const URL_AT = { x: WINDOW.x, y: 940, font: 46 };
+const COVER_WORLD = { x: COVER.x * K, y: COVER.y * K, size: COVER.w * K };
+const CODE = { x: 700, y: 836, font: 30 };
+const CODE_H = CODE.font * 1.5 * S12_LINES.length;
+const URL_AT = { x: CODE.x, y: 982, font: 40 };
 const CENTER = { x: 960, y: 540 };
 const SAFE_BLUR_FRAMES = [S12_TIMES.enter, S12_TIMES.enter + 46] as const;
+const DRIFT = 0.022;
 
 interface View {
   cx: number;
@@ -31,8 +34,8 @@ interface View {
   ry: number;
 }
 
-const BLOCK_VIEW: View = { cx: CODE.x + CODE.w / 2, cy: CODE.y + CODE_H / 2, scale: 1.6, ry: -3 };
-const COVER_VIEW: View = { cx: COVER_WORLD.x + COVER_WORLD.size / 2, cy: COVER_WORLD.y + COVER_WORLD.size / 2, scale: 2.2, ry: -3 };
+const BLOCK_VIEW: View = { cx: CODE.x + 470, cy: CODE.y + CODE_H / 2, scale: 1.6, ry: -3 };
+const COVER_VIEW: View = { cx: COVER_WORLD.x + COVER_WORLD.size / 2, cy: COVER_WORLD.y + COVER_WORLD.size / 2, scale: 1.5, ry: -3 };
 const HOME_VIEW: View = { cx: CENTER.x, cy: CENTER.y, scale: 1, ry: 0 };
 
 const mix = (a: View, b: View, t: number): View => ({
@@ -42,10 +45,10 @@ const mix = (a: View, b: View, t: number): View => ({
   ry: lerp(a.ry, b.ry, t),
 });
 
-/** Tight on the typing, a short travel up to the cover, then the long pull-back to a front-on frame that holds at exactly 1x. */
+/** Tight on the typing, a short travel up to the cover, then the pull-back to a front-on frame that holds at exactly 1x. */
 function viewAt(frame: number): View {
-  const { enter, travelled, settled } = S12_TIMES;
-  const drift = mix(BLOCK_VIEW, { ...BLOCK_VIEW, scale: 1.68 }, ramp(frame, 0, enter, ease.out));
+  const { intercutEnd, enter, travelled, settled } = S12_TIMES;
+  const drift = mix(BLOCK_VIEW, { ...BLOCK_VIEW, scale: 1.68 }, ramp(frame, intercutEnd, enter - intercutEnd, ease.out));
   if (frame < enter) return drift;
   const toCover = mix({ ...BLOCK_VIEW, scale: 1.68 }, COVER_VIEW, ramp(frame, enter, travelled - enter, ease.inOut));
   if (frame < travelled) return toCover;
@@ -77,7 +80,7 @@ function Wordmark({ font, at, legible }: { font: number; at: number; legible: bo
 function Command({ frame }: { frame: number }) {
   const { enter, settled } = S12_TIMES;
   const calm = frame < enter + 2 || frame >= settled;
-  const lit = frame >= enter ? 1 - ramp(frame, enter, 18) : 0;
+  const lit = frame >= enter ? 1 - ramp(frame, enter, 20) : 0;
   const lastRow = S12_TYPED.findLastIndex((row) => typedCount(frame, row) > 0);
   const done = typedCount(frame, S12_TYPED.at(-1) ?? []) === (S12_LINES.at(-1)?.length ?? 0);
   return (
@@ -86,16 +89,12 @@ function Command({ frame }: { frame: number }) {
         position: "absolute",
         left: CODE.x,
         top: CODE.y,
-        width: CODE.w,
-        height: CODE_H,
-        padding: "30px 36px",
-        boxSizing: "border-box",
-        border: `1px solid color-mix(in oklch, var(--ignite) ${Math.round(lit * 100)}%, color-mix(in oklch, var(--foreground) 32%, transparent))`,
-        background: `color-mix(in oklch, var(--ignite) ${Math.round(lit * 22)}%, #050505)`,
+        color: gold(lit),
         fontFamily: "var(--font-mono)",
         fontSize: CODE.font,
         lineHeight: 1.5,
         whiteSpace: "pre",
+        textShadow: lit > 0 ? `0 0 ${Math.round(lit * 28)}px color-mix(in oklch, var(--ignite) 60%, transparent)` : undefined,
       }}
     >
       {S12_LINES.map((line, row) => {
@@ -112,11 +111,11 @@ function Command({ frame }: { frame: number }) {
 }
 
 function Cover({ frame }: { frame: number }) {
-  const { enter, hit } = S12_TIMES;
+  const { enter, settled } = S12_TIMES;
   const develop = ramp(frame, enter + 2, 18);
   const orb = frame < enter ? 0 : 1 - ramp(frame, enter + 24, 16);
-  const pulse = ramp(frame, hit, 8) * (1 - ramp(frame, hit + 8, 26));
-  const halo = COVER_WORLD.size * lerp(1.5, 1.95, ramp(frame, enter, 40)) * (1 + 0.18 * pulse);
+  const halo = COVER_WORLD.size * lerp(1.5, 1.95, ramp(frame, enter, 40));
+  const fade = 1 - ramp(frame, settled - 20, 20);
   return (
     <>
       <div
@@ -126,7 +125,7 @@ function Cover({ frame }: { frame: number }) {
           top: COVER_WORLD.y + COVER_WORLD.size / 2 - halo,
           width: halo * 2,
           height: halo * 2,
-          background: glowOf(ramp(frame, enter, 14), 34 + Math.round(pulse * 20)),
+          background: glowOf(ramp(frame, enter, 14) * fade, 34),
         }}
       />
       <div style={{ position: "absolute", left: COVER_WORLD.x, top: COVER_WORLD.y, opacity: orb }}>
@@ -137,83 +136,67 @@ function Cover({ frame }: { frame: number }) {
 }
 
 function AppWindow({ frame }: { frame: number }) {
-  const { enter, travelled, settled } = S12_TIMES;
-  const open = ramp(frame, enter + 20, settled - enter - 20, ease.inOut);
+  const { enter, settled, end } = S12_TIMES;
+  const open = ramp(frame, enter + 20, settled - enter - 30, ease.inOut);
   const edge = (from: number, to: number) => lerp(from, to, open);
   const clip = `inset(${edge(COVER.y, 0)}px ${edge(PLATE.w - COVER.x - COVER.w, 0)}px ${edge(PLATE.h - COVER.y - COVER.h, 0)}px ${edge(COVER.x, 0)}px)`;
-  const visible = ramp(frame, enter + 24, 10);
+  const drift = 1 + DRIFT * ramp(frame, settled, end - 12 - settled, ease.out);
   return (
-    <>
+    <div style={{ position: "absolute", inset: 0, transform: `scale(${drift})` }}>
       <div
         style={{
           position: "absolute",
-          left: WINDOW.x,
-          top: WINDOW.y,
+          left: 0,
+          top: 0,
           width: PLATE.w,
           height: PLATE.h,
           transform: `scale(${K})`,
           transformOrigin: "0 0",
           clipPath: clip,
-          opacity: visible,
+          opacity: ramp(frame, enter + 24, 10),
         }}
       >
         <Img
           src={plateSrc("lyrics-full", "line-02")}
-          style={{ width: "100%", height: "100%", display: "block", filter: "brightness(1.18)" }}
+          style={{ width: "100%", height: "100%", display: "block", filter: "brightness(1.35)" }}
         />
       </div>
-      <div
-        style={{
-          position: "absolute",
-          left: WINDOW.x,
-          top: WINDOW.y,
-          width: WINDOW.w,
-          height: WINDOW_H,
-          boxSizing: "border-box",
-          border: "1px solid color-mix(in oklch, var(--foreground) 30%, transparent)",
-          opacity: ramp(frame, travelled + 30, 12),
-        }}
-      />
-    </>
+    </div>
   );
 }
 
 function EndCard({ frame }: { frame: number }) {
-  const { wordmark, tagline, thread, hit, settled } = S12_TIMES;
+  const { band, wordmark, tagline, hit, settled } = S12_TIMES;
   const steady = frame >= settled;
-  const line = ramp(frame, thread, 22, ease.inOut);
   const flash = ramp(frame, hit, 3) * (1 - ramp(frame, hit + 3, 14));
   return (
     <>
-      <div style={{ position: "absolute", left: 96, top: 270 }}>
-        <Wordmark font={104} at={wordmark} legible={steady} />
-      </div>
-      <div
-        data-legible={steady ? "" : undefined}
-        style={{ position: "absolute", left: 96, top: 440, fontSize: 96, fontWeight: 500, letterSpacing: "-0.045em", lineHeight: 1.06 }}
-      >
-        <MaskLine from={tagline} length={14}>
-          {COPY.headline[0]}
-        </MaskLine>
-        <MaskLine from={tagline + 6} length={14} style={{ color: "var(--muted-foreground)" }}>
-          {COPY.headline[1]}
-        </MaskLine>
-      </div>
       <div
         style={{
           position: "absolute",
-          left: 96,
-          top: 700,
-          width: 560 * line,
-          height: 2,
-          background: "var(--ignite)",
-          boxShadow: `0 0 ${14 + flash * 30}px color-mix(in oklch, var(--ignite) ${50 + Math.round(flash * 50)}%, transparent)`,
+          left: 0,
+          top: 560,
+          width: 1920,
+          height: 520,
+          background: "linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.55) 22%, rgb(0 0 0 / 0.96) 46%, #000 60%)",
+          opacity: ramp(frame, band, 14),
         }}
       />
+      <div style={{ position: "absolute", left: 96, top: 832 }}>
+        <Wordmark font={84} at={wordmark} legible={steady} />
+      </div>
+      <div
+        data-legible={steady ? "" : undefined}
+        style={{ position: "absolute", left: 96, top: 932, fontSize: 44, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
+      >
+        <MaskLine from={tagline} length={14}>
+          {COPY.headline[0]} <span style={{ color: "var(--muted-foreground)" }}>{COPY.headline[1]}</span>
+        </MaskLine>
+      </div>
       <div style={{ position: "absolute", left: URL_AT.x, top: URL_AT.y, color: "var(--foreground)" }}>
         <MaskLine from={hit} length={8}>
           <span
-            data-legible={steady ? "" : undefined}
+            data-legible={frame >= hit + 10 ? "" : undefined}
             style={{ fontFamily: "var(--font-mono)", fontSize: URL_AT.font, letterSpacing: "0.02em", fontWeight: 500, lineHeight: 1.25 }}
           >
             {FILM.end.url}
@@ -224,11 +207,11 @@ function EndCard({ frame }: { frame: number }) {
         style={{
           position: "absolute",
           left: URL_AT.x,
-          top: URL_AT.y + 64,
-          width: WINDOW.w * ramp(frame, hit, 12, ease.out),
+          top: URL_AT.y + 54,
+          width: 560 * ramp(frame, hit, 12, ease.out),
           height: 2,
           background: "var(--ignite)",
-          opacity: 0.9,
+          boxShadow: `0 0 ${10 + flash * 30}px color-mix(in oklch, var(--ignite) ${40 + Math.round(flash * 60)}%, transparent)`,
         }}
       />
     </>
@@ -241,9 +224,20 @@ function World() {
     <Camera cam={camOf(viewAt(frame))}>
       <Cover frame={frame} />
       <AppWindow frame={frame} />
-      <Command frame={frame} />
       <EndCard frame={frame} />
+      <Command frame={frame} />
     </Camera>
+  );
+}
+
+function Intercut({ cut, frames }: { cut: IntercutPlan; frames: number }) {
+  const frame = useCurrentFrame();
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <PlateFlash take={cut.take} plate={cut.plate} focus={cut.focus} scale={cut.scale} frames={frames} frame={frame} />
+      <div style={{ position: "absolute", inset: 0, background: `rgb(255 255 255 / ${0.2 * (1 - ramp(frame, 0, 4))})` }} />
+      <FlashChip icon={cut.icon} text={cut.chip} frame={frame} at={1} />
+    </div>
   );
 }
 
@@ -251,8 +245,20 @@ export function LandShot() {
   const frame = useCurrentFrame();
   const blur = frame >= SAFE_BLUR_FRAMES[0] && frame < SAFE_BLUR_FRAMES[1];
   return (
-    <CameraBlur active={blur} samples={6} shutter={0.5} backdrop={VOID}>
-      <World />
-    </CameraBlur>
+    <>
+      {S12_INTERCUTS.map((cut, i) => {
+        const from = shot.beat(i);
+        return (
+          <Sequence key={cut.id} from={from} durationInFrames={shot.beat(i + 1) - from} name={cut.id}>
+            <Intercut cut={cut} frames={shot.beat(i + 1) - from} />
+          </Sequence>
+        );
+      })}
+      {frame >= S12_TIMES.intercutEnd ? (
+        <CameraBlur active={blur} samples={6} shutter={0.5} backdrop={VOID}>
+          <World />
+        </CameraBlur>
+      ) : null}
+    </>
   );
 }
