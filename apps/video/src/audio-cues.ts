@@ -121,37 +121,6 @@ function manifest(
 /** Cues the shots export (scripts/audio/shot-cues.ts reads S<n>_CUES): the real frames of everything on screen. */
 const SHOT_CUES = shotCues as readonly UiEvent[];
 
-/** Placeholder events at the storyboard's moments. The capture manifest replaces this: every {frame, kind} owns a sound. */
-const HERO_UI: readonly Pin[] = [
-  ["the lyrics", 0, "key", "shift f"],
-  ["the lyrics", 1.5, "line", "lyric line 1"],
-  ["the lyrics", 3, "line", "lyric line 2"],
-  ["the lyrics", 4.25, "key", "nudge ]"],
-  ["the lyrics", 4.5, "chip", "nudge toast"],
-  ["the lyrics", 5.5, "line", "lyric line 3"],
-  ["the lyrics", 7.5, "line", "lyric line 4"],
-  ["the lyrics", 9, "line", "lyric line 5"],
-  ["the lyrics", 10, "click", "click a line"],
-  ["the lyrics", 10.1, "seek", "playback jumps"],
-  ["the queue", 0, "key", "q"],
-  ["the queue", 0.5, "row", "queue row 1"],
-  ["the queue", 0.75, "row", "queue row 2"],
-  ["the queue", 1, "row", "queue row 3"],
-  ["the queue", 1.25, "row", "queue row 4"],
-  ["the queue", 1.5, "row", "queue row 5"],
-  ["the queue", 3, "key", "cmd-z"],
-  ["the queue", 3.1, "row", "undo"],
-  ["the queue", 5, "seek", "crossfade"],
-  ["the queue", 7, "chip", "eq chip"],
-  ["mixes", 0.5, "tile", "mix tile 1"],
-  ["mixes", 1.5, "tile", "mix tile 2"],
-  ["mixes", 2.5, "tile", "mix tile 3"],
-  ["mixes", 3.5, "tile", "mix tile 4"],
-  ["mixes", 4.5, "tile", "mix tile 5"],
-  ["mixes", 5.5, "tile", "mix tile 6"],
-  ["mixes", 7, "click", "open daily mix"],
-];
-
 function generated(rows: readonly Row[]): readonly Pin[] {
   const table = segments(rows);
   const pins: Pin[] = [];
@@ -178,7 +147,7 @@ interface Def {
 }
 
 const DEFS: Record<Film, Def> = {
-  hero: { rows: HERO, pins: HERO_UI, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  hero: { rows: HERO, pins: [], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   tour: { rows: TOUR, pins: generated(TOUR), runs: [["terminal type", 0.5, 14, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   cutdown: { rows: CUTDOWN, pins: generated(CUTDOWN), runs: [["hook", 1, 9, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };

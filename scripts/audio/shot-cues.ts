@@ -31,10 +31,16 @@ function uiKind(cue: ShotCue): UiKind | undefined {
   if (kind === "kick") return /ignite/.test(label) ? "ignite" : undefined;
   if (kind === "hit") return "flash";
   if (kind === "whoosh") return "seek";
-  if (kind === "ping") return /^sung:/.test(label) ? "line" : SKIPPED_PINGS.test(label) ? undefined : "chip";
+  if (kind === "pluck") return /tile|aura/.test(label) ? "tile" : "line";
+  if (kind === "ping") {
+    if (/^sung:/.test(label)) return "line";
+    if (SKIPPED_PINGS.test(label)) return undefined;
+    return /ignites/.test(label) ? "ignite" : "chip";
+  }
   if (kind === "tick") {
     if (/hairline|underline|draws/.test(label)) return "draw";
     if (/seek/.test(label)) return "seek";
+    if (/^word |row \d|undo/.test(label)) return "row";
     if (/^key /.test(label)) return "type";
     return "chip";
   }
