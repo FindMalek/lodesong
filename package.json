@@ -25,7 +25,8 @@
     "colors": "bun scripts/check-colors.ts",
     "demo:library": "bun scripts/demo-library.ts",
     "hero": "bun scripts/hero.ts",
-    "film:capture": "bun scripts/hero/film.ts"
+    "film:capture": "bun scripts/hero/film.ts",
+    "film:optimize": "bun --cwd apps/video run film:optimize"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

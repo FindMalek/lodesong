@@ -1,10 +1,22 @@
-import { staticFile } from "remotion";
+import { getRemotionEnvironment, staticFile } from "remotion";
 import type { Box, Event, Manifest, Plate, Take } from "../../../../scripts/hero/film/types";
 import raw from "../../public/film/manifest.json";
 
 export type { Box, Event, Manifest, Plate, Take };
 
 export const filmManifest = raw as unknown as Manifest;
+
+/** `scripts/optimize-plates.ts` writes public/film/optimised.json (plate file to its .opt.jpg twin); it is local and ignored, so a clean checkout and bun test fall back to the originals. */
+function optimisedFiles(): Record<string, string> {
+  if (typeof require.context !== "function") return {};
+  const context = require.context("../../public/film", false, /^\.\/optimised\.json$/);
+  return context.keys().length ? (context("./optimised.json") as Record<string, string>) : {};
+}
+
+const OPTIMISED = optimisedFiles();
+
+/** A file under public/film as a URL: in Studio the optimised twin when the optimise step has run, else (and in every render) the original. */
+const filmFile = (file: string): string => staticFile(`film/${(getRemotionEnvironment().isStudio ? OPTIMISED[file] : undefined) ?? file}`);
 
 export interface Word {
   start: number;
@@ -21,7 +33,7 @@ export const take = (id: string): Take => filmManifest.features[id] ?? missing(`
 export const plateOf = (takeId: string, plateName: string): Plate =>
   take(takeId).plates.find((plate) => plate.name === plateName) ?? missing(`plate "${takeId}/${plateName}"`);
 
-export const plateSrc = (takeId: string, plateName: string): string => staticFile(`film/${plateOf(takeId, plateName).file}`);
+export const plateSrc = (takeId: string, plateName: string): string => filmFile(plateOf(takeId, plateName).file);
 
 export const videoSrc = (takeId: string): string => staticFile(`film/${take(takeId).video?.file ?? missing(`video in "${takeId}"`)}`);
 

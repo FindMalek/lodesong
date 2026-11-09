@@ -56,7 +56,14 @@ export function Whip({ at, length = 8, direction = "left", from, to, shutter = 0
   return (
     <>
       <svg aria-hidden width={0} height={0} style={{ position: "absolute" }}>
-        <filter id={FILTER_ID} x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
+        <filter
+          id={FILTER_ID}
+          x={horizontal ? "-30%" : "0%"}
+          y={horizontal ? "0%" : "-30%"}
+          width={horizontal ? "160%" : "100%"}
+          height={horizontal ? "100%" : "160%"}
+          colorInterpolationFilters="sRGB"
+        >
           <feGaussianBlur stdDeviation={deviation} />
         </filter>
       </svg>

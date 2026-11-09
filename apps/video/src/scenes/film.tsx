@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, CSSProperties } from "react";
 import { Sequence } from "remotion";
 import { Shell } from "../design/shell";
 import { ShotStart } from "../design/song-clock";
@@ -34,6 +34,11 @@ export const HERO_SCENES: Record<ShotId, ComponentType> = {
   land: LandShot,
 };
 
+const PREMOUNT = 60;
+
+/** The next shot is mounted a second early but painted at an opacity below one 8-bit step: `display: none` (the default) would leave its plates undecoded until the cut, and the first paint of a 2880 px plate is a visible stall in Studio. */
+const WARM: CSSProperties = { display: "flex", opacity: 0.004 };
+
 interface FilmProps<Id extends string> {
   plan: Plan<Id>;
   scenes: Record<Id, ComponentType>;
@@ -49,7 +54,14 @@ export function Film<Id extends string>({ plan, scenes, audio, probe, grainOut }
       {plan.shots.map((shot) => {
         const Scene: ComponentType = scenes[shot.id];
         return (
-          <Sequence key={shot.id} from={shot.start} durationInFrames={shot.frames} premountFor={30} name={`S${shot.number} ${shot.id}`}>
+          <Sequence
+            key={shot.id}
+            from={shot.start}
+            durationInFrames={shot.frames}
+            premountFor={PREMOUNT}
+            styleWhilePremounted={WARM}
+            name={`S${shot.number} ${shot.id}`}
+          >
             <ShotStart.Provider value={shot.start}>
               <Scene />
             </ShotStart.Provider>
