@@ -3,12 +3,12 @@ import { resolve } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
 import { enableTailwind } from "@remotion/tailwind-v4";
-import type { Film } from "../src/audio-cues";
+import { FILMS, type Film } from "../src/audio-cues";
 import { type Box, type Measure, PROBE_TAG } from "../src/design/probe";
 import { STILLS, type StillPlan } from "../src/scenes/stills";
 import { audio, onsets } from "./audio-check";
 
-// bun scripts/check.ts stills <composition|all> [frames...] | sheet <composition> | audio [hero|cutdown] | onsets <file> [hero|cutdown]
+// bun scripts/check.ts stills <composition|all> [frames...] | sheet <composition> | audio [hero|tour|cutdown] | onsets <file> [hero|tour|cutdown]
 // stills renders keyframes and fails on the rules for text tagged data-legible (size, opacity, safe area); other text is judged by eye
 const FLOOR_PX = 28;
 const MIN_OPACITY = 0.6;
@@ -136,14 +136,14 @@ async function sheet(id: string): Promise<number> {
 
 const [command, ...rest] = process.argv.slice(2);
 const filmOf = (name: string | undefined, file?: string): Film =>
-  name === "cutdown" || (!name && file?.includes("cutdown")) ? "cutdown" : "hero";
+  FILMS.find((film) => film === name || (!name && file?.includes(film))) ?? "hero";
 let failed = 1;
 if (command === "stills") failed = await stills(rest);
 else if (command === "sheet" && rest[0]) failed = await sheet(rest[0]);
-else if (command === "audio") failed = await audio(rest[0] ? [filmOf(rest[0])] : ["hero", "cutdown"]);
+else if (command === "audio") failed = await audio(rest[0] ? [filmOf(rest[0])] : [...FILMS]);
 else if (command === "onsets" && rest[0]) failed = await onsets(rest[0], filmOf(rest[1], rest[0]));
 else
   console.error(
-    "usage: check.ts stills <composition|all> [frames...] | sheet <composition> | audio [hero|cutdown] | onsets <file> [hero|cutdown]",
+    "usage: check.ts stills <composition|all> [frames...] | sheet <composition> | audio [hero|tour|cutdown] | onsets <file> [hero|tour|cutdown]",
   );
 process.exit(failed === 0 ? 0 : 1);
