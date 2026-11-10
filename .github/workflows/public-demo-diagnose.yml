@@ -26,3 +26,14 @@ jobs:
           PUBLIC_DEMO_HOST: ${{ vars.PUBLIC_DEMO_HOST }}
           DEMO_HOST: demo.${{ vars.PREVIEW_DOMAIN }}
         run: node scripts/deploy/dokploy.mjs public-demo-diagnose
+      - name: Containers and their last log lines
+        continue-on-error: true
+        run: |
+          mask() { sed -E 's/(t|p|token|password|s)=[^&" ]+/\1=<x>/g'; }
+          docker ps --format '{{.Names}}  {{.Image}}  {{.Status}}' | grep -i -E 'lodesong' | mask || echo "no lodesong containers visible"
+          for name in $(docker ps --format '{{.Names}}' | grep -i -E 'lodesong-(public-demo|demo)'); do
+            echo "=== $name"
+            docker logs --tail 40 "$name" 2>&1 | mask
+          done
+          echo "=== services"
+          docker service ls --format '{{.Name}}  {{.Image}}  {{.Replicas}}' 2>&1 | grep -i lodesong | mask || true
