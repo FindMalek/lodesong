@@ -116,7 +116,7 @@ export const HERO = planFilm(
 
 export const CUTDOWN = planFilm(
   CUT_IDS,
-  { hook: "the lyric hook", find: "search and ignite", mixes: "mixes", session: "handoff", shells: "everywhere", land: "front-on end" },
+  { hook: "the lyric hook", find: "search and ignite", mixes: "mixes", session: "handoff", shells: "flashes", land: "front-on end" },
   CUT_MAP,
 );
 
@@ -128,6 +128,12 @@ export const TOUR: Plan<TourId> = planFilm(
   { ...(Object.fromEntries(CHAPTERS.map((chapter) => [chapter.id, chapter.name])) as Record<Chapter, string>), finale: "land" },
   TOUR_MAP,
 );
+
+export function cutOf(id: CutId): ShotPlan<CutId> {
+  const shot = CUTDOWN.shots.find((one) => one.id === id);
+  if (!shot) throw new Error(`no cutdown cut ${id}`);
+  return shot;
+}
 
 export function shotOf(id: ShotId): ShotPlan<ShotId> {
   const shot = HERO.shots.find((one) => one.id === id);

@@ -1,9 +1,10 @@
 import type { UiEvent, UiKind } from "../../apps/video/src/audio-plan";
 import type { ShotCue } from "../../apps/video/src/captures/types";
-import { type ShotId, shotOf } from "../../apps/video/src/scenes/timelines";
+import { type CutId, cutOf, type ShotId, shotOf } from "../../apps/video/src/scenes/timelines";
 
-// bun scripts/audio/shot-cues.ts   reads every S<n>_CUES a shot exports and writes the hero UI manifest the score plays
+// bun scripts/audio/shot-cues.ts   reads every S<n>_CUES a shot exports and writes the hero UI manifest the score plays, and every CUT_<id>_CUES a cut exports for the cutdown
 const OUT = "apps/video/src/audio-shot-cues.json";
+const CUT_OUT = "apps/video/src/audio-cut-cues.json";
 const SCENES = "../../apps/video/src/scenes/";
 const MODULES = [
   "shot-cold-open",
@@ -22,6 +23,7 @@ const MODULES = [
   "s11-plan",
   "s12-plan",
 ];
+const CUT_MODULES = ["cut-hook", "cut-find", "cut-mixes", "cut-session", "cut-flashes", "cut-land"];
 
 const SKIPPED_PINGS = /(?:your (?:music|server)|bell on the ignite)/;
 
@@ -66,3 +68,20 @@ for (const name of MODULES) {
 events.sort((a, b) => a.frame - b.frame);
 await Bun.write(OUT, `${JSON.stringify(events, null, 1)}\n`);
 console.log(`${events.length} cues from ${found.sort().join(" ")} -> ${OUT}`);
+
+const cutEvents: UiEvent[] = [];
+const cutFound: string[] = [];
+for (const name of CUT_MODULES) {
+  const module = (await import(`${SCENES}${name}`)) as Record<string, unknown>;
+  for (const [key, value] of Object.entries(module)) {
+    if (!/^CUT_[A-Z]+_CUES$/.test(key) || !Array.isArray(value)) continue;
+    cutFound.push(key);
+    for (const cue of value as ShotCue[]) {
+      const kind = uiKind(cue);
+      if (kind) cutEvents.push({ frame: cutOf(cue.shot as CutId).start + cue.at, kind, label: cue.label });
+    }
+  }
+}
+cutEvents.sort((a, b) => a.frame - b.frame);
+await Bun.write(CUT_OUT, `${JSON.stringify(cutEvents, null, 1)}\n`);
+console.log(`${cutEvents.length} cues from ${cutFound.sort().join(" ")} -> ${CUT_OUT}`);

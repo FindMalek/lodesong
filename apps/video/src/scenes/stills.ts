@@ -1,6 +1,6 @@
 import { gridBeat as beat } from "../design/beat";
 import { HERO_FRAMES, KEYFRAMES, SETTLED_FRAMES } from "./open-timeline";
-import { CUTDOWN, HERO, type Plan, type ShotId, shotOf } from "./timelines";
+import { type CutId, cutOf, HERO, type Plan, type ShotId, shotOf } from "./timelines";
 
 export interface StillPlan {
   /** every keyframe rendered for the eye */
@@ -15,6 +15,31 @@ const at = (...beats: number[]): number[] => beats.map((n) => beat(n));
 const ofPlan = (film: Plan<string>): StillPlan => ({
   frames: film.shots.flatMap((shot) => [shot.start + 1, shot.start + Math.floor(shot.frames / 2), shot.start + shot.frames - 1]),
   hero: [],
+});
+
+const cutAt = (id: CutId, ...local: number[]): number[] => local.map((frame) => cutOf(id).start + frame);
+
+const CUT_FRAMES: Record<CutId, readonly number[]> = {
+  hook: [0, 10, 24, 48, 90, 130],
+  find: [4, 30, 52, 70, 90, 118, 132, 150, 190, 250],
+  mixes: [4, 20, 40, 52, 66, 84, 118],
+  session: [4, 20, 38, 56, 70, 112],
+  shells: [6, 20, 36, 50, 66, 90, 104],
+  land: [4, 20, 40, 56, 74, 110, 162],
+};
+
+const CUT_HERO: Record<CutId, readonly number[]> = {
+  hook: [90, 130],
+  find: [70, 90, 118, 190, 250],
+  mixes: [66, 84, 118],
+  session: [20, 38, 70, 112],
+  shells: [20, 66, 104],
+  land: [110, 162],
+};
+
+const cutStills = (): StillPlan => ({
+  frames: Object.entries(CUT_FRAMES).flatMap(([id, local]) => cutAt(id as CutId, ...local)),
+  hero: Object.entries(CUT_HERO).flatMap(([id, local]) => cutAt(id as CutId, ...local)),
 });
 
 const atBeats = (id: ShotId, ...beats: number[]): number[] => beats.map((n) => shotOf(id).beat(n));
@@ -58,6 +83,6 @@ export const STILLS: Record<string, StillPlan> = {
   "scene-terminal": { frames: at(0.5, 2, 3.5, 5, 7.9), hero: at(2.5, 7.9) },
   "scene-end": { frames: at(0.5, 1.5, 2.5, 3.5, 5.9), hero: at(4, 5.9) },
   hero: ofPlan(HERO),
-  "cutdown-vertical": ofPlan(CUTDOWN),
-  "loop-readme": { frames: at(0.5, 2, 4, 8, 12, 16, 19.5), hero: [] },
+  "cutdown-vertical": cutStills(),
+  "loop-readme": { frames: [0, 40, 100, 150, 200, 240, 280, 340, 420, 470, 500, 560, 599], hero: [100, 240, 340] },
 };

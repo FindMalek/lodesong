@@ -82,5 +82,3 @@ export const END = {
   wide: { orb: 0.5, mark: 1, song: 1.5, tagline: 1.5, lines: 1.5, url: 2, end: 6 },
   tall: { orb: 1, mark: 2, song: 2.5, tagline: 0.5, lines: 0, url: 3, end: 5 },
 } as const;
-
-export const LOOP = { lyrics: 0, ignite: 3, advance: 5, mixes: 10, end: 20 } as const;

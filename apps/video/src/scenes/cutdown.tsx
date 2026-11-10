@@ -1,13 +1,18 @@
 import type { ComponentType } from "react";
-import { Placeholder } from "./placeholder";
-import { CUT_IDS, CUTDOWN, type CutId } from "./timelines";
+import { FindScene } from "./cut-find";
+import { FlashesScene } from "./cut-flashes";
+import { HookScene } from "./cut-hook";
+import { LandScene } from "./cut-land";
+import { MixesScene } from "./cut-mixes";
+import { SessionScene } from "./cut-session";
+import type { CutId } from "./timelines";
 
-function placeholderOf(id: CutId): ComponentType {
-  const shot = CUTDOWN.shots.find((one) => one.id === id);
-  return function CutPlaceholder() {
-    return shot ? <Placeholder shot={shot} /> : null;
-  };
-}
-
-/** One scene per cutdown cut; replace an entry as its scene lands. */
-export const CUT_SCENES = Object.fromEntries(CUT_IDS.map((id) => [id, placeholderOf(id)])) as Record<CutId, ComponentType>;
+/** One scene per cutdown cut, each laid out for 1080x1920 with its copy inside the 900x1400 safe box. */
+export const CUT_SCENES: Record<CutId, ComponentType> = {
+  hook: HookScene,
+  find: FindScene,
+  mixes: MixesScene,
+  session: SessionScene,
+  shells: FlashesScene,
+  land: LandScene,
+};
