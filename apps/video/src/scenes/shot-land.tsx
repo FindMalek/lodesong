@@ -59,7 +59,7 @@ function camOf(view: View) {
   return { x: view.scale * (view.cx - CENTER.x), y: view.scale * (view.cy - CENTER.y), scale: view.scale, rx: 0, ry: view.ry };
 }
 
-function Wordmark({ font, at, legible }: { font: number; at: number; legible: boolean }) {
+export function Wordmark({ font, at, legible }: { font: number; at: number; legible: boolean }) {
   return (
     <div
       data-legible={legible ? "" : undefined}

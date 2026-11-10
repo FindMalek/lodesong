@@ -6,9 +6,9 @@ import { Shell } from "./design/shell";
 import { CUT_SCENES } from "./scenes/cutdown";
 import { Film, HERO_SCENES } from "./scenes/film";
 import { LEGACY_SCENES } from "./scenes/legacy";
-import { LEGACY_HERO_SHOTS, LOOP } from "./scenes/legacy-timelines";
+import { LEGACY_HERO_SHOTS } from "./scenes/legacy-timelines";
 import { LENS_DEMO_BEATS, LensDemo } from "./scenes/lens-demo";
-import { Loop } from "./scenes/loop";
+import { LOOP_FRAMES, Loop } from "./scenes/loop";
 import { Open } from "./scenes/open";
 import { FRAMES } from "./scenes/open-timeline";
 import { CUTDOWN, HERO, type Plan, TOUR } from "./scenes/timelines";
@@ -59,9 +59,9 @@ interface Item {
 /** Every film is one row: a plan (shot table on a tempo map), its scenes, its score, its size. A new film needs only a row here. */
 const FILMS: Item[] = [
   { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav", true), frames: HERO.frames, size: WIDE },
-  { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav"), frames: CUTDOWN.frames, size: TALL },
+  { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav", true), frames: CUTDOWN.frames, size: TALL },
   { id: "tour", component: tourFilm, frames: TOUR.frames, size: WIDE },
-  { id: "loop-readme", component: Loop, frames: gridBeat(LOOP.end), size: WIDE },
+  { id: "loop-readme", component: Loop, frames: LOOP_FRAMES, size: WIDE },
 ];
 
 const TOUR_STUDIO: Item[] = TOUR.shots.map((shot) => ({

@@ -1,3 +1,4 @@
+import cutCues from "./audio-cut-cues.json";
 import { buildScore, type FilmSpec, type Score, type UiEvent, type UiKind } from "./audio-plan";
 import shotCues from "./audio-shot-cues.json";
 import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
@@ -108,7 +109,7 @@ const TOUR_PINS: readonly Pin[] = FEATURES.map((feature): Pin => {
 const TOUR_RUNS = CHAPTERS.map(({ id }) => [id, 0.15, 8, 3] as const);
 
 const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
-  [["hook", 4, "tension", "none", { db: -10 }]],
+  [["hook", 4, "tension", "none", { db: -17 }]],
   [["find and ignite", 8, "drop", "drop"]],
   [["mixes", 4, "groove", "hit", { db: -4 }]],
   [["handoff", 4, "lift", "cut", { db: -7 }]],
@@ -138,22 +139,9 @@ function manifest(
   return out.sort((a, b) => a.frame - b.frame);
 }
 
-/** Cues the shots export (scripts/audio/shot-cues.ts reads S<n>_CUES): the real frames of everything on screen. */
+/** Cues the shots and cuts export (scripts/audio/shot-cues.ts reads S<n>_CUES and CUT_<id>_CUES): the real frames of everything on screen. */
 const SHOT_CUES = shotCues as readonly UiEvent[];
-
-function generated(rows: readonly Row[]): readonly Pin[] {
-  const table = segments(rows);
-  const pins: Pin[] = [];
-  for (const s of table) {
-    if (s.mood === "afterglow" || s.mood === "void") continue;
-    const n = Math.floor(s.beats / 2);
-    for (let i = 0; i < n; i += 1) {
-      const kind: UiKind[] = ["key", "row", "tile", "click", "chip", "line"];
-      pins.push([s.id, 0.5 + i * 2 + (i % 2) * 0.25, kind[(i + s.beats) % kind.length] as UiKind, `${s.id} ${i + 1}`]);
-    }
-  }
-  return pins;
-}
+const CUT_CUES = cutCues as readonly UiEvent[];
 
 interface Def {
   rows: readonly Row[];
@@ -168,7 +156,7 @@ interface Def {
 const DEFS: Record<Film, Def> = {
   hero: { rows: HERO, pins: [], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   tour: { rows: TOUR, pins: TOUR_PINS, runs: TOUR_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
-  cutdown: { rows: CUTDOWN, pins: generated(CUTDOWN), runs: [["hook", 1, 9, 3]], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  cutdown: { rows: CUTDOWN, pins: [], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };
 
 function specOf(film: Film): FilmSpec {
@@ -181,7 +169,9 @@ function specOf(film: Film): FilmSpec {
     id: film,
     segments: table,
     ritard,
-    ui: [...manifest(def.rows, def.pins, def.runs), ...(film === "hero" ? SHOT_CUES : [])].sort((a, b) => a.frame - b.frame),
+    ui: [...manifest(def.rows, def.pins, def.runs), ...(film === "hero" ? SHOT_CUES : film === "cutdown" ? CUT_CUES : [])].sort(
+      (a, b) => a.frame - b.frame,
+    ),
     finalGap: def.finalGap,
   };
 }

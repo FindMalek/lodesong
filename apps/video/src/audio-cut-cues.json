@@ -1,0 +1,362 @@
+[
+  {
+    "frame": 4,
+    "kind": "chip",
+    "label": "wordmark rises"
+  },
+  {
+    "frame": 14,
+    "kind": "chip",
+    "label": "lyric forms from dots: i keep the"
+  },
+  {
+    "frame": 26,
+    "kind": "chip",
+    "label": "lyric forms from dots: lights on"
+  },
+  {
+    "frame": 36,
+    "kind": "chip",
+    "label": "chip settles"
+  },
+  {
+    "frame": 135,
+    "kind": "key",
+    "label": "cmd k"
+  },
+  {
+    "frame": 147,
+    "kind": "type",
+    "label": "type: l"
+  },
+  {
+    "frame": 153,
+    "kind": "type",
+    "label": "type: i"
+  },
+  {
+    "frame": 159,
+    "kind": "type",
+    "label": "type: g"
+  },
+  {
+    "frame": 165,
+    "kind": "type",
+    "label": "type: h"
+  },
+  {
+    "frame": 172,
+    "kind": "type",
+    "label": "type: t"
+  },
+  {
+    "frame": 179,
+    "kind": "type",
+    "label": "type: s"
+  },
+  {
+    "frame": 184,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 190,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 196,
+    "kind": "type",
+    "label": "type: n"
+  },
+  {
+    "frame": 202,
+    "kind": "chip",
+    "label": "results open"
+  },
+  {
+    "frame": 210,
+    "kind": "draw",
+    "label": "underline draws under lights on"
+  },
+  {
+    "frame": 248,
+    "kind": "key",
+    "label": "enter picks the line"
+  },
+  {
+    "frame": 262,
+    "kind": "ignite",
+    "label": "ignite: the cover catches gold"
+  },
+  {
+    "frame": 264,
+    "kind": "line",
+    "label": "line hold lights"
+  },
+  {
+    "frame": 304,
+    "kind": "line",
+    "label": "line say it slowly"
+  },
+  {
+    "frame": 346,
+    "kind": "line",
+    "label": "line scrolls on"
+  },
+  {
+    "frame": 392,
+    "kind": "tile",
+    "label": "tile 1 develops"
+  },
+  {
+    "frame": 400,
+    "kind": "tile",
+    "label": "tile 2 develops"
+  },
+  {
+    "frame": 408,
+    "kind": "tile",
+    "label": "tile 3 develops"
+  },
+  {
+    "frame": 428,
+    "kind": "seek",
+    "label": "one tile rushes forward"
+  },
+  {
+    "frame": 452,
+    "kind": "flash",
+    "label": "mix opens"
+  },
+  {
+    "frame": 454,
+    "kind": "ignite",
+    "label": "cover ignites gold"
+  },
+  {
+    "frame": 466,
+    "kind": "chip",
+    "label": "tracklist settles"
+  },
+  {
+    "frame": 516,
+    "kind": "draw",
+    "label": "gold line draws between the devices"
+  },
+  {
+    "frame": 524,
+    "kind": "chip",
+    "label": "chip settles"
+  },
+  {
+    "frame": 572,
+    "kind": "ignite",
+    "label": "bar ignites on the phone"
+  },
+  {
+    "frame": 629,
+    "kind": "click",
+    "label": "click the island"
+  },
+  {
+    "frame": 635,
+    "kind": "chip",
+    "label": "now playing opens"
+  },
+  {
+    "frame": 643,
+    "kind": "click",
+    "label": "lyrics tab"
+  },
+  {
+    "frame": 652,
+    "kind": "flash",
+    "label": "look: paper tile"
+  },
+  {
+    "frame": 658,
+    "kind": "chip",
+    "label": "chip settles"
+  },
+  {
+    "frame": 670,
+    "kind": "tile",
+    "label": "look: slate tile"
+  },
+  {
+    "frame": 689,
+    "kind": "tile",
+    "label": "look: terminal tile"
+  },
+  {
+    "frame": 710,
+    "kind": "key",
+    "label": "question mark"
+  },
+  {
+    "frame": 712,
+    "kind": "chip",
+    "label": "chip settles"
+  },
+  {
+    "frame": 734,
+    "kind": "ignite",
+    "label": "ignite: the cover lights for the end card"
+  },
+  {
+    "frame": 738,
+    "kind": "chip",
+    "label": "wordmark rises"
+  },
+  {
+    "frame": 748,
+    "kind": "chip",
+    "label": "tagline rises"
+  },
+  {
+    "frame": 756,
+    "kind": "type",
+    "label": "type: d"
+  },
+  {
+    "frame": 756,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 756,
+    "kind": "type",
+    "label": "type: c"
+  },
+  {
+    "frame": 757,
+    "kind": "type",
+    "label": "type: k"
+  },
+  {
+    "frame": 757,
+    "kind": "type",
+    "label": "type: e"
+  },
+  {
+    "frame": 758,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 758,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 758,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: u"
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: n"
+  },
+  {
+    "frame": 760,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 760,
+    "kind": "type",
+    "label": "type: -"
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type: d"
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type: -"
+  },
+  {
+    "frame": 762,
+    "kind": "type",
+    "label": "type: p"
+  },
+  {
+    "frame": 762,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 763,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 763,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 763,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: :"
+  },
+  {
+    "frame": 765,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 765,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 767,
+    "kind": "type",
+    "label": "type: …"
+  },
+  {
+    "frame": 792,
+    "kind": "draw",
+    "label": "underline draws under the url"
+  }
+]
