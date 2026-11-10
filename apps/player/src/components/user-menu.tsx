@@ -26,7 +26,7 @@ import {
 import { lazy, Suspense, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { go } from "@/lib/router";
-import { logout, useUser } from "@/lib/subsonic";
+import { isDemo, logout, useUser } from "@/lib/subsonic";
 import { setTheme, type Theme, useTheme } from "@/lib/theme";
 
 const THEMES = [
@@ -92,10 +92,12 @@ export function UserMenu({ defaultOpen, onShortcuts }: { defaultOpen: boolean; o
               send feedback
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => void logout()}>
-            <LogOutIcon />
-            log out
-          </DropdownMenuItem>
+          {!isDemo() && (
+            <DropdownMenuItem onClick={() => void logout()}>
+              <LogOutIcon />
+              log out
+            </DropdownMenuItem>
+          )}
           {version && (
             <>
               <DropdownMenuSeparator />

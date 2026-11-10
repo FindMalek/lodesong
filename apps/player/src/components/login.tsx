@@ -6,7 +6,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { login } from "@/lib/subsonic";
+import { demoLogin, login } from "@/lib/subsonic";
 import { BrandMark } from "./brand";
 
 /** What `/api/health` says about each server this instance may sign in to (never their addresses). */
@@ -47,6 +47,7 @@ function usePreviewTaps(background: React.RefObject<HTMLElement | null>): void {
  */
 export function Login() {
   const [servers, setServers] = useState<ServerHealth[] | null>(null);
+  const [demo, setDemo] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
   const [server, setServer] = useState<string | null>(null);
   const [user, setUser] = useState("");
@@ -59,8 +60,9 @@ export function Login() {
   const check = useCallback(async () => {
     setCheckFailed(false);
     const response = await fetch("/api/health", { cache: "no-store" }).catch(() => null);
-    const body = (await response?.json().catch(() => null)) as { upstreams?: ServerHealth[] } | null;
+    const body = (await response?.json().catch(() => null)) as { upstreams?: ServerHealth[]; demo?: boolean } | null;
     if (!body?.upstreams) return setCheckFailed(true);
+    setDemo(body.demo === true);
     setServers(body.upstreams);
     setServer((current) => current ?? body.upstreams?.find((item) => item.reachable)?.id ?? body.upstreams?.[0]?.id ?? null);
   }, []);
@@ -68,6 +70,23 @@ export function Login() {
   useEffect(() => {
     void check();
   }, [check]);
+
+  const enter = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await demoLogin();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "login failed");
+      void check();
+    } finally {
+      setBusy(false);
+    }
+  }, [check]);
+
+  useEffect(() => {
+    if (demo) void enter();
+  }, [demo, enter]);
 
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -85,6 +104,30 @@ export function Login() {
   }
 
   const selected = servers?.find((item) => item.id === server);
+  if (demo)
+    return (
+      <main className="fixed inset-0 grid place-items-center p-4">
+        <Card className="w-full max-w-88">
+          <CardHeader>
+            <CardTitle>
+              <BrandMark />
+            </CardTitle>
+            <CardDescription>{error ? "couldn't open the demo" : "opening the demo…"}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {error && (
+              <>
+                <ServerStatus health={selected ?? null} loading={!servers} failed={checkFailed} onRetry={() => void check()} />
+                <FieldError>{error}</FieldError>
+                <Button size="lg" disabled={busy} onClick={() => void enter()}>
+                  try again
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    );
   return (
     <main ref={background} className="fixed inset-0 grid place-items-center p-4">
       <Card className="w-full max-w-88">

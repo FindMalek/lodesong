@@ -37,7 +37,7 @@ import { previewNotice } from "@/lib/notify";
 import { playsTodayQuery, scrobblingQuery } from "@/lib/scrobbling";
 import { type Settings, setSetting, TOAST_LEVELS, TOAST_POSITIONS, type ToastPosition, useSetting } from "@/lib/settings";
 import { isStreamQuality, QUALITIES } from "@/lib/stream-quality";
-import { HEADERS, logout, useUser } from "@/lib/subsonic";
+import { HEADERS, isDemo, logout, useUser } from "@/lib/subsonic";
 import { setTheme, type Theme, useTheme } from "@/lib/theme";
 
 const EqualizerSheet = lazy(() => import("@/components/equalizer-sheet").then((module) => ({ default: module.EqualizerSheet })));
@@ -603,10 +603,12 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
                 label={user ?? "signed out"}
                 hint={session?.server ? `on ${session.server}${session.admin ? " · navidrome admin" : ""}` : undefined}
               >
-                <Button variant="outline" size="sm" onClick={() => void logout()}>
-                  <LogOutIcon />
-                  log out
-                </Button>
+                {!isDemo() && (
+                  <Button variant="outline" size="sm" onClick={() => void logout()}>
+                    <LogOutIcon />
+                    log out
+                  </Button>
+                )}
               </Row>
               {session?.admin && (
                 <Row label="library index" hint="the search and lyrics index the server keeps; rebuild it after big changes">

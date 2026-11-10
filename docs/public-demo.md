@@ -1,7 +1,7 @@
 # Public demo
 
-One permanent instance anyone can open, sign in with `demo` / `demo`, press play and see Stats and mixes with
-real-looking data. Nothing a visitor does survives the nightly reset.
+One permanent instance anyone can open, press play and see Stats and mixes with real-looking data. There is no login:
+the player signs every visitor in as the `demo` account. Nothing a visitor does survives the nightly reset.
 
 **Status: live at https://demo.lodesong.findmalek.engineer** (`PUBLIC_DEMO_HOST`), hosted on the owner's Dokploy
 server; DNS is a CNAME to `home.findmalek.engineer`. The site's "try the live demo" buttons point here by default (`DEMO_URL` on Vercel overrides it).
@@ -12,6 +12,11 @@ server; DNS is a CNAME to `home.findmalek.engineer`. The site's "try the live de
   `lodesong-demo` Navidrome image. No real music.
 - **Player:** `ghcr.io/findmalek/lodesong:latest` with `PUBLIC_DEMO=on` and `DEMO_SEED=on` (six months of generated
   listening for the `demo` account). It has no uploads, no feedback, no AI key, no lyrics lookups, no update check.
+- **No login:** with `PUBLIC_DEMO=on` and `INDEX_USER` / `INDEX_PASSWORD` set, `/api/health` says `demo: true` and the
+  sign-in screen calls `POST /auth/demo`, which opens an ordinary session for that account (same cookie, same CSRF
+  header) and returns no password. The route answers 404 when `PUBLIC_DEMO` is off or no account is set, and is rate
+  limited per IP. If the Navidrome is down the visitor sees the usual error with a "try again" button. A thin strip says
+  "public demo, resets every night"; there is no log out button.
 - **`PUBLIC_DEMO=on`** also makes nobody an admin (no doctor, no index rebuilds, no lyrics writes), refuses to make API
   and terminal tokens, and refuses `deletePlaylist`. Everyone is the same `demo` account, so a visitor can star
   songs, make a playlist and change settings, but cannot remove what the demo ships with.
@@ -37,7 +42,7 @@ These need the owner's server, DNS or repo settings, so they are not done in cod
    delete-and-recreate step to `publicDemoUp`.
 5. The site's demo buttons already point at `https://demo.lodesong.findmalek.engineer`; set `DEMO_URL` on Vercel only to
    change that.
-6. Consider putting a rate limit or Cloudflare in front: the host is public and the login is `demo` / `demo`.
+6. Consider putting a rate limit or Cloudflare in front: the host is public and everyone is signed in as `demo`.
 
 ## Trying it locally
 

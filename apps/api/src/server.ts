@@ -82,6 +82,8 @@ releases?.start();
 const followSync = config.lyterion ? new FollowSync(library, config.lyterion, () => sessions.adminAccounts()) : null;
 followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
+const demoAccount =
+  config.publicDemo && config.indexUser && config.indexPassword ? { user: config.indexUser, password: config.indexPassword } : null;
 const api = createApi({
   upstreams: config.upstreams,
   covers,
@@ -96,6 +98,7 @@ const api = createApi({
   idleSeconds,
   trustProxy: config.trustProxy,
   publicDemo: config.publicDemo,
+  demoAccount,
   updates: new UpdateCheck(config.updateCheck),
   backfills,
   lrc,
@@ -110,7 +113,7 @@ const api = createApi({
   feedback: config.feedback,
   cache: createCache(config.redisUrl),
 });
-const health = new HealthCheck(config.upstreams);
+const health = new HealthCheck(config.upstreams, undefined, demoAccount !== null);
 
 const cspReport = createCspReporter();
 
@@ -147,6 +150,7 @@ const server = Bun.serve({
     "/api": api.http,
     "/api/*": api.http,
     "/auth/login": { POST: api.login },
+    "/auth/demo": { POST: api.demoLogin },
     "/auth/logout": { POST: api.logout },
     "/auth/session": { GET: api.current },
     "/auth/sessions": { GET: api.listSessions },

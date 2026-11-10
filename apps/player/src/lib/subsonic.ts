@@ -8,6 +8,7 @@ import { FALLBACK, type Playing, resolveQuality, streamParams } from "./stream-q
 // remembered here, to render the app shell before the first request.
 const USER_KEY = "keep-player:user";
 const ACCOUNT_KEY = "keep-player:account";
+const DEMO_KEY = "keep-player:demo";
 /** Must match the server's CSRF check (apps/api/src/api.ts). */
 const CLIENT_ID = (() => {
   try {
@@ -105,23 +106,41 @@ async function setAccount(next: string | null): Promise<void> {
   if (changed) await Promise.all([...accountListeners].map((listener) => listener()));
 }
 
-export async function login(name: string, password: string, server?: string): Promise<void> {
-  const response = await fetch("/auth/login", {
+async function startSession(path: string, body?: object, demo = false): Promise<void> {
+  const response = await fetch(path, {
     method: "POST",
-    headers: { ...HEADERS, "content-type": "application/json" },
-    body: JSON.stringify({ user: name, password, server }),
+    headers: body ? { ...HEADERS, "content-type": "application/json" } : HEADERS,
+    ...(body ? { body: JSON.stringify(body) } : {}),
   }).catch(() => null);
   if (!response) throw new Error("can't reach lodesong: check your connection");
-  const body = (await response.json().catch(() => ({}))) as { user?: string; server?: string; error?: string };
-  if (!response.ok || !body.user) throw new Error(body.error ?? "login failed");
-  await setAccount(`${body.server ?? ""}/${body.user}`);
-  setUser(body.user);
+  const answer = (await response.json().catch(() => ({}))) as { user?: string; server?: string; error?: string };
+  if (!response.ok || !answer.user) throw new Error(answer.error ?? "login failed");
+  await setAccount(`${answer.server ?? ""}/${answer.user}`);
+  if (demo)
+    try {
+      localStorage.setItem(DEMO_KEY, "1");
+    } catch {}
+  setUser(answer.user);
+}
+
+export const login = (name: string, password: string, server?: string): Promise<void> =>
+  startSession("/auth/login", { user: name, password, server });
+
+export const demoLogin = (): Promise<void> => startSession("/auth/demo", undefined, true);
+
+export function isDemo(): boolean {
+  try {
+    return localStorage.getItem(DEMO_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 export async function logout(): Promise<void> {
   await fetch("/auth/logout", { method: "POST", headers: HEADERS }).catch(() => undefined);
   try {
     localStorage.removeItem("keep-player:state");
+    localStorage.removeItem(DEMO_KEY);
   } catch {}
   await setAccount(null);
   setUser(null);

@@ -133,7 +133,7 @@ const SETTINGS = [
     name: "PUBLIC_DEMO",
     fallback: "off",
     description:
-      "`on`: a public demo (docs/public-demo.md). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted.",
+      "`on`: a public demo (docs/public-demo.md). Visitors are signed in as `INDEX_USER` by themselves (no login form). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted.",
   },
   {
     name: "REDIS_URL",

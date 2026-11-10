@@ -30,7 +30,7 @@ import { go, replace, usePath } from "@/lib/router";
 import { useSetting } from "@/lib/settings";
 import { installShortcuts, useShortcuts } from "@/lib/shortcuts";
 import { clampSidebarWidth, sidebarCss } from "@/lib/sidebar-width";
-import { useCheckingSession, useUser } from "@/lib/subsonic";
+import { isDemo, useCheckingSession, useUser } from "@/lib/subsonic";
 import { isOnboarded, welcomeTip } from "@/lib/tips";
 import { loadTooltips } from "@/lib/tooltips";
 import { redo, undo } from "@/lib/undo";
@@ -84,6 +84,7 @@ const SearchPalette = lazy(() => import("@/components/search-palette").then((mod
 
 const PlaylistDialogs = lazy(() => import("@/components/playlist-dialogs").then((module) => ({ default: module.PlaylistDialogs })));
 const MiniPlayerPortal = lazy(() => import("@/components/mini-player").then((module) => ({ default: module.MiniPlayerPortal })));
+const DemoNotice = lazy(() => import("@/components/demo-notice").then((module) => ({ default: module.DemoNotice })));
 const OfflineBanner = lazy(() => import("@/components/offline-banner").then((module) => ({ default: module.OfflineBanner })));
 const TopProgressLine = lazy(() => import("@/components/top-progress").then((module) => ({ default: module.TopProgressLine })));
 
@@ -323,6 +324,11 @@ export function App() {
         </Suspense>
       )}
       <div className="flex h-[calc(100svh/var(--zoom))] flex-col" style={{ "--bar-height": hasTrack ? "4rem" : "0px" } as CSSProperties}>
+        {isDemo() && (
+          <Suspense>
+            <DemoNotice />
+          </Suspense>
+        )}
         <a
           href="#content"
           className="sr-only z-50 bg-background px-3 py-2 font-mono text-xs focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:border"

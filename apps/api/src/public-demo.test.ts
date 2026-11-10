@@ -17,7 +17,7 @@ const navidrome = Bun.serve({
 });
 afterAll(() => navidrome.stop());
 
-const apiWith = (publicDemo: boolean) =>
+const apiWith = (publicDemo: boolean, demoAccount: { user: string; password: string } | null = null) =>
   createApi({
     upstreams: [{ id: "home", url: `http://127.0.0.1:${navidrome.port}` }],
     indexes: new Map(),
@@ -29,6 +29,7 @@ const apiWith = (publicDemo: boolean) =>
     idleSeconds: 60,
     trustProxy: false,
     publicDemo,
+    demoAccount,
   });
 
 async function visit(publicDemo: boolean) {
@@ -53,4 +54,27 @@ async function visit(publicDemo: boolean) {
 test("the public demo has no admins, no tokens and no playlist deletes; a normal server keeps them", async () => {
   expect(await visit(true)).toEqual({ admin: false, token: 403, remove: 403 });
   expect(await visit(false)).toEqual({ admin: true, token: 200, remove: 200 });
+});
+
+test("the demo signs a visitor in without a password, and only when it is a public demo", async () => {
+  const server = { requestIP: () => ({ address: "127.0.0.1" }) } as unknown as Parameters<ReturnType<typeof apiWith>["login"]>[1];
+  const enter = (api: ReturnType<typeof apiWith>, headers: Record<string, string> = { "x-lodesong": "1" }) =>
+    api.demoLogin(new Request("http://app/auth/demo", { method: "POST", headers }), server);
+  const demo = apiWith(true, { user: "demo", password: "demo" });
+
+  const on = await enter(demo);
+  expect(on.status).toBe(200);
+  expect(await on.json()).toMatchObject({ user: "demo" });
+  const cookie = on.headers.get("set-cookie")?.split(";")[0] ?? "";
+  const session = (await (await demo.current(new Request("http://app/auth/session", { headers: { cookie } }))).json()) as {
+    admin?: boolean;
+  };
+  expect(session.admin).toBe(false);
+
+  expect((await enter(demo, {})).status).toBe(403);
+  for (const api of [apiWith(false, { user: "demo", password: "demo" }), apiWith(true)]) {
+    const off = await enter(api);
+    expect(off.status).toBe(404);
+    expect(off.headers.get("set-cookie")).toBeNull();
+  }
 });

@@ -63,6 +63,7 @@ const CLIENT_HEADER = "x-keep-client";
 
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
 const DEMO_BLOCKED = new Set(["deletePlaylist"]);
+const DEMO_SIGN_INS = 30;
 
 const ENDPOINTS = new Set([
   "ping",
@@ -161,6 +162,8 @@ export interface ApiOptions {
   idleSeconds: number;
   trustProxy: boolean;
   publicDemo?: boolean;
+  /** The account a public demo signs every visitor in as; its password stays on the server. */
+  demoAccount?: { user: string; password: string } | null;
   updates?: UpdateCheck;
   backfills?: Map<string, { restart(): void }>;
   lrc?: { count(server: string): number; undoAll(server: string): { removed: number; kept: number } } | null;
@@ -214,6 +217,7 @@ export function createApi({
   idleSeconds,
   trustProxy,
   publicDemo = false,
+  demoAccount = null,
   updates = new UpdateCheck(false),
   backfills = new Map(),
   lrc = null,
@@ -329,15 +333,17 @@ export function createApi({
     const body = (await request.json().catch(() => null)) as { user?: unknown; password?: unknown; server?: unknown } | null;
     if (typeof body?.user !== "string" || typeof body.password !== "string" || !body.user.trim())
       return json({ error: "username and password required" }, 400);
-    const user = body.user.trim();
     const upstream = typeof body.server === "string" ? upstreamFor(body.server) : upstreams[0];
     if (!upstream) return json({ error: "unknown server" }, 400);
+    return signIn(request, server, upstream, body.user.trim(), body.password);
+  }
 
+  async function signIn(request: Request, server: Server<unknown>, upstream: Upstream, user: string, password: string): Promise<Response> {
     const keys = [`ip:${clientIp(request, server)}`, `user:${upstream.id}:${user.toLowerCase()}`];
     const wait = limiter.retryAfter(keys);
     if (wait) return json({ error: `too many attempts, try again in ${wait} s` }, 429, { "retry-after": String(wait) });
 
-    const { token, salt } = tokenFor(body.password);
+    const { token, salt } = tokenFor(password);
     const query = upstreamQuery({ user, token, salt });
     query.set("f", "json");
     const ping = await fetch(`${upstream.url}/rest/ping?${query}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
@@ -366,6 +372,17 @@ export function createApi({
       admin: !publicDemo && Boolean(profile?.user?.adminRole),
     });
     return json({ user, server: upstream.id }, 200, { "set-cookie": sessionCookie(request, cookie, idleSeconds) });
+  }
+
+  const demoRate = new RateLimit(DEMO_SIGN_INS, 60_000);
+
+  async function demoLogin(request: Request, server: Server<unknown>): Promise<Response> {
+    const upstream = upstreams[0];
+    if (!publicDemo || !demoAccount || !upstream) return json({ error: "not found" }, 404);
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    const wait = demoRate.take(clientIp(request, server));
+    if (wait) return json({ error: `too many attempts, try again in ${wait} s` }, 429, { "retry-after": String(wait) });
+    return signIn(request, server, upstream, demoAccount.user, demoAccount.password);
   }
 
   function logout(request: Request): Response {
@@ -1100,6 +1117,7 @@ export function createApi({
     rpc,
     http,
     login,
+    demoLogin,
     logout,
     current,
     listSessions,
