@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
@@ -177,7 +177,7 @@ interface TraceEvent {
 }
 
 async function trace(): Promise<void> {
-  const wrapper = join(tmpdir(), "chrome-with-debug-port.sh");
+  const wrapper = join(mkdtempSync(join(tmpdir(), "perf-")), "chrome-with-debug-port.sh");
   const real = Bun.spawnSync(["find", resolve("node_modules/.remotion"), "-name", "chrome-headless-shell", "-type", "f"])
     .stdout.toString()
     .trim();
