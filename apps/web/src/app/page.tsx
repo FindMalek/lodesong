@@ -228,12 +228,10 @@ export default async function Home() {
                 mixes made from what you play, synced lyrics and one session across all your devices. your files, your server, no tracking.
               </p>
               <div className="hero-in mt-9 flex flex-wrap justify-center gap-3 [animation-delay:240ms]">
-                {DEMO_URL && (
-                  <a href={DEMO_URL} className={buttonVariants({ size: "lg" })}>
-                    try it
-                  </a>
-                )}
-                <a href={SELF_HOSTING} className={buttonVariants({ size: "lg", variant: DEMO_URL ? "outline" : "default" })}>
+                <a href={DEMO_URL} className={buttonVariants({ size: "lg" })}>
+                  try the live demo
+                </a>
+                <a href={SELF_HOSTING} className={buttonVariants({ size: "lg", variant: "outline" })}>
                   self-host it
                 </a>
                 {github}
@@ -530,6 +528,9 @@ export default async function Home() {
             <div className="flex flex-wrap gap-3">
               <a href={SELF_HOSTING} className={buttonVariants({ size: "lg" })}>
                 self-host it
+              </a>
+              <a href={DEMO_URL} className={buttonVariants({ variant: "outline", size: "lg" })}>
+                try the live demo
               </a>
               <a href={DOCS} className={buttonVariants({ variant: "outline", size: "lg" })}>
                 read the docs

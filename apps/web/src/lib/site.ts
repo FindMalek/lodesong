@@ -8,7 +8,7 @@ export const SITE_URL =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "https://lodesong.findmalek.engineer");
 export const REPO = "https://github.com/FindMalek/lodesong";
-export const DEMO_URL = process.env.DEMO_URL || null;
+export const DEMO_URL = process.env.DEMO_URL || "https://demo.lodesong.findmalek.engineer";
 export const DOCS = "/docs";
 export const SELF_HOSTING = "/docs/self-hosting";
 export const MAC_APP = `${REPO}/releases/latest/download/lodesong-macos.zip`;

@@ -1,7 +1,7 @@
 import { buttonVariants } from "@lodesong/ui/components/button";
 import { cn } from "@lodesong/ui/lib/utils";
 import Link from "next/link";
-import { DOCS, REPO, SELF_HOSTING } from "@/lib/site";
+import { DEMO_URL, DOCS, REPO, SELF_HOSTING } from "@/lib/site";
 
 export function SiteHeader() {
   return (
@@ -24,6 +24,9 @@ export function SiteHeader() {
           </Link>
           <a href={DOCS} className="hover:text-foreground">
             docs
+          </a>
+          <a href={DEMO_URL} className="font-medium text-foreground max-sm:hidden">
+            live demo
           </a>
         </div>
         <a href={SELF_HOSTING} className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
