@@ -2,10 +2,11 @@ import { Button } from "@lodesong/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lodesong/ui/components/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@lodesong/ui/components/field";
 import { Input } from "@lodesong/ui/components/input";
+import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { demoLogin, login } from "@/lib/subsonic";
+import { demoLogin, isDemo, login } from "@/lib/subsonic";
 import { BrandMark } from "./brand";
 
 /** What `/api/health` says about each server this instance may sign in to (never their addresses). */
@@ -19,6 +20,7 @@ interface ServerHealth {
 
 const DOCS = "https://github.com/FindMalek/lodesong/blob/main/docs/deploy/README.md";
 const LOOP_MS = 10_000;
+const HEALTH_MS = 3000;
 let lastAutomatic = 0;
 const PREVIEW_TAPS = 4;
 const PREVIEW_TAPS_MS = 1500;
@@ -60,7 +62,7 @@ export function Login() {
 
   const check = useCallback(async () => {
     setCheckFailed(false);
-    const response = await fetch("/api/health", { cache: "no-store" }).catch(() => null);
+    const response = await fetch("/api/health", { cache: "no-store", signal: AbortSignal.timeout(HEALTH_MS) }).catch(() => null);
     const body = (await response?.json().catch(() => null)) as { upstreams?: ServerHealth[]; demo?: boolean } | null;
     if (!body?.upstreams) return setCheckFailed(true);
     setDemo(body.demo === true);
@@ -112,20 +114,7 @@ export function Login() {
   }
 
   const selected = servers?.find((item) => item.id === server);
-  // The normal form or the demo's opening screen, whichever the server says: nothing flashes first.
-  if (!servers && !checkFailed)
-    return (
-      <main className="fixed inset-0 grid place-items-center p-4">
-        <Card className="w-full max-w-88">
-          <CardHeader>
-            <CardTitle>
-              <BrandMark />
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </main>
-    );
-  if (demo)
+  if (demo || (!servers && !checkFailed && isDemo()))
     return (
       <main className="fixed inset-0 grid place-items-center p-4">
         <Card className="w-full max-w-88">
@@ -138,7 +127,12 @@ export function Login() {
           <CardContent className="flex flex-col gap-3">
             {error && (
               <>
-                <ServerStatus health={selected ?? null} failed={checkFailed} onRetry={() => void check()} />
+                <ServerStatus
+                  health={selected ?? null}
+                  loading={!servers && !checkFailed}
+                  failed={checkFailed}
+                  onRetry={() => void check()}
+                />
                 <FieldError>{error}</FieldError>
                 <Button size="lg" disabled={busy} onClick={() => void enter(false)}>
                   try again
@@ -178,7 +172,12 @@ export function Login() {
                     ))}
                   </ToggleGroup>
                 )}
-                <ServerStatus health={selected ?? null} failed={checkFailed} onRetry={() => void check()} />
+                <ServerStatus
+                  health={selected ?? null}
+                  loading={!servers && !checkFailed}
+                  failed={checkFailed}
+                  onRetry={() => void check()}
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="user" className="font-mono text-muted-foreground">
@@ -218,7 +217,18 @@ export function Login() {
   );
 }
 
-function ServerStatus({ health, failed, onRetry }: { health: ServerHealth | null; failed: boolean; onRetry: () => void }) {
+function ServerStatus({
+  health,
+  loading,
+  failed,
+  onRetry,
+}: {
+  health: ServerHealth | null;
+  loading: boolean;
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  if (loading) return <Skeleton className="h-5 w-48" />;
   if (failed || !health)
     return (
       <FieldDescription className="flex items-center gap-2">

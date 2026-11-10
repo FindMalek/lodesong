@@ -85,6 +85,15 @@ test("when the music server is down it says so and lets the visitor try again", 
   await expect(signedIn(page)).toBeVisible({ timeout: 15_000 });
 });
 
+test("a slow health check doesn't hold back the normal form on a server that isn't a demo", async ({ page }) => {
+  await page.route("**/api/health", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue().catch(() => undefined);
+  });
+  await page.goto("/");
+  await expect(page.getByLabel("password")).toBeVisible({ timeout: 1500 });
+});
+
 test("with cookies blocked it stops asking instead of looping", async ({ page }) => {
   let asked = 0;
   await page.route("**/auth/demo", (route) => {

@@ -49,7 +49,10 @@ These need the owner's server, DNS or repo settings, so they are not done in cod
    delete-and-recreate step to `publicDemoUp`.
 5. The site's demo buttons already point at `https://demo.lodesong.findmalek.engineer`; set `DEMO_URL` on Vercel only to
    change that.
-6. Consider putting a rate limit or Cloudflare in front: the host is public and everyone is signed in as `demo`.
+6. Consider putting a rate limit or Cloudflare in front: the host is public and everyone is signed in as `demo`. Cloudflare
+   in front needs Traefik's `trustedIPs` and an adjusted `clientIp` (`apps/api/src/api.ts`), or the per-IP sign-in cap
+   becomes one cap shared by everybody. The global cap (300 sign-ins a minute) can be used up to stop new visitors for a
+   while; that is accepted for a throwaway demo.
 
 ## Trying it locally
 
