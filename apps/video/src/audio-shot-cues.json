@@ -680,11 +680,6 @@
     "label": "sheet: ?"
   },
   {
-    "frame": 2555,
-    "kind": "chip",
-    "label": "sheet: chip settles"
-  },
-  {
     "frame": 2581,
     "kind": "seek",
     "label": "albums: whip-left"
@@ -700,11 +695,6 @@
     "label": "albums: a"
   },
   {
-    "frame": 2608,
-    "kind": "chip",
-    "label": "albums: chip settles"
-  },
-  {
     "frame": 2634,
     "kind": "seek",
     "label": "stats: whip-right"
@@ -718,11 +708,6 @@
     "frame": 2649,
     "kind": "key",
     "label": "stats: t"
-  },
-  {
-    "frame": 2661,
-    "kind": "chip",
-    "label": "stats: chip settles"
   },
   {
     "frame": 2689,
@@ -748,11 +733,6 @@
     "frame": 2755,
     "kind": "key",
     "label": "list: k"
-  },
-  {
-    "frame": 2767,
-    "kind": "chip",
-    "label": "list: chip settles"
   },
   {
     "frame": 2795,

@@ -12,15 +12,22 @@ import { Wordmark } from "./shot-land";
 import { cutOf } from "./timelines";
 
 const SHOT = cutOf("land");
-const COMMAND = "docker run -d -p 8080:8080 \\\n  -e NAVIDROME_URL=<url> \\\n  ghcr.io/findmalek/lodesong";
-const TYPE_AT = 20;
-const LANDINGS = Array.from(COMMAND, (_, i) => TYPE_AT + Math.floor(i / 3.4));
+/** The README command, flush left so the longest line fits the 900 px box at 44 px. */
+const COMMAND = [
+  "docker run -d -p 8080:8080 \\",
+  "-v lodesong-data:/data \\",
+  "-e NAVIDROME_URL=\\",
+  "http://host.docker.internal:4533 \\",
+  "ghcr.io/findmalek/lodesong",
+].join("\n");
+const TYPE_AT = 16;
+const LANDINGS = Array.from(COMMAND, (_, i) => TYPE_AT + Math.floor(i / 4.6));
 const TYPED_DONE = LANDINGS.at(-1) ?? TYPE_AT;
 const HIT_AT = SHOT.beat(2);
 const SETTLED = HIT_AT + 24;
 const CHIP_AT = TYPED_DONE + 4;
-const LIFT = 70;
-const URL_Y = 1486;
+const LIFT = 110;
+const URL_Y = 1512;
 
 export const CUT_LAND_CUES: readonly ShotCue[] = [
   { shot: "land", at: 0, kind: "kick", label: "ignite: the cover lights for the end card" },
@@ -63,31 +70,31 @@ export function LandScene() {
         </Layer>
         <Bokeh focusZ={0} z={300} count={8} seed={17} opacity={0.14} width={1080} height={1920} />
       </Camera>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1000, display: "flex", justifyContent: "center" }}>
-        <Wordmark font={108} at={2} legible={steady} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: 946, display: "flex", justifyContent: "center" }}>
+        <Wordmark font={96} at={2} legible={steady} />
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1132, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1058, display: "flex", justifyContent: "center" }}>
         <div
           data-legible={steady ? "" : undefined}
-          style={{ fontSize: 54, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
+          style={{ fontSize: 48, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
         >
           <MaskLine from={12} length={14}>
             {COPY.headline[0]} <span style={{ color: "var(--muted-foreground)" }}>{COPY.headline[1]}</span>
           </MaskLine>
         </div>
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1224, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1128, display: "flex", justifyContent: "center" }}>
         <div
           data-legible={typed >= COMMAND.length && steady ? "" : undefined}
-          style={{ width: 720, fontFamily: "var(--font-mono)", fontSize: 40, lineHeight: "50px", whiteSpace: "pre" }}
+          style={{ width: 900, fontFamily: "var(--font-mono)", fontSize: 44, lineHeight: "54px", whiteSpace: "pre" }}
         >
           {COMMAND.slice(0, typed)}
           {frame >= TYPE_AT && !(typed >= COMMAND.length && frame > TYPED_DONE + 20) ? (
-            <Caret frame={frame} typing={typing} size={40} />
+            <Caret frame={frame} typing={typing} size={44} />
           ) : null}
         </div>
       </div>
-      <CutChip text="works with navidrome" from={CHIP_AT} y={1396} />
+      <CutChip text="works with navidrome" from={CHIP_AT} y={1420} />
       <div style={{ position: "absolute", left: 0, right: 0, top: URL_Y, display: "flex", justifyContent: "center" }}>
         <MaskLine from={HIT_AT} length={8}>
           <span
@@ -102,7 +109,7 @@ export function LandScene() {
         style={{
           position: "absolute",
           left: (1080 - 760) / 2,
-          top: URL_Y + 64,
+          top: URL_Y + 62,
           width: 760 * ramp(frame, HIT_AT + 2, 14, ease.out),
           height: 3,
           background: "var(--ignite)",
