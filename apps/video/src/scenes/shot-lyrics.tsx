@@ -65,7 +65,7 @@ export function LyricsShot() {
         </PlateFrame>
         <Bokeh focusZ={0} z={300} count={6} seed={8} opacity={0.1} />
       </Camera>
-      <Chip text="synced lyrics" from={10} out={F.click - 6} x={1480} y={960} />
+      <Chip text="click any line" from={10} out={F.click - 6} x={1480} y={960} />
     </ShotTransit>
   );
 }

@@ -3,10 +3,10 @@ import { type CaptureEvent, eventFrame } from "../captures/types";
 import { FPS, TEMPO, tempoMap } from "../design/beat";
 import { CUT_IDS, CUTDOWN, chapterSpans, HERO, HERO_IDS, planFilm, shotFrame, shotOf } from "./timelines";
 
-test("the hero is 15 shots, 4011 frames, tiled without gaps", () => {
+test("the hero is 15 shots, 3681 frames, tiled without gaps", () => {
   expect(HERO.shots.map((shot) => shot.id)).toEqual([...HERO_IDS]);
-  expect(HERO.frames).toBe(4011);
-  expect(HERO.shots.map((shot) => shot.frames)).toEqual([288, 277, 267, 257, 252, 249, 360, 348, 225, 222, 218, 317, 209, 209, 313]);
+  expect(HERO.frames).toBe(3681);
+  expect(HERO.shots.map((shot) => shot.frames)).toEqual([216, 277, 267, 257, 126, 248, 240, 233, 225, 221, 218, 318, 313, 209, 313]);
   for (const [i, shot] of HERO.shots.entries()) {
     expect(shot.start).toBe(HERO.shots[i - 1] ? (HERO.shots[i - 1]?.start ?? 0) + (HERO.shots[i - 1]?.frames ?? 0) : 0);
     expect(shot.bpm).toBe(TEMPO[i]?.bpm ?? 0);

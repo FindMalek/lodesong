@@ -8,6 +8,7 @@ import { MaskLine, VOID } from "../design/kinetic";
 import { ease, lerp, ramp } from "../design/motion";
 import { Caret, typedCount } from "../design/typing";
 import { DitherCover } from "../ui/dither-cover";
+import { DitherText } from "../ui/s1-dither-text";
 import { FlashChip, PlateFlash } from "../ui/s11-flash";
 import { type Intercut as IntercutPlan, S12_INTERCUTS, S12_LINES, S12_TIMES, S12_TYPED } from "./s12-plan";
 import { shotOf } from "./timelines";
@@ -20,9 +21,11 @@ const PLATE = { w: 1440, h: 810 };
 const K = 1920 / PLATE.w;
 const COVER = { x: 38, y: 40, w: 487, h: 487 };
 const COVER_WORLD = { x: COVER.x * K, y: COVER.y * K, size: COVER.w * K };
-const CODE = { x: 700, y: 836, font: 30 };
+const CODE = { x: 660, y: 842, font: 28 };
 const CODE_H = CODE.font * 1.5 * S12_LINES.length;
-const URL_AT = { x: CODE.x, y: 982, font: 40 };
+const URL_AT = { x: CODE.x, y: 950, font: 42 };
+const LYRIC = { x: 770, y: 300, size: 104 };
+const LINE = "i keep the lights on";
 const CENTER = { x: 960, y: 540 };
 const SAFE_BLUR_FRAMES = [S12_TIMES.enter, S12_TIMES.enter + 32] as const;
 const DRIFT = 0.022;
@@ -34,7 +37,7 @@ interface View {
   ry: number;
 }
 
-const BLOCK_VIEW: View = { cx: CODE.x + 470, cy: CODE.y + CODE_H / 2, scale: 1.6, ry: -3 };
+const BLOCK_VIEW: View = { cx: CODE.x + 595, cy: CODE.y + CODE_H / 2, scale: 1.3, ry: -3 };
 const COVER_VIEW: View = { cx: COVER_WORLD.x + COVER_WORLD.size / 2, cy: COVER_WORLD.y + COVER_WORLD.size / 2, scale: 1.5, ry: -3 };
 const HOME_VIEW: View = { cx: CENTER.x, cy: CENTER.y, scale: 1, ry: 0 };
 
@@ -48,9 +51,9 @@ const mix = (a: View, b: View, t: number): View => ({
 /** Tight on the typing, a short travel up to the cover, then the pull-back to a front-on frame that holds at exactly 1x. */
 function viewAt(frame: number): View {
   const { intercutEnd, enter, travelled, settled } = S12_TIMES;
-  const drift = mix(BLOCK_VIEW, { ...BLOCK_VIEW, scale: 1.68 }, ramp(frame, intercutEnd, enter - intercutEnd, ease.out));
+  const drift = mix(BLOCK_VIEW, { ...BLOCK_VIEW, scale: 1.4 }, ramp(frame, intercutEnd, enter - intercutEnd, ease.out));
   if (frame < enter) return drift;
-  const toCover = mix({ ...BLOCK_VIEW, scale: 1.68 }, COVER_VIEW, ramp(frame, enter, travelled - enter, ease.inOut));
+  const toCover = mix({ ...BLOCK_VIEW, scale: 1.4 }, COVER_VIEW, ramp(frame, enter, travelled - enter, ease.inOut));
   if (frame < travelled) return toCover;
   return mix(COVER_VIEW, HOME_VIEW, ramp(frame, travelled, settled - travelled, ease.out));
 }
@@ -166,13 +169,14 @@ function AppWindow({ frame }: { frame: number }) {
           src={plateSrc("lyrics-full", "line-02")}
           style={{ width: "100%", height: "100%", display: "block", filter: "brightness(1.35)" }}
         />
+        <i style={{ position: "absolute", left: 540, top: 0, width: 900, height: PLATE.h, background: "rgb(0 0 0 / 0.9)" }} />
       </div>
     </div>
   );
 }
 
 function EndCard({ frame }: { frame: number }) {
-  const { band, wordmark, tagline, hit, settled } = S12_TIMES;
+  const { band, wordmark, tagline, lyric, chip, hit, settled } = S12_TIMES;
   const steady = frame >= settled;
   const flash = ramp(frame, hit, 3) * (1 - ramp(frame, hit + 3, 14));
   return (
@@ -181,22 +185,55 @@ function EndCard({ frame }: { frame: number }) {
         style={{
           position: "absolute",
           left: 0,
-          top: 560,
+          top: 790,
           width: 1920,
-          height: 520,
-          background: "linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.55) 22%, rgb(0 0 0 / 0.96) 46%, #000 60%)",
+          height: 290,
+          background: "linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.85) 14%, #000 26%)",
           opacity: ramp(frame, band, 14),
         }}
       />
-      <div style={{ position: "absolute", left: 96, top: 832 }}>
+      <div style={{ position: "absolute", left: 96, top: 846 }}>
         <Wordmark font={84} at={wordmark} legible={steady} />
       </div>
       <div
         data-legible={steady ? "" : undefined}
-        style={{ position: "absolute", left: 96, top: 932, fontSize: 44, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
+        style={{ position: "absolute", left: 96, top: 946, fontSize: 40, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
       >
         <MaskLine from={tagline} length={14}>
           {COPY.headline[0]} <span style={{ color: "var(--muted-foreground)" }}>{COPY.headline[1]}</span>
+        </MaskLine>
+      </div>
+      <div style={{ position: "absolute", left: LYRIC.x, top: LYRIC.y }}>
+        <DitherText
+          text={LINE}
+          size={LYRIC.size}
+          width={1060}
+          height={150}
+          progress={ramp(frame, lyric, 26, ease.inOut)}
+          weight={600}
+          color={gold(0.9)}
+          glow={0.7}
+          legible={frame >= lyric + 26 && steady}
+        />
+      </div>
+      <div style={{ position: "absolute", left: 1462, top: URL_AT.y - 6 }}>
+        <MaskLine from={chip} length={12}>
+          <span
+            data-legible={frame >= chip + 14 ? "" : undefined}
+            style={{
+              display: "inline-block",
+              fontFamily: "var(--font-mono)",
+              fontSize: 28,
+              letterSpacing: "0.04em",
+              color: "var(--foreground)",
+              background: "color-mix(in oklch, var(--background) 88%, transparent)",
+              border: "1px solid color-mix(in oklch, var(--foreground) 34%, transparent)",
+              padding: "10px 18px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            works with navidrome
+          </span>
         </MaskLine>
       </div>
       <div style={{ position: "absolute", left: URL_AT.x, top: URL_AT.y, color: "var(--foreground)" }}>
@@ -213,8 +250,8 @@ function EndCard({ frame }: { frame: number }) {
         style={{
           position: "absolute",
           left: URL_AT.x,
-          top: URL_AT.y + 54,
-          width: 560 * ramp(frame, hit, 12, ease.out),
+          top: URL_AT.y + 62,
+          width: 640 * ramp(frame, hit, 12, ease.out),
           height: 2,
           background: "var(--ignite)",
           boxShadow: `0 0 ${10 + flash * 30}px color-mix(in oklch, var(--ignite) ${40 + Math.round(flash * 60)}%, transparent)`,
@@ -224,10 +261,31 @@ function EndCard({ frame }: { frame: number }) {
   );
 }
 
+/** A warm pool behind the typing so the command never sits on a black frame. */
+function TypingGlow({ frame }: { frame: number }) {
+  const { intercutEnd, settled } = S12_TIMES;
+  const on = ramp(frame, intercutEnd, 6) * (1 - ramp(frame, S12_TIMES.enter, settled - S12_TIMES.enter));
+  if (on <= 0) return null;
+  return (
+    <i
+      style={{
+        position: "absolute",
+        left: CODE.x - 120,
+        top: CODE.y - 360,
+        width: 1480,
+        height: 760,
+        background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 34%, transparent), transparent)",
+        opacity: 0.9 * on,
+      }}
+    />
+  );
+}
+
 function World() {
   const frame = useCurrentFrame();
   return (
     <Camera cam={camOf(viewAt(frame))}>
+      <TypingGlow frame={frame} />
       <Cover frame={frame} />
       <AppWindow frame={frame} />
       <EndCard frame={frame} />

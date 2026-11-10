@@ -154,7 +154,7 @@ function Finale({ t }: { t: number }) {
         />
       </Layer>
       <DofLayer z={0} focusZ={0} aperture={0.03}>
-        <Halation fill strength={0.24} radius={34}>
+        <Halation fill strength={0.1} radius={34}>
           <div style={{ position: "absolute", left: at.x, top: at.y, width: size, height: size, overflow: "hidden" }}>
             <div style={{ transform: `scale(${size / 646})`, transformOrigin: "0 0", width: 646, height: 646 }}>
               <DitherCover id={IGNITE_ID} size={646} color="var(--ignite)" time={t / 90} opacity={1} />
