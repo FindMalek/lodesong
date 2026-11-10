@@ -19,7 +19,8 @@ const COVER = { x: 38, y: 40, w: 487, h: 487 };
 const COVER_WORLD = { x: COVER.x * K, y: COVER.y * K, size: COVER.w * K };
 const CODE = { x: 640, y: 806, font: 30, row: 42 };
 const CODE_H = CODE.row * S12_LINES.length;
-const URL_AT = { x: CODE.x, y: 962, font: 42 };
+const URL_AT = { x: CODE.x, y: 962, font: 38 };
+const URL_W = Math.round(FILM.end.url.length * URL_AT.font * 0.62);
 const LYRIC = { x: 770, y: 300, size: 104 };
 const LINE = "i keep the lights on";
 const CENTER = { x: 960, y: 540 };
@@ -36,7 +37,7 @@ interface View {
 const BLOCK_VIEW: View = { cx: CODE.x + 470, cy: CODE.y + CODE_H / 2, scale: 1.3, ry: -3 };
 const COVER_VIEW: View = { cx: COVER_WORLD.x + COVER_WORLD.size / 2, cy: COVER_WORLD.y + COVER_WORLD.size / 2, scale: 1.5, ry: -3 };
 const HOME_VIEW: View = { cx: CENTER.x, cy: CENTER.y, scale: 1, ry: 0 };
-const PUSHED_VIEW: View = { cx: CENTER.x + 6, cy: CENTER.y - 4, scale: 1.018, ry: 0 };
+const PUSHED_VIEW: View = { cx: CENTER.x + 8, cy: CENTER.y - 5, scale: 1.03, ry: 0 };
 
 const mix = (a: View, b: View, t: number): View => ({
   cx: lerp(a.cx, b.cx, t),
@@ -53,7 +54,7 @@ function viewAt(frame: number): View {
   const toCover = mix({ ...BLOCK_VIEW, scale: 1.4 }, COVER_VIEW, ramp(frame, enter, travelled - enter, ease.inOut));
   if (frame < travelled) return toCover;
   if (frame < settled) return mix(COVER_VIEW, HOME_VIEW, ramp(frame, travelled, settled - travelled, ease.out));
-  return mix(HOME_VIEW, PUSHED_VIEW, ramp(frame, settled, end - 12 - settled, ease.out));
+  return mix(HOME_VIEW, PUSHED_VIEW, ramp(frame, settled, end - 12 - settled, ease.inOut));
 }
 
 function camOf(view: View) {
@@ -225,7 +226,7 @@ function EndCard({ frame }: { frame: number }) {
           legible={frame >= lyric + 26 && steady}
         />
       </div>
-      <div style={{ position: "absolute", left: 1392, top: URL_AT.y - 6 }}>
+      <div style={{ position: "absolute", left: URL_AT.x + URL_W + 40, top: URL_AT.y - 6 }}>
         <MaskLine from={chip} length={12}>
           <span
             data-legible={frame >= chip + 14 ? "" : undefined}
@@ -259,8 +260,8 @@ function EndCard({ frame }: { frame: number }) {
         style={{
           position: "absolute",
           left: URL_AT.x,
-          top: URL_AT.y + 62,
-          width: 640 * ramp(frame, hit, 12, ease.out),
+          top: URL_AT.y + 54,
+          width: URL_W * ramp(frame, hit, 12, ease.out),
           height: 2,
           background: "var(--ignite)",
           boxShadow: `0 0 ${10 + flash * 30}px color-mix(in oklch, var(--ignite) ${40 + Math.round(flash * 60)}%, transparent)`,

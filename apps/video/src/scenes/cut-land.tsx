@@ -12,7 +12,7 @@ import { Wordmark } from "./shot-land";
 import { cutOf } from "./timelines";
 
 const SHOT = cutOf("land");
-/** The README command, flush left so the longest line fits the 900 px box at 44 px. */
+/** The README command, flush left so the longest line stays left of the right rail at 40 px. */
 const COMMAND = [
   "docker run -d -p 8080:8080 \\",
   "-v lodesong-data:/data \\",
@@ -27,7 +27,8 @@ const HIT_AT = SHOT.beat(2);
 const SETTLED = HIT_AT + 24;
 const CHIP_AT = TYPED_DONE + 4;
 const LIFT = 110;
-const URL_Y = 1512;
+const COVER_SIZE = 640;
+const URL_Y = 1470;
 
 export const CUT_LAND_CUES: readonly ShotCue[] = [
   { shot: "land", at: 0, kind: "kick", label: "ignite: the cover lights for the end card" },
@@ -64,16 +65,16 @@ export function LandScene() {
           />
         </Layer>
         <Layer z={70}>
-          <div style={{ position: "absolute", left: COVER.x, top: COVER.y - LIFT }}>
-            <GoldCover develop={0.5 + 0.5 * ramp(frame, 0, 24)} />
+          <div style={{ position: "absolute", left: COVER.x + (COVER.size - COVER_SIZE) / 2, top: COVER.y - LIFT }}>
+            <GoldCover size={COVER_SIZE} develop={0.5 + 0.5 * ramp(frame, 0, 24)} />
           </div>
         </Layer>
         <Bokeh focusZ={0} z={300} count={8} seed={17} opacity={0.14} width={1080} height={1920} />
       </Camera>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 946, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 906, display: "flex", justifyContent: "center" }}>
         <Wordmark font={96} at={2} legible={steady} />
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1058, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1018, display: "flex", justifyContent: "center" }}>
         <div
           data-legible={steady ? "" : undefined}
           style={{ fontSize: 48, fontWeight: 500, letterSpacing: "-0.04em", whiteSpace: "nowrap" }}
@@ -83,18 +84,18 @@ export function LandScene() {
           </MaskLine>
         </div>
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1128, display: "flex", justifyContent: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1088, display: "flex", justifyContent: "center" }}>
         <div
           data-legible={typed >= COMMAND.length && steady ? "" : undefined}
-          style={{ width: 900, fontFamily: "var(--font-mono)", fontSize: 44, lineHeight: "54px", whiteSpace: "pre" }}
+          style={{ width: 900, fontFamily: "var(--font-mono)", fontSize: 40, lineHeight: "50px", whiteSpace: "pre" }}
         >
           {COMMAND.slice(0, typed)}
           {frame >= TYPE_AT && !(typed >= COMMAND.length && frame > TYPED_DONE + 20) ? (
-            <Caret frame={frame} typing={typing} size={44} />
+            <Caret frame={frame} typing={typing} size={40} />
           ) : null}
         </div>
       </div>
-      <CutChip text="works with navidrome" from={CHIP_AT} y={1420} />
+      <CutChip text="works with navidrome" from={CHIP_AT} y={1360} />
       <div style={{ position: "absolute", left: 0, right: 0, top: URL_Y, display: "flex", justifyContent: "center" }}>
         <MaskLine from={HIT_AT} length={8}>
           <span
