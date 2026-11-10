@@ -14,10 +14,10 @@ import { shotOf } from "./timelines";
 const SHOT = shotOf("notch");
 const g = (frame: number): number => frame / 30;
 
-const OPEN_AT = 52;
-const LYRICS_AT = 110;
-const COLLAPSE = 184;
-const HIDE = 198;
+const OPEN_AT = 0;
+const LYRICS_AT = 88;
+const COLLAPSE = 170;
+const HIDE = 186;
 const GROW = 16;
 const SWITCH = 10;
 
@@ -35,7 +35,7 @@ const LEFT = (1920 - WIDTH) / 2;
 const stage = (x: number, y: number) => ({ x: LEFT + x * K, y: y * K });
 
 const CURSOR: CursorStop[] = [
-  { at: g(0), x: 1560, y: 520 },
+  { at: g(0), x: 1500, y: 150 },
   { at: g(OPEN_AT), ...stage(640, 38), click: true, dwell: 0.3 },
   { at: g(LYRICS_AT), ...stage(672, 214), click: true, dwell: 0.3 },
   { at: g(LYRICS_AT + 40), x: 1560, y: 420 },
@@ -62,8 +62,8 @@ function islandAt(frame: number): IslandState {
     left: `-${clock(222 - seconds)}`,
     bars,
     lyrics: grow(LYRICS_AT, SWITCH),
-    title: "signal violet pt. 2",
-    artist: "satellite garden",
+    title: "static mirror at night",
+    artist: "orchard static",
   };
 }
 
@@ -74,7 +74,7 @@ export function NotchShot() {
     camAt(frame, [
       { at: g(0), ...cameraAt(1.5, -2) },
       { at: g(OPEN_AT), ...cameraAt(1.5, 1) },
-      { at: g(OPEN_AT + 26), ...cameraAt(1.2, -1) },
+      { at: g(OPEN_AT + 22), ...cameraAt(1.2, -1) },
       { at: g(LYRICS_AT), ...cameraAt(1.24, 1) },
       { at: g(COLLAPSE), ...cameraAt(1.26, 0) },
       { at: g(SHOT.frames - 2), ...cameraAt(1.55, 0) },
@@ -87,19 +87,18 @@ export function NotchShot() {
       <Camera cam={cam}>
         <Layer z={-60}>
           <div
-            style={{ position: "absolute", left: -240, top: -140, width: 2400, height: 1300, overflow: "hidden", background: "#060606" }}
+            style={{ position: "absolute", left: -240, top: -140, width: 2400, height: 1300, overflow: "hidden", background: "#0b0b0b" }}
           >
             <div
               style={{
                 position: "absolute",
-                left: 660,
-                top: 110,
-                transform: "scale(1.8)",
-                transformOrigin: "540px 540px",
-                maskImage: "radial-gradient(circle at 50% 30%, #000 22%, transparent 66%)",
+                inset: 0,
+                background:
+                  "radial-gradient(ellipse 1100px 760px at 50% 24%, color-mix(in oklch, var(--ignite) 72%, #0b0b0b), color-mix(in oklch, var(--ignite) 14%, #0b0b0b) 55%, #0b0b0b 85%)",
               }}
-            >
-              <DitherCover id="mac-wallpaper" size={1080} time={frame / 120} bare color="var(--foreground)" opacity={0.38} />
+            />
+            <div style={{ position: "absolute", left: 660, top: 110, transform: "scale(1.8)", transformOrigin: "540px 540px" }}>
+              <DitherCover id="mac-wallpaper" size={1080} time={frame / 120} bare color="var(--ignite)" opacity={0.6} />
             </div>
           </div>
         </Layer>

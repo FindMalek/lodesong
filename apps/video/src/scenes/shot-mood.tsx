@@ -19,14 +19,14 @@ const g = (frame: number): number => frame / 30;
 
 const PROMPT = "late night drive, 90s, no vocals";
 const TYPE_FROM = 4;
-const TYPE_STEP = 2;
+const TYPE_STEP = 1.3;
 const LANDINGS = [...PROMPT].map((_, i) => TYPE_FROM + Math.floor(i * TYPE_STEP + hash(i * 3.1) * 1.1));
 const TYPED_END = (LANDINGS.at(-1) ?? 0) + 2;
 
-const MAKE_AT = SHOT.beat(3);
-const CREATE_AT = SHOT.beat(5.5);
-const STATS_AT = SHOT.beat(8);
-const RECAP_AT = STATS_AT + 40;
+const MAKE_AT = SHOT.beat(2);
+const CREATE_AT = SHOT.beat(3.8);
+const STATS_AT = SHOT.beat(5.3);
+const RECAP_AT = STATS_AT + 32;
 const RECAP_BUTTON = { x: 1349, y: 51, w: 71, h: 28 };
 
 const FIELD = { x: 513, y: 296, w: 322, h: 28 };
@@ -88,6 +88,28 @@ const CURSOR_A: CursorStop[] = [
   { at: g(MAKE_AT), ...MAKE_IT, click: true },
 ];
 
+function Disclaimer() {
+  return (
+    <div style={{ position: "absolute", inset: 0, filter: `brightness(${LIFT * 1.7})` }}>
+      <div style={{ position: "absolute", left: 510, top: 331, width: 310, height: 20, background: "rgb(25 25 25)" }} />
+      <div
+        style={{
+          position: "absolute",
+          left: 512,
+          top: 333,
+          fontFamily: "var(--font-sans)",
+          fontSize: 13.5,
+          lineHeight: "16px",
+          color: "rgb(67 67 67)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        only songs you own
+      </div>
+    </div>
+  );
+}
+
 function Prompt() {
   const frame = useCurrentFrame();
   const typed = frame >= TYPED_END;
@@ -108,6 +130,7 @@ function Prompt() {
         light={{ x: 690, y: 330, radius: 640, dim: 0.72, wash: 0 }}
       >
         {typed ? null : <TypedReveal frame={frame} />}
+        <Disclaimer />
         <Bracket box={FIELD} at={g(3)} pad={5} arm={14} width={2.5} length={0.5} />
         <Cursor stops={CURSOR_A} size={pointerSize(cam.scale)} />
       </Plate>

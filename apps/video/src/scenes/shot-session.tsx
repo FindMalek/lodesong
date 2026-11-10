@@ -74,7 +74,7 @@ function Desktop() {
   const src = frame < OPEN_PICKER ? "queue/queue" : frame < PICK_PHONE ? "devices/picker" : "devices/handed-off";
   return (
     <Camera cam={cam}>
-      <Plate src={film(src)} layout={LAYOUT} brightness={1.3} light={{ x: pointer.x, y: pointer.y, radius: 560, dim: 0.62, wash: 0 }}>
+      <Plate src={film(src)} layout={LAYOUT} brightness={1.8} light={{ x: pointer.x, y: pointer.y, radius: 560, dim: 0.62, wash: 0 }}>
         <Bracket box={DEVICES_BTN} at={g(OPEN_PICKER - 6)} pad={8} arm={12} width={2.5} length={0.4} />
         <Bracket box={IPHONE_ROW} at={g(PICK_PHONE - 8)} pad={6} arm={12} width={2.5} length={0.4} />
         <Cursor stops={CURSOR} size={pointerSize(cam.scale)} />
@@ -83,8 +83,8 @@ function Desktop() {
   );
 }
 
-const MAC = { left: 70, top: 100, width: 1060 };
-const PHONE = { left: 1380, top: 100, width: 400, height: 866 };
+const MAC = { left: 50, top: 80, width: 1330 };
+const PHONE = { left: 1410, top: 40, width: 450, height: 975 };
 
 const macScreen = (() => {
   const bezel = MAC.width * 0.011;
@@ -165,7 +165,7 @@ function Devices() {
       { at: g(ARRIVE - 8), scale: 1, ry: 3, rx: 0, x: 0, y: 0 },
       {
         at: g(SHOT.frames - WHIP_AT),
-        ...camTo({ x: 1220, y: 600, w: 560, h: 340 }, { scale: 1.75, ry: 7 }),
+        ...camTo({ x: 1340, y: 640, w: 540, h: 340 }, { scale: 1.75, ry: 7 }),
       },
     ]),
     handheld(frame, 0.8),
@@ -177,19 +177,17 @@ function Devices() {
           <div
             style={{
               position: "absolute",
-              left: 420,
-              top: 120,
-              width: 1100,
-              height: 800,
-              background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 30%, transparent), transparent)",
-              opacity: 0.75,
+              left: 200,
+              top: 40,
+              width: 1500,
+              height: 1000,
+              background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 60%, transparent), transparent)",
+              opacity: 1,
             }}
           />
         </Layer>
         <Layer z={0}>
-          <div
-            style={{ position: "absolute", inset: 0, filter: `brightness(1.3)${macBlur > 0.3 ? ` blur(${macBlur.toFixed(2)}px)` : ""}` }}
-          >
+          <div style={{ position: "absolute", inset: 0, filter: `brightness(2)${macBlur > 0.3 ? ` blur(${macBlur.toFixed(2)}px)` : ""}` }}>
             <DeviceFrame kind="mac" width={MAC.width} note={false} style={{ left: MAC.left, top: MAC.top }}>
               <MacScreen src={film("devices/handed-off")} />
             </DeviceFrame>
@@ -198,7 +196,7 @@ function Devices() {
             style={{
               position: "absolute",
               inset: 0,
-              filter: `brightness(1.3)${phoneBlur > 0.3 ? ` blur(${phoneBlur.toFixed(2)}px)` : ""}`,
+              filter: `brightness(2)${phoneBlur > 0.3 ? ` blur(${phoneBlur.toFixed(2)}px)` : ""}`,
             }}
           >
             <Phone width={PHONE.width} height={PHONE.height} style={{ left: PHONE.left, top: PHONE.top }}>
@@ -233,7 +231,7 @@ function Devices() {
         </Layer>
         <Bokeh focusZ={0} z={300} count={14} seed={9} opacity={0.26} />
       </Camera>
-      <div style={{ position: "absolute", left: 70, top: 884, display: "flex", gap: 14 }}>
+      <div style={{ position: "absolute", left: 70, top: 966, display: "flex", gap: 14 }}>
         {CLIENTS.map((label, i) => {
           const t = ramp(frame, CHIPS_FROM + i * CHIP_STEP, 12, ease.out);
           return (

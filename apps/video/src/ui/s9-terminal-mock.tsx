@@ -33,9 +33,9 @@ export function TerminalMock({ frame, landings, enter, seconds }: TerminalState)
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 8 }}>
           <div data-legible="" style={{ fontSize: FONT + 4, fontWeight: 600, whiteSpace: "nowrap" }}>
-            signal violet pt. 2
+            static mirror at night
           </div>
-          <div style={{ color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>satellite garden</div>
+          <div style={{ color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>orchard static</div>
           <div data-legible="" style={{ color: "var(--ignite)", whiteSpace: "nowrap" }}>
             “i keep the lights on”
           </div>

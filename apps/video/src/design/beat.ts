@@ -52,19 +52,19 @@ export function tempoMap(table: readonly Tempo[]): TempoMap {
 }
 
 export const TEMPO: readonly Tempo[] = [
-  { beats: 8, bpm: 100 },
+  { beats: 6, bpm: 100 },
   { beats: 8, bpm: 104 },
   { beats: 8, bpm: 108 },
   { beats: 8, bpm: 112 },
-  { beats: 8, bpm: 114 },
+  { beats: 4, bpm: 114 },
   { beats: 8, bpm: 116 },
-  { beats: 12, bpm: 120 },
-  { beats: 12, bpm: 124 },
+  { beats: 8, bpm: 120 },
+  { beats: 8, bpm: 124 },
   { beats: 8, bpm: 128 },
   { beats: 8, bpm: 130 },
   { beats: 8, bpm: 132 },
   { beats: 12, bpm: 136 },
-  { beats: 8, bpm: 138 },
+  { beats: 12, bpm: 138 },
   { beats: 8, bpm: 138 },
   { beats: 12, bpm: 138 },
 ];

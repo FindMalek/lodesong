@@ -11,7 +11,7 @@ import { shotOf } from "./timelines";
 
 const SHOT = shotOf("shells");
 const g = (frame: number): number => frame / 30;
-const LIFT = "brightness(1.35)";
+const LIFT = "brightness(1.6)";
 
 const CUT_TERMINAL = SHOT.beat(3.5);
 
@@ -23,7 +23,7 @@ const ENTER = (LANDINGS.at(-1) ?? 0) + 8;
 
 export const S9_CUES: readonly ShotCue[] = [
   { shot: "shells", at: 0, kind: "hit", label: "desktop app" },
-  { shot: "shells", at: CUT_TERMINAL, kind: "hit", label: "claude code" },
+  { shot: "shells", at: CUT_TERMINAL, kind: "hit", label: "your terminal" },
   ...LANDINGS.map((at): ShotCue => ({ shot: "shells", at: CUT_TERMINAL + at, kind: "typed", label: "command key" })),
   { shot: "shells", at: CUT_TERMINAL + ENTER, kind: "click", label: "pause" },
 ];
@@ -58,12 +58,12 @@ function Scene({ children, frames, chip, from, to, keys, seed = 3 }: SceneProps)
           <div
             style={{
               position: "absolute",
-              left: 300,
-              top: 60,
-              width: 1320,
-              height: 960,
-              background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 34%, transparent), transparent)",
-              opacity: 0.85,
+              left: 160,
+              top: 20,
+              width: 1600,
+              height: 1040,
+              background: "radial-gradient(ellipse closest-side, color-mix(in oklch, var(--ignite) 50%, transparent), transparent)",
+              opacity: 1,
             }}
           />
         </Layer>
@@ -79,13 +79,8 @@ function Scene({ children, frames, chip, from, to, keys, seed = 3 }: SceneProps)
 
 function Desktop({ frames }: { frames: number }) {
   return (
-    <Scene frames={frames} chip="desktop app" from={{ scale: 1.15, ry: 5 }} to={{ scale: 1, ry: -2 }} seed={7}>
-      <Layer z={-90} style={{ filter: "brightness(0.8)" }}>
-        <Window width={1100} height={671} title="lodesong — windows" style={{ left: 700, top: 10 }}>
-          <Img src={film("stats/stats")} style={{ width: "100%", height: "100%" }} />
-        </Window>
-      </Layer>
-      <Window width={1300} height={783} title="lodesong — linux" style={{ left: 110, top: 120 }}>
+    <Scene frames={frames} chip="desktop app" from={{ scale: 1.1, ry: 4 }} to={{ scale: 1, ry: -2 }} seed={7}>
+      <Window width={1620} height={965} title="lodesong — linux" style={{ left: 150, top: 50 }}>
         <Img src={film("home-mixes/home")} style={{ width: "100%", height: "100%" }} />
       </Window>
     </Scene>
@@ -98,7 +93,7 @@ function Terminal({ frames }: { frames: number }) {
   return (
     <Scene
       frames={frames}
-      chip="claude code"
+      chip="your terminal"
       keys={[
         { at: g(0), scale: 1.1, ry: -3, x: 0, y: 0 },
         { at: g(34), scale: 1, ry: 1, x: 0, y: 0 },
@@ -106,14 +101,14 @@ function Terminal({ frames }: { frames: number }) {
       ]}
       seed={11}
     >
-      <Window width={1500} height={560} title="claude code" style={{ left: 210, top: 250, background: "#0a0a0a" }}>
+      <Window width={1680} height={640} title="your terminal" style={{ left: 120, top: 210, background: "#232323" }}>
         <TerminalMock frame={frame} landings={LANDINGS} enter={ENTER} seconds={seconds} />
       </Window>
     </Scene>
   );
 }
 
-/** S9: the desktop app in a linux window and a windows window, then Claude Code pausing the song. */
+/** S9: the desktop app in one big window, then a terminal pausing the song. */
 export function ShellsShot() {
   return (
     <>

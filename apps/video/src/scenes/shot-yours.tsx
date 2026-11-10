@@ -102,7 +102,19 @@ function body(flash: Flash, frames: number, frame: number): ReactNode {
       />
     );
   if (flash.kind === "cards") return <CardsFlash frame={frame} />;
-  return <ServerFlow frame={frame} />;
+  return (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse 1300px 700px at 50% 46%, color-mix(in oklch, var(--ignite) 34%, #0b0b0b), color-mix(in oklch, var(--ignite) 10%, #0b0b0b) 62%, #0b0b0b 90%)",
+        }}
+      />
+      <ServerFlow frame={frame} />
+    </>
+  );
 }
 
 function FlashShot({ flash, frames }: { flash: Flash; frames: number }) {

@@ -26,7 +26,7 @@ interface Look {
 }
 
 const g = (frame: number): number => frame / 30;
-const BOUNDS = [1, 3.5, 5.75, 8].map((beat) => SHOT.beat(beat));
+const BOUNDS = [1.5, 5, 8.5, 12].map((beat) => SHOT.beat(beat));
 const spans = (index: number): { start: number; frames: number } => {
   const start = index === 0 ? 0 : (BOUNDS[index - 1] ?? 0);
   return { start, frames: (BOUNDS[index] ?? SHOT.frames) - start };
@@ -87,7 +87,7 @@ const THEME_CUES_UNSORTED: readonly ShotCue[] = [
   { shot: "themes", at: 0, kind: "tick", label: "settings, appearance" },
   { shot: "themes", at: CLICK_AT, kind: "click", label: "click the paper look" },
   ...LOOKS.map((look): ShotCue => ({ shot: "themes", at: look.start, kind: "hit", label: `look: ${look.info.name}` })),
-  ...LOOKS.map((look): ShotCue => ({ shot: "themes", at: look.start + 14, kind: "tick", label: `tokens settle: ${look.info.code}` })),
+  ...LOOKS.map((look): ShotCue => ({ shot: "themes", at: look.start + 14, kind: "tick", label: `swatches settle: ${look.info.name}` })),
 ];
 
 export const THEMES_CUES: readonly ShotCue[] = [...THEME_CUES_UNSORTED].sort((a, b) => a.at - b.at);

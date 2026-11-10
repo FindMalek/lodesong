@@ -25,11 +25,11 @@ const shotStills = (id: ShotId, frames?: number[], hero: number[] = []): StillPl
 };
 
 export const STILLS: Record<string, StillPlan> = {
-  "shot-cold-open": shotStills("cold-open", [3, 12, 26, 34, 50, 80, 110, 140, 170, 205, 245, 286], [245, 286]),
+  "shot-cold-open": shotStills("cold-open", [0, 8, 14, 22, 34, 50, 66, 84, 104, 124, 146, 160, 180, 214], [180, 214]),
   "shot-find-line": shotStills("find-line", [10, 30, 60, 100, 150, 190, 212, 236, 262], [190, 212]),
   "shot-play-line": shotStills("play-line", [3, 8, 14, 28, 44, 70, 100, 150, 200, 266], [30, 200, 266]),
   "shot-lyrics": shotStills("lyrics"),
-  "shot-lyterion": shotStills("lyterion"),
+  "shot-import": shotStills("import", [4, 20, 40, 60, 80, 100, 124]),
   "shot-queue": shotStills("queue"),
   "shot-mixes": shotStills("mixes"),
   "shot-mood": shotStills("mood"),
@@ -41,9 +41,9 @@ export const STILLS: Record<string, StillPlan> = {
     atBeats("keys", 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5),
     atBeats("keys", 1.5, 3.5, 5.5, 7.5, 9.5, 11.5),
   ),
-  "shot-themes": shotStills("themes", [4, 18, 28, 40, 70, 100, 125, 155, 185, 205], [70, 125, 185]),
+  "shot-themes": shotStills("themes", [4, 24, 44, 60, 90, 130, 150, 180, 220, 250, 300], [90, 180, 260]),
   "shot-yours": shotStills("yours", atBeats("yours", 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5), atBeats("yours", 1.5, 3.5, 5.5, 7.5)),
-  "shot-land": shotStills("land", atBeats("land", 0.5, 1.5, 2.5, 4.5, 5.2, 6, 7, 8.6, 9.8, 11.9), atBeats("land", 4.5, 11.9)),
+  "shot-land": shotStills("land", atBeats("land", 0.5, 1.5, 2.5, 3.6, 4.5, 5.2, 6, 7, 8.6, 9.8, 11.9), atBeats("land", 4.5, 11.9)),
   "scene-open": {
     frames: [...new Set([...KEYFRAMES, ...HERO_FRAMES, ...SETTLED_FRAMES])].sort((a, b) => a - b),
     hero: HERO_FRAMES,

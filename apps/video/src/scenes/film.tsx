@@ -4,10 +4,10 @@ import { Shell } from "../design/shell";
 import { ShotStart } from "../design/song-clock";
 import { ColdOpenShot } from "./shot-cold-open";
 import { FindLineShot } from "./shot-find-line";
+import { ImportShot } from "./shot-import";
 import { KeysShot } from "./shot-keys";
 import { LandShot } from "./shot-land";
 import { LyricsShot } from "./shot-lyrics";
-import { LyterionShot } from "./shot-lyterion";
 import { MixesShot } from "./shot-mixes";
 import { MoodShot } from "./shot-mood";
 import { NotchShot } from "./shot-notch";
@@ -25,7 +25,7 @@ export const HERO_SCENES: Record<ShotId, ComponentType> = {
   "find-line": FindLineShot,
   "play-line": PlayLineShot,
   lyrics: LyricsShot,
-  lyterion: LyterionShot,
+  import: ImportShot,
   queue: QueueShot,
   mixes: MixesShot,
   mood: MoodShot,

@@ -12,7 +12,7 @@ export const S12_LINES: readonly string[] = FILM.end.docker;
 
 const INTERCUT_BEATS = 3;
 const TYPE_FROM = shot.beat(INTERCUT_BEATS) + 2;
-const CHARS_PER_FRAME = 2.6;
+const CHARS_PER_FRAME = 3.4;
 const LINE_GAP = 4;
 
 /** Frame each character of each line lands on: a fast, slightly uneven burst, the way a pasted command streams in. */
@@ -65,9 +65,11 @@ export const S12_TIMES = {
   enter: shot.beat(5.5),
   travelled: shot.beat(6.3),
   settled: shot.beat(8.3),
-  band: shot.beat(6.9),
-  wordmark: shot.beat(7.2),
-  tagline: shot.beat(7.6),
+  band: shot.beat(5.9),
+  wordmark: shot.beat(6.2),
+  tagline: shot.beat(6.6),
+  lyric: shot.beat(6.9),
+  chip: shot.beat(8.6),
   rest: shot.beat(10) - 8,
   hit: shot.beat(10),
   end: shot.frames,
@@ -84,6 +86,8 @@ export const S12_CUES: readonly ShotCue[] = [
   { shot: "land", at: S12_TIMES.enter, kind: "swell", label: "pull-back swell, 5 beats" },
   { shot: "land", at: S12_TIMES.wordmark, kind: "tick", label: "lodesong draws in" },
   { shot: "land", at: S12_TIMES.tagline, kind: "tick", label: "your music. your server." },
+  { shot: "land", at: S12_TIMES.lyric, kind: "ping", label: "the lyric returns lit" },
+  { shot: "land", at: S12_TIMES.chip, kind: "ping", label: "works with navidrome" },
   { shot: "land", at: S12_TIMES.rest, kind: "rest", label: "8 frames of silence before the last hit" },
   { shot: "land", at: S12_TIMES.hit, kind: "impact", label: "last hit and chord (G6 to Am9), url lands, 1.5 s tail" },
 ].sort((a, b) => a.at - b.at);
