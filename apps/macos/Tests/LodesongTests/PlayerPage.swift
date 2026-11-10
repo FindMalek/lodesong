@@ -185,7 +185,10 @@ import XCTest
             }
             history.pushState({}, "", "/album/\(id)"); dispatchEvent(new Event("keep:navigate"));
             const play = () => [...document.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? b.textContent ?? "").trim() === "play");
-            for (let i = 0; i < 150 && !play(); i++) await wait(100);
+            // The header and its play button paint from the album list's summary before the songs arrive: play then
+            // starts an empty queue. The track list (not its skeleton) is there once the songs are.
+            const songs = () => document.querySelector('[data-filter-scope="page"]');
+            for (let i = 0; i < 150 && !(play() && songs()); i++) await wait(100);
             play()?.click();
             """)
     }
