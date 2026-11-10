@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // PR previews on Dokploy through its API (docs/previews.md): one app per PR plus one shared demo Navidrome.
+import { execFileSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 
 const MODE = process.argv[2];
@@ -268,6 +269,34 @@ async function rescan(host) {
   console.info(`demo rescan: ${res?.status ?? "unreachable"}`);
 }
 
+// No volume: a redeploy starts empty, and until the swarm swaps containers the host still reaches the old one (403 "admin exists").
+function swarmSettled(serviceName) {
+  try {
+    const state = execFileSync(
+      "docker",
+      ["service", "inspect", serviceName, "--format", "{{if .UpdateStatus}}{{.UpdateStatus.State}}{{end}}"],
+      {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      },
+    ).trim();
+    return state === "" || state === "completed";
+  } catch {
+    return true;
+  }
+}
+
+async function demoAccountWorks(host) {
+  const salt = randomBytes(8).toString("hex");
+  const token = createHash("md5")
+    .update(DEMO_PASSWORD + salt)
+    .digest("hex");
+  const query = new URLSearchParams({ u: DEMO_USER, t: token, s: salt, v: "1.16.1", c: "lodesong-deploy", f: "json" });
+  const res = await fetch(`https://${host}/rest/ping?${query}`).catch(() => null);
+  const body = await res?.json().catch(() => null);
+  return body?.["subsonic-response"]?.status === "ok";
+}
+
 async function demoUp() {
   const environment = await ensureEnvironment();
   const host = requireEnv("DEMO_HOST");
@@ -280,19 +309,26 @@ async function demoUp() {
   });
   const row = { ...app, status: "building" };
   if (!(await waitForApp(row, async () => {}))) throw new Error("the demo Navidrome didn't come up");
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    const res = await fetch(`https://${host}/auth/createAdmin`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username: DEMO_USER, password: DEMO_PASSWORD }),
-    }).catch(() => null);
-    if (res && res.status < 500) {
-      console.info(`demo account: ${res.status}`);
-      return rescan(host);
+  const { appName } = app;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    if (swarmSettled(appName)) {
+      const res = await fetch(`https://${host}/auth/createAdmin`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: DEMO_USER, password: DEMO_PASSWORD }),
+      }).catch(() => null);
+      if (res && res.status < 300) {
+        console.info(`demo account: ${res.status}`);
+        return rescan(host);
+      }
+      if (res?.status === 403 && (await demoAccountWorks(host))) {
+        console.info("demo account: already there, and it signs in");
+        return rescan(host);
+      }
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
-  throw new Error("couldn't reach the demo Navidrome to create the demo account");
+  throw new Error("couldn't create a demo account that signs in on the demo Navidrome");
 }
 
 // docs/public-demo.md: rebuild the demo Navidrome, then a fresh PUBLIC_DEMO player in front of it; run nightly.
