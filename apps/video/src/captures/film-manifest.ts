@@ -1,10 +1,21 @@
-import { staticFile } from "remotion";
+import { getRemotionEnvironment, staticFile } from "remotion";
 import type { Box, Event, Manifest, Plate, Take } from "../../../../scripts/hero/film/types";
 import raw from "../../public/film/manifest.json";
 
 export type { Box, Event, Manifest, Plate, Take };
 
 export const filmManifest = raw as unknown as Manifest;
+
+function optimisedFiles(): Record<string, string> {
+  if (typeof require.context !== "function") return {};
+  const context = require.context("../../public/film", false, /^\.\/optimised\.json$/);
+  return context.keys().length ? (context("./optimised.json") as Record<string, string>) : {};
+}
+
+const OPTIMISED = optimisedFiles();
+
+/** Studio gets the optimised twin written by `film:optimize`; renders always read the original. */
+const filmFile = (file: string): string => staticFile(`film/${(getRemotionEnvironment().isStudio ? OPTIMISED[file] : undefined) ?? file}`);
 
 export interface Word {
   start: number;
@@ -21,7 +32,7 @@ export const take = (id: string): Take => filmManifest.features[id] ?? missing(`
 export const plateOf = (takeId: string, plateName: string): Plate =>
   take(takeId).plates.find((plate) => plate.name === plateName) ?? missing(`plate "${takeId}/${plateName}"`);
 
-export const plateSrc = (takeId: string, plateName: string): string => staticFile(`film/${plateOf(takeId, plateName).file}`);
+export const plateSrc = (takeId: string, plateName: string): string => filmFile(plateOf(takeId, plateName).file);
 
 export const videoSrc = (takeId: string): string => staticFile(`film/${take(takeId).video?.file ?? missing(`video in "${takeId}"`)}`);
 
@@ -44,7 +55,6 @@ export function plateSize(takeId: string, plateName: string): { w: number; h: nu
 export const featuresOf = (captureName: string): readonly string[] =>
   filmManifest.captures[captureName]?.features ?? missing(`capture "${captureName}"`);
 
-/** The capture that serves a FEATURES id, with the recipe and plate to use for it. */
 export function captureOf(featureId: string): { capture: string; recipe: string; plate?: string } {
   for (const [capture, served] of Object.entries(filmManifest.captures))
     if (served.features.includes(featureId)) return { capture, recipe: served.recipe, ...(served.plate ? { plate: served.plate } : {}) };

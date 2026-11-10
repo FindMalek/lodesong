@@ -16,7 +16,24 @@ interface DitherCoverProps {
 
 const CELL = 4;
 
-/** The app's own generated cover look: the shared ordered-dither glow, drawn as one SVG path, deterministic per frame. */
+const PATHS = new Map<string, string>();
+const PATHS_KEPT = 48;
+
+/** One path per (cols, seed, time, develop): the same cover drawn twice in a frame (sharp plus glow) and a scrub back over a frame cost one computation. */
+function coverPath(cols: number, seed: number, time: number, develop: number): string {
+  const key = `${cols}|${seed}|${time}|${develop}`;
+  const kept = PATHS.get(key);
+  if (kept !== undefined) return kept;
+  const cells = ditherCells(cols, cols, seed, time);
+  if (develop < 1) {
+    for (let i = 0; i < cells.length; i += 1) if (hash(i + seed) > develop) cells[i] = 0;
+  }
+  const path = ditherPath(cells, cols, CELL);
+  if (PATHS.size >= PATHS_KEPT) PATHS.delete(PATHS.keys().next().value ?? key);
+  PATHS.set(key, path);
+  return path;
+}
+
 export function DitherCover({
   id,
   size,
@@ -28,13 +45,7 @@ export function DitherCover({
 }: DitherCoverProps) {
   const cols = Math.ceil(size / CELL);
   const seed = ditherSeed(id);
-  const path = useMemo(() => {
-    const cells = ditherCells(cols, cols, seed, time);
-    if (develop < 1) {
-      for (let i = 0; i < cells.length; i += 1) if (hash(i + seed) > develop) cells[i] = 0;
-    }
-    return ditherPath(cells, cols, CELL);
-  }, [cols, seed, time, develop]);
+  const path = useMemo(() => coverPath(cols, seed, time, develop), [cols, seed, time, develop]);
   return (
     <svg
       aria-hidden="true"

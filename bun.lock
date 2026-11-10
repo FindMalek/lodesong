@@ -90,6 +90,7 @@
         "@lodesong/config": "workspace:*",
         "@lodesong/shared": "workspace:*",
         "@lodesong/ui": "workspace:*",
+        "@remotion/player": "4.0.541",
         "@types/react": "19.3.0",
       },
     },

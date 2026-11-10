@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Sequence } from "remotion";
+import { getRemotionEnvironment, Sequence } from "remotion";
 import { gridBeat as beat } from "./beat";
 import { ease, lerp } from "./motion";
 import type { Box } from "./probe";
@@ -132,8 +132,11 @@ interface CameraBlurProps {
   children: ReactNode;
 }
 
-/** Motion blur by averaging sub-frame copies of the subtree; turn off for probe or still renders. */
-export function CameraBlur({ shutter = 0.5, samples = 8, active = true, backdrop = "#000", children }: CameraBlurProps) {
+const STUDIO_SAMPLES = 3;
+
+/** Motion blur by averaging sub-frame copies of the subtree; turn off for probe or still renders. Each sample re-renders the whole subtree, so Studio previews use at most 3 and renders use all. */
+export function CameraBlur({ shutter = 0.5, samples: wanted = 8, active = true, backdrop = "#000", children }: CameraBlurProps) {
+  const samples = getRemotionEnvironment().isStudio ? Math.min(wanted, STUDIO_SAMPLES) : wanted;
   if (!active || samples < 2) return children;
   return (
     <>

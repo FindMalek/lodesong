@@ -13,9 +13,10 @@ export function Grain({ opacity = 0.07 }: { opacity?: number }) {
     const context = canvas.current?.getContext("2d");
     if (!context) return;
     const image = context.createImageData(W, H);
-    for (let i = 0; i < W * H; i += 1) {
+    const pixels = new Uint32Array(image.data.buffer);
+    for (let i = 0; i < pixels.length; i += 1) {
       const value = Math.floor(hash(i + frame * 7919) * 255);
-      image.data.set([value, value, value, 255], i * 4);
+      pixels[i] = 0xff000000 | (value << 16) | (value << 8) | value;
     }
     context.putImageData(image, 0, 0);
   }, [frame]);
