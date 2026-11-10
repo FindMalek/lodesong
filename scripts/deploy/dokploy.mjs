@@ -8,6 +8,7 @@ const COMMENT_MARKER = "<!-- lodesong-preview -->";
 const PROJECT = "lodesong-previews";
 const DEMO_APP = "lodesong-demo";
 const PUBLIC_DEMO_APP = "lodesong-public-demo";
+const PUBLIC_DEMO_LIBRARY_APP = "lodesong-public-demo-library";
 const DEMO_USER = "demo";
 const DEMO_PASSWORD = "demo";
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS) || 5_000;
@@ -297,11 +298,10 @@ async function demoAccountWorks(host) {
   return body?.["subsonic-response"]?.status === "ok";
 }
 
-async function demoUp() {
+async function libraryUp(name, host) {
   const environment = await ensureEnvironment();
-  const host = requireEnv("DEMO_HOST");
   const app = await deployApp(environment, {
-    name: DEMO_APP,
+    name,
     image: `ghcr.io/findmalek/${DEMO_APP}:latest`,
     host,
     port: 4533,
@@ -319,11 +319,13 @@ async function demoUp() {
       }).catch(() => null);
       if (res && res.status < 300) {
         console.info(`demo account: ${res.status}`);
-        return rescan(host);
+        await rescan(host);
+        return app;
       }
       if (res?.status === 403 && (await demoAccountWorks(host))) {
         console.info("demo account: already there, and it signs in");
-        return rescan(host);
+        await rescan(host);
+        return app;
       }
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -331,13 +333,15 @@ async function demoUp() {
   throw new Error("couldn't create a demo account that signs in on the demo Navidrome");
 }
 
+async function demoUp() {
+  await libraryUp(DEMO_APP, requireEnv("DEMO_HOST"));
+}
+
 // docs/public-demo.md: rebuild the demo Navidrome, then a fresh PUBLIC_DEMO player in front of it; run nightly.
 async function publicDemoUp() {
   const host = requireEnv("PUBLIC_DEMO_HOST");
-  await demoUp();
+  const library = await libraryUp(PUBLIC_DEMO_LIBRARY_APP, requireEnv("PUBLIC_DEMO_LIBRARY_HOST"));
   const environment = await ensureEnvironment();
-  const demo = environment.applications.find((a) => a.name === DEMO_APP);
-  const { appName: demoName } = await query("application.one", { applicationId: demo.applicationId });
   const player = await deployApp(environment, {
     name: PUBLIC_DEMO_APP,
     image: "ghcr.io/findmalek/lodesong:latest",
@@ -345,7 +349,7 @@ async function publicDemoUp() {
     port: 8080,
     open: true,
     env: {
-      NAVIDROME_URL: `http://${demoName}:4533`,
+      NAVIDROME_URL: `http://${library.appName}:4533`,
       TRUST_PROXY: "true",
       LRCLIB_URL: "",
       LYRICS_BACKFILL: "off",
@@ -366,7 +370,7 @@ async function publicDemoUp() {
 // Prints the demo apps' settings (secrets masked) to find why the public demo player can't sign in.
 async function publicDemoDiagnose() {
   const environment = await ensureEnvironment();
-  for (const name of [DEMO_APP, PUBLIC_DEMO_APP]) {
+  for (const name of [DEMO_APP, PUBLIC_DEMO_LIBRARY_APP, PUBLIC_DEMO_APP]) {
     const found = environment.applications.find((a) => a.name === name);
     if (!found) {
       console.info(`${name}: not found`);
