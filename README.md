@@ -39,7 +39,7 @@ Open `http://localhost:8080` and sign in with your Navidrome account. On Linux a
   <a href="#develop">Develop</a>
 </p>
 
-**Try it live:** [demo.lodesong.findmalek.engineer](https://demo.lodesong.findmalek.engineer), sign in as `demo` / `demo`. It runs on generated music and resets every night. Or run it yourself without your own music, no Docker and no Navidrome: a fake one with 10k generated songs (`bun run mock`), same login.
+**Try it live:** [demo.lodesong.findmalek.engineer](https://demo.lodesong.findmalek.engineer), no sign-in needed. It runs on generated music and resets every night. Or run it yourself without your own music, no Docker and no Navidrome: a fake one with 10k generated songs (`bun run mock`), login `demo` / `demo`.
 
 ```sh
 git clone https://github.com/FindMalek/lodesong && cd lodesong && bun install

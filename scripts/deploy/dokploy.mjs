@@ -319,6 +319,8 @@ async function publicDemoUp() {
       INDEX_PASSWORD: DEMO_PASSWORD,
       DEMO_SEED: "on",
       PUBLIC_DEMO: "on",
+      DEMO_USER,
+      DEMO_PASSWORD,
     },
   });
   if (!(await waitForApp({ ...player, status: "deploying" }, async () => {}))) throw new Error("the public demo didn't come up");

@@ -96,6 +96,7 @@ const api = createApi({
   idleSeconds,
   trustProxy: config.trustProxy,
   publicDemo: config.publicDemo,
+  demoAccount: config.demoAccount,
   updates: new UpdateCheck(config.updateCheck),
   backfills,
   lrc,
@@ -104,13 +105,13 @@ const api = createApi({
   releases,
   artistGenres,
   followSync,
-  devices: config.oneSession ? new DeviceHub() : null,
+  devices: config.oneSession && !config.publicDemo ? new DeviceHub() : null,
   groq: config.groq,
   audiomuseUrl: config.audiomuseUrl,
   feedback: config.feedback,
   cache: createCache(config.redisUrl),
 });
-const health = new HealthCheck(config.upstreams);
+const health = new HealthCheck(config.upstreams, undefined, config.demoAccount !== null);
 
 const cspReport = createCspReporter();
 
@@ -147,6 +148,7 @@ const server = Bun.serve({
     "/api": api.http,
     "/api/*": api.http,
     "/auth/login": { POST: api.login },
+    "/auth/demo": { POST: api.demoLogin },
     "/auth/logout": { POST: api.logout },
     "/auth/session": { GET: api.current },
     "/auth/sessions": { GET: api.listSessions },

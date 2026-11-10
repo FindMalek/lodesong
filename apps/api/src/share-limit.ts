@@ -1,6 +1,7 @@
 /** At most `max` events per `windowMs` for each key, in memory (one instance, a restart forgets). */
 export class RateLimit {
   private readonly hits = new Map<string, number[]>();
+  private sweepAt = 0;
 
   constructor(
     private readonly max: number,
@@ -18,7 +19,8 @@ export class RateLimit {
     }
     recent.push(time);
     this.hits.set(key, recent);
-    if (this.hits.size > 1000) {
+    if (this.hits.size > 1000 && time >= this.sweepAt) {
+      this.sweepAt = time + this.windowMs;
       for (const [other, times] of this.hits) if (times.every((at) => time - at >= this.windowMs)) this.hits.delete(other);
     }
     return 0;

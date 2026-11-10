@@ -6,7 +6,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { login } from "@/lib/subsonic";
+import { demoLogin, isDemo, login } from "@/lib/subsonic";
 import { BrandMark } from "./brand";
 
 /** What `/api/health` says about each server this instance may sign in to (never their addresses). */
@@ -19,6 +19,9 @@ interface ServerHealth {
 }
 
 const DOCS = "https://github.com/FindMalek/lodesong/blob/main/docs/deploy/README.md";
+const LOOP_MS = 10_000;
+const HEALTH_MS = 3000;
+let lastAutomatic = 0;
 const PREVIEW_TAPS = 4;
 const PREVIEW_TAPS_MS = 1500;
 
@@ -47,6 +50,7 @@ function usePreviewTaps(background: React.RefObject<HTMLElement | null>): void {
  */
 export function Login() {
   const [servers, setServers] = useState<ServerHealth[] | null>(null);
+  const [demo, setDemo] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
   const [server, setServer] = useState<string | null>(null);
   const [user, setUser] = useState("");
@@ -58,9 +62,10 @@ export function Login() {
 
   const check = useCallback(async () => {
     setCheckFailed(false);
-    const response = await fetch("/api/health", { cache: "no-store" }).catch(() => null);
-    const body = (await response?.json().catch(() => null)) as { upstreams?: ServerHealth[] } | null;
+    const response = await fetch("/api/health", { cache: "no-store", signal: AbortSignal.timeout(HEALTH_MS) }).catch(() => null);
+    const body = (await response?.json().catch(() => null)) as { upstreams?: ServerHealth[]; demo?: boolean } | null;
     if (!body?.upstreams) return setCheckFailed(true);
+    setDemo(body.demo === true);
     setServers(body.upstreams);
     setServer((current) => current ?? body.upstreams?.find((item) => item.reachable)?.id ?? body.upstreams?.[0]?.id ?? null);
   }, []);
@@ -68,6 +73,30 @@ export function Login() {
   useEffect(() => {
     void check();
   }, [check]);
+
+  const enter = useCallback(
+    async (automatic: boolean) => {
+      // Signed in, then straight back here: cookies are blocked. Asking again would loop, so wait for a click.
+      const looping = Date.now() - lastAutomatic < LOOP_MS;
+      if (automatic) lastAutomatic = Date.now();
+      if (automatic && looping) return setError("the demo can't keep you signed in: allow cookies for this site");
+      setBusy(true);
+      setError(null);
+      try {
+        await demoLogin();
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "login failed");
+        void check();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [check],
+  );
+
+  useEffect(() => {
+    if (demo) void enter(true);
+  }, [demo, enter]);
 
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -85,6 +114,35 @@ export function Login() {
   }
 
   const selected = servers?.find((item) => item.id === server);
+  if (demo || (!servers && !checkFailed && isDemo()))
+    return (
+      <main className="fixed inset-0 grid place-items-center p-4">
+        <Card className="w-full max-w-88">
+          <CardHeader>
+            <CardTitle>
+              <BrandMark />
+            </CardTitle>
+            <CardDescription>{error ? "couldn't open the demo" : "opening the demo…"}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {error && (
+              <>
+                <ServerStatus
+                  health={selected ?? null}
+                  loading={!servers && !checkFailed}
+                  failed={checkFailed}
+                  onRetry={() => void check()}
+                />
+                <FieldError>{error}</FieldError>
+                <Button size="lg" disabled={busy} onClick={() => void enter(false)}>
+                  try again
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    );
   return (
     <main ref={background} className="fixed inset-0 grid place-items-center p-4">
       <Card className="w-full max-w-88">

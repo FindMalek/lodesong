@@ -15,6 +15,11 @@ talks to Navidrome, and the browser never sees a credential.
 4. The browser gets an `HttpOnly; SameSite=Lax` cookie (plus `Secure` behind HTTPS). JavaScript can't read it.
 5. Every `/rest/*` call goes through the server's proxy, which adds the session's credentials upstream.
 
+A public demo (`PUBLIC_DEMO=on` with its own `DEMO_USER`, see [public demo](public-demo.md)) is the one exception to
+step 1: the player calls `POST /auth/demo` and the server signs the visitor in as that account with no credentials
+typed. The password stays on the server, the session is the same as any other (cookie, CSRF header), and `/auth/login`
+is closed there. Nothing about this is on unless both variables are set.
+
 Sessions expire after `SESSION_IDLE_DAYS` (default 30) without use. You can list and sign out your other devices from
 the user menu (sessions). Rotating `SESSION_SECRET` signs everyone out.
 
@@ -120,6 +125,7 @@ library is private, so what a crawler sees depends on who asks:
 | a leaked terminal or API token | the terminal token is limited to now-playing, tokens expire when idle and can be revoked in the sessions list |
 | feedback leaking data to GitHub | off unless configured; sends only the text, page path, version, username and an optional screenshot you attach; rate limited per session |
 | a leaked share link | the snapshot shows only title, artist, counts and cover; stop sharing deletes it, it expires after 180 days, and it opens nothing else |
+| anyone using the public demo's open sign-in | only a throwaway `DEMO_USER`, set apart from the index account; never admin, no tokens or uploads; sign-ins limited per address and in total, at most 500 sessions; a visitor sees and ends only their own session; reset nightly |
 | a session on a lost device | idle expiry, revoke from the sessions list, or rotate `SESSION_SECRET` |
 
 Navidrome itself still accepts the Subsonic token for as long as the password is unchanged; change

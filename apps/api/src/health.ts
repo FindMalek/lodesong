@@ -18,6 +18,8 @@ export class HealthCheck {
   constructor(
     private readonly upstreams: Upstream[],
     private readonly ttlMs = 10_000,
+    /** A public demo that signs visitors in by itself: the sign-in screen asks for it. */
+    private readonly demo = false,
   ) {}
 
   check(): Promise<UpstreamHealth[]> {
@@ -29,7 +31,7 @@ export class HealthCheck {
   async response(): Promise<Response> {
     const upstreams = await this.check();
     const ok = upstreams.every((upstream) => upstream.reachable);
-    return Response.json({ status: ok ? "ok" : "degraded", version: VERSION, upstreams }, { status: ok ? 200 : 503 });
+    return Response.json({ status: ok ? "ok" : "degraded", version: VERSION, demo: this.demo, upstreams }, { status: ok ? 200 : 503 });
   }
 }
 

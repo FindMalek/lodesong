@@ -159,6 +159,15 @@ export class SessionStore {
       .map((row) => `${row.server}:${row.user}`);
   }
 
+  /** Keeps at most `max` sessions of one account, dropping the longest unused. */
+  trim(server: string, user: string, max: number): void {
+    this.db
+      .query(
+        "delete from sessions where hash in (select hash from sessions where server = ? and user = ? order by seen desc, rowid desc limit -1 offset ?)",
+      )
+      .run(server, user, max);
+  }
+
   purgeIdle(): void {
     this.db.query("delete from sessions where seen < ?").run(this.now() - this.idleMs);
   }

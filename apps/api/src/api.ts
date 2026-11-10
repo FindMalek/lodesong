@@ -61,6 +61,9 @@ const SHARE_BODY_MAX = 4096;
 const SHARE_ORPHAN_MS = 30 * 86_400_000;
 const CLIENT_HEADER = "x-keep-client";
 
+const DEMO_SIGN_INS = 30;
+const DEMO_SIGN_INS_ALL = 300;
+
 /** Subsonic endpoints the app uses. Anything else is refused, so the proxy can't be used as a general API gateway. */
 const DEMO_BLOCKED = new Set(["deletePlaylist"]);
 
@@ -161,6 +164,9 @@ export interface ApiOptions {
   idleSeconds: number;
   trustProxy: boolean;
   publicDemo?: boolean;
+  /** The account a public demo signs every visitor in as; its password stays on the server. */
+  demoAccount?: { user: string; password: string } | null;
+  demoSessions?: number;
   updates?: UpdateCheck;
   backfills?: Map<string, { restart(): void }>;
   lrc?: { count(server: string): number; undoAll(server: string): { removed: number; kept: number } } | null;
@@ -214,6 +220,8 @@ export function createApi({
   idleSeconds,
   trustProxy,
   publicDemo = false,
+  demoAccount = null,
+  demoSessions = 500,
   updates = new UpdateCheck(false),
   backfills = new Map(),
   lrc = null,
@@ -318,7 +326,9 @@ export function createApi({
 
   function clientIp(request: Request, server: Server<unknown>): string {
     if (trustProxy) {
-      const forwarded = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0];
+      const chain = request.headers.get("x-forwarded-for")?.split(",") ?? [];
+      // A public demo counts by the entry its own proxy appended: the others are whatever the visitor sent.
+      const forwarded = publicDemo ? chain.at(-1) : (request.headers.get("x-real-ip") ?? chain[0]);
       if (forwarded?.trim()) return forwarded.trim();
     }
     return server.requestIP(request)?.address ?? "unknown";
@@ -329,15 +339,24 @@ export function createApi({
     const body = (await request.json().catch(() => null)) as { user?: unknown; password?: unknown; server?: unknown } | null;
     if (typeof body?.user !== "string" || typeof body.password !== "string" || !body.user.trim())
       return json({ error: "username and password required" }, 400);
-    const user = body.user.trim();
     const upstream = typeof body.server === "string" ? upstreamFor(body.server) : upstreams[0];
     if (!upstream) return json({ error: "unknown server" }, 400);
+    if (publicDemo && demoAccount) return json({ error: "not in the public demo" }, 403);
+    return signIn(request, server, upstream, body.user.trim(), body.password);
+  }
 
-    const keys = [`ip:${clientIp(request, server)}`, `user:${upstream.id}:${user.toLowerCase()}`];
+  async function signIn(
+    request: Request,
+    server: Server<unknown>,
+    upstream: Upstream,
+    user: string,
+    password: string,
+    keys: string[] = [`ip:${clientIp(request, server)}`, `user:${upstream.id}:${user.toLowerCase()}`],
+  ): Promise<Response> {
     const wait = limiter.retryAfter(keys);
     if (wait) return json({ error: `too many attempts, try again in ${wait} s` }, 429, { "retry-after": String(wait) });
 
-    const { token, salt } = tokenFor(body.password);
+    const { token, salt } = tokenFor(password);
     const query = upstreamQuery({ user, token, salt });
     query.set("f", "json");
     const ping = await fetch(`${upstream.url}/rest/ping?${query}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
@@ -368,6 +387,19 @@ export function createApi({
     return json({ user, server: upstream.id }, 200, { "set-cookie": sessionCookie(request, cookie, idleSeconds) });
   }
 
+  const demoRate = new RateLimit(DEMO_SIGN_INS, 60_000);
+  const demoRateAll = new RateLimit(DEMO_SIGN_INS_ALL, 60_000);
+
+  async function demoLogin(request: Request, server: Server<unknown>): Promise<Response> {
+    const upstream = upstreams[0];
+    if (!publicDemo || !demoAccount || !upstream) return json({ error: "not found" }, 404);
+    if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
+    const wait = Math.max(demoRate.take(clientIp(request, server)), demoRateAll.take("all"));
+    if (wait) return json({ error: `too many attempts, try again in ${wait} s` }, 429, { "retry-after": String(wait) });
+    sessions.trim(upstream.id, demoAccount.user, demoSessions - 1);
+    return signIn(request, server, upstream, demoAccount.user, demoAccount.password, []);
+  }
+
   function logout(request: Request): Response {
     const cookie = cookieValue(request);
     const signedOut = sessions.get(cookie);
@@ -396,13 +428,15 @@ export function createApi({
   function listSessions(request: Request): Response {
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
-    return json({ current: session.id, sessions: sessions.list(session.server, session.user) });
+    const all = sessions.list(session.server, session.user);
+    return json({ current: session.id, sessions: publicDemo ? all.filter((item) => item.id === session.id) : all });
   }
 
   function revokeSession(request: Request & { params: { id: string } }): Response {
     if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
+    if (publicDemo && request.params.id !== session.id) return json({ error: "not in the public demo" }, 403);
     if (!sessions.revoke(session.server, session.user, request.params.id)) return json({ error: "not found" }, 404);
     devices?.dropSession(request.params.id);
     return json({ ok: true });
@@ -1100,6 +1134,7 @@ export function createApi({
     rpc,
     http,
     login,
+    demoLogin,
     logout,
     current,
     listSessions,
