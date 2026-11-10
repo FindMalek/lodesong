@@ -85,6 +85,7 @@ interface Deck {
   sizing: boolean;
   sizeError: string | null;
   wantsPlay: boolean;
+  start: (() => void) | null;
 }
 
 /** The levels worklet (packages/shared/src/levels-worklet.ts), served by our server: the CSP allows no blob: scripts. */
@@ -132,6 +133,7 @@ export class Decks {
       sizing: false,
       sizeError: null,
       wantsPlay: false,
+      start: null,
     };
     for (const name of LOGGED)
       element.addEventListener(name, () => {
@@ -260,6 +262,22 @@ export class Decks {
     deck.gain.gain.value = finite(value);
   }
 
+  /** Move to `at` once the length is known. A seek made before that wins over it. */
+  private startAt(deck: Deck, at: number): void {
+    this.cancelStart(deck);
+    const start = () => {
+      deck.start = null;
+      deck.element.currentTime = at;
+    };
+    deck.start = start;
+    deck.element.addEventListener("loadedmetadata", start, { once: true });
+  }
+
+  private cancelStart(deck: Deck): void {
+    if (deck.start) deck.element.removeEventListener("loadedmetadata", deck.start);
+    deck.start = null;
+  }
+
   private source(deck: Deck, url: string): void {
     this.release(deck);
     deck.sized = null;
@@ -269,6 +287,7 @@ export class Decks {
   }
 
   private release(deck: Deck): void {
+    this.cancelStart(deck);
     deck.abort?.abort();
     deck.abort = null;
     deck.sizing = false;
@@ -313,7 +332,7 @@ export class Decks {
       deck.sizing = false;
       deck.abort = null;
       element.src = deck.object;
-      if (at) element.addEventListener("loadedmetadata", () => (element.currentTime = at), { once: true });
+      if (at) this.startAt(deck, at);
       if (deck.wantsPlay && deck === this.playing) void element.play().catch((error) => this.rejected(error));
     } catch (error) {
       if (control.signal.aborted && (control.signal.reason as DOMException | undefined)?.name !== "TimeoutError") return;
@@ -415,9 +434,10 @@ export class Decks {
       this.setGain(this.idle, 0);
     }
     this.events.duration(Number.isFinite(deck.element.duration) ? deck.element.duration : 0);
+    this.cancelStart(deck);
     if (startAt) {
       if (deck.element.readyState >= HTMLMediaElement.HAVE_METADATA) deck.element.currentTime = startAt;
-      else deck.element.addEventListener("loadedmetadata", () => (deck.element.currentTime = startAt), { once: true });
+      else this.startAt(deck, startAt);
     } else if (deck.element.currentTime) deck.element.currentTime = 0;
     if (autoplay) void this.play();
   }
@@ -432,6 +452,10 @@ export class Decks {
     if (idle.songId === songId) {
       idle.factor = finite(factor);
       idle.fade = fade;
+      if (idle.element.readyState < HTMLMediaElement.HAVE_METADATA) {
+        if (startAt) this.startAt(idle, startAt);
+        else this.cancelStart(idle);
+      } else if (Math.abs(idle.element.currentTime - startAt) > 0.01) idle.element.currentTime = startAt;
       return;
     }
     clearTimeout(this.timer);
@@ -443,7 +467,7 @@ export class Decks {
     if (url) {
       this.source(idle, url);
       idle.element.load();
-      if (startAt) idle.element.addEventListener("loadedmetadata", () => (idle.element.currentTime = startAt), { once: true });
+      if (startAt) this.startAt(idle, startAt);
     } else {
       this.release(idle);
       idle.element.removeAttribute("src");
@@ -453,7 +477,7 @@ export class Decks {
   reload(url: string, startAt: number): void {
     const deck = this.playing;
     this.source(deck, url);
-    deck.element.addEventListener("loadedmetadata", () => (deck.element.currentTime = startAt), { once: true });
+    this.startAt(deck, startAt);
     void this.play().catch((error) => this.rejected(error));
   }
 
@@ -509,6 +533,7 @@ export class Decks {
   seek(seconds: number): void {
     clearTimeout(this.timer);
     this.armed = null;
+    this.cancelStart(this.playing);
     this.playing.element.currentTime = seconds;
   }
 
