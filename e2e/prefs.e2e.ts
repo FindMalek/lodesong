@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { tapOutput } from "./audio";
 import { expect, fakeMediaClock, test, trackTitles } from "./fixtures";
 
 // The rules are per account and these tests need the real server (the fixture stubs it for everyone else): they run
@@ -26,6 +27,7 @@ async function reset(page: Page): Promise<void> {
 
 test("⌥[ starts a song later and ⌥] ends it early, for good, and the list marks it", async ({ page, signedIn }) => {
   await realPrefs(page);
+  await tapOutput(page);
   await page.addInitScript(fakeMediaClock);
   await signedIn.goto("/album/al-31");
   await reset(signedIn);
@@ -66,6 +68,41 @@ test("⌥[ starts a song later and ⌥] ends it early, for good, and the list ma
   await page.locator("body").press("ControlOrMeta+z");
   await expect(page.getByText(/^undid: /)).toBeVisible();
   await reset(page);
+});
+
+test.describe("song that is slow to load", () => {
+  // The service worker answers streams itself, where a route can't hold them back.
+  test.use({ serviceWorkers: "block" });
+
+  test("a seek before the song's length is known is not undone by its start trim", async ({ page, signedIn }) => {
+    await realPrefs(page);
+    await tapOutput(page);
+    await page.addInitScript(fakeMediaClock);
+    await page.route("**/rest/stream*", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+    await signedIn.goto("/album/al-31");
+    await reset(signedIn);
+    const titles = await trackTitles(page);
+    await page.getByRole("button", { name: "play", exact: true }).first().click();
+    await page.locator("body").press("2");
+    await page.locator("body").press("Alt+[");
+    await expect(page.getByText(new RegExp(`^${titles[0]} now starts at \\d+:\\d\\d$`))).toBeVisible();
+
+    await page.locator("body").press("n");
+    await page
+      .getByRole("row", { name: titles[0] as string })
+      .first()
+      .dblclick();
+    await page.locator("body").press("5");
+    await page.locator("body").press("Alt+]");
+    await expect(page.getByText(new RegExp(`^${titles[0]} now ends at \\d+:\\d\\d$`))).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: titles[1] as string, exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    await reset(page);
+  });
 });
 
 test("hide a song: gone from other lists, still on its album, and settings brings it back", async ({ page, signedIn }) => {
