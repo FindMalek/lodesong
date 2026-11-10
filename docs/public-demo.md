@@ -4,7 +4,7 @@ One permanent instance anyone can open, sign in with `demo` / `demo`, press play
 real-looking data. Nothing a visitor does survives the nightly reset.
 
 **Status: live at https://demo.lodesong.findmalek.engineer** (`PUBLIC_DEMO_HOST`), hosted on the owner's Dokploy
-server; DNS is a CNAME to `home.findmalek.engineer`. The site shows its "try it" button once `DEMO_URL` is set on Vercel.
+server; DNS is a CNAME to `home.findmalek.engineer`. The site's "try the live demo" buttons point here by default (`DEMO_URL` on Vercel overrides it).
 
 ## How it works
 
@@ -35,8 +35,8 @@ These need the owner's server, DNS or repo settings, so they are not done in cod
 4. Run **Public demo** from the Actions tab once, then check the next morning that a star or playlist made the day
    before is gone. If Dokploy keeps the old container filesystem on redeploy, add a volume-less "stop, start" or
    delete-and-recreate step to `publicDemoUp`.
-5. On Vercel, set `DEMO_URL=https://<that host>` for the site project and redeploy: the "try it" button appears in the
-   hero. Then replace the README's "try it" line (below the screenshot) with a direct link.
+5. The site's demo buttons already point at `https://demo.lodesong.findmalek.engineer`; set `DEMO_URL` on Vercel only to
+   change that.
 6. Consider putting a rate limit or Cloudflare in front: the host is public and the login is `demo` / `demo`.
 
 ## Trying it locally
