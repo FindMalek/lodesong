@@ -279,7 +279,6 @@ export class Decks {
   }
 
   private source(deck: Deck, url: string): void {
-    this.cancelStart(deck);
     this.release(deck);
     deck.sized = null;
     deck.sizeError = null;
@@ -288,6 +287,7 @@ export class Decks {
   }
 
   private release(deck: Deck): void {
+    this.cancelStart(deck);
     deck.abort?.abort();
     deck.abort = null;
     deck.sizing = false;
@@ -434,6 +434,7 @@ export class Decks {
       this.setGain(this.idle, 0);
     }
     this.events.duration(Number.isFinite(deck.element.duration) ? deck.element.duration : 0);
+    this.cancelStart(deck);
     if (startAt) {
       if (deck.element.readyState >= HTMLMediaElement.HAVE_METADATA) deck.element.currentTime = startAt;
       else this.startAt(deck, startAt);
@@ -451,6 +452,10 @@ export class Decks {
     if (idle.songId === songId) {
       idle.factor = finite(factor);
       idle.fade = fade;
+      if (idle.element.readyState < HTMLMediaElement.HAVE_METADATA) {
+        if (startAt) this.startAt(idle, startAt);
+        else this.cancelStart(idle);
+      } else if (Math.abs(idle.element.currentTime - startAt) > 0.01) idle.element.currentTime = startAt;
       return;
     }
     clearTimeout(this.timer);

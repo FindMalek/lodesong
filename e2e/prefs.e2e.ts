@@ -74,14 +74,27 @@ test.describe("song that is slow to load", () => {
   // The service worker answers streams itself, where a route can't hold them back.
   test.use({ serviceWorkers: "block" });
 
+  /** Every stream waits for the returned `release`, so the test decides when a song's length becomes known. */
+  async function holdStreams(page: Page): Promise<() => void> {
+    let release = (): void => undefined;
+    const open = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/rest/stream*", async (route) => {
+      await open;
+      await route.continue().catch(() => undefined);
+    });
+    return release;
+  }
+
+  const playedSeconds = async (page: Page): Promise<number> => {
+    const [m, s] = ((await page.locator("[data-slot=audio-player-time][data-type=current]").textContent()) ?? "0:0").split(":");
+    return Number(m) * 60 + Number(s);
+  };
+
   test("a seek before the song's length is known is not undone by its start trim", async ({ page, signedIn }) => {
     await realPrefs(page);
     await tapOutput(page);
     await page.addInitScript(fakeMediaClock);
-    await page.route("**/rest/stream*", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      await route.continue();
-    });
+    const release = await holdStreams(page);
     await signedIn.goto("/album/al-31");
     await reset(signedIn);
     const titles = await trackTitles(page);
@@ -98,9 +111,41 @@ test.describe("song that is slow to load", () => {
     await page.locator("body").press("5");
     await page.locator("body").press("Alt+]");
     await expect(page.getByText(new RegExp(`^${titles[0]} now ends at \\d+:\\d\\d$`))).toBeVisible();
+    release();
     await expect(page.getByRole("contentinfo").getByRole("link", { name: titles[1] as string, exact: true })).toBeVisible({
       timeout: 5000,
     });
+    await reset(page);
+  });
+
+  test("a start trim waiting for its song does not move the song that replaced it", async ({ page, signedIn }) => {
+    await realPrefs(page);
+    await tapOutput(page);
+    await page.addInitScript(fakeMediaClock);
+    const release = await holdStreams(page);
+    await signedIn.goto("/album/al-31");
+    await reset(signedIn);
+    const titles = await trackTitles(page);
+    await page.getByRole("button", { name: "play", exact: true }).first().click();
+    await page.locator("body").press("2");
+    await page.locator("body").press("Alt+[");
+    await expect(page.getByText(new RegExp(`^${titles[0]} now starts at \\d+:\\d\\d$`))).toBeVisible();
+    const prefs = await page.evaluate(async () => (await (await fetch("/api/prefs", { headers: { "x-lodesong": "1" } })).json()).songs);
+    const start = prefs[0].trimStart as number;
+    expect(start).toBeGreaterThan(10);
+
+    await page
+      .getByRole("row", { name: titles[0] as string })
+      .first()
+      .dblclick();
+    await page
+      .getByRole("row", { name: titles[2] as string })
+      .first()
+      .dblclick();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: titles[2] as string, exact: true })).toBeVisible();
+    release();
+    await expect.poll(() => playedSeconds(page)).toBeGreaterThanOrEqual(1);
+    expect(await playedSeconds(page)).toBeLessThan(start - 5);
     await reset(page);
   });
 });
