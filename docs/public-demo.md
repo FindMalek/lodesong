@@ -30,6 +30,7 @@ server; DNS is a CNAME to `home.findmalek.engineer`. The site's "try the live de
 - **Reset:** the **Public demo** workflow (`.github/workflows/public-demo.yml`) runs every night at 03:15 UTC. It
   redeploys the Navidrome from its image (library and account back to the baked state) and the player with no volume
   (sessions, settings, history and search index start empty, then the history is seeded again).
+- **Own Navidrome:** the public demo has its own `lodesong-public-demo-library` app (host `public-demo.<PREVIEW_DOMAIN>`, tailnet-only), separate from the one PR previews share. The **Demo** workflow redeploys the shared one whenever `scripts/deploy/dokploy.mjs` or the generator changes, which would otherwise wipe the demo account and leave the demo unable to sign anyone in until the next nightly run.
 - **Network:** the Navidrome stays tailnet-only; only the player host is public. The player is the only thing that talks
   to it, over Dokploy's internal network.
 

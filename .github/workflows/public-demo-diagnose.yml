@@ -24,6 +24,7 @@ jobs:
       - name: Print the demo apps
         env:
           PUBLIC_DEMO_HOST: ${{ vars.PUBLIC_DEMO_HOST }}
+          PUBLIC_DEMO_LIBRARY_HOST: public-demo.${{ vars.PREVIEW_DOMAIN }}
           DEMO_HOST: demo.${{ vars.PREVIEW_DOMAIN }}
         run: node scripts/deploy/dokploy.mjs public-demo-diagnose
       - name: Containers and their last log lines
