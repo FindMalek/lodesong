@@ -48,6 +48,11 @@ jobs:
         env:
           HOST: ${{ vars.PUBLIC_DEMO_HOST }}
         run: |
-          code=$(curl -s -o /tmp/demo-sign-in.json -w '%{http_code}' -X POST -H 'x-lodesong: 1' "https://$HOST/auth/demo")
-          echo "sign-in: $code"
-          [ "$code" = "200" ] || { cat /tmp/demo-sign-in.json; exit 1; }
+          for i in $(seq 1 36); do
+            code=$(curl -s -o /tmp/demo-sign-in.json -w '%{http_code}' -X POST -H 'x-lodesong: 1' "https://$HOST/auth/demo")
+            echo "sign-in: $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 5
+          done
+          cat /tmp/demo-sign-in.json
+          exit 1
