@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.19.0](https://github.com/FindMalek/lodesong/compare/v1.18.0...v1.19.0) (2026-11-10)
+
+
+### Features
+
+* **demo:** sign in automatically ([#562](https://github.com/FindMalek/lodesong/issues/562)) ([0fc63e9](https://github.com/FindMalek/lodesong/commit/0fc63e998cf5fa76768147ea94c04ec3d0e35e8e))
+* **video:** cutdown and loop ([#558](https://github.com/FindMalek/lodesong/issues/558)) ([d034b42](https://github.com/FindMalek/lodesong/commit/d034b42fc6e149d6ba92683ddc1d5a0b98a9fba4))
+* **video:** hero v3.1 ([#559](https://github.com/FindMalek/lodesong/issues/559)) ([86d2b23](https://github.com/FindMalek/lodesong/commit/86d2b2390e8e71d4d0d3b3d725693163d122844b))
+* **web:** live demo button ([#561](https://github.com/FindMalek/lodesong/issues/561)) ([89761fe](https://github.com/FindMalek/lodesong/commit/89761fe72f22139758c81aa8e86a4dfe7f5bffdb))
+
+
+### Bug Fixes
+
+* **player:** trim start race ([#560](https://github.com/FindMalek/lodesong/issues/560)) ([32d0a55](https://github.com/FindMalek/lodesong/commit/32d0a555bd8df730ca60c8f8ef047db35f0c30bb))
+
+
+### Performance Improvements
+
+* **video:** smoother playback ([#548](https://github.com/FindMalek/lodesong/issues/548)) ([9ec4283](https://github.com/FindMalek/lodesong/commit/9ec428345936bd91255bcd2ca4837cfbdda0d167))
+
 ## [1.18.0](https://github.com/FindMalek/lodesong/compare/v1.17.0...v1.18.0) (2026-11-09)
 
 
