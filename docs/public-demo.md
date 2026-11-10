@@ -3,8 +3,8 @@
 One permanent instance anyone can open, sign in with `demo` / `demo`, press play and see Stats and mixes with
 real-looking data. Nothing a visitor does survives the nightly reset.
 
-**Status: the repo side is done; it is not hosted yet.** It needs the owner's server and DNS, see
-[what is left](#what-is-left). Until then the site hides its "try it" button.
+**Status: live at https://demo.lodesong.findmalek.engineer** (`PUBLIC_DEMO_HOST`), hosted on the owner's Dokploy
+server; DNS is a CNAME to `home.findmalek.engineer`. The site shows its "try it" button once `DEMO_URL` is set on Vercel.
 
 ## How it works
 

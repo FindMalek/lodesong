@@ -38,7 +38,7 @@ jobs:
         env:
           HOST: ${{ vars.PUBLIC_DEMO_HOST }}
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 90); do
             curl -fsS "https://$HOST/healthz" && exit 0
             sleep 5
           done
