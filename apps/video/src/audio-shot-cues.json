@@ -120,9 +120,9 @@
     "label": "whip up to the player bar"
   },
   {
-    "frame": 497,
+    "frame": 495,
     "kind": "ignite",
-    "label": "kick enters, cover ignites gold"
+    "label": "kick enters, cover ignites gold (2 frames ahead of the picture)"
   },
   {
     "frame": 505,
@@ -170,14 +170,14 @@
     "label": "import chip"
   },
   {
-    "frame": 1069,
-    "kind": "seek",
-    "label": "whip to the import page"
-  },
-  {
-    "frame": 1081,
+    "frame": 1025,
     "kind": "chip",
     "label": "import bars fill"
+  },
+  {
+    "frame": 1073,
+    "kind": "seek",
+    "label": "whip to the imported playlist"
   },
   {
     "frame": 1149,
@@ -845,232 +845,247 @@
     "label": "server: chip settles"
   },
   {
-    "frame": 3368,
-    "kind": "flash",
-    "label": "queue: quick cut"
+    "frame": 3370,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3371,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3372,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3373,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3375,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3376,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3377,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3378,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3379,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3381,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3382,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3383,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3384,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3385,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3386,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3388,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3388,
+    "kind": "type",
+    "label": "type: line 1"
+  },
+  {
+    "frame": 3393,
+    "kind": "type",
+    "label": "type: line 2"
   },
   {
     "frame": 3394,
-    "kind": "flash",
-    "label": "mixes: quick cut"
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3396,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3396,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3398,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3399,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3400,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3401,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3402,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3403,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3404,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3406,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3406,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3408,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3409,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3411,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3411,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3413,
+    "kind": "type",
+    "label": "type: line 2"
+  },
+  {
+    "frame": 3417,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 3418,
+    "kind": "type",
+    "label": "type: line 3"
+  },
+  {
+    "frame": 3419,
+    "kind": "type",
+    "label": "type: line 3"
   },
   {
     "frame": 3420,
-    "kind": "flash",
-    "label": "session: quick cut"
+    "kind": "type",
+    "label": "type: line 3"
   },
   {
-    "frame": 3448,
+    "frame": 3422,
     "kind": "type",
-    "label": "type: line 1"
+    "label": "type: line 3"
   },
   {
-    "frame": 3449,
+    "frame": 3423,
     "kind": "type",
-    "label": "type: line 1"
+    "label": "type: line 3"
   },
   {
-    "frame": 3450,
+    "frame": 3424,
     "kind": "type",
-    "label": "type: line 1"
+    "label": "type: line 3"
   },
   {
-    "frame": 3450,
+    "frame": 3425,
     "kind": "type",
-    "label": "type: line 1"
+    "label": "type: line 3"
   },
   {
-    "frame": 3452,
+    "frame": 3426,
     "kind": "type",
-    "label": "type: line 1"
+    "label": "type: line 3"
   },
   {
-    "frame": 3453,
+    "frame": 3427,
     "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3454,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3454,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3455,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3456,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3457,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3458,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3458,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3459,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3460,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3461,
-    "kind": "type",
-    "label": "type: line 1"
-  },
-  {
-    "frame": 3466,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3467,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3468,
-    "kind": "type",
-    "label": "type: line 2"
+    "label": "type: line 3"
   },
   {
     "frame": 3469,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3470,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3470,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3471,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3472,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3473,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3474,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3475,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3476,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3476,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3477,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3478,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3480,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3480,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3481,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3482,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3483,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3483,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3484,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3486,
-    "kind": "type",
-    "label": "type: line 2"
-  },
-  {
-    "frame": 3529,
     "kind": "draw",
     "label": "lodesong draws in"
   },
   {
-    "frame": 3540,
+    "frame": 3482,
     "kind": "chip",
     "label": "your music. your server."
   },
   {
-    "frame": 3548,
+    "frame": 3493,
     "kind": "chip",
     "label": "the lyric returns lit"
   },
   {
-    "frame": 3592,
+    "frame": 3561,
     "kind": "chip",
     "label": "works with navidrome"
   }

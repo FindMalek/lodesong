@@ -11,7 +11,7 @@ const WHIP_DONE = WHIP_AT + WHIP_FRAMES - S2_FRAMES;
 
 const S3_UNSORTED: readonly ShotCue[] = [
   { shot: "play-line", at: 0, kind: "impact", label: "the drop: the song starts mid-song" },
-  { shot: "play-line", at: IGNITE_AT, kind: "kick", label: "kick enters, cover ignites gold" },
+  { shot: "play-line", at: IGNITE_AT - 2, kind: "kick", label: "kick enters, cover ignites gold (2 frames ahead of the picture)" },
   { shot: "play-line", at: IGNITE_AT + 3, kind: "ping", label: "bell on the ignite" },
   { shot: "play-line", at: IGNITE_AT + 8, kind: "tick", label: "seek fill jumps to the line" },
   { shot: "play-line", at: 112, kind: "tick", label: "lyric scrolls to the next line" },

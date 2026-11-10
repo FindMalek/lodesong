@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { FILM } from "../copy";
 import { cutFrames, MOMENT_BEATS, S10_CUES, S10_CUTS } from "./s10-plan";
 import { flashFrames, REST_FRAMES, S11_CUES, S11_FLASHES } from "./s11-plan";
-import { S12_CUES, S12_INTERCUTS, S12_TIMES, S12_TYPED } from "./s12-plan";
+import { S12_CUES, S12_TIMES, S12_TYPED } from "./s12-plan";
 import { shotOf } from "./timelines";
 
 const SECOND = 60;
@@ -31,17 +31,15 @@ test("yours is four equal flashes held about a second, with no jargon chips, and
   expect(S11_CUES.find((cue) => cue.kind === "rest")?.at).toBe(shot.frames - REST_FRAMES);
 });
 
-test("the land intercuts quick product frames, types the README command, enters on a beat and breathes 8 frames before the last hit", () => {
+test("the land types the README command from the first frame, enters on a beat and breathes 8 frames before the last hit", () => {
   const shot = shotOf("land");
-  expect(S12_INTERCUTS.length).toBeGreaterThanOrEqual(3);
-  expect(S12_TIMES.intercutEnd).toBe(shot.beat(S12_INTERCUTS.length));
   expect(S12_TYPED.map((row) => row.length)).toEqual(FILM.end.docker.map((line) => line.length));
   expect(S12_TYPED.flat().every((at, i, all) => at >= (all[i - 1] ?? 0))).toBe(true);
-  expect(Math.min(...S12_TYPED.flat())).toBeGreaterThanOrEqual(S12_TIMES.intercutEnd);
+  expect(Math.min(...S12_TYPED.flat())).toBeGreaterThanOrEqual(S12_TIMES.typeFrom);
   expect(Math.max(...S12_TYPED.flat())).toBeLessThan(S12_TIMES.enter);
-  expect(S12_TIMES.enter).toBe(shot.beat(5.5));
+  expect(S12_TIMES.enter).toBe(shot.beat(3));
   expect(S12_TIMES.hit - S12_TIMES.rest).toBe(8);
-  expect(S12_TIMES.hit).toBe(shot.beat(10));
+  expect(S12_TIMES.hit).toBe(shot.beat(8));
   const hits = S12_CUES.filter((cue) => cue.kind === "impact");
   expect(hits.at(-1)?.at).toBe(S12_TIMES.hit);
   expect(S12_CUES.some((cue) => cue.at > S12_TIMES.rest && cue.at < S12_TIMES.hit)).toBe(false);
