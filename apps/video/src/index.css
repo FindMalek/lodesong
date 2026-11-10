@@ -3,7 +3,7 @@
 @source "../../../packages/ui/src";
 
 :root {
-  --ignite: oklch(0.84 0.15 82);
+  --ignite: oklch(0.82 0.16 70);
 }
 
 @layer base {

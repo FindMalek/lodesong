@@ -82,7 +82,11 @@ export const FILM = {
   },
   end: {
     url: "github.com/FindMalek/lodesong",
-    docker: ["docker run -p 8080:8080 -v lodesong-data:/data \\", "  -e NAVIDROME_URL=http://navidrome:4533 ghcr.io/findmalek/lodesong"],
+    docker: [
+      "docker run -d -p 8080:8080 -v lodesong-data:/data \\",
+      "  -e NAVIDROME_URL=http://host.docker.internal:4533 \\",
+      "  ghcr.io/findmalek/lodesong",
+    ],
   },
 } as const;
 

@@ -57,7 +57,7 @@ export const S11_FLASHES: readonly Flash[] = [
     right: {
       take: "doctor",
       plate: "fixed",
-      chip: "fixes your library",
+      chip: "library health",
       icon: "doctor",
       focus: { x: 150, y: 40, w: 700, h: 180 },
       scale: [2.1, 2.25],

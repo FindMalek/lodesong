@@ -1,8 +1,6 @@
 import type { ShotCue } from "../captures/types";
 import { FILM } from "../copy";
 import { hash } from "../design/motion";
-import type { Box } from "../design/probe";
-import type { FlashIcon } from "../ui/s11-flash";
 import { shotOf } from "./timelines";
 
 const shot = shotOf("land");
@@ -10,9 +8,8 @@ const shot = shotOf("land");
 /** The README's install command, line by line: the film types exactly this. */
 export const S12_LINES: readonly string[] = FILM.end.docker;
 
-const INTERCUT_BEATS = 3;
-const TYPE_FROM = shot.beat(INTERCUT_BEATS) + 2;
-const CHARS_PER_FRAME = 3.4;
+const TYPE_FROM = 2;
+const CHARS_PER_FRAME = 2.6;
 const LINE_GAP = 4;
 
 /** Frame each character of each line lands on: a fast, slightly uneven burst, the way a pasted command streams in. */
@@ -28,57 +25,24 @@ export const S12_TYPED: readonly (readonly number[])[] = S12_LINES.reduce<{ at: 
   { at: TYPE_FROM, lines: [] },
 ).lines;
 
-export interface Intercut {
-  id: string;
-  take: string;
-  plate: string;
-  chip: string;
-  icon: FlashIcon;
-  focus?: Box;
-  scale: readonly [number, number];
-}
-
-export const S12_INTERCUTS: readonly Intercut[] = [
-  { id: "queue", take: "queue", plate: "queue", chip: "queue", icon: "queue", focus: { x: 900, y: 44, w: 540, h: 701 }, scale: [1.3, 1.5] },
-  {
-    id: "mixes",
-    take: "home-mixes",
-    plate: "home",
-    chip: "mixes",
-    icon: "mixes",
-    focus: { x: 200, y: 540, w: 1240, h: 240 },
-    scale: [1.5, 1.7],
-  },
-  {
-    id: "session",
-    take: "devices",
-    plate: "picker",
-    chip: "one session",
-    icon: "devices",
-    focus: { x: 860, y: 560, w: 580, h: 250 },
-    scale: [1.5, 1.7],
-  },
-];
-
 export const S12_TIMES = {
-  intercutEnd: shot.beat(INTERCUT_BEATS),
-  enter: shot.beat(5.5),
-  travelled: shot.beat(6.3),
-  settled: shot.beat(8.3),
-  band: shot.beat(5.9),
-  wordmark: shot.beat(6.2),
-  tagline: shot.beat(6.6),
-  lyric: shot.beat(6.9),
-  chip: shot.beat(8.6),
-  rest: shot.beat(10) - 8,
-  hit: shot.beat(10),
+  typeFrom: TYPE_FROM,
+  enter: shot.beat(3),
+  travelled: shot.beat(3.8),
+  settled: shot.beat(5.8),
+  band: shot.beat(3.4),
+  wordmark: shot.beat(3.9),
+  tagline: shot.beat(4.4),
+  lyric: shot.beat(4.8),
+  chip: shot.beat(7.4),
+  rest: shot.beat(8) - 8,
+  hit: shot.beat(8),
   end: shot.frames,
 } as const;
 
 const STRIDE = 3;
 
 export const S12_CUES: readonly ShotCue[] = [
-  ...S12_INTERCUTS.map((cut, i): ShotCue => ({ shot: "land", at: shot.beat(i), kind: "hit", label: `${cut.id}: quick cut` })),
   ...S12_TYPED.flatMap((frames, row) =>
     frames.filter((_, i) => i % STRIDE === 0).map((at): ShotCue => ({ shot: "land", at, kind: "key", label: `type: line ${row + 1}` })),
   ),

@@ -1,10 +1,5 @@
 [
   {
-    "frame": 4,
-    "kind": "chip",
-    "label": "wordmark rises"
-  },
-  {
     "frame": 14,
     "kind": "chip",
     "label": "lyric forms from dots: i keep the"
@@ -18,6 +13,11 @@
     "frame": 36,
     "kind": "chip",
     "label": "chip settles"
+  },
+  {
+    "frame": 54,
+    "kind": "chip",
+    "label": "wordmark rises"
   },
   {
     "frame": 135,
@@ -105,17 +105,17 @@
     "label": "line scrolls on"
   },
   {
-    "frame": 392,
+    "frame": 390,
     "kind": "tile",
     "label": "tile 1 develops"
   },
   {
-    "frame": 400,
+    "frame": 390,
     "kind": "tile",
     "label": "tile 2 develops"
   },
   {
-    "frame": 408,
+    "frame": 396,
     "kind": "tile",
     "label": "tile 3 develops"
   },
@@ -215,86 +215,156 @@
     "label": "tagline rises"
   },
   {
-    "frame": 756,
+    "frame": 754,
     "kind": "type",
     "label": "type: d"
   },
   {
-    "frame": 756,
+    "frame": 754,
     "kind": "type",
     "label": "type: o"
   },
   {
-    "frame": 756,
+    "frame": 754,
     "kind": "type",
     "label": "type: c"
   },
   {
-    "frame": 757,
+    "frame": 754,
     "kind": "type",
     "label": "type: k"
   },
   {
-    "frame": 757,
+    "frame": 755,
     "kind": "type",
     "label": "type: e"
   },
   {
-    "frame": 758,
+    "frame": 755,
     "kind": "type",
     "label": "type: r"
   },
   {
-    "frame": 758,
+    "frame": 755,
     "kind": "type",
     "label": "type:  "
   },
   {
-    "frame": 758,
+    "frame": 756,
     "kind": "type",
     "label": "type: r"
   },
   {
-    "frame": 759,
+    "frame": 756,
     "kind": "type",
     "label": "type: u"
   },
   {
-    "frame": 759,
+    "frame": 756,
     "kind": "type",
     "label": "type: n"
   },
   {
-    "frame": 760,
+    "frame": 756,
     "kind": "type",
     "label": "type:  "
   },
   {
-    "frame": 760,
+    "frame": 757,
     "kind": "type",
     "label": "type: -"
   },
   {
-    "frame": 761,
+    "frame": 757,
     "kind": "type",
     "label": "type: d"
   },
   {
-    "frame": 761,
+    "frame": 757,
     "kind": "type",
     "label": "type:  "
   },
   {
-    "frame": 761,
+    "frame": 758,
     "kind": "type",
     "label": "type: -"
   },
   {
-    "frame": 762,
+    "frame": 758,
     "kind": "type",
     "label": "type: p"
   },
   {
+    "frame": 758,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 759,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 760,
+    "kind": "type",
+    "label": "type: :"
+  },
+  {
+    "frame": 760,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 760,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type: 8"
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type: 0"
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 761,
+    "kind": "type",
+    "label": "type: \\"
+  },
+  {
+    "frame": 762,
+    "kind": "type",
+    "label": "type: \n"
+  },
+  {
+    "frame": 762,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
     "frame": 762,
     "kind": "type",
     "label": "type:  "
@@ -302,57 +372,272 @@
   {
     "frame": 763,
     "kind": "type",
-    "label": "type: 8"
+    "label": "type: -"
   },
   {
     "frame": 763,
     "kind": "type",
-    "label": "type: 0"
+    "label": "type: e"
   },
   {
     "frame": 763,
-    "kind": "type",
-    "label": "type: 8"
-  },
-  {
-    "frame": 764,
-    "kind": "type",
-    "label": "type: 0"
-  },
-  {
-    "frame": 764,
-    "kind": "type",
-    "label": "type: :"
-  },
-  {
-    "frame": 765,
-    "kind": "type",
-    "label": "type: 8"
-  },
-  {
-    "frame": 765,
-    "kind": "type",
-    "label": "type: 0"
-  },
-  {
-    "frame": 766,
-    "kind": "type",
-    "label": "type: 8"
-  },
-  {
-    "frame": 766,
-    "kind": "type",
-    "label": "type: 0"
-  },
-  {
-    "frame": 766,
     "kind": "type",
     "label": "type:  "
   },
   {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: N"
+  },
+  {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: A"
+  },
+  {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: V"
+  },
+  {
+    "frame": 764,
+    "kind": "type",
+    "label": "type: I"
+  },
+  {
+    "frame": 765,
+    "kind": "type",
+    "label": "type: D"
+  },
+  {
+    "frame": 765,
+    "kind": "type",
+    "label": "type: R"
+  },
+  {
+    "frame": 765,
+    "kind": "type",
+    "label": "type: O"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: M"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: E"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: _"
+  },
+  {
+    "frame": 766,
+    "kind": "type",
+    "label": "type: U"
+  },
+  {
     "frame": 767,
     "kind": "type",
-    "label": "type: …"
+    "label": "type: R"
+  },
+  {
+    "frame": 767,
+    "kind": "type",
+    "label": "type: L"
+  },
+  {
+    "frame": 767,
+    "kind": "type",
+    "label": "type: ="
+  },
+  {
+    "frame": 768,
+    "kind": "type",
+    "label": "type: <"
+  },
+  {
+    "frame": 768,
+    "kind": "type",
+    "label": "type: u"
+  },
+  {
+    "frame": 768,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 769,
+    "kind": "type",
+    "label": "type: l"
+  },
+  {
+    "frame": 769,
+    "kind": "type",
+    "label": "type: >"
+  },
+  {
+    "frame": 769,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 769,
+    "kind": "type",
+    "label": "type: \\"
+  },
+  {
+    "frame": 770,
+    "kind": "type",
+    "label": "type: \n"
+  },
+  {
+    "frame": 770,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 770,
+    "kind": "type",
+    "label": "type:  "
+  },
+  {
+    "frame": 771,
+    "kind": "type",
+    "label": "type: g"
+  },
+  {
+    "frame": 771,
+    "kind": "type",
+    "label": "type: h"
+  },
+  {
+    "frame": 771,
+    "kind": "type",
+    "label": "type: c"
+  },
+  {
+    "frame": 771,
+    "kind": "type",
+    "label": "type: r"
+  },
+  {
+    "frame": 772,
+    "kind": "type",
+    "label": "type: ."
+  },
+  {
+    "frame": 772,
+    "kind": "type",
+    "label": "type: i"
+  },
+  {
+    "frame": 772,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 773,
+    "kind": "type",
+    "label": "type: /"
+  },
+  {
+    "frame": 773,
+    "kind": "type",
+    "label": "type: f"
+  },
+  {
+    "frame": 773,
+    "kind": "type",
+    "label": "type: i"
+  },
+  {
+    "frame": 774,
+    "kind": "type",
+    "label": "type: n"
+  },
+  {
+    "frame": 774,
+    "kind": "type",
+    "label": "type: d"
+  },
+  {
+    "frame": 774,
+    "kind": "type",
+    "label": "type: m"
+  },
+  {
+    "frame": 774,
+    "kind": "type",
+    "label": "type: a"
+  },
+  {
+    "frame": 775,
+    "kind": "type",
+    "label": "type: l"
+  },
+  {
+    "frame": 775,
+    "kind": "type",
+    "label": "type: e"
+  },
+  {
+    "frame": 775,
+    "kind": "type",
+    "label": "type: k"
+  },
+  {
+    "frame": 776,
+    "kind": "type",
+    "label": "type: /"
+  },
+  {
+    "frame": 776,
+    "kind": "type",
+    "label": "type: l"
+  },
+  {
+    "frame": 776,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 776,
+    "kind": "type",
+    "label": "type: d"
+  },
+  {
+    "frame": 777,
+    "kind": "type",
+    "label": "type: e"
+  },
+  {
+    "frame": 777,
+    "kind": "type",
+    "label": "type: s"
+  },
+  {
+    "frame": 777,
+    "kind": "type",
+    "label": "type: o"
+  },
+  {
+    "frame": 778,
+    "kind": "type",
+    "label": "type: n"
+  },
+  {
+    "frame": 778,
+    "kind": "type",
+    "label": "type: g"
+  },
+  {
+    "frame": 786,
+    "kind": "chip",
+    "label": "works with navidrome chip settles"
   },
   {
     "frame": 792,

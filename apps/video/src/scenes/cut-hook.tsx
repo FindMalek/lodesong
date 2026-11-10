@@ -14,9 +14,10 @@ const LINES = ["i keep the", "lights on"] as const;
 const LINE_AT = [6, 18] as const;
 const LINE_Y = [1076, 1200] as const;
 const CHIP_AT = 30;
+const MARK_AT = 54;
 
 export const CUT_HOOK_CUES: readonly ShotCue[] = [
-  { shot: "hook", at: 4, kind: "tick", label: "wordmark rises" },
+  { shot: "hook", at: MARK_AT, kind: "tick", label: "wordmark rises" },
   { shot: "hook", at: LINE_AT[0] + 8, kind: "ping", label: "lyric forms from dots: i keep the" },
   { shot: "hook", at: LINE_AT[1] + 8, kind: "ping", label: "lyric forms from dots: lights on" },
   { shot: "hook", at: CHIP_AT + 6, kind: "tick", label: "chip settles" },
@@ -65,7 +66,7 @@ export function HookScene() {
         <Bokeh focusZ={0} z={300} count={8} seed={3} opacity={0.14} width={1080} height={1920} />
       </Camera>
       <div style={{ position: "absolute", left: 0, right: 0, top: 266, display: "flex", justifyContent: "center" }}>
-        <Wordmark font={54} at={4} legible={frame >= 20} />
+        <Wordmark font={54} at={MARK_AT} legible={frame >= MARK_AT + 16} />
       </div>
       <CutChip text="find a song by its lyric" from={CHIP_AT} />
     </>

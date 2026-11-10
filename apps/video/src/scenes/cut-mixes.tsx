@@ -18,7 +18,7 @@ const SLOT = [
   { x: 90, y: 1080 },
 ] as const;
 const SLOT_SIZE = 400;
-const DEVELOP_AT = [0, 8, 16] as const;
+const DEVELOP_AT = [-12, -4, 4] as const;
 const DEVELOP_FRAMES = 26;
 const RUSH_AT = 38;
 const LAND_AT = 62;
@@ -26,7 +26,7 @@ const IGNITE_FRAMES = 28;
 const ROWS_AT = 76;
 
 export const CUT_MIXES_CUES: readonly ShotCue[] = [
-  ...DEVELOP_AT.map((at, i): ShotCue => ({ shot: "mixes", at: at + 2, kind: "pluck", label: `tile ${i + 1} develops` })),
+  ...DEVELOP_AT.map((at, i): ShotCue => ({ shot: "mixes", at: Math.max(0, at + 2), kind: "pluck", label: `tile ${i + 1} develops` })),
   { shot: "mixes", at: RUSH_AT, kind: "whoosh", label: "one tile rushes forward" },
   { shot: "mixes", at: LAND_AT, kind: "hit", label: "mix opens" },
   { shot: "mixes", at: LAND_AT + 2, kind: "ping", label: "cover ignites gold" },
