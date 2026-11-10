@@ -260,8 +260,11 @@ export function App() {
     void import("@/lib/settings-sync").then((sync) => sync.startSettingsSync());
     // The queue hand-off (Arpeggi, other browsers) waits until the first screen is done.
     const id = setTimeout(() => {
-      void import("@/lib/queue-sync").then((sync) => sync.startQueueSync());
-      startElsewhere();
+      // The demo's visitors share one account, so its play queue and "playing elsewhere" would be each other's.
+      if (!isDemo()) {
+        void import("@/lib/queue-sync").then((sync) => sync.startQueueSync());
+        startElsewhere();
+      }
       void import("@/lib/session").then((module) => module.session.start());
     }, 1500);
     return () => clearTimeout(id);

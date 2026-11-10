@@ -33,7 +33,9 @@ boot with a message naming the variable.
 | `INDEX_USER` | — | Navidrome account for background jobs (search index, lyrics backfill). Unset: the admin who signed in most recently. |
 | `INDEX_PASSWORD` | — | Password for `INDEX_USER`. |
 | `DEMO_SEED` | `off` | `on`: fill `INDEX_USER`'s history with months of generated listening, once (for demos and previews, see docs/previews.md). Needs `INDEX_USER`. |
-| `PUBLIC_DEMO` | `off` | `on`: a public demo (docs/public-demo.md). Visitors are signed in as `INDEX_USER` by themselves (no login form). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted. |
+| `PUBLIC_DEMO` | `off` | `on`: a public demo (docs/public-demo.md). Visitors are signed in as `DEMO_USER` by themselves (no login form). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted. |
+| `DEMO_USER` | — | With `PUBLIC_DEMO=on`: the account every visitor is signed in as, with no login form. Use a throwaway account (never an admin or your own): anyone who opens the site gets it. Unset: the demo shows the normal login. |
+| `DEMO_PASSWORD` | — | Password for `DEMO_USER`. It stays on the server. |
 | `REDIS_URL` | — | `redis://…`: keep computed answers (made for you) in Redis, shared by several instances. Unset: in memory, which is all one instance needs. |
 | `TRUST_PROXY` | `false` | `true` behind a reverse proxy: client IPs come from `X-Real-IP` / `X-Forwarded-For` (login rate limits). |
 | `PUBLIC_URL` | — | The address people reach the player at, e.g. `https://music.example.com`. Link previews (`og:image`, `og:url`) point there. Unset: taken from the request, and from the proxy's `X-Forwarded-*` headers when `TRUST_PROXY` is on. |

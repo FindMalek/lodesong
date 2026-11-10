@@ -116,10 +116,10 @@ async function startSession(path: string, body?: object, demo = false): Promise<
   const answer = (await response.json().catch(() => ({}))) as { user?: string; server?: string; error?: string };
   if (!response.ok || !answer.user) throw new Error(answer.error ?? "login failed");
   await setAccount(`${answer.server ?? ""}/${answer.user}`);
-  if (demo)
-    try {
-      localStorage.setItem(DEMO_KEY, "1");
-    } catch {}
+  try {
+    if (demo) localStorage.setItem(DEMO_KEY, "1");
+    else localStorage.removeItem(DEMO_KEY);
+  } catch {}
   setUser(answer.user);
 }
 

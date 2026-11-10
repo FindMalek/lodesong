@@ -2,7 +2,6 @@ import { Button } from "@lodesong/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@lodesong/ui/components/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@lodesong/ui/components/field";
 import { Input } from "@lodesong/ui/components/input";
-import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
@@ -19,6 +18,8 @@ interface ServerHealth {
 }
 
 const DOCS = "https://github.com/FindMalek/lodesong/blob/main/docs/deploy/README.md";
+const LOOP_MS = 10_000;
+let lastAutomatic = 0;
 const PREVIEW_TAPS = 4;
 const PREVIEW_TAPS_MS = 1500;
 
@@ -71,21 +72,28 @@ export function Login() {
     void check();
   }, [check]);
 
-  const enter = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await demoLogin();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "login failed");
-      void check();
-    } finally {
-      setBusy(false);
-    }
-  }, [check]);
+  const enter = useCallback(
+    async (automatic: boolean) => {
+      // Signed in, then straight back here: cookies are blocked. Asking again would loop, so wait for a click.
+      const looping = Date.now() - lastAutomatic < LOOP_MS;
+      if (automatic) lastAutomatic = Date.now();
+      if (automatic && looping) return setError("the demo can't keep you signed in: allow cookies for this site");
+      setBusy(true);
+      setError(null);
+      try {
+        await demoLogin();
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "login failed");
+        void check();
+      } finally {
+        setBusy(false);
+      }
+    },
+    [check],
+  );
 
   useEffect(() => {
-    if (demo) void enter();
+    if (demo) void enter(true);
   }, [demo, enter]);
 
   async function submit(event: FormEvent): Promise<void> {
@@ -104,6 +112,19 @@ export function Login() {
   }
 
   const selected = servers?.find((item) => item.id === server);
+  // The normal form or the demo's opening screen, whichever the server says: nothing flashes first.
+  if (!servers && !checkFailed)
+    return (
+      <main className="fixed inset-0 grid place-items-center p-4">
+        <Card className="w-full max-w-88">
+          <CardHeader>
+            <CardTitle>
+              <BrandMark />
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </main>
+    );
   if (demo)
     return (
       <main className="fixed inset-0 grid place-items-center p-4">
@@ -117,9 +138,9 @@ export function Login() {
           <CardContent className="flex flex-col gap-3">
             {error && (
               <>
-                <ServerStatus health={selected ?? null} loading={!servers} failed={checkFailed} onRetry={() => void check()} />
+                <ServerStatus health={selected ?? null} failed={checkFailed} onRetry={() => void check()} />
                 <FieldError>{error}</FieldError>
-                <Button size="lg" disabled={busy} onClick={() => void enter()}>
+                <Button size="lg" disabled={busy} onClick={() => void enter(false)}>
                   try again
                 </Button>
               </>
@@ -157,12 +178,7 @@ export function Login() {
                     ))}
                   </ToggleGroup>
                 )}
-                <ServerStatus
-                  health={selected ?? null}
-                  loading={!servers && !checkFailed}
-                  failed={checkFailed}
-                  onRetry={() => void check()}
-                />
+                <ServerStatus health={selected ?? null} failed={checkFailed} onRetry={() => void check()} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="user" className="font-mono text-muted-foreground">
@@ -202,18 +218,7 @@ export function Login() {
   );
 }
 
-function ServerStatus({
-  health,
-  loading,
-  failed,
-  onRetry,
-}: {
-  health: ServerHealth | null;
-  loading: boolean;
-  failed: boolean;
-  onRetry: () => void;
-}) {
-  if (loading) return <Skeleton className="h-5 w-48" />;
+function ServerStatus({ health, failed, onRetry }: { health: ServerHealth | null; failed: boolean; onRetry: () => void }) {
   if (failed || !health)
     return (
       <FieldDescription className="flex items-center gap-2">

@@ -12,14 +12,21 @@ server; DNS is a CNAME to `home.findmalek.engineer`. The site's "try the live de
   `lodesong-demo` Navidrome image. No real music.
 - **Player:** `ghcr.io/findmalek/lodesong:latest` with `PUBLIC_DEMO=on` and `DEMO_SEED=on` (six months of generated
   listening for the `demo` account). It has no uploads, no feedback, no AI key, no lyrics lookups, no update check.
-- **No login:** with `PUBLIC_DEMO=on` and `INDEX_USER` / `INDEX_PASSWORD` set, `/api/health` says `demo: true` and the
+- **No login:** with `PUBLIC_DEMO=on` and `DEMO_USER` / `DEMO_PASSWORD` set, `/api/health` says `demo: true` and the
   sign-in screen calls `POST /auth/demo`, which opens an ordinary session for that account (same cookie, same CSRF
-  header) and returns no password. The route answers 404 when `PUBLIC_DEMO` is off or no account is set, and is rate
-  limited per IP. If the Navidrome is down the visitor sees the usual error with a "try again" button. A thin strip says
-  "public demo, resets every night"; there is no log out button.
+  header) and returns no password. The route answers 404 when `PUBLIC_DEMO` is off or no demo account is set. It is
+  rate limited per address (the one the proxy appended to `X-Forwarded-For`) and in total, keeps at most 500 demo
+  sessions (the longest unused go first), and `/auth/login` is closed, so wrong passwords can't lock visitors out. If
+  the Navidrome is down the visitor sees the usual error with a "try again" button. A thin strip says "public demo,
+  resets every night"; there is no log out button. This starts once a release with it is deployed (the nightly run
+  uses `:latest`); until then the form and `demo` / `demo` still work.
+- **Warning:** `DEMO_USER` is signed in for anyone who opens the site. Give it a throwaway account, never an admin or
+  your own. It is separate from `INDEX_USER` on purpose: setting `PUBLIC_DEMO=on` on a real server doesn't hand its
+  index account to the public.
 - **`PUBLIC_DEMO=on`** also makes nobody an admin (no doctor, no index rebuilds, no lyrics writes), refuses to make API
-  and terminal tokens, and refuses `deletePlaylist`. Everyone is the same `demo` account, so a visitor can star
-  songs, make a playlist and change settings, but cannot remove what the demo ships with.
+  and terminal tokens, and refuses `deletePlaylist`. There is no shared playback session, play queue sync or "playing
+  elsewhere", and a visitor sees and ends only their own session. Everyone is the same `demo` account, so a visitor can
+  star songs, make a playlist, change or empty a playlist and change settings; the nightly reset puts it all back.
 - **Reset:** the **Public demo** workflow (`.github/workflows/public-demo.yml`) runs every night at 03:15 UTC. It
   redeploys the Navidrome from its image (library and account back to the baked state) and the player with no volume
   (sessions, settings, history and search index start empty, then the history is seeded again).
@@ -47,7 +54,7 @@ These need the owner's server, DNS or repo settings, so they are not done in cod
 ## Trying it locally
 
 ```bash
-PUBLIC_DEMO=on DEMO_SEED=on INDEX_USER=demo INDEX_PASSWORD=demo NAVIDROME_URL=http://127.0.0.1:4533 bun run start
+PUBLIC_DEMO=on DEMO_SEED=on INDEX_USER=demo INDEX_PASSWORD=demo DEMO_USER=demo DEMO_PASSWORD=demo NAVIDROME_URL=http://127.0.0.1:4533 bun run start
 ```
 
 with `compose.demo.yaml` running ([demo library](demo-library.md)).

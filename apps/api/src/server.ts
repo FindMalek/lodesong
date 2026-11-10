@@ -82,8 +82,6 @@ releases?.start();
 const followSync = config.lyterion ? new FollowSync(library, config.lyterion, () => sessions.adminAccounts()) : null;
 followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
-const demoAccount =
-  config.publicDemo && config.indexUser && config.indexPassword ? { user: config.indexUser, password: config.indexPassword } : null;
 const api = createApi({
   upstreams: config.upstreams,
   covers,
@@ -98,7 +96,7 @@ const api = createApi({
   idleSeconds,
   trustProxy: config.trustProxy,
   publicDemo: config.publicDemo,
-  demoAccount,
+  demoAccount: config.demoAccount,
   updates: new UpdateCheck(config.updateCheck),
   backfills,
   lrc,
@@ -107,13 +105,13 @@ const api = createApi({
   releases,
   artistGenres,
   followSync,
-  devices: config.oneSession ? new DeviceHub() : null,
+  devices: config.oneSession && !config.publicDemo ? new DeviceHub() : null,
   groq: config.groq,
   audiomuseUrl: config.audiomuseUrl,
   feedback: config.feedback,
   cache: createCache(config.redisUrl),
 });
-const health = new HealthCheck(config.upstreams, undefined, demoAccount !== null);
+const health = new HealthCheck(config.upstreams, undefined, config.demoAccount !== null);
 
 const cspReport = createCspReporter();
 

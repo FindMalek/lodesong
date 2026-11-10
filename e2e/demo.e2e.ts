@@ -3,8 +3,11 @@ import { expect, test } from "./fixtures";
 
 // The public demo is a server setting, so these run against a second player (same build, PUBLIC_DEMO=on) in front of the mock.
 const OFFSET = Number(process.env.E2E_PORT_OFFSET ?? 0);
-const port = () => 4560 + OFFSET + (test.info().project.name === "webkit" ? 1 : 0);
+// Its own port per worker and browser, so repeats or shards running side by side never share a server.
+const port = () => 4400 + OFFSET + (test.info().project.name === "webkit" ? 50 : 0) + test.info().parallelIndex;
 const base = () => `http://127.0.0.1:${port()}`;
+
+test.describe.configure({ mode: "serial" });
 
 let server: ChildProcess | undefined;
 
@@ -16,9 +19,9 @@ test.beforeAll(async () => {
       NAVIDROME_URL: process.env.E2E_MOCK_URL ?? "",
       DATA_DIR: `test-results/demo-data-${port()}`,
       PUBLIC_DEMO: "on",
-      INDEX_USER: "demo",
-      INDEX_PASSWORD: "demo",
-      ONE_SESSION: "off",
+      TRUST_PROXY: "true",
+      DEMO_USER: "demo",
+      DEMO_PASSWORD: "demo",
       LYRICS_BACKFILL: "off",
       LRCLIB_URL: "",
       UPDATE_CHECK: "off",
@@ -37,8 +40,18 @@ test.beforeAll(async () => {
     .toBe(true);
 });
 
-test.afterAll(() => {
-  server?.kill();
+test.afterAll(async () => {
+  if (!server || server.exitCode !== null) return;
+  const stopped = new Promise((resolve) => server?.once("exit", resolve));
+  server.kill();
+  await stopped;
+});
+
+// Sign-ins are limited per address; each test is its own visitor, as the proxy in front of the demo would say.
+test.beforeEach(async ({ page }) => {
+  await page.setExtraHTTPHeaders({
+    "x-forwarded-for": `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`,
+  });
 });
 
 const signedIn = (page: import("@playwright/test").Page) =>
@@ -70,4 +83,16 @@ test("when the music server is down it says so and lets the visitor try again", 
   await expect(page.getByLabel("password")).toHaveCount(0);
   await page.getByRole("button", { name: "try again" }).click();
   await expect(signedIn(page)).toBeVisible({ timeout: 15_000 });
+});
+
+test("with cookies blocked it stops asking instead of looping", async ({ page }) => {
+  let asked = 0;
+  await page.route("**/auth/demo", (route) => {
+    asked += 1;
+    return route.fulfill({ json: { user: "demo", server: "default" } });
+  });
+  await page.goto(`${base()}/`);
+  await expect(page.getByText("the demo can't keep you signed in")).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(1500);
+  expect(asked).toBeLessThanOrEqual(2);
 });

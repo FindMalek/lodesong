@@ -58,3 +58,16 @@ test("SHARE_PURGE is off unless asked for", () => {
   expect(readConfig({ SHARE_PURGE: "on" }).config.purgeShares).toBe(true);
   expect(readConfig({ SHARE_PURGE: "yes" }).errors.map((error) => error.split(" ")[0])).toEqual(["SHARE_PURGE"]);
 });
+
+test("only a public demo with its own account signs visitors in; the index account never does", () => {
+  const index = { INDEX_USER: "admin", INDEX_PASSWORD: "secret" };
+  expect(readConfig({ PUBLIC_DEMO: "on", ...index }).config.demoAccount).toBeNull();
+  expect(readConfig({ ...index }).config.demoAccount).toBeNull();
+  expect(readConfig({ PUBLIC_DEMO: "on", DEMO_USER: "demo", DEMO_PASSWORD: "pw", ...index }).config.demoAccount).toEqual({
+    user: "demo",
+    password: "pw",
+  });
+  expect(readConfig({ DEMO_USER: "demo", DEMO_PASSWORD: "pw" }).config.demoAccount).toBeNull();
+  expect(readConfig({ DEMO_USER: "demo", DEMO_PASSWORD: "pw" }).errors.map((error) => error.split(" ")[0])).toEqual(["DEMO_USER"]);
+  expect(readConfig({ PUBLIC_DEMO: "on", DEMO_USER: "demo" }).errors.map((error) => error.split(" ")[0])).toEqual(["DEMO_USER"]);
+});

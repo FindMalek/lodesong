@@ -133,8 +133,15 @@ const SETTINGS = [
     name: "PUBLIC_DEMO",
     fallback: "off",
     description:
-      "`on`: a public demo (docs/public-demo.md). Visitors are signed in as `INDEX_USER` by themselves (no login form). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted.",
+      "`on`: a public demo (docs/public-demo.md). Visitors are signed in as `DEMO_USER` by themselves (no login form). Nobody is an admin here, API and terminal tokens can't be made, and playlists can't be deleted.",
   },
+  {
+    name: "DEMO_USER",
+    fallback: "",
+    description:
+      "With `PUBLIC_DEMO=on`: the account every visitor is signed in as, with no login form. Use a throwaway account (never an admin or your own): anyone who opens the site gets it. Unset: the demo shows the normal login.",
+  },
+  { name: "DEMO_PASSWORD", fallback: "", description: "Password for `DEMO_USER`. It stays on the server." },
   {
     name: "REDIS_URL",
     fallback: "",
@@ -190,6 +197,8 @@ export interface Config {
   indexPassword: string | undefined;
   demoSeed: boolean;
   publicDemo: boolean;
+  /** Set only on a public demo that signs everyone in: `PUBLIC_DEMO=on` plus its own `DEMO_USER`. Never the index account. */
+  demoAccount: { user: string; password: string } | null;
   redisUrl?: string;
   trustProxy: boolean;
   publicUrl: string | null;
@@ -267,6 +276,12 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
   const demoSeed = flag("DEMO_SEED", ["on"], ["off"]);
   if (demoSeed && !indexUser) errors.push("DEMO_SEED=on needs INDEX_USER and INDEX_PASSWORD: the history is seeded for that account");
 
+  const demoUser = get("DEMO_USER") || undefined;
+  const demoPassword = get("DEMO_PASSWORD") || undefined;
+  if (!!demoUser !== !!demoPassword) errors.push("DEMO_USER and DEMO_PASSWORD go together: set both or neither");
+  const publicDemo = flag("PUBLIC_DEMO", ["on"], ["off"]);
+  if (demoUser && !publicDemo) errors.push("DEMO_USER needs PUBLIC_DEMO=on: it signs every visitor in");
+
   const config: Config = {
     port: number("PORT", 1, 65_535),
     dataDir: get("DATA_DIR"),
@@ -289,7 +304,8 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     indexUser,
     indexPassword,
     demoSeed,
-    publicDemo: flag("PUBLIC_DEMO", ["on"], ["off"]),
+    publicDemo,
+    demoAccount: publicDemo && demoUser && demoPassword ? { user: demoUser, password: demoPassword } : null,
     redisUrl: get("REDIS_URL") || undefined,
     publicUrl: origin,
     purgeShares: flag("SHARE_PURGE", ["on"], ["off"]),

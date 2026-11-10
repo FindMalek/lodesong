@@ -31,6 +31,12 @@ test("health names each server and whether it answers, without its URL", async (
   expect(JSON.stringify(body)).not.toContain("127.0.0.1");
 });
 
+test("health says it is a demo only when told so", async () => {
+  const upstreams = [{ id: "home", url: `http://127.0.0.1:${navidrome.port}` }];
+  expect((await (await new HealthCheck(upstreams).response()).json()).demo).toBe(false);
+  expect((await (await new HealthCheck(upstreams, 10_000, true).response()).json()).demo).toBe(true);
+});
+
 test("the update check stays quiet unless turned on", async () => {
   const url = `http://127.0.0.1:${github.port}/releases/latest`;
   expect(await new UpdateCheck(false, url).info()).toEqual({ version: VERSION, latest: null, updateAvailable: false });
