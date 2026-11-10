@@ -44,8 +44,8 @@ function overTempo(table: readonly Tempo[], plan: readonly (readonly Part[])[]):
 const HERO: readonly Row[] = overTempo(TEMPO, [
   [["cold open", 6, "void", "none", { ignite: 1.5 }]],
   [["find the line", 8, "tension", "cut"]],
-  [["play from the line", 8, "drop", "drop"]],
-  [["the lyrics", 8, "calm", "cut"]],
+  [["play from the line", 8, "drop", "drop", { db: 8 }]],
+  [["the lyrics", 8, "calm", "cut", { db: 7 }]],
   [["bring it over", 4, "calm", "cut", { db: 1 }]],
   [["the queue", 8, "groove", "hit", { db: -4 }]],
   [["mixes", 8, "groove", "cut", { variant: 1, db: -1 }]],

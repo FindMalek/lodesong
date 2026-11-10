@@ -16,7 +16,7 @@ function Lit({ scene: Scene }: { scene: ComponentType }) {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(ellipse 980px 1180px at 50% 50%, color-mix(in oklch, var(--ignite) 28%, #0b0b0b), color-mix(in oklch, var(--ignite) 7%, #0b0b0b))",
+            "radial-gradient(ellipse 900px 1100px at 50% 52%, color-mix(in oklch, var(--ignite) 18%, #0b0b0b), color-mix(in oklch, var(--ignite) 2%, #0b0b0b))",
         }}
       />
       <Scene />

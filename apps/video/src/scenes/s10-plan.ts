@@ -11,7 +11,7 @@ export interface KeyCut {
   take: string;
   plate: string;
   keys: readonly string[];
-  chip: string;
+  chip?: string;
   focus: Box;
   scale: readonly [number, number];
   move: CutMove;
@@ -32,7 +32,6 @@ export const S10_CUTS: readonly KeyCut[] = [
     take: "shortcuts-sheet",
     plate: "sheet",
     keys: ["?"],
-    chip: "every shortcut",
     focus: DIALOG,
     scale: [1.2, 1.4],
     move: "push",
@@ -43,7 +42,6 @@ export const S10_CUTS: readonly KeyCut[] = [
     take: "chords",
     plate: "albums",
     keys: ["g", "a"],
-    chip: "jump to a page",
     focus: { x: 220, y: 50, w: 720, h: 330 },
     scale: [1.5, 1.3],
     move: "whip-left",
@@ -54,7 +52,6 @@ export const S10_CUTS: readonly KeyCut[] = [
     take: "chords",
     plate: "stats",
     keys: ["g", "t"],
-    chip: "two keys",
     focus: { x: 240, y: 40, w: 900, h: 150 },
     scale: [1.6, 1.8],
     move: "whip-right",
@@ -77,7 +74,6 @@ export const S10_CUTS: readonly KeyCut[] = [
     take: "list-keys",
     plate: "focused",
     keys: ["j", "k"],
-    chip: "move through lists",
     focus: { x: 220, y: 180, w: 1000, h: 420 },
     scale: [1.45, 1.65],
     move: "whip-left",
@@ -123,7 +119,7 @@ export const S10_CUES: readonly ShotCue[] = [
     );
   }),
   ...WHIP_CUTS.map((cut): ShotCue => ({ shot: "keys", at: cutFrames(cut).from, kind: "whoosh", label: `${cut.id}: ${cut.move}` })),
-  ...S10_CUTS.map(
+  ...S10_CUTS.filter((cut) => cut.chip).map(
     (cut): ShotCue => ({ shot: "keys", at: shotOf("keys").beat(cut.beat + 1), kind: "tick", label: `${cut.id}: chip settles` }),
   ),
   { shot: "keys", at: shotOf("keys").beat(10.5), kind: "riser", label: "snare roll into the flashes" },

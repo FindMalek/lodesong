@@ -17,14 +17,14 @@ const PLATE = { w: 1440, h: 810 };
 const K = 1920 / PLATE.w;
 const COVER = { x: 38, y: 40, w: 487, h: 487 };
 const COVER_WORLD = { x: COVER.x * K, y: COVER.y * K, size: COVER.w * K };
-const CODE = { x: 700, y: 806, font: 30, row: 42 };
+const CODE = { x: 640, y: 806, font: 30, row: 42 };
 const CODE_H = CODE.row * S12_LINES.length;
 const URL_AT = { x: CODE.x, y: 962, font: 42 };
 const LYRIC = { x: 770, y: 300, size: 104 };
 const LINE = "i keep the lights on";
 const CENTER = { x: 960, y: 540 };
 const SAFE_BLUR_FRAMES = [S12_TIMES.enter, S12_TIMES.enter + 32] as const;
-const DRIFT = 0.022;
+const DRIFT = 0.008;
 
 interface View {
   cx: number;
@@ -36,6 +36,7 @@ interface View {
 const BLOCK_VIEW: View = { cx: CODE.x + 470, cy: CODE.y + CODE_H / 2, scale: 1.3, ry: -3 };
 const COVER_VIEW: View = { cx: COVER_WORLD.x + COVER_WORLD.size / 2, cy: COVER_WORLD.y + COVER_WORLD.size / 2, scale: 1.5, ry: -3 };
 const HOME_VIEW: View = { cx: CENTER.x, cy: CENTER.y, scale: 1, ry: 0 };
+const PUSHED_VIEW: View = { cx: CENTER.x + 6, cy: CENTER.y - 4, scale: 1.018, ry: 0 };
 
 const mix = (a: View, b: View, t: number): View => ({
   cx: lerp(a.cx, b.cx, t),
@@ -44,14 +45,15 @@ const mix = (a: View, b: View, t: number): View => ({
   ry: lerp(a.ry, b.ry, t),
 });
 
-/** Tight on the typing, a short travel up to the cover, then the pull-back to a front-on frame that holds at exactly 1x. */
+/** Tight on the typing, a short travel up to the cover, then the pull-back to a front-on frame that keeps pushing in about 2% until the last 12 frames. */
 function viewAt(frame: number): View {
-  const { typeFrom, enter, travelled, settled } = S12_TIMES;
+  const { typeFrom, enter, travelled, settled, end } = S12_TIMES;
   const drift = mix(BLOCK_VIEW, { ...BLOCK_VIEW, scale: 1.4 }, ramp(frame, typeFrom, enter - typeFrom, ease.out));
   if (frame < enter) return drift;
   const toCover = mix({ ...BLOCK_VIEW, scale: 1.4 }, COVER_VIEW, ramp(frame, enter, travelled - enter, ease.inOut));
   if (frame < travelled) return toCover;
-  return mix(COVER_VIEW, HOME_VIEW, ramp(frame, travelled, settled - travelled, ease.out));
+  if (frame < settled) return mix(COVER_VIEW, HOME_VIEW, ramp(frame, travelled, settled - travelled, ease.out));
+  return mix(HOME_VIEW, PUSHED_VIEW, ramp(frame, settled, end - 12 - settled, ease.out));
 }
 
 function camOf(view: View) {
@@ -223,7 +225,7 @@ function EndCard({ frame }: { frame: number }) {
           legible={frame >= lyric + 26 && steady}
         />
       </div>
-      <div style={{ position: "absolute", left: 1480, top: URL_AT.y - 6 }}>
+      <div style={{ position: "absolute", left: 1392, top: URL_AT.y - 6 }}>
         <MaskLine from={chip} length={12}>
           <span
             data-legible={frame >= chip + 14 ? "" : undefined}

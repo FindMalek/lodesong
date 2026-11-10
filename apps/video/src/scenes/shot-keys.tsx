@@ -107,11 +107,13 @@ function Cut({ cut, frames, strikes }: { cut: KeyCut; frames: number; strikes: n
             <Cap key={legend} legend={legend} frame={frame} strike={strikes[i] ?? 0} />
           ))}
         </div>
-        <div style={{ opacity: ramp(frame, STRIKE + 1, 5), transform: `translateY(${lerp(14, 0, ramp(frame, STRIKE + 1, 6))}px)` }}>
-          <Label legible style={{ fontSize: 44, color: "var(--foreground)", letterSpacing: "0.04em", textTransform: "none" }}>
-            {cut.chip}
-          </Label>
-        </div>
+        {cut.chip ? (
+          <div style={{ opacity: ramp(frame, STRIKE + 1, 5), transform: `translateY(${lerp(14, 0, ramp(frame, STRIKE + 1, 6))}px)` }}>
+            <Label legible style={{ fontSize: 44, color: "var(--foreground)", letterSpacing: "0.04em", textTransform: "none" }}>
+              {cut.chip}
+            </Label>
+          </div>
+        ) : null}
       </div>
     </div>
   );
