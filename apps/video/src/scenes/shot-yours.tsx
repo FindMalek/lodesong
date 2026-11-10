@@ -79,6 +79,16 @@ function Split({ flash, frames, frame }: { flash: Flash; frames: number; frame: 
       <div style={half("right")}>
         <div style={{ position: "absolute", inset: 0, transform: "translateX(960px)" }}>
           <PlateFlash take={right.take} plate={right.plate} focus={right.focus} scale={right.scale} frames={frames} frame={frame} />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 640,
+              width: 960,
+              height: 440,
+              background: "linear-gradient(to bottom, transparent, #000 70%)",
+            }}
+          />
         </div>
       </div>
       <div style={{ position: "absolute", left: 959, top: 0, width: 2, height: 1080, background: "var(--ignite)" }} />
