@@ -327,6 +327,45 @@ async function publicDemoUp() {
   console.info(`public demo: https://${host}`);
 }
 
+// Prints the demo apps' settings (secrets masked) to find why the public demo player can't sign in.
+async function publicDemoDiagnose() {
+  const environment = await ensureEnvironment();
+  for (const name of [DEMO_APP, PUBLIC_DEMO_APP]) {
+    const found = environment.applications.find((a) => a.name === name);
+    if (!found) {
+      console.info(`${name}: not found`);
+      continue;
+    }
+    const app = await query("application.one", { applicationId: found.applicationId });
+    const env = String(app.env ?? "")
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [key, ...rest] = line.split("=");
+        const value = rest.join("=");
+        if (key === "DEMO_PASSWORD" || key === "INDEX_PASSWORD")
+          return `${key}=<${value === DEMO_PASSWORD ? "demo" : `other:${value.length}`}>`;
+        if (/SECRET|TOKEN|KEY|PASSWORD/.test(key)) return `${key}=<${value.length}>`;
+        return `${key}=${value}`;
+      });
+    console.info(
+      JSON.stringify(
+        {
+          name,
+          appName: app.appName,
+          status: app.applicationStatus,
+          image: app.dockerImage,
+          replicas: app.replicas,
+          mounts: (app.mounts ?? []).map((m) => `${m.type}:${m.mountPath}`),
+          env,
+        },
+        null,
+        2,
+      ),
+    );
+  }
+}
+
 const MODES = {
   "comment-building": commentBuilding,
   "preview-up": previewUp,
@@ -334,6 +373,7 @@ const MODES = {
   "comment-failed": commentFailed,
   "demo-up": demoUp,
   "public-demo-up": publicDemoUp,
+  "public-demo-diagnose": publicDemoDiagnose,
 };
 const run = MODES[MODE];
 if (!run) {

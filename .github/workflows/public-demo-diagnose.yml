@@ -1,0 +1,28 @@
+# One-off: prints the public demo apps' Dokploy settings with secrets masked (see docs/public-demo.md).
+name: Public demo diagnose
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: vars.PUBLIC_DEMO_HOST != '' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, the-keep]
+    timeout-minutes: 5
+    env:
+      DOKPLOY_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
+      DOKPLOY_PUBLIC_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
+      DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Print the demo apps
+        env:
+          PUBLIC_DEMO_HOST: ${{ vars.PUBLIC_DEMO_HOST }}
+          DEMO_HOST: demo.${{ vars.PREVIEW_DOMAIN }}
+        run: node scripts/deploy/dokploy.mjs public-demo-diagnose

@@ -43,3 +43,10 @@ jobs:
             sleep 5
           done
           echo "https://$HOST did not answer" && exit 1
+      - name: Check the demo signs visitors in
+        env:
+          HOST: ${{ vars.PUBLIC_DEMO_HOST }}
+        run: |
+          code=$(curl -s -o /tmp/demo-sign-in.json -w '%{http_code}' -X POST -H 'x-lodesong: 1' "https://$HOST/auth/demo")
+          echo "sign-in: $code"
+          [ "$code" = "200" ] || { cat /tmp/demo-sign-in.json; exit 1; }
