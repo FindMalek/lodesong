@@ -3,13 +3,11 @@ import { AbsoluteFill, Img, useCurrentFrame } from "remotion";
 import { ease, lerp, ramp } from "../../design/motion";
 import type { Box } from "../../design/probe";
 
-/** The anthem runs on one constant grid: 120 bpm, 30 frames a beat, so every number here is a beat or a frame of it. */
 export const B = 30;
 export const GOLD = "var(--ignite)";
 const PLATE = { w: 1440, h: 810 };
 const STAGE_W = 1920;
 
-/** What the camera sees of a plate, in plate px; the height follows from 16:9. */
 export interface View {
   x: number;
   y: number;
@@ -52,7 +50,6 @@ interface PlateShotProps {
 
 const fill: CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" };
 
-/** A real capture, full bleed, never dimmed or blurred: the camera is a crop that glides, the plates swap on the frame the app changes. */
 export function PlateShot({ plates, keys, children, background = "#0d0d0d", ease: curve = "inOut" }: PlateShotProps) {
   const frame = useCurrentFrame();
   const view = viewAt(frame, keys, ease[curve]);
@@ -80,7 +77,6 @@ export function PlateShot({ plates, keys, children, background = "#0d0d0d", ease
   );
 }
 
-/** The same piece at any size, in screen px. */
 export function Lifted({ src, box, width, style }: { src: string; box: Box; width: number; style?: CSSProperties }) {
   const k = width / box.w;
   return (
@@ -100,7 +96,6 @@ export function Lifted({ src, box, width, style }: { src: string; box: Box; widt
 const CELL = 26;
 const FULL = 19;
 
-/** A dot lattice as a mask: at 0 nothing shows, at 1 everything does, and in between the picture is made of growing dots. */
 export function dotMask(progress: number): CSSProperties {
   if (progress >= 1) return {};
   const radius = Math.max(0, progress) * FULL;
@@ -110,7 +105,6 @@ export function dotMask(progress: number): CSSProperties {
 
 export const LAP = 9;
 
-/** How a shot arrives: its picture condenses out of dots over the last frames of the shot before it. */
 export function DotIn({ children, length = LAP }: { children: ReactNode; length?: number }) {
   const frame = useCurrentFrame();
   return <AbsoluteFill style={dotMask(ramp(frame, 0, length, ease.inOut))}>{children}</AbsoluteFill>;
@@ -126,7 +120,6 @@ interface SayProps {
   scrim?: boolean;
 }
 
-/** The film's own voice: a few big words, one line at a time, no box around them. */
 export function Say({ text, from, to, x = 96, y = 868, size = 92, scrim = true }: SayProps) {
   const frame = useCurrentFrame();
   const leaving = to === undefined ? 0 : ramp(frame, to, 8, ease.in);

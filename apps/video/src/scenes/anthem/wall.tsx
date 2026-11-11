@@ -12,10 +12,8 @@ const PITCH = TILE + GAP;
 const LEFT = (1920 - COLS * PITCH + GAP) / 2;
 const TOP = (1080 - ROWS * PITCH + GAP) / 2;
 
-/** Where the 24 whole covers sit on the real albums page, in plate px. */
 const SOURCE = { x0: 220, y0: 146, pitchX: 151.5, pitchY: 196.5, size: 140, cols: 8, rows: 3 };
 const PLATE = { w: 1440, h: 810 };
-/** The playing album's cover at full size, from the lyrics page: the one gold tile, and what the next shot opens on. */
 const GOLD_SOURCE = { x: 39, y: 48, size: 486 };
 const GOLD_CELL = { col: 6, row: 3 };
 const GOLD_INDEX = 1;
@@ -71,14 +69,12 @@ export interface WallTiming {
   end: number;
 }
 
-/** Screen box the gold cover must fill on the last frame, so the cut to the lyrics page does not move it. */
 export interface Landing {
   x: number;
   y: number;
   size: number;
 }
 
-/** The library as one object: every cover bursts out of a single gold point, locks into a wall, and the camera falls into the one that is playing. */
 export function CoverWall({ timing, landing }: { timing: WallTiming; landing: Landing }) {
   const frame = useCurrentFrame();
   const albums = plateSrc("albums", "albums");

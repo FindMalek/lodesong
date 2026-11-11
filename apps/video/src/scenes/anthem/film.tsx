@@ -523,7 +523,7 @@ function PhonePart() {
         <path
           d="M 1000 398 C 1120 398, 1100 982, 1232 982"
           fill="none"
-          stroke="#5a5a5a"
+          stroke="var(--color-muted-foreground)"
           strokeWidth={3}
           strokeDasharray={700}
           strokeDashoffset={700 * (1 - drawn)}
@@ -702,8 +702,8 @@ function EndShot({ frames }: ShotProps) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 44 }}>
-          <svg aria-hidden width={150} height={150} viewBox="8 8 48 48">
-            <path d="M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z" fill="#fff" />
+          <svg aria-hidden width={150} height={150} viewBox="8 8 48 48" style={{ color: "var(--foreground)" }}>
+            <path d="M8 8h48v16H29v10H8zM8 40h27V30h21v26H8z" fill="currentColor" />
           </svg>
           <div
             data-legible=""
