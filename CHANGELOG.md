@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.20.0](https://github.com/FindMalek/lodesong/compare/v1.19.0...v1.20.0) (2026-11-10)
+
+
+### Features
+
+* **video:** hero v3.2 ([#568](https://github.com/FindMalek/lodesong/issues/568)) ([7e3ec87](https://github.com/FindMalek/lodesong/commit/7e3ec87a82eee875f1712f66d472fd15002826e8))
+* **video:** hero v3.3 ([#572](https://github.com/FindMalek/lodesong/issues/572)) ([d00874b](https://github.com/FindMalek/lodesong/commit/d00874b69a5e63cfd35efe2202e4c229b7d3b277))
+* **video:** hero v3.4 ([#573](https://github.com/FindMalek/lodesong/issues/573)) ([778be06](https://github.com/FindMalek/lodesong/commit/778be06279bed79ee0050368fecb83ad215b50b3))
+
+
+### Bug Fixes
+
+* **deploy:** own demo library ([#570](https://github.com/FindMalek/lodesong/issues/570)) ([09e5e79](https://github.com/FindMalek/lodesong/commit/09e5e79244e9fa597a8da2617a8018e4357521a8))
+* **deploy:** wait for demo swap ([#567](https://github.com/FindMalek/lodesong/issues/567)) ([e4f5014](https://github.com/FindMalek/lodesong/commit/e4f501439e0291c02b1fdcdee99c7d62eaf18426))
+* **macos:** wait for album songs ([#564](https://github.com/FindMalek/lodesong/issues/564)) ([afcf450](https://github.com/FindMalek/lodesong/commit/afcf450d818c7ebc30019f386e905aa9ad025bab))
+
 ## [1.19.0](https://github.com/FindMalek/lodesong/compare/v1.18.0...v1.19.0) (2026-11-10)
 
 
