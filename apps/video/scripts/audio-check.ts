@@ -38,7 +38,7 @@ const MAX_SPREAD = 6;
 /** The anthem is arranged to breathe: a near-silent hook and breath against a loud montage. */
 const WIDE_SPREAD = 9;
 const DROP_LU = 1;
-const DENSE_MOODS = new Set(["drop", "groove", "peak", "storm", "flash", "land", "lift"]);
+const DENSE_MOODS = new Set(["drop", "groove", "peak", "storm", "flash", "land", "lift", "anthem-drop", "anthem-peak", "anthem-burst"]);
 const FRAME_SECONDS = 1 / FPS;
 const TAIL_FRAMES = 24;
 
