@@ -27,6 +27,20 @@ export const HERO: Recipe[] = [
     ],
   },
   {
+    id: "find-slowly",
+    shot: "S2",
+    steps: [
+      { go: "/album/{album}", ready: "role=row" },
+      { key: "Meta+K", name: "palette" },
+      { wait: PALETTE_INPUT },
+      { shot: "palette-empty", boxes: { input: PALETTE_INPUT } },
+      { type: "say it slow", each: true },
+      { wait: LYRIC_HIT },
+      { reveal: LYRIC_HIT },
+      { shot: "results", boxes: { input: PALETTE_INPUT, row1: LYRIC_HIT, mark: `${LYRIC_HIT} mark` } },
+    ],
+  },
+  {
     id: "play-from-line",
     shot: "S3",
     steps: [

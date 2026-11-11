@@ -3,6 +3,7 @@ import type { ComponentType, ReactElement } from "react";
 import { Composition, Folder } from "remotion";
 import { FPS, gridBeat } from "./design/beat";
 import { Shell } from "./design/shell";
+import { ANTHEM_FRAMES, Anthem } from "./scenes/anthem/film";
 import { CUT_SCENES } from "./scenes/cutdown";
 import { Film, HERO_SCENES } from "./scenes/film";
 import { LEGACY_SCENES } from "./scenes/legacy";
@@ -57,7 +58,13 @@ interface Item {
 }
 
 /** Every film is one row: a plan (shot table on a tempo map), its scenes, its score, its size. A new film needs only a row here. */
+function anthemSilent({ probe }: Props) {
+  return <Anthem probe={probe} audio={null} />;
+}
+
 const FILMS: Item[] = [
+  { id: "anthem", component: Anthem, frames: ANTHEM_FRAMES, size: WIDE },
+  { id: "anthem-silent", component: anthemSilent, frames: ANTHEM_FRAMES, size: WIDE },
   { id: "hero", component: filmOf(HERO, HERO_SCENES, "audio/hero.wav", true), frames: HERO.frames, size: WIDE },
   { id: "cutdown-vertical", component: filmOf(CUTDOWN, CUT_SCENES, "audio/cutdown.wav", true), frames: CUTDOWN.frames, size: TALL },
   { id: "tour", component: tourFilm, frames: TOUR.frames, size: WIDE },

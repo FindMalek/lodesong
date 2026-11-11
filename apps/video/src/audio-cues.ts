@@ -5,8 +5,8 @@ import { createClock, FPS, type Ritard, type Segment } from "./audio-tempo";
 import { CUT_MAP, TEMPO, type Tempo } from "./design/beat";
 import { CHAPTERS, type Chapter, chapterBeats, chapterRange, FEATURES, TOUR_MAP, TOUR_TEMPO } from "./features";
 
-export type Film = "hero" | "tour" | "cutdown";
-export const FILMS: readonly Film[] = ["hero", "tour", "cutdown"];
+export type Film = "hero" | "tour" | "cutdown" | "anthem";
+export const FILMS: readonly Film[] = ["hero", "tour", "cutdown", "anthem"];
 
 export interface AudioCue {
   id: string;
@@ -117,8 +117,6 @@ const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
   ],
 ]);
 
-type Pin = readonly [id: string, beat: number, kind: UiKind, label?: string];
-
 function manifest(
   rows: readonly Row[],
   pins: readonly Pin[],
@@ -128,13 +126,58 @@ function manifest(
   const clock = createClock(table);
   const startOf = (id: string): number => clock.starts[table.findIndex((s) => s.id === id)] ?? 0;
   const out: UiEvent[] = [];
-  for (const [id, beat, kind, label] of pins) out.push({ frame: clock.frame(startOf(id) + beat), kind, ...(label ? { label } : {}) });
+  for (const [id, beat, kind, label, gain] of pins)
+    out.push({ frame: clock.frame(startOf(id) + beat), kind, ...(label ? { label } : {}), ...(gain ? { gain } : {}) });
   for (const [id, from, count, step] of runs) {
     const first = clock.frame(startOf(id) + from);
     for (let i = 0; i < count; i += 1) out.push({ frame: first + i * step, kind: "type", label: "typed" });
   }
   return out.sort((a, b) => a.frame - b.frame);
 }
+
+type Pin = readonly [id: string, beat: number, kind: UiKind, label?: string, gain?: number];
+
+/** The 36 s anthem on a constant 120: a near-silent hook, the drop on the lyrics, a second peak on the handoff, a pocket, the montage as the loudest bar, a breath, the landing. */
+const ANTHEM: readonly Row[] = [
+  ["a wall", 8, 120, "anthem-hook", "none", { db: -4, ignite: 0.67 }],
+  ["a search", 8, 120, "anthem-rise", "cut", { db: -5 }],
+  ["a lyrics", 8, 120, "anthem-drop", "drop", { db: 3, gap: 8 }],
+  ["a moments", 8, 120, "anthem-ride", "cut", { db: -5 }],
+  ["a mixes", 8, 120, "anthem-ride", "none", { db: -6 }],
+  ["a stats", 8, 120, "anthem-peak", "drop", { db: 6 }],
+  ["a custom", 8, 120, "anthem-burst", "cut", { db: 8 }],
+  ["a everywhere", 12, 120, "anthem-drop", "hit", { db: 5 }],
+  ["a server", 4, 120, "anthem-breath", "none", { gap: 0, db: -14 }],
+  ["a afterglow", 4, 120, "anthem-home", "none", { db: 3 }],
+];
+
+const at = (frame: number): number => frame / 30;
+
+const ANTHEM_PINS: readonly Pin[] = [
+  ...[44, 74, 104].map((frame): Pin => ["a wall", at(frame), "seek", "a ripple crosses the wall"]),
+  ["a wall", at(186), "chip", "your music"],
+  ["a search", 3, "row", "one result is left standing"],
+  ["a search", 5.5, "enter", "enter", 1.5],
+  ...[0, 12, 24, 36, 48, 60].map((frame): Pin => ["a lyrics", at(frame), "line", "a word lights"]),
+  ["a lyrics", 4, "click", "click a line", 1.6],
+  ...[24, 84, 144].map((frame): Pin => ["a moments", at(frame), "key", "b saves a moment"]),
+  ...[6, 21, 36, 51, 66, 81].map((frame): Pin => ["a mixes", at(frame), "tile", "a mix resolves"]),
+  ["a mixes", 4.4, "device", "the mix opens"],
+  ...[4, 34, 64].map((frame): Pin => ["a stats", at(frame), "row", "a counter runs"]),
+  ["a stats", 5, "chip", "the recap"],
+  ...[10, 38, 66, 94].map((frame): Pin => ["a custom", at(frame), "flash", "a look sweeps in"]),
+  ["a custom", at(200), "key", "the new key"],
+  ["a everywhere", at(30), "device", "the phone takes over"],
+  ["a everywhere", at(109), "click", "the island opens", 1.3],
+  ["a everywhere", at(303), "enter", "pause", 1.5],
+  ["a server", at(80), "chip", "your server"],
+];
+
+const ANTHEM_RUNS = [
+  ["a search", at(8), 8, 5],
+  ["a everywhere", at(235), 15, 4],
+  ["a server", at(4), 24, 3],
+] as const;
 
 /** Cues the shots and cuts export (scripts/audio/shot-cues.ts reads S<n>_CUES and CUT_<id>_CUES): the real frames of everything on screen. */
 const SHOT_CUES = shotCues as readonly UiEvent[];
@@ -154,6 +197,7 @@ const DEFS: Record<Film, Def> = {
   hero: { rows: HERO, pins: [], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   tour: { rows: TOUR, pins: TOUR_PINS, runs: TOUR_RUNS, final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
   cutdown: { rows: CUTDOWN, pins: [], final: "afterglow", over: 2, slow: 0.72, finalGap: 8 },
+  anthem: { rows: ANTHEM, pins: ANTHEM_PINS, runs: ANTHEM_RUNS, final: "a afterglow", over: 2, slow: 0.72, finalGap: 8 },
 };
 
 function specOf(film: Film): FilmSpec {
@@ -173,23 +217,31 @@ function specOf(film: Film): FilmSpec {
   };
 }
 
-export const SPECS: Record<Film, FilmSpec> = { hero: specOf("hero"), tour: specOf("tour"), cutdown: specOf("cutdown") };
+export const SPECS: Record<Film, FilmSpec> = {
+  hero: specOf("hero"),
+  tour: specOf("tour"),
+  cutdown: specOf("cutdown"),
+  anthem: specOf("anthem"),
+};
 export const SCORES: Record<Film, Score> = {
   hero: buildScore(SPECS.hero),
   tour: buildScore(SPECS.tour),
   cutdown: buildScore(SPECS.cutdown),
+  anthem: buildScore(SPECS.anthem),
 };
 
 export const FILM_FRAMES: Record<Film, number> = {
   hero: SCORES.hero.clock.totalFrames,
   tour: SCORES.tour.clock.totalFrames,
   cutdown: SCORES.cutdown.clock.totalFrames,
+  anthem: SCORES.anthem.clock.totalFrames,
 };
 
 export const SECTIONS: Record<Film, readonly { id: string; from: number; to: number }[]> = {
   hero: sectionsOf("hero"),
   tour: sectionsOf("tour"),
   cutdown: sectionsOf("cutdown"),
+  anthem: sectionsOf("anthem"),
 };
 
 function sectionsOf(film: Film): { id: string; from: number; to: number }[] {
@@ -241,4 +293,5 @@ export const LANDMARKS: Record<Film, readonly { id: string; frame: number }[]> =
   hero: SCORES.hero.landmarks,
   tour: SCORES.tour.landmarks,
   cutdown: SCORES.cutdown.landmarks,
+  anthem: SCORES.anthem.landmarks,
 };
