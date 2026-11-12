@@ -881,7 +881,13 @@ export function buildScore(spec: FilmSpec): Score {
         label: `${label} dark swell`,
       });
       const riseBeat = segment.ignite <= 1 ? 0 : 1;
-      push({ track: "riser", t: at(start + riseBeat), dur: hit - at(start + riseBeat) - 3 / FPS, midi: (spans[0]?.root ?? 33) + 12, vel: 0.35 });
+      push({
+        track: "riser",
+        t: at(start + riseBeat),
+        dur: hit - at(start + riseBeat) - 3 / FPS,
+        midi: (spans[0]?.root ?? 33) + 12,
+        vel: 0.35,
+      });
       push({ track: "impact", t: hit, dur: 3, midi: spans[0]?.root ?? 33, vel: 0.9, style: "hit", label });
       push({ track: "bell", t: hit, dur: 3, midi: 105, vel: 1.4, pan: 0 });
     }
