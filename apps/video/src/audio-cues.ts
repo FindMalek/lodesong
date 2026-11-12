@@ -120,7 +120,7 @@ const CUTDOWN: readonly Row[] = overTempo(CUT_MAP.table, [
 function manifest(
   rows: readonly Row[],
   pins: readonly Pin[],
-  runs: readonly (readonly [id: string, from: number, count: number, step: number])[] = [],
+  runs: readonly (readonly [id: string, from: number, count: number, step: number, gain?: number])[] = [],
 ): UiEvent[] {
   const table = segments(rows);
   const clock = createClock(table);
@@ -128,9 +128,9 @@ function manifest(
   const out: UiEvent[] = [];
   for (const [id, beat, kind, label, gain] of pins)
     out.push({ frame: clock.frame(startOf(id) + beat), kind, ...(label ? { label } : {}), ...(gain ? { gain } : {}) });
-  for (const [id, from, count, step] of runs) {
+  for (const [id, from, count, step, gain] of runs) {
     const first = clock.frame(startOf(id) + from);
-    for (let i = 0; i < count; i += 1) out.push({ frame: first + i * step, kind: "type", label: "typed" });
+    for (let i = 0; i < count; i += 1) out.push({ frame: first + i * step, kind: "type", label: "typed", ...(gain ? { gain } : {}) });
   }
   return out.sort((a, b) => a.frame - b.frame);
 }
@@ -143,10 +143,10 @@ const ANTHEM: readonly Row[] = [
   ["a search", 8, 120, "anthem-rise", "cut", { db: -5 }],
   ["a lyrics", 8, 120, "anthem-drop", "drop", { db: 3, gap: 8 }],
   ["a moments", 8, 120, "anthem-ride", "cut", { db: -5 }],
-  ["a mixes", 8, 120, "anthem-ride", "none", { db: -6 }],
-  ["a stats", 8, 120, "anthem-peak", "drop", { db: 6 }],
+  ["a mixes", 8, 120, "anthem-ride", "none", { db: -11 }],
+  ["a stats", 8, 120, "anthem-peak", "drop", { db: 10 }],
   ["a custom", 8, 120, "anthem-burst", "cut", { db: 8 }],
-  ["a everywhere", 12, 120, "anthem-drop", "hit", { db: 5 }],
+  ["a everywhere", 12, 120, "anthem-drop", "hit", { db: 3 }],
   ["a server", 4, 120, "anthem-breath", "none", { gap: 0, db: -14 }],
   ["a afterglow", 4, 120, "anthem-home", "none", { db: 3 }],
 ];
@@ -174,7 +174,7 @@ const ANTHEM_PINS: readonly Pin[] = [
 ];
 
 const ANTHEM_RUNS = [
-  ["a search", at(8), 8, 5],
+  ["a search", at(8), 8, 5, 2.2],
   ["a everywhere", at(235), 15, 4],
   ["a server", at(4), 24, 3],
 ] as const;
@@ -186,7 +186,7 @@ const CUT_CUES = cutCues as readonly UiEvent[];
 interface Def {
   rows: readonly Row[];
   pins: readonly Pin[];
-  runs?: readonly (readonly [string, number, number, number])[];
+  runs?: readonly (readonly [string, number, number, number, number?])[];
   final: string;
   over: number;
   slow: number;
