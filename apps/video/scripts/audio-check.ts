@@ -35,8 +35,10 @@ const MIN_CORRELATION = 0.2;
 const MAX_CORRELATION = 0.93;
 const MIN_SPREAD = 3;
 const MAX_SPREAD = 6;
+/** The anthem is arranged to breathe: a near-silent hook and breath against a loud montage. */
+const WIDE_SPREAD = 9;
 const DROP_LU = 1;
-const DENSE_MOODS = new Set(["drop", "groove", "peak", "storm", "flash", "land", "lift"]);
+const DENSE_MOODS = new Set(["drop", "groove", "peak", "storm", "flash", "land", "lift", "anthem-drop", "anthem-peak", "anthem-burst"]);
 const FRAME_SECONDS = 1 / FPS;
 const TAIL_FRAMES = 24;
 
@@ -581,7 +583,8 @@ async function auditFilm(film: Film): Promise<number> {
     `  section loudness spread ${spread.toFixed(1)} LU (loudest ${Math.max(...known).toFixed(1)}, quietest ${Math.min(...known).toFixed(1)})`,
   );
   if (spread < MIN_SPREAD) fail(`dynamics: sections only span ${spread.toFixed(1)} LU, wanted ${MIN_SPREAD}`);
-  if (spread > MAX_SPREAD) fail(`dynamics: sections span ${spread.toFixed(1)} LU, limit ${MAX_SPREAD}`);
+  const limit = film === "anthem" ? WIDE_SPREAD : MAX_SPREAD;
+  if (spread > limit) fail(`dynamics: sections span ${spread.toFixed(1)} LU, limit ${limit}`);
   for (const [i, segment] of score.clock.segments.entries()) {
     const before = lufs.get(i - 1);
     const here = lufs.get(i);

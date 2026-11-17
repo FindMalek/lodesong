@@ -326,6 +326,9 @@ export const TOUR: Recipe[] = [
       { click: 'role=button[name="change the key for play / pause"]', name: "rebind" },
       pause(500),
       { shot: "rebinding", boxes: { dialog: "role=dialog" } },
+      { key: "x", name: "the new key" },
+      pause(500),
+      { shot: "rebound", boxes: { dialog: "role=dialog" } },
     ],
   },
   {
