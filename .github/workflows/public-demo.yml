@@ -16,7 +16,7 @@ concurrency:
 jobs:
   reset:
     if: vars.PUBLIC_DEMO_HOST != '' && vars.DOKPLOY_PUBLIC_URL != '' && vars.DEPLOY_ENABLED == 'true'
-    runs-on: [self-hosted, the-keep]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       DOKPLOY_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
