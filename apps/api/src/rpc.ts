@@ -19,6 +19,7 @@ import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
+import { listPlaylistCovers, setPlaylistCover } from "./playlist-covers";
 import {
   createFolder,
   type FolderResult,
@@ -296,6 +297,15 @@ export function createRpc({
         return found;
       }),
       hidden: signedIn.playlists.hidden.handler(({ context, input }) => ({ songs: hiddenIn(library, context.account, input.id) })),
+      covers: signedIn.playlists.covers.handler(({ context }) => ({ covers: listPlaylistCovers(library, context.account) })),
+      setCover: signedIn.playlists.setCover.handler(async ({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        const picture = input.kind === "image" && input.image ? await readCover(input.image) : null;
+        if (input.kind === "image" && !picture) throw new ORPCError("BAD_REQUEST", { message: "bad picture" });
+        await requirePlaylists(upstreamOf(context.session), context.session, [input.id]);
+        setPlaylistCover(library, context.account, input.id, input.kind, picture);
+        return OK;
+      }),
       hide: signedIn.playlists.hide.handler(({ context, input }) => {
         library
           .query(

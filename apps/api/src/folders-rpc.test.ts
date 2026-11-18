@@ -54,6 +54,7 @@ function setup(publicDemo = false) {
         api.folderPicture(
           Object.assign(new Request(`http://app/api/folders/${id}/cover`, { headers: { cookie, ...extra } }), { params: { id } }),
         ),
+      cookie,
       proxy: (path: string) => api.proxy(new Request(`http://app${path}`, { headers })),
     };
   };
@@ -228,4 +229,28 @@ test("deleting a playlist through lodesong drops its folder placement, for that 
   expect((await proxy("/rest/deletePlaylist?id=pl-1")).status).toBe(200);
   expect((await rpc.folders.list()).items.map((item) => item.playlistId).sort()).toEqual(["pl-2", "pl-3"]);
   expect((await other.folders.list()).items).toHaveLength(2);
+});
+
+test("a playlist cover is the mosaic until the dither or a real picture is chosen, and each account sees only its own", async () => {
+  const { as, api } = setup();
+  const me = as("me");
+  const picture = await dataUrl("png");
+  expect((await me.rpc.playlists.covers()).covers).toEqual([]);
+  await expect(me.rpc.playlists.setCover({ id: "pl-1", kind: "image", image: "data:image/png;base64,AAAA" })).rejects.toMatchObject({
+    message: "bad picture",
+  });
+  await me.rpc.playlists.setCover({ id: "pl-1", kind: "dither" });
+  await me.rpc.playlists.setCover({ id: "pl-2", kind: "image", image: picture });
+  const { covers } = await me.rpc.playlists.covers();
+  expect(covers.map(({ playlistId, kind }) => [playlistId, kind]).sort()).toEqual([
+    ["pl-1", "dither"],
+    ["pl-2", "image"],
+  ]);
+  const shown = api.playlistPicture(
+    Object.assign(new Request("http://app/x", { headers: { cookie: me.cookie } }), { params: { id: "pl-2" } }),
+  );
+  expect(shown.headers.get("content-type")).toBe("image/png");
+  await me.rpc.playlists.setCover({ id: "pl-1", kind: "mosaic" });
+  expect((await me.rpc.playlists.covers()).covers.map((cover) => cover.playlistId)).toEqual(["pl-2"]);
+  expect((await as("you").rpc.playlists.covers()).covers).toEqual([]);
 });

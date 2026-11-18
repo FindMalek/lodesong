@@ -30,6 +30,7 @@ import { lyricsCoverage, queryLyrics } from "./lyrics-search";
 import { momentNotes } from "./moments";
 import { ShareCards, type ShareKind } from "./og";
 import { originOf } from "./origin-of";
+import { playlistCover, removePlaylistCover } from "./playlist-covers";
 import { folderCover, forgetPlaylist } from "./playlist-folders";
 import type { LoginLimiter } from "./rate-limit";
 import { readCapped } from "./read-capped";
@@ -508,7 +509,10 @@ export function createApi({
         .clone()
         .json()
         .catch(() => null)) as { "subsonic-response"?: { status?: string } } | null;
-      if (body?.["subsonic-response"]?.status === "ok") forgetPlaylist(library, dataAccount(session), gone);
+      if (body?.["subsonic-response"]?.status === "ok") {
+        forgetPlaylist(library, dataAccount(session), gone);
+        removePlaylistCover(library, dataAccount(session), gone);
+      }
     }
     if (endpoint === "stream" && response.status === 200 && response.body && query.get("format") !== "raw") {
       if (needsLength(request.headers.get("user-agent")) && !(Number(response.headers.get("content-length")) > SPOOL_LIMIT)) {
@@ -666,6 +670,13 @@ export function createApi({
     const session = bearer ? sessions.get(bearer) : browserSession(request);
     if (!session || session.agent === REMOTE_AGENT) return json({ error: "signed out" }, 401);
     return coverResponse(request, folderCover(library, dataAccount(session), request.params.id), SECURITY_HEADERS);
+  }
+
+  function playlistPicture(request: Request & { params: { id: string } }): Response {
+    const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/)?.[1];
+    const session = bearer ? sessions.get(bearer) : browserSession(request);
+    if (!session || session.agent === REMOTE_AGENT) return json({ error: "signed out" }, 401);
+    return coverResponse(request, playlistCover(library, dataAccount(session), request.params.id), SECURITY_HEADERS);
   }
 
   async function songLyrics(request: Request & { params: { songId: string } }): Promise<Response> {
@@ -1189,6 +1200,7 @@ export function createApi({
     shareRemove,
     releaseCover,
     folderPicture,
+    playlistPicture,
     songLyrics,
     lyricsCoverage: lyricsCoverageRoute,
     lyricsMissing,

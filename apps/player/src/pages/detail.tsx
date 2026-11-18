@@ -18,6 +18,7 @@ import { KeepOffline } from "@/components/keep-offline";
 import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, type ListEditing, PageHeader, Section, TrackList } from "@/components/library";
 import { LikeButton } from "@/components/like-button";
 import { Link } from "@/components/link";
+import { PlaylistCover } from "@/components/playlist-cover";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
 import { auraParams, vibe } from "@/lib/aura";
@@ -50,6 +51,7 @@ import { cn } from "@/lib/utils";
 
 function Hero({
   cover,
+  coverSlot,
   kind,
   title,
   titleSlot,
@@ -64,6 +66,8 @@ function Hero({
   bar,
 }: {
   cover?: string;
+  /** Shown instead of the cover picture (a playlist's own choice). */
+  coverSlot?: ReactNode;
   kind: ReactNode;
   title: string;
   /** Shown instead of the plain title (an editable one). */
@@ -96,9 +100,7 @@ function Hero({
         className="relative isolate flex flex-wrap items-start gap-x-5 gap-y-3 border-b px-5 pt-4.5 pb-4 sm:items-end short:py-3"
       >
         {backdrop && <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-20">{backdrop}</div>}
-        <div className="shrink-0">
-          <Cover id={cover} size={160} className="w-26 sm:w-38 short:w-22" priority />
-        </div>
+        <div className="shrink-0">{coverSlot ?? <Cover id={cover} size={160} className="w-26 sm:w-38 short:w-22" priority />}</div>
         <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1.5">
           <div className="self-start short:hidden">{kind}</div>
           <h1 className="font-medium text-title leading-[1.1] tracking-tight [overflow-wrap:anywhere] short:text-xl">
@@ -548,6 +550,7 @@ export function PlaylistPage({ id }: { id: string }) {
     <>
       <Hero
         cover={playlist.coverArt}
+        coverSlot={<PlaylistCover id={playlist.id} coverArt={playlist.coverArt} size={160} className="w-26 sm:w-38 short:w-22" priority />}
         kind={
           parts.length > 1 ? (
             <Breadcrumb>

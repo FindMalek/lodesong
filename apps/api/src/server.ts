@@ -145,6 +145,7 @@ const server = Bun.serve({
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
     "/api/folders/:id/cover": { GET: api.folderPicture },
+    "/api/playlists/:id/cover": { GET: api.playlistPicture },
     "/api": api.http,
     "/api/*": api.http,
     "/auth/login": { POST: api.login },

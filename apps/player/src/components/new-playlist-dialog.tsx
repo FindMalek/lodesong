@@ -6,12 +6,21 @@ import { Switch } from "@lodesong/ui/components/switch";
 import { Textarea } from "@lodesong/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { SparklesIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
+import { coverFromFile } from "@/lib/folder-cover-file";
+import { notify } from "@/lib/notify";
+import { setPlaylistCover } from "@/lib/playlist-covers";
 import { createPlaylist } from "@/lib/playlists";
 import { go } from "@/lib/router";
-import { HEADERS } from "@/lib/subsonic";
+import { HEADERS, isDemo } from "@/lib/subsonic";
 import type { Song } from "@/lib/types";
+
+const COVER_CHOICES = [
+  ["mosaic", "four albums"],
+  ["dither", "animated dither"],
+  ["image", "my picture"],
+] as const;
 
 interface Made {
   name: string;
@@ -47,6 +56,9 @@ export function NewPlaylistDialog({
   const [made, setMade] = useState<Made | null>(null);
   const [making, setMaking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [coverKind, setCoverKind] = useState<"mosaic" | "dither" | "image">("mosaic");
+  const [picture, setPicture] = useState<string | null>(null);
+  const file = useRef<HTMLInputElement>(null);
 
   async function make(): Promise<void> {
     if (!prompt.trim() || making) return;
@@ -75,6 +87,8 @@ export function NewPlaylistDialog({
     const id = await createPlaylist(trimmed, { comment: comment.trim(), isPublic, songs: made?.songs ?? songs });
     setSaving(false);
     if (!id) return;
+    if (!isDemo() && (coverKind === "dither" || (coverKind === "image" && picture)))
+      await setPlaylistCover(id, coverKind, picture ?? undefined);
     if (folderId) await import("@/lib/folder-edits").then((edits) => edits.placePlaylist(id, folderId));
     onOpenChange(false);
     go(`/playlist/${id}`);
@@ -140,6 +154,40 @@ export function NewPlaylistDialog({
             <Label htmlFor="playlist-description">description</Label>
             <Textarea id="playlist-description" rows={2} value={comment} onChange={(event) => setComment(event.target.value)} />
           </div>
+          <fieldset hidden={isDemo()} className="flex flex-col gap-1.5">
+            <legend className="mb-1.5 text-sm">cover</legend>
+            <div className="flex flex-wrap gap-1.5">
+              {COVER_CHOICES.map(([kind, label]) => (
+                <Button
+                  key={kind}
+                  type="button"
+                  size="sm"
+                  variant={coverKind === kind ? "default" : "outline"}
+                  aria-pressed={coverKind === kind}
+                  onClick={() => (kind === "image" ? file.current?.click() : setCoverKind(kind))}
+                >
+                  {kind === "image" && picture ? "my picture ✓" : label}
+                </Button>
+              ))}
+            </div>
+            <input
+              ref={file}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="playlist picture"
+              className="sr-only"
+              onChange={(event) => {
+                const picked = event.target.files?.[0];
+                event.target.value = "";
+                if (picked)
+                  void coverFromFile(picked).then((data) => {
+                    if (!data) return notify({ kind: "error", message: "couldn't use that picture, try a png, jpeg or webp" });
+                    setPicture(data);
+                    setCoverKind("image");
+                  });
+              }}
+            />
+          </fieldset>
           <div className="flex items-center gap-2">
             <Switch id="playlist-public" checked={isPublic} onCheckedChange={setPublic} />
             <Label htmlFor="playlist-public">public · others on this server can see it</Label>

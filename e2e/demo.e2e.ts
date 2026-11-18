@@ -105,3 +105,12 @@ test("with cookies blocked it stops asking instead of looping", async ({ page })
   await page.waitForTimeout(1500);
   expect(asked).toBeLessThanOrEqual(2);
 });
+
+test("the new playlist dialog doesn't offer cover choices the demo would refuse", async ({ page }) => {
+  await page.goto(`${base()}/`);
+  await expect(signedIn(page)).toBeVisible({ timeout: 15_000 });
+  await page.locator("body").press("Shift+N");
+  const dialog = page.getByRole("dialog", { name: "new playlist" });
+  await expect(dialog.getByLabel("name")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "animated dither" })).toHaveCount(0);
+});
