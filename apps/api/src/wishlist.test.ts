@@ -10,7 +10,7 @@ const sessions = new SessionStore(":memory:", "secret", 60_000);
 const admin = sessions.create({ server: "default", user: "boss", token: "t", salt: "s", agent: "", admin: true });
 const guest = sessions.create({ server: "default", user: "guest", token: "t", salt: "s", agent: "", admin: false });
 
-function build(answer: Response | null) {
+function build(answer: Response | null, publicDemo = false) {
   const seen: { url: string; headers: Headers; body: string }[] = [];
   const api = createApi({
     upstreams: [],
@@ -22,11 +22,12 @@ function build(answer: Response | null) {
     limiter: new LoginLimiter(),
     idleSeconds: 60,
     trustProxy: false,
+    publicDemo,
     lyterion: { url: "http://lyterion", token: "secret" },
     fetcher: (async (url: string, init: RequestInit) => {
       seen.push({ url, headers: new Headers(init.headers), body: String(init.body) });
       if (!answer) throw new Error("down");
-      return answer;
+      return answer.clone();
     }) as unknown as typeof fetch,
   });
   return { api, seen };
@@ -42,15 +43,35 @@ const post = (step: string, session: string, body: unknown) =>
     { params: { step } },
   );
 
-test("only admins add songs, and the token never leaves the server", async () => {
+test("any signed-in user adds songs, the public demo can't, and the token never leaves the server", async () => {
   const { api, seen } = build(Response.json({ title: "Widows Weep" }));
-  expect((await api.wishlist(post("add", guest, { input: "shyler widows weep" }))).status).toBe(403);
+  expect((await api.wishlist(post("add", "nope", { input: "shyler widows weep" }))).status).toBe(401);
   expect(seen).toHaveLength(0);
+  expect((await api.wishlist(post("add", guest, { input: "shyler widows weep" }))).status).toBe(200);
+  seen.length = 0;
+  const demo = build(Response.json({}), true);
+  expect((await demo.api.wishlist(post("add", guest, { input: "shyler widows weep" }))).status).toBe(403);
+  expect(demo.seen).toHaveLength(0);
   const response = await api.wishlist(post("preview", admin, { input: " shyler widows weep " }));
   expect(await response.json()).toEqual({ title: "Widows Weep", cover: null });
   expect(seen[0]?.url).toBe("http://lyterion/api/rpc/api-reference/player/wishlist/preview");
   expect(seen[0]?.headers.get("x-lyterion-token")).toBe("secret");
   expect(JSON.parse(seen[0]?.body ?? "")).toEqual({ input: "shyler widows weep" });
+});
+
+test("a name search returns candidates with covers inlined from known hosts only", async () => {
+  const { api, seen } = build(
+    Response.json({
+      candidates: [{ title: "Teardrop", input: "https://www.deezer.com/track/7", coverUrl: "https://evil.example/x.jpg" }],
+      unreachable: ["youtube"],
+    }),
+  );
+  const response = await api.wishlist(post("search", admin, { input: "teardrop" }));
+  expect(await response.json()).toEqual({
+    candidates: [{ title: "Teardrop", input: "https://www.deezer.com/track/7", cover: null }],
+    unreachable: ["youtube"],
+  });
+  expect(seen[0]?.url).toBe("http://lyterion/api/rpc/api-reference/player/wishlist/search");
 });
 
 test("lyterion's reason comes through, and a busy run is a conflict", async () => {

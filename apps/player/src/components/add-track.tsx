@@ -7,9 +7,19 @@ import { CheckIcon, CircleIcon, Loader2Icon, MusicIcon, PlayIcon } from "lucide-
 import { useEffect, useRef, useState } from "react";
 import { clock } from "@/lib/format";
 import { player } from "@/lib/player";
-import { followAdded, isLink, SOURCE_LABEL, stepOf, WISH_STEPS, type WishPreview, waitForSong, wishlist } from "@/lib/wishlist";
+import {
+  followAdded,
+  isLink,
+  SOURCE_LABEL,
+  stepOf,
+  WISH_STEPS,
+  type WishCandidate,
+  type WishPreview,
+  waitForSong,
+  wishlist,
+} from "@/lib/wishlist";
 
-function Card({ meta }: { meta: WishPreview }) {
+function Card({ meta, label }: { meta: WishPreview; label?: string }) {
   return (
     <div className="flex items-center gap-3 border p-3">
       <div className="grid size-16 shrink-0 place-items-center overflow-hidden bg-muted text-muted-foreground">
@@ -23,7 +33,7 @@ function Card({ meta }: { meta: WishPreview }) {
             .join(" · ")}
         </span>
         <Badge variant="outline" className="w-fit font-mono font-normal">
-          {SOURCE_LABEL[meta.source]}
+          {label ?? SOURCE_LABEL[meta.source]}
         </Badge>
       </div>
     </div>
@@ -62,14 +72,30 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
 
-  const preview = useQuery({
-    queryKey: ["wishlist-preview", asked],
-    queryFn: () => wishlist.preview(asked),
-    enabled: asked.length >= 2,
+  // A typed name lists songs to pick from; a link, or "none of these", goes straight to the preview.
+  const [picked, setPicked] = useState<WishCandidate | null>(null);
+  const [guess, setGuess] = useState(false);
+  const byName = asked.length >= 2 && !isLink(asked);
+  const ask = (next: string) => {
+    setAsked(next);
+    setPicked(null);
+    setGuess(false);
+  };
+  const found = useQuery({
+    queryKey: ["wishlist-candidates", asked],
+    queryFn: () => wishlist.search(asked),
+    enabled: byName,
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
-  const add = useMutation({ mutationFn: () => wishlist.add(asked) });
+  const preview = useQuery({
+    queryKey: ["wishlist-preview", asked],
+    queryFn: () => wishlist.preview(asked),
+    enabled: asked.length >= 2 && (!byName || guess),
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+  const add = useMutation({ mutationFn: (target: string) => wishlist.add(target) });
   const added = add.data;
   const state = useQuery({
     queryKey: ["wishlist-status", added?.recordingId],
@@ -98,14 +124,15 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
     [],
   );
 
-  const ready = preview.data && !add.isPending && !added;
+  const shown = picked ?? preview.data;
+  const ready = shown && !add.isPending && !added;
   const submit = () => {
     const next = text.trim();
     if (next.length < 2 || add.isPending || added) return;
-    if (next !== asked) setAsked(next);
-    else if (preview.data) add.mutate();
+    if (next !== asked) ask(next);
+    else if (shown) add.mutate(picked?.input ?? asked);
   };
-  const error = (preview.error ?? add.error)?.message;
+  const error = (preview.error ?? found.error ?? add.error)?.message;
 
   return (
     <div className="flex min-h-0 flex-col gap-3 p-3">
@@ -129,7 +156,7 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
           if (isLink(pasted) && !text.trim()) {
             event.preventDefault();
             setText(pasted);
-            setAsked(pasted);
+            ask(pasted);
           }
         }}
         placeholder="paste a youtube, soundcloud or deezer link, or type a song"
@@ -141,7 +168,7 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
           it's found across your sources, checked, tagged and placed in your library. you can keep listening meanwhile.
         </p>
       )}
-      {preview.isFetching && asked === text.trim() && (
+      {(preview.isFetching || found.isFetching) && asked === text.trim() && (
         <div className="flex items-center gap-3 border p-3" aria-busy>
           <Skeleton className="size-16 shrink-0" />
           <div className="flex flex-1 flex-col gap-2">
@@ -150,7 +177,40 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
           </div>
         </div>
       )}
-      {preview.data && asked === text.trim() && <Card meta={added?.meta ?? preview.data} />}
+      {byName && !guess && !picked && !added && asked === text.trim() && found.data && (
+        <div className="flex flex-col gap-2">
+          <ul aria-label="candidates" className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+            {found.data.candidates.map((candidate) => (
+              <li key={candidate.input}>
+                <button
+                  type="button"
+                  className="w-full text-left hover:bg-muted/50"
+                  onClick={() => {
+                    setPicked(candidate);
+                    add.mutate(candidate.input);
+                  }}
+                >
+                  <Card meta={candidate} label={candidate.source} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {found.data.unreachable.length > 0 && (
+            <p role="status" className="px-1 text-muted-foreground text-xs">
+              couldn't reach {found.data.unreachable.join(" and ")}
+              {found.data.candidates.length ? ", so those results are missing" : ""}
+            </p>
+          )}
+          <Button size="sm" variant="outline" onClick={() => setGuess(true)}>
+            {found.data.candidates.length
+              ? "none of these, find the best match"
+              : found.data.unreachable.length
+                ? "try the best match on youtube"
+                : "nothing found, try the best match on youtube"}
+          </Button>
+        </div>
+      )}
+      {shown && asked === text.trim() && <Card meta={added?.meta ?? shown} />}
       {error && (
         <p role="alert" className="px-1 text-destructive text-xs">
           {error}
@@ -206,7 +266,7 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
             variant="outline"
             onClick={() => {
               add.reset();
-              add.mutate();
+              add.mutate(picked?.input ?? asked);
             }}
           >
             try again

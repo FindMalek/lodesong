@@ -23,9 +23,10 @@ test("a typed name goes the same way, and a refusal from lyterion is shown", asy
   const dialog = page.getByRole("dialog", { name: "search" });
   await dialog.getByRole("combobox").fill("shyler widows weep");
   await dialog.getByRole("option", { name: /add “shyler widows weep”/ }).click();
+  await dialog.getByRole("button", { name: /none of these/ }).click();
   await expect(dialog.getByText("best match on youtube")).toBeVisible();
 
-  await dialog.getByRole("textbox", { name: "song to add" }).fill("some album link");
+  await dialog.getByRole("textbox", { name: "song to add" }).fill("https://www.deezer.com/album/1");
   await dialog.getByRole("textbox", { name: "song to add" }).press("Enter");
   await expect(dialog.getByRole("alert")).toContainText("deezer track link");
 });
@@ -44,6 +45,23 @@ test("a name lyterion can't place yet is previewed without an artist or length",
   const dialog = page.getByRole("dialog", { name: "search" });
   await dialog.getByRole("combobox").fill("some unreleased demo");
   await dialog.getByRole("option", { name: /add “some unreleased demo”/ }).click();
+  await dialog.getByRole("button", { name: /none of these|nothing found/ }).click();
   await expect(dialog.getByText("artist found when it starts")).toBeVisible();
   await expect(dialog.getByText("best match on youtube, picked when it starts")).toBeVisible();
+});
+
+test("a typed name lists candidates, and picking one adds it", async ({ signedIn: page }) => {
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "search" });
+  await dialog.getByRole("combobox").fill("massive attack teardrop");
+  await dialog.getByRole("option", { name: /add “massive attack teardrop”/ }).click();
+
+  const candidates = dialog.getByRole("list", { name: "candidates" });
+  await expect(candidates.getByRole("listitem")).toHaveCount(3);
+  await expect(candidates.getByText("soundcloud", { exact: true })).toBeVisible();
+  await expect(candidates.getByText("youtube", { exact: true })).toBeVisible();
+  await candidates.getByRole("button", { name: /^Teardrop Massive Attack.*deezer/ }).click();
+
+  await expect(dialog.getByRole("list", { name: "progress" })).toBeVisible();
+  await expect(candidates).toBeHidden();
 });

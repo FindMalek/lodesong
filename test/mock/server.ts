@@ -630,6 +630,32 @@ const server = Bun.serve({
         const stage = stages[Math.min(seen, stages.length - 1)] ?? "placed";
         return Response.json({ status: stage === "placed" ? "placed" : "working", stage });
       }
+      if (step === "search")
+        return Response.json({
+          candidates: [
+            {
+              title: "Teardrop",
+              artists: ["Massive Attack"],
+              durationMs: 327_000,
+              source: "deezer",
+              input: "https://www.deezer.com/track/7",
+            },
+            {
+              title: "Teardrop (live)",
+              artists: ["Massive Attack"],
+              durationMs: 301_000,
+              source: "youtube",
+              input: "https://www.youtube.com/watch?v=tear",
+            },
+            {
+              title: "Teardrop",
+              artists: ["Massive Attack"],
+              durationMs: 320_000,
+              source: "soundcloud",
+              input: "https://soundcloud.com/ma/teardrop",
+            },
+          ],
+        });
       if (body.input?.includes("album"))
         return Response.json({ message: "paste a deezer track link, not an album or playlist" }, { status: 400 });
       if (body.input?.includes("unreleased") && step === "preview")

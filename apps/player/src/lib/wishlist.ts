@@ -12,6 +12,10 @@ export interface WishPreview {
   cover: string | null;
 }
 
+export interface WishCandidate extends WishPreview {
+  input: string;
+}
+
 export interface WishState {
   status: "working" | "placed" | "review" | "missing" | "gone";
   stage: string;
@@ -40,7 +44,7 @@ export function isLink(text: string): boolean {
   return /^https?:\/\/\S+$/i.test(text.trim());
 }
 
-async function call<T>(step: "preview" | "add" | "status", body: object): Promise<T> {
+async function call<T>(step: "preview" | "search" | "add" | "status", body: object): Promise<T> {
   const response = await fetch(`/api/wishlist/${step}`, {
     method: "POST",
     headers: { ...HEADERS, "content-type": "application/json" },
@@ -53,6 +57,7 @@ async function call<T>(step: "preview" | "add" | "status", body: object): Promis
 
 export const wishlist = {
   preview: (input: string) => call<WishPreview>("preview", { input }),
+  search: (input: string) => call<{ candidates: WishCandidate[]; unreachable: string[] }>("search", { input }),
   add: (input: string) => call<{ recordingId: string; meta: WishPreview }>("add", { input }),
   status: (recordingId: string) => call<WishState>("status", { recordingId }),
 };
