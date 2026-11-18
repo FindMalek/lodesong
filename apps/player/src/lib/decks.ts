@@ -7,6 +7,7 @@ import { BANDS, FLAT, headroom } from "./eq";
 const LEAD_SECONDS = 0.03;
 const RAMP_SECONDS = 0.005;
 const ARM_SECONDS = 0.6;
+const MUTE_SECONDS = 0.02;
 
 // iOS mutes Web Audio while the ringer switch is on silent unless the page says it is playback (Safari 16.4+
 // `navigator.audioSession`); elsewhere there is nothing to set.
@@ -107,6 +108,7 @@ export class Decks {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private sinkId = "";
   private volume = 1;
+  private muted = false;
   private tailUntil = 0;
   private armed: Deck | null = null;
   private fadesSkips = false;
@@ -513,6 +515,7 @@ export class Decks {
     this.ensureGraph();
     // Not awaited: a suspended context's resume() can stay pending until the next gesture.
     if (this.context && this.context.state !== "running") void this.context.resume().catch(() => undefined);
+    this.unmute();
     const deck = this.playing;
     deck.wantsPlay = true;
     if (deck.sizing) return;
@@ -523,11 +526,29 @@ export class Decks {
     }
   }
 
+  // The master gain drops to silence first: WebKit keeps playing audio it already queued after `pause()`, which is the
+  // lag on a press of pause. `play()` brings it back.
   pause(): void {
     clearTimeout(this.timer);
     this.armed = null;
     this.playing.wantsPlay = false;
+    if (this.master && this.context?.state === "running") {
+      const time = this.context.currentTime;
+      this.master.gain.cancelScheduledValues(time);
+      this.master.gain.setValueAtTime(this.master.gain.value, time);
+      this.master.gain.linearRampToValueAtTime(0, time + MUTE_SECONDS);
+      this.muted = true;
+    }
     this.playing.element.pause();
+  }
+
+  private unmute(): void {
+    if (!this.muted || !this.master || !this.context) return;
+    this.muted = false;
+    const time = this.context.currentTime;
+    this.master.gain.cancelScheduledValues(time);
+    this.master.gain.setValueAtTime(0, time);
+    this.master.gain.linearRampToValueAtTime(this.volume, time + MUTE_SECONDS);
   }
 
   seek(seconds: number): void {

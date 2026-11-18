@@ -295,7 +295,12 @@ function Crossfade() {
     <Row
       id="setting-crossfade"
       label="crossfade"
-      hint={<>the next song starts before this one ends · never between album tracks played in order · {SYNCED}</>}
+      hint={
+        <>
+          the last seconds of a song fade out while the next one fades in over them, so a long fade hides the ending · never between album
+          tracks played in order · {SYNCED}
+        </>
+      }
     >
       <div className="flex w-56 items-center gap-3">
         <Slider
