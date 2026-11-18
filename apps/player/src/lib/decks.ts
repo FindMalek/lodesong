@@ -110,6 +110,7 @@ export class Decks {
   private volume = 1;
   private muted = false;
   private tailUntil = 0;
+  private parkTimer: ReturnType<typeof setTimeout> | undefined;
   private armed: Deck | null = null;
   private fadesSkips = false;
 
@@ -150,6 +151,9 @@ export class Decks {
         if (this.log.length > LOG_SIZE) this.log.shift();
       });
     element.addEventListener("durationchange", () => void this.size(deck));
+    element.addEventListener("play", () => {
+      if (this.playing.element === element) this.unmute();
+    });
     const on = (name: string, handler: () => void) =>
       element.addEventListener(name, () => {
         if (this.playing.element === element) handler();
@@ -385,7 +389,7 @@ export class Decks {
   }
 
   private applyVolume(): void {
-    if (this.master) this.master.gain.value = this.volume;
+    if (this.master) this.master.gain.value = this.muted ? 0 : this.volume;
     else for (const deck of this.decks) deck.element.volume = this.volume;
   }
 
@@ -532,6 +536,7 @@ export class Decks {
     clearTimeout(this.timer);
     this.armed = null;
     this.playing.wantsPlay = false;
+    this.parkNow();
     if (this.master && this.context?.state === "running") {
       const time = this.context.currentTime;
       this.master.gain.cancelScheduledValues(time);
@@ -547,7 +552,7 @@ export class Decks {
     this.muted = false;
     const time = this.context.currentTime;
     this.master.gain.cancelScheduledValues(time);
-    this.master.gain.setValueAtTime(0, time);
+    this.master.gain.setValueAtTime(this.master.gain.value, time);
     this.master.gain.linearRampToValueAtTime(this.volume, time + MUTE_SECONDS);
   }
 
@@ -596,10 +601,19 @@ export class Decks {
 
   private parkAfter(from: Deck, milliseconds: number): void {
     this.tailUntil = performance.now() + milliseconds;
-    setTimeout(() => {
+    this.parkTimer = setTimeout(() => {
       if (from !== this.playing) from.element.pause();
     }, milliseconds);
     from.songId = null;
+  }
+
+  private parkNow(): void {
+    clearTimeout(this.parkTimer);
+    this.tailUntil = 0;
+    const outgoing = this.idle;
+    if (outgoing.element.paused) return;
+    this.setGain(outgoing, 0);
+    outgoing.element.pause();
   }
 
   private handover(): boolean {

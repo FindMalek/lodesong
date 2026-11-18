@@ -3,6 +3,8 @@ import {
   breakStream,
   cannotPlay,
   firstSongOf,
+  keepNative,
+  nativeBridge,
   outputLevel,
   outputStates,
   silencedElement,
@@ -188,4 +190,47 @@ test("a song that can't be played even as mp3 is skipped and the next one plays"
   } finally {
     await breakStream(song, "mp3", "off");
   }
+});
+
+const masterGain = async (page: Page): Promise<{ master: number | null; volume: number }> => {
+  const report = await page.evaluate(() =>
+    (window as unknown as { keepNative: { diagnostics: () => Promise<string> } }).keepNative.diagnostics(),
+  );
+  return (JSON.parse(report) as { gains: { master: number | null; volume: number } }).gains;
+};
+
+test("pause silences the output at once and play brings it back", async ({ page, signedIn }) => {
+  await nativeBridge(page);
+  await signedIn.goto("/album/al-3");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  const { volume } = await masterGain(page);
+  expect((await masterGain(page)).master).toBe(volume);
+  const bar = page.getByRole("contentinfo");
+  await bar.getByRole("button", { name: "pause" }).click();
+  await expect(bar.getByRole("button", { name: "play" })).toBeVisible();
+  await expect.poll(async () => (await masterGain(page)).master).toBe(0);
+  expect(await outputLevel(page)).toBeLessThan(0.001);
+  await bar.getByRole("button", { name: "play" }).click();
+  await expect.poll(async () => (await masterGain(page)).master).toBe(volume);
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+});
+
+test("pausing while the context is suspended never leaves the master at zero", async ({ page, signedIn }) => {
+  await tapOutput(page, { gate: true });
+  await nativeBridge(page);
+  await signedIn.goto("/album/al-3");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  await page.reload();
+  await expect(page.getByRole("contentinfo").getByRole("button", { name: "play" })).toBeVisible();
+  await keepNative(page, "play");
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["suspended"]);
+  await keepNative(page, "toggle");
+  const volume = (await masterGain(page)).volume;
+  expect((await masterGain(page)).master).toBe(volume);
+  await page.getByRole("contentinfo").getByRole("button", { name: "play" }).click();
+  await expect.poll(() => outputStates(page), { timeout: SLOW }).toEqual(["running"]);
+  await expect.poll(() => outputLevel(page), { timeout: SLOW }).toBeGreaterThan(AUDIBLE);
+  expect((await masterGain(page)).master).toBe(volume);
 });
