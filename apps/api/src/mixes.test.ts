@@ -803,3 +803,34 @@ test("a song set to never stays out under every id it has", () => {
   const titles = dailyMixes(db, "s", "s:u", 20_001, NOW)[0]?.songs.map((item) => item.title);
   expect(titles?.sort()).toEqual(["Hurt 1", "Hurt 2"]);
 });
+
+test("release radar needs a follow: none for a light listener, none once unfollowed, and a follow changes the mixes version", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  const created = new Date(NOW - 2 * DAY_MS).toISOString();
+  index(db, [
+    { ...song("n", "Hurt", "New"), created },
+    { ...song("p", "Hurt", "Played"), created: new Date(NOW - 300 * DAY_MS).toISOString() },
+  ]);
+  // One play is not enough to be auto-followed.
+  recordPlay(db, "s:u", "", { song: song("p", "Hurt", "Played"), started: NOW - DAY_MS, listened: 200, finished: true });
+  const radar = () => madeForYou(db, "s", "s:u", { day: 20_385, hour: 12, tzMinutes: 0 }, NOW).find((mix) => mix.id === "release-radar");
+  expect(radar()).toBeUndefined();
+
+  const before = mixesVersion(db, "s", "s:u");
+  setFollow(db, "s:u", "Hurt", "followed");
+  expect(mixesVersion(db, "s", "s:u")).not.toBe(before);
+  expect(radar()?.songs.map((item) => item.id)).toEqual(["n"]);
+
+  setFollow(db, "s:u", "Hurt", "unfollowed");
+  expect(radar()).toBeUndefined();
+});
+
+test("release radar follows an artist you play often without you following them yourself", () => {
+  const db = openLibraryDb(":memory:");
+  createIndexTables(db);
+  index(db, [{ ...song("n", "Hurt", "New"), created: new Date(NOW - DAY_MS).toISOString() }]);
+  playsOf(db, "s:u", "Hurt", "Played");
+  const mixes = madeForYou(db, "s", "s:u", { day: 20_385, hour: 12, tzMinutes: 0 }, NOW);
+  expect(mixes.find((mix) => mix.id === "release-radar")?.songs.map((item) => item.id)).toEqual(["n"]);
+});

@@ -5,7 +5,7 @@ import { discoveryLane, FAMILIAR_WINDOW_DAYS, familiarShare } from "./mix-discov
 import { ARTIST_CAP, artistPool, closest, roundRobin } from "./mix-pool";
 import { rankByTaste, type Signal } from "./mix-scoring";
 import { readPrefs } from "./prefs";
-import { listFollows } from "./releases";
+import { listFollows, syncAutoFollows } from "./releases";
 import type { StatsSong as Song } from "./stats";
 
 const DAY = 86_400_000;
@@ -425,6 +425,8 @@ export function madeForYou(
 ): Mix[] {
   const l = listening(db, server, account, now, liked ?? new Set());
   if (!l) return [];
+  // The radar follows who you follow, auto-follows included, so they must be current before it is built.
+  syncAutoFollows(db, account, now);
   return [
     ...daily(db, l, account, day, liked !== null),
     discover(l, account, lastFriday(day), boosted),

@@ -195,7 +195,7 @@ function pausedStream(body: Uint8Array<ArrayBuffer>, seconds: number, onDone = (
 }
 
 // Controls for streams the page can't route (the service worker's): `POST /mock/slow?id=&seconds=` stalls the next
-// stream like `mockPause`; `GET /mock/streams?id=` lists its streams and whether the client hung up early.
+// stream like `mockPause`; `POST /mock/added?id=` marks one song as added to the library just now; `GET /mock/streams?id=` lists its streams and whether the client hung up early.
 const slowNext = new Map<string, number>();
 const streamLog: { id: string; aborted: boolean; finished: boolean }[] = [];
 
@@ -215,6 +215,12 @@ function control(url: URL, request: Request): Response {
   if (url.pathname === "/mock/unsized" && request.method === "POST") {
     if (url.searchParams.get("mode") === "off") unsized.delete(id);
     else unsized.set(id, Number(url.searchParams.get("delay") ?? 2));
+    return Response.json({ ok: true });
+  }
+  if (url.pathname === "/mock/added" && request.method === "POST") {
+    const song = songsById.get(id);
+    if (!song) return new Response("not found", { status: 404 });
+    song.created = new Date().toISOString();
     return Response.json({ ok: true });
   }
   if (url.pathname === "/mock/streams") return Response.json(streamLog.filter((entry) => entry.id === id));

@@ -44,11 +44,12 @@ test("a followed artist's new songs go into the release radar, not onto the foll
         (await fetch(url, { ...options, headers: { "x-lodesong": "1", "content-type": "application/json" } })).json(),
       [path, init ?? {}] as const,
     );
-  await call("/api/index", { method: "POST" });
-  await expect.poll(async () => (await call("/api/index")).building, { timeout: 20_000 }).toBe(false);
   const artist = (await call("/rest/getArtist?f=json&id=ar-0"))["subsonic-response"].artist as { album: { id: string }[] };
   const album = (await call(`/rest/getAlbum?f=json&id=${artist.album[0]?.id}`))["subsonic-response"].album;
   const song = album.song[0] as { id: string; artist: string };
+  await fetch(`${process.env.E2E_MOCK_URL}/mock/added?id=${song.id}`, { method: "POST" });
+  await call("/api/index", { method: "POST" });
+  await expect.poll(async () => (await call("/api/index")).building, { timeout: 20_000 }).toBe(false);
   await call("/api/history", {
     method: "POST",
     body: JSON.stringify({ song, started: Date.now() - 3_600_000, listened: 200, finished: true }),
