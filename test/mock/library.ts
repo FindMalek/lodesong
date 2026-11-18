@@ -90,7 +90,7 @@ export function createLibrary(trackCount = 10_000, seed = 7): Library {
         year: 1970 + Math.floor(next() * 56),
         genre,
         genres: [{ name: genre }],
-        created: new Date(created + albums.length * 3_600_000).toISOString(),
+        created: new Date(albums.length === 0 ? Date.now() - 86_400_000 : created + albums.length * 3_600_000).toISOString(),
         playCount: Math.floor(next() * 50),
         // Release types and a second disc, by position (no random draws, so every other fixture stays as it was).
         releaseTypes: [albums.length % 4 === 1 ? "ep" : albums.length % 7 === 3 ? "single" : "album"],

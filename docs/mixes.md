@@ -10,7 +10,7 @@ playlists, so your phone and every other Subsonic app have them too.
 | **daily mix 1–6** | each starts from an artist you play a lot and takes in up to 15 artists: the five you play closest to it (within two hours), then the artists next to those, who count for less. Songs go in turns, one artist after another, and no artist takes more than a fifth unless nothing else is left. Within an artist, songs you liked in navidrome or replay come first, songs you often skip sink (a single skip barely counts), and songs you haven't heard in a while come before ones you just played. A star added later counts from tomorrow, and if navidrome doesn't answer within two seconds the mix is made without likes and made again with them on the next visit. Between 40% and 85% are songs you have played: the more you replay the same songs over the last 30 days the more (five plays of one song count at most). Half of the rest is a discovery lane of songs you never played by artists outside the mix: the artists you play most next to it, or, once [AudioMuse-AI](configuration.md) has analysed the library, the songs that sound closest to the mix among all your artists (songs you skipped are left out, ones you liked count as a little closer, and where only part of the library is analysed the artists played next to the mix fill the rest) | every day at your midnight, and the same all day on every device; the last three days' songs are pushed down, and the artists they start from rotate through your top ones each week |
 | **discover weekly** | 30 songs you own and never played: most by artists you play (the ones you play most count most, and artists you follow with a new release come first), the rest by artists you've never played | every Friday |
 | **daylist** | what you tend to play at this time of day, plus songs by the same artists you haven't; songs go in turns, and no artist takes more than a fifth unless nothing else is left; likes count here too, and a new star shows within ten minutes | morning, afternoon, evening, night |
-| **release radar** | songs added to your library in the last month by artists you play, newest first | as songs arrive |
+| **release radar** | songs added to your library in the last month by artists you follow, newest first | as songs arrive |
 | **on this day** | what you played around this date a year ago, most played first | every day |
 | **focus mix, late night mix, energy mix** | with `GROQ_API_KEY`: Groq sorts the artists you play into moods once a week (one call, cached), and each mix is a fresh blend of their songs every day, in turns, no artist over a fifth | every day |
 | **… · weekly** | with `GROQ_API_KEY`, after [Sonaraem](https://github.com/FindMalek/sonaraem): up to five playlists Groq names and fills by grouping the artists you play by shared sound and mood; no artist takes over a list | every week |
@@ -31,12 +31,11 @@ and answers are kept, so a release is looked up once. Cards show the cover from 
 **following** (or `/following` in the sidebar) is a page: search for an artist (typos are fine, it's the same search as
 the rest of the app, and a name that isn't in your library can be followed by name), see everyone you follow and sort
 them (pinned first, a-z, newest release), **pin** one so it stays when you stop playing them, or **unfollow** one for
-good (an unfollowed artist isn't followed automatically again). Below, the releases are grouped by week (coming up,
-this week, last week, then by date), can be filtered to albums, EPs or singles, and **mark seen** (one, or all of
-what's shown) is remembered per account. Following an artist looks them up right away. The artist has to be an exact
+good (an unfollowed artist isn't followed automatically again). New songs from the artists you follow go into the
+[release radar](#made-for-you) mix. Following an artist looks them up right away. The artist has to be an exact
 match on MusicBrainz; when two artists share a name, none is picked.
 
-Without [Lyterion](lyterion.md#new-releases) this is a list. With it, **get it** on a release hands it over (admins),
+Without [Lyterion](lyterion.md#new-releases) this is a list. With it, **get it** on a release on home hands it over (admins),
 and `RELEASES_AUTO_GET=on` does so for every new release on its own. `MUSICBRAINZ_URL` empty turns all of it off.
 
 ## Playlists from a prompt

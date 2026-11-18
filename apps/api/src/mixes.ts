@@ -5,6 +5,7 @@ import { discoveryLane, FAMILIAR_WINDOW_DAYS, familiarShare } from "./mix-discov
 import { ARTIST_CAP, artistPool, closest, roundRobin } from "./mix-pool";
 import { rankByTaste, type Signal } from "./mix-scoring";
 import { readPrefs } from "./prefs";
+import { listFollows } from "./releases";
 import type { StatsSong as Song } from "./stats";
 
 const DAY = 86_400_000;
@@ -348,10 +349,11 @@ function discover(l: Listening, account: string, friday: number, boosted: Set<st
   };
 }
 
-function releaseRadar(l: Listening, now: number): Mix | null {
+function releaseRadar(db: Database, l: Listening, account: string, now: number): Mix | null {
   const since = now - RADAR_DAYS * DAY;
+  const followed = new Set(listFollows(db, account).map((follow) => normalize(follow.name)));
   const fresh = [...l.byArtist.entries()]
-    .filter(([artist]) => l.counts.has(artist))
+    .filter(([artist]) => followed.has(artist))
     .flatMap(([, songs]) => songs)
     .map((song) => ({ song, added: Date.parse(typeof song.created === "string" ? song.created : "") }))
     .filter((item) => item.added >= since)
@@ -360,7 +362,12 @@ function releaseRadar(l: Listening, now: number): Mix | null {
     .map((item) => item.song);
   if (!fresh.length) return null;
   const artists = [...new Set(fresh.map((song) => normalize(song.artist ?? "")))];
-  return { id: "release-radar", name: "release radar", description: `new in your library: ${artistNames(l, artists)}`, songs: fresh };
+  return {
+    id: "release-radar",
+    name: "release radar",
+    description: `new from artists you follow: ${artistNames(l, artists)}`,
+    songs: fresh,
+  };
 }
 
 function onThisDay(db: Database, l: Listening, account: string, now: number): Mix | null {
@@ -421,7 +428,7 @@ export function madeForYou(
   return [
     ...daily(db, l, account, day, liked !== null),
     discover(l, account, lastFriday(day), boosted),
-    releaseRadar(l, now),
+    releaseRadar(db, l, account, now),
     onThisDay(db, l, account, now),
     daylist(l, account, day, slotOf(hour), tzMinutes),
   ].filter((mix): mix is Mix => mix !== null);
@@ -442,7 +449,10 @@ export function mixesVersion(db: Database, server: string, account: string): str
   const never = db
     .query<{ ids: string | null }, [string]>("select group_concat(song_id) as ids from song_prefs where account = ? and never = 1")
     .get(account)?.ids;
-  return Bun.hash(`${plays?.count}:${plays?.last}:${synced}:${never ?? ""}`).toString(36);
+  const follows = listFollows(db, account)
+    .map((follow) => follow.name)
+    .join(",");
+  return Bun.hash(`${plays?.count}:${plays?.last}:${synced}:${never ?? ""}:${follows}`).toString(36);
 }
 
 export function dailyMixes(

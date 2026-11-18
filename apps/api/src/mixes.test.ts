@@ -3,6 +3,7 @@ import { openLibraryDb } from "./db";
 import { recordPlay } from "./history";
 import { dailyMixes, keyOf, listening, madeForYou, mixesVersion, nearToday } from "./mixes";
 import { changeSong } from "./prefs";
+import { setFollow } from "./releases";
 import { createIndexTables } from "./search-index";
 
 const NOW = Date.UTC(2026, 9, 24, 12);
@@ -74,7 +75,7 @@ test("discover weekly is only songs you never played; the daylist follows what y
   expect(at(23).find((mix) => mix.id === "daylist")?.description).toContain("night: Mitski");
 });
 
-test("release radar is new songs by artists you play; on this day is what you played a year ago", async () => {
+test("release radar is new songs by artists you follow; on this day is what you played a year ago", async () => {
   const { madeForYou, listening } = await import("./mixes");
   const { moodMixes } = await import("./mood-mixes");
   const db = openLibraryDb(":memory:");
@@ -93,8 +94,9 @@ test("release radar is new songs by artists you play; on this day is what you pl
   recordPlay(db, "s:u", "", { song: song("x", "Hurt", "Rapture"), started: NOW - DAY_MS, listened: 200, finished: true });
   recordPlay(db, "s:u", "", { song: song("y", "Hurt", "Rapture"), started: NOW - 366 * DAY_MS, listened: 200, finished: true });
 
+  setFollow(db, "s:u", "Hurt", "followed");
   const mixes = madeForYou(db, "s", "s:u", { day: 20_385, hour: 12, tzMinutes: 0 }, NOW);
-  // Zola is new too, but you don't play Zola.
+  // Zola is new too, but you don't follow Zola.
   expect(mixes.find((mix) => mix.id === "release-radar")?.songs.map((item) => item.id)).toEqual(["h2"]);
   expect(mixes.find((mix) => mix.id === "on-this-day")?.songs.map((item) => item.id)).toEqual(["h1"]);
 
@@ -783,6 +785,7 @@ test("release radar shows the newest copy of a song, whichever id comes first", 
     song("p", "Hurt", "Played"),
   ]);
   playsOf(db, "s:u", "Hurt", "Played");
+  setFollow(db, "s:u", "Hurt", "followed");
   const radar = madeForYou(db, "s", "s:u", { day: 20_385, hour: 12, tzMinutes: 0 }, NOW).find((mix) => mix.id === "release-radar");
   expect(radar?.songs.map((item) => item.id)).toEqual(["b-new"]);
 });
