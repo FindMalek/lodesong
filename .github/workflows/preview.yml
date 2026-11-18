@@ -59,7 +59,7 @@ jobs:
   # ...and the deploy runs on the-keep: previews are tailnet-only, so only a runner there can wait for one to come up.
   deploy:
     needs: build
-    runs-on: [self-hosted, the-keep]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
