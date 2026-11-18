@@ -62,6 +62,7 @@ function setup(publicDemo = false) {
     api,
     as,
     sessions,
+    signedOutPlaylist: (id: string) => api.playlistPicture(Object.assign(new Request("http://app/x"), { params: { id } })),
     signedOut: (id: string) => api.folderPicture(Object.assign(new Request("http://app/x"), { params: { id } })),
   };
 }
@@ -253,4 +254,26 @@ test("a playlist cover is the mosaic until the dither or a real picture is chose
   await me.rpc.playlists.setCover({ id: "pl-1", kind: "mosaic" });
   expect((await me.rpc.playlists.covers()).covers.map((cover) => cover.playlistId)).toEqual(["pl-2"]);
   expect((await as("you").rpc.playlists.covers()).covers).toEqual([]);
+});
+
+test("a playlist picture is private, cached by etag, refused in the demo, and swept when its playlist is gone", async () => {
+  const { as, api, signedOutPlaylist } = setup();
+  const me = as("me");
+  await me.rpc.playlists.setCover({ id: "pl-2", kind: "image", image: await dataUrl("png") });
+  const ask = (cookie: string, headers: Record<string, string> = {}) =>
+    api.playlistPicture(Object.assign(new Request("http://app/x", { headers: { cookie, ...headers } }), { params: { id: "pl-2" } }));
+  const first = ask(me.cookie);
+  const etag = first.headers.get("etag") as string;
+  expect(etag).toBeTruthy();
+  expect(ask(me.cookie, { "if-none-match": etag }).status).toBe(304);
+  expect(ask(as("you").cookie).status).toBe(404);
+  expect(signedOutPlaylist("pl-2").status).toBe(401);
+
+  KNOWN.push("pl-9");
+  await me.rpc.playlists.setCover({ id: "pl-9", kind: "dither" });
+  KNOWN.pop();
+  expect((await me.rpc.playlists.covers()).covers.map((cover) => cover.playlistId)).toEqual(["pl-2"]);
+
+  const demo = setup(true).as("me");
+  await expect(demo.rpc.playlists.setCover({ id: "pl-1", kind: "dither" })).rejects.toMatchObject({ code: "FORBIDDEN" });
 });

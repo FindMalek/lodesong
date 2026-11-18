@@ -154,25 +154,30 @@ export function NewPlaylistDialog({
             <Label htmlFor="playlist-description">description</Label>
             <Textarea id="playlist-description" rows={2} value={comment} onChange={(event) => setComment(event.target.value)} />
           </div>
-          <fieldset hidden={isDemo()} className="flex flex-col gap-1.5">
-            <legend className="mb-1.5 text-sm">cover</legend>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5" hidden={isDemo()}>
+            <span id="playlist-cover-label" className="text-sm">
+              cover
+            </span>
+            <div role="radiogroup" aria-labelledby="playlist-cover-label" className="flex flex-wrap gap-1.5">
               {COVER_CHOICES.map(([kind, label]) => (
                 <Button
                   key={kind}
                   type="button"
+                  role="radio"
                   size="sm"
                   variant={coverKind === kind ? "default" : "outline"}
-                  aria-pressed={coverKind === kind}
+                  aria-checked={coverKind === kind}
                   onClick={() => (kind === "image" ? file.current?.click() : setCoverKind(kind))}
                 >
-                  {kind === "image" && picture ? "my picture ✓" : label}
+                  {label}
+                  {kind === "image" && picture && <span aria-hidden> ✓</span>}
                 </Button>
               ))}
             </div>
             <input
               ref={file}
               type="file"
+              tabIndex={-1}
               accept="image/png,image/jpeg,image/webp"
               aria-label="playlist picture"
               className="sr-only"
@@ -187,7 +192,7 @@ export function NewPlaylistDialog({
                   });
               }}
             />
-          </fieldset>
+          </div>
           <div className="flex items-center gap-2">
             <Switch id="playlist-public" checked={isPublic} onCheckedChange={setPublic} />
             <Label htmlFor="playlist-public">public · others on this server can see it</Label>

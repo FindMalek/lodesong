@@ -51,3 +51,8 @@ export function setPlaylistCover(db: Database, account: string, id: string, kind
 export function removePlaylistCover(db: Database, account: string, id: string): void {
   db.query("delete from playlist_covers where account = ? and playlist_id = ?").run(account, id);
 }
+
+/** A playlist deleted in Navidrome (or from another client) leaves its picture here, and Navidrome may reuse the id. */
+export function sweepPlaylistCovers(db: Database, account: string, known: Set<string>): void {
+  for (const { playlistId } of listPlaylistCovers(db, account)) if (!known.has(playlistId)) removePlaylistCover(db, account, playlistId);
+}

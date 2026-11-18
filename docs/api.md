@@ -29,6 +29,8 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | `GET /api/folders`, `POST /api/folders` | your playlist folders (picture versions, not the pictures) and the playlist each holds; make one |
 | `PATCH /api/folders/{id}`, `DELETE /api/folders/{id}` | rename, move or set the picture of a folder (png, jpeg or webp, 56 KB and 1024 px at most); delete one, what is inside moves up. Neither is allowed in the public demo |
 | `GET /api/folders/{id}/cover` | a folder's picture, with an `ETag` (`304` when you have it); `404` when it has none or isn't yours |
+| `GET /api/playlists/covers`, `PUT /api/playlists/{id}/cover` | playlists whose cover isn't the four-album mosaic; choose `mosaic`, `dither` or `image` (png, jpeg or webp, 56 KB and 1024 px at most; not in the public demo) |
+| `GET /api/playlists/{id}/cover` | an uploaded playlist picture, with an `ETag` (`304` when you have it); `404` when it has none or isn't yours |
 | `PUT /api/playlists/{id}/folder` | put a playlist in a folder, or back at the top with `folderId: null` |
 | `POST /api/folders/import` | make a nested set of folders and fill them with playlists (2000 in all), all or nothing |
 | `GET /api/artists/{id}/appears-on` | albums by others an artist appears on |

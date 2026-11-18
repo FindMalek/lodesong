@@ -23,3 +23,10 @@ export async function playlistsExist(upstream: Upstream, who: Credentials, ids: 
   const known = new Set((all.playlists?.playlist ?? []).map((playlist) => playlist.id));
   return wanted.every((id) => known.has(id));
 }
+
+/** Every playlist this user can see, or null when Navidrome refuses. */
+export async function playlistIds(upstream: Upstream, who: Credentials): Promise<Set<string> | null> {
+  const all = await ask(upstream, who, "getPlaylists");
+  if (all.status !== "ok") return null;
+  return new Set((all.playlists?.playlist ?? []).map((playlist) => playlist.id));
+}

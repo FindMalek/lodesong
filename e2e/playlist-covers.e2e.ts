@@ -9,7 +9,7 @@ async function createWith(page: Page, name: string, cover: "four albums" | "anim
   await dialog.getByLabel("name").fill(name);
   if (cover === "my picture")
     await dialog.getByLabel("playlist picture").setInputFiles({ name: "cover.png", mimeType: "image/png", buffer: PIXEL });
-  else await dialog.getByRole("button", { name: cover }).click();
+  else await dialog.getByRole("radiogroup", { name: "cover" }).getByRole("radio", { name: cover }).click();
   await dialog.getByRole("button", { name: "create" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
 }
