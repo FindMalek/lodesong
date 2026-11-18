@@ -45,3 +45,25 @@ test("in the queue alt+↓ reorders and delete removes", async ({ page, signedIn
   await page.keyboard.press("Delete");
   await expect(queue.getByText(titles[1] as string, { exact: true })).toHaveCount(0);
 });
+
+test("in the queue a dragged song from your own up-next takes the place of another", async ({ page, signedIn }) => {
+  await signedIn.goto("/album/al-3");
+  const titles = await trackTitles(page);
+  // The first add starts playing; the next three wait in your queue.
+  for (const title of titles.slice(0, 4)) {
+    const row = page.getByRole("row", { name: title as string }).first();
+    await row.hover();
+    await row.getByRole("button", { name: `add ${title} to queue` }).click();
+  }
+  await page.keyboard.press("q");
+  const rows = page
+    .getByRole("list", { name: "queue" })
+    .locator("li[data-queue-index]")
+    .filter({ has: page.locator("[draggable=true]") });
+  const text = async (index: number) => (await rows.nth(index).textContent()) ?? "";
+  await expect(rows.nth(2)).toBeVisible();
+  const [first, last] = [await text(0), await text(2)];
+  await rows.nth(2).locator("[draggable=true]").dragTo(rows.nth(0));
+  await expect.poll(() => text(0)).toBe(last);
+  await expect.poll(() => text(1)).toBe(first);
+});
