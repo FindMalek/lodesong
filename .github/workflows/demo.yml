@@ -41,7 +41,7 @@ jobs:
   # On the-keep: the demo host is tailnet-only, and creating its account needs to reach it.
   deploy:
     needs: demo
-    runs-on: [self-hosted, the-keep]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       DOKPLOY_URL: ${{ vars.DOKPLOY_PUBLIC_URL }}
