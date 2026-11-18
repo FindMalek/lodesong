@@ -50,7 +50,8 @@ test("any signed-in user adds songs, the public demo can't, and the token never 
   expect((await api.wishlist(post("add", guest, { input: "shyler widows weep" }))).status).toBe(200);
   seen.length = 0;
   const demo = build(Response.json({}), true);
-  expect((await demo.api.wishlist(post("add", guest, { input: "shyler widows weep" }))).status).toBe(403);
+  for (const step of ["add", "search", "preview"])
+    expect((await demo.api.wishlist(post(step, guest, { input: "shyler widows weep" }))).status).toBe(403);
   expect(demo.seen).toHaveLength(0);
   const response = await api.wishlist(post("preview", admin, { input: " shyler widows weep " }));
   expect(await response.json()).toEqual({ title: "Widows Weep", cover: null });
@@ -110,4 +111,44 @@ test("a preview cover is inlined only from known image hosts", async () => {
   seen.length = 0;
   expect(((await (await api.wishlist(post("preview", admin, { input: "x y" }))).json()) as { cover: unknown }).cover).toBeNull();
   expect(seen).toEqual(["http://lyterion/api/rpc/api-reference/player/wishlist/preview"]);
+});
+
+test("an unknown step is a 404 and never reaches lyterion", async () => {
+  const { api, seen } = build(Response.json({}));
+  for (const step of ["constructor", "toString", "nope"])
+    expect((await api.wishlist(post(step, admin, { input: "shyler widows weep" }))).status).toBe(404);
+  expect(seen).toHaveLength(0);
+});
+
+test("searches are counted per account, so a new session doesn't reset them", async () => {
+  const { api, seen } = build(Response.json({ candidates: [] }));
+  const again = sessions.create({ server: "default", user: "Boss", token: "t", salt: "s", agent: "", admin: true });
+  for (let i = 0; i < 120; i++) await api.wishlist(post("search", i % 2 ? admin : again, { input: "teardrop" }));
+  expect((await api.wishlist(post("search", again, { input: "teardrop" }))).status).toBe(429);
+  expect(seen).toHaveLength(120);
+});
+
+test("search covers are inlined, and a big one is dropped by the smaller search cap", async () => {
+  const sizes: Record<string, number> = { "https://i.ytimg.com/small.jpg": 1_000, "https://i.ytimg.com/big.jpg": 50_000 };
+  const api = createApi({
+    upstreams: [],
+    indexes: new Map(),
+    library: openLibraryDb(":memory:"),
+    lyrics: new LyricsService(openLibraryDb(":memory:"), ""),
+    covers: new CoverCache(`${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`, 1_000_000),
+    sessions,
+    limiter: new LoginLimiter(),
+    idleSeconds: 60,
+    trustProxy: false,
+    lyterion: { url: "http://lyterion", token: "secret" },
+    fetcher: (async (url: string | URL) =>
+      String(url).startsWith("http://lyterion")
+        ? Response.json({ candidates: Object.keys(sizes).map((coverUrl) => ({ title: "t", coverUrl })) })
+        : new Response(new Uint8Array(sizes[String(url)] ?? 0), { headers: { "content-type": "image/jpeg" } })) as unknown as typeof fetch,
+  });
+  const { candidates } = (await (await api.wishlist(post("search", admin, { input: "teardrop" }))).json()) as {
+    candidates: { cover: string | null }[];
+  };
+  expect(candidates[0]?.cover).toStartWith("data:image/jpeg;base64,");
+  expect(candidates[1]?.cover).toBeNull();
 });

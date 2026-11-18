@@ -124,6 +124,8 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
     [],
   );
 
+  const candidates = found.data?.candidates ?? [];
+  const unreachable = found.data?.unreachable ?? [];
   const shown = picked ?? preview.data;
   const ready = shown && !add.isPending && !added;
   const submit = () => {
@@ -177,10 +179,10 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
           </div>
         </div>
       )}
-      {byName && !guess && !picked && !added && asked === text.trim() && found.data && (
+      {byName && !guess && !picked && !added && asked === text.trim() && (found.data || found.isError) && (
         <div className="flex flex-col gap-2">
           <ul aria-label="candidates" className="flex max-h-72 flex-col gap-2 overflow-y-auto">
-            {found.data.candidates.map((candidate) => (
+            {candidates.map((candidate) => (
               <li key={candidate.input}>
                 <button
                   type="button"
@@ -190,21 +192,21 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
                     add.mutate(candidate.input);
                   }}
                 >
-                  <Card meta={candidate} label={candidate.source} />
+                  <Card meta={candidate} label={SOURCE_LABEL[candidate.source]} />
                 </button>
               </li>
             ))}
           </ul>
-          {found.data.unreachable.length > 0 && (
+          {unreachable.length > 0 && (
             <p role="status" className="px-1 text-muted-foreground text-xs">
-              couldn't reach {found.data.unreachable.join(" and ")}
-              {found.data.candidates.length ? ", so those results are missing" : ""}
+              couldn't reach {unreachable.join(" and ")}
+              {candidates.length ? ", so those results are missing" : ""}
             </p>
           )}
           <Button size="sm" variant="outline" onClick={() => setGuess(true)}>
-            {found.data.candidates.length
+            {candidates.length
               ? "none of these, find the best match"
-              : found.data.unreachable.length
+              : unreachable.length || found.isError
                 ? "try the best match on youtube"
                 : "nothing found, try the best match on youtube"}
           </Button>
@@ -215,6 +217,18 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
         <p role="alert" className="px-1 text-destructive text-xs">
           {error}
         </p>
+      )}
+      {picked && add.error && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            add.reset();
+            setPicked(null);
+          }}
+        >
+          back to candidates
+        </Button>
       )}
       {added && state.data && status === "working" && <Steps stage={state.data.stage} />}
       {added && !state.data && !state.isError && <Steps stage="queued" />}
@@ -261,16 +275,30 @@ export function AddTrack({ initial, onBack, onClose }: { initial: string; onBack
       {(status === "missing" || status === "gone") && (
         <div className="flex items-center justify-between gap-3 border p-3">
           <span className="text-muted-foreground text-sm">no good copy found on any source.</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              add.reset();
-              add.mutate(picked?.input ?? asked);
-            }}
-          >
-            try again
-          </Button>
+          <div className="flex gap-2">
+            {picked && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  add.reset();
+                  setPicked(null);
+                }}
+              >
+                back to candidates
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                add.reset();
+                add.mutate(picked?.input ?? asked);
+              }}
+            >
+              try again
+            </Button>
+          </div>
         </div>
       )}
       <div className="flex items-center justify-between gap-3 font-mono text-meta text-faint">

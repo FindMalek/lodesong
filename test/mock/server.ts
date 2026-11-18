@@ -630,6 +630,7 @@ const server = Bun.serve({
         const stage = stages[Math.min(seen, stages.length - 1)] ?? "placed";
         return Response.json({ status: stage === "placed" ? "placed" : "working", stage });
       }
+      if (step === "search" && body.input?.includes("unreleased")) return Response.json({ candidates: [], unreachable: ["youtube"] });
       if (step === "search")
         return Response.json({
           candidates: [
