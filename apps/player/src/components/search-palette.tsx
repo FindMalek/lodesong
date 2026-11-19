@@ -213,7 +213,7 @@ export function SearchPalette({
       description="search artists, albums, songs, playlists and lyrics"
       // In the middle of any window, one height whatever the results (so the input never moves); only the list scrolls.
       // Only the overlay blurs (cheap to animate); people who asked for less transparency get the plain dim.
-      overlayClassName="bg-black/20 supports-backdrop-filter:backdrop-blur-sm [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
+      overlayClassName="supports-backdrop-filter:backdrop-blur-sm [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
       className="top-1/2 flex h-[min(calc(100dvh-2rem),32rem)] -translate-y-1/2 flex-col sm:max-w-[680px]"
     >
       {adding !== null ? (
