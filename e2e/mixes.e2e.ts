@@ -69,3 +69,49 @@ test("songs you play become daily mixes on home, saved as navidrome playlists to
   await mixes.getByRole("button", { name: "play daily mix 1" }).click();
   await expect(page.getByRole("contentinfo").getByRole("button", { name: "pause" })).toBeVisible();
 });
+
+test.describe(() => {
+  // page.route doesn't see requests the service worker makes.
+  test.use({ serviceWorkers: "block" });
+  test("home holds the made for you space with a skeleton while the mixes load, then fills it without moving the page", async ({
+    page,
+    signedIn,
+  }) => {
+    await playOneArtist(page);
+    const mixes = page.getByRole("list", { name: "made for you" });
+    await signedIn.goto("/");
+    await expect(mixes.getByRole("button", { name: "play daily mix 1" })).toBeAttached();
+    await page.route("**/api/rpc/mixes", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await route.continue();
+    });
+    await page.evaluate(() => indexedDB.deleteDatabase("keyval-store"));
+    await page.reload();
+    const section = page.locator("section", { has: page.getByRole("heading", { name: "made for you" }) });
+    const below = page
+      .locator("section")
+      .filter({ hasNot: page.getByRole("heading", { name: "made for you" }) })
+      .first();
+    await expect(page.getByTestId("mixes-skeleton")).toBeVisible();
+    const held = { section: await section.boundingBox(), below: await below.boundingBox() };
+    await expect(mixes).toBeVisible();
+    const filled = { section: await section.boundingBox(), below: await below.boundingBox() };
+    expect(filled.section?.height).toBeGreaterThan(0);
+    expect(Math.abs((filled.section?.height ?? 0) - (held.section?.height ?? 0))).toBeLessThanOrEqual(2);
+    expect(filled.below?.y).toBe(held.below?.y);
+  });
+});
+
+test("daily mixes come back within two seconds on a cold cache", async ({ page, signedIn }) => {
+  await playOneArtist(page);
+  const call = callFrom(page);
+  const started = Date.now();
+  const result = await call("/api/rpc/mixes", {
+    method: "POST",
+    body: JSON.stringify({ json: { day: Math.floor(Date.now() / 86_400_000), hour: 9, tz: 0 } }),
+  });
+  expect(Date.now() - started).toBeLessThan(2_000);
+  expect(JSON.stringify(result)).toContain("daily-1");
+  await signedIn.goto("/");
+  await expect(page.getByRole("list", { name: "made for you" }).getByRole("button", { name: "play daily mix 1" })).toBeAttached();
+});

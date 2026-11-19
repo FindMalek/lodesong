@@ -18,6 +18,29 @@ export function NewReleasesSkeleton() {
   );
 }
 
+export function MixRowSkeleton() {
+  return (
+    <Section title="made for you">
+      <div
+        aria-hidden
+        data-testid="mixes-skeleton"
+        style={{ gridAutoRows: 0 }}
+        className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] grid-rows-1 gap-x-3 overflow-hidden"
+      >
+        {["a", "b", "c", "d", "e", "f", "g", "h"].map((key) => (
+          <div key={key} className="flex flex-col gap-1">
+            <Skeleton className="aspect-square w-full" />
+            <div className="flex h-8 flex-col justify-start gap-1 pt-0.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/5" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 export function Delayed({ ms = SHOW_AFTER_MS, children }: { ms?: number; children: ReactNode }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {

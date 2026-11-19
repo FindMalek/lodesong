@@ -68,10 +68,14 @@ export interface RpcDeps {
 
 type Context = { session: Session | null; client: string };
 
+type Made = Awaited<ReturnType<typeof madeForYou>>;
+
 export const accountOf = (session: Session) => `${session.server}:${session.user}`;
 
 const MIXES_TTL_MS = 60 * 60_000;
 const GROQ_MISS_TTL_MS = 2 * 60_000;
+// Groq answers never hold the daily mixes longer than this; a late answer is kept for the next request.
+const AI_WAIT_MS = 1_500;
 const OK = { ok: true } as const;
 
 const refusal = (reason: FolderReason) => new ORPCError(reason === "missing" ? "NOT_FOUND" : "BAD_REQUEST", { message: reason });
@@ -124,6 +128,33 @@ export function createRpc({
   publicDemo = false,
 }: RpcDeps) {
   const moodPlaylists = createMoodPlaylists(library, cache);
+  const aiRuns = new Map<string, Promise<Made>>();
+  // Mood and weekly playlists don't depend on the version of the plays, so a play or a like doesn't redo them. They run
+  // side by side and, past AI_WAIT_MS, the row goes out without them while the run finishes for the next request.
+  const aiMixes = async (key: string, groqNow: Groq, account: string, day: number, server: string, liked: Set<string> | null) => {
+    const cached = await cache.get<Made>(key);
+    if (cached) return cached;
+    let run = aiRuns.get(key);
+    if (!run) {
+      run = (async () => {
+        const heard = listening(library, server, account, Date.now(), liked ?? new Set());
+        const [moods, weekly] = await Promise.all([
+          moodMixes(library, groqNow, account, day, heard, fetcher),
+          weeklyPlaylists(library, groqNow, account, day, heard, fetcher),
+        ]);
+        const mixes = [...moods, ...weekly];
+        // Groq coming back empty is most likely a timeout or a rate limit, so that answer is kept only briefly.
+        await cache.set(key, mixes, !moods.length || !weekly.length ? GROQ_MISS_TTL_MS : MIXES_TTL_MS);
+        return mixes;
+      })().finally(() => aiRuns.delete(key));
+      aiRuns.set(key, run);
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<Made>((resolve) => {
+      timer = setTimeout(() => resolve([]), AI_WAIT_MS);
+    });
+    return Promise.race([run.catch((): Made => []), late]).finally(() => clearTimeout(timer));
+  };
   const folderLimit = publicDemo ? MAX_DEMO_FOLDERS : MAX_FOLDERS;
   const upstreamOf = (session: Session): Upstream => {
     const upstream = upstreamFor(session.server);
@@ -157,26 +188,22 @@ export function createRpc({
       const liked = upstream && likesFor ? await likesFor(session, upstream) : new Set<string>();
       // ~30 ms with 10k songs, and the same answer until the slot, a play, the index, a like or a "never" pref changes.
       const key = `mixes:${account}:${day}:${slotOf(input.hour)}:${input.tz}:${mixesVersion(library, session.server, account)}:${releasesVersion(library, account)}:${likesKey(liked)}`;
-      const cached = await cache.get<{ day: number; mixes: Awaited<ReturnType<typeof madeForYou>> }>(key);
-      if (cached) return cached;
-      const made = madeForYou(
-        library,
-        session.server,
-        account,
-        { day, hour: input.hour, tzMinutes: input.tz },
-        Date.now(),
-        artistsWithReleases(library, account, Date.now()),
-        liked,
-      );
-      const heard = groq ? listening(library, session.server, account, Date.now(), liked ?? new Set()) : null;
-      const moods = await moodMixes(library, groq, account, day, heard, fetcher);
-      const weekly = await weeklyPlaylists(library, groq, account, day, heard, fetcher);
-      const result = { day, mixes: [...made, ...moods, ...weekly] };
-      // Empty means not ready yet (no plays, the index building): asked again, never kept. Groq coming back empty is
-      // most likely a timeout or a rate limit, so that answer is kept only briefly.
-      const groqMissed = groq && (!moods.length || !weekly.length);
-      if (result.mixes.length) await cache.set(key, result, groqMissed ? GROQ_MISS_TTL_MS : MIXES_TTL_MS);
-      return result;
+      const cached = await cache.get<{ day: number; mixes: Made }>(key);
+      const made =
+        cached?.mixes ??
+        madeForYou(
+          library,
+          session.server,
+          account,
+          { day, hour: input.hour, tzMinutes: input.tz },
+          Date.now(),
+          artistsWithReleases(library, account, Date.now()),
+          liked,
+        );
+      // Empty means not ready yet (no plays, the index building): asked again, never kept.
+      if (!cached && made.length) await cache.set(key, { day, mixes: made }, MIXES_TTL_MS);
+      const ai = groq ? await aiMixes(`mixes-ai:${account}:${day}`, groq, account, day, session.server, liked) : [];
+      return { day, mixes: [...made, ...ai] };
     }),
     follows: {
       list: signedIn.follows.list.handler(({ context }) => {

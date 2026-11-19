@@ -7,6 +7,7 @@ import { Aura } from "@/components/aura";
 import { Dither } from "@/components/dither";
 import { Section } from "@/components/library";
 import { Link } from "@/components/link";
+import { MixRowSkeleton } from "@/components/skeletons";
 import { player } from "@/lib/player";
 import { queries, queryClient } from "@/lib/queries";
 import { rpc } from "@/lib/rpc";
@@ -21,6 +22,15 @@ interface Mix {
 }
 
 const SAVED_KEY = "keep-player:mixes-saved";
+const SEEN_KEY = "keep-player:mixes-seen";
+
+function hadMixes(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function now() {
   const date = new Date();
@@ -41,26 +51,29 @@ async function saveAsPlaylists(stamp: string, mixes: Mix[]): Promise<Playlist[]>
   }
   const playlists = await api<{ playlists?: { playlist?: Playlist[] } }>("getPlaylists").catch(() => null);
   const mine = (playlists?.playlists?.playlist ?? []).filter((playlist) => playlist.owner === getUser());
-  const created: Playlist[] = [];
-  for (const mix of mixes) {
-    const existing = mine.find((playlist) => playlist.name === mix.name);
-    const songId = mix.songs.map((song) => song.id);
-    const reply = await api<{ playlist?: { id: string } }>(
-      "createPlaylist",
-      existing ? { playlistId: existing.id, songId } : { name: mix.name, songId },
-    ).catch(() => null);
-    const id = existing?.id ?? reply?.playlist?.id;
-    if (!existing && id)
-      created.push({
+  const made = await Promise.all(
+    mixes.map(async (mix) => {
+      const existing = mine.find((playlist) => playlist.name === mix.name);
+      const songId = mix.songs.map((song) => song.id);
+      const reply = await api<{ playlist?: { id: string } }>(
+        "createPlaylist",
+        existing ? { playlistId: existing.id, songId } : { name: mix.name, songId },
+      ).catch(() => null);
+      const id = existing?.id ?? reply?.playlist?.id;
+      if (id) await api("updatePlaylist", { playlistId: id, comment: mix.description }).catch(() => undefined);
+      if (existing || !id) return null;
+      const playlist: Playlist = {
         id,
         name: mix.name,
         owner: getUser() ?? undefined,
         comment: mix.description,
         songCount: mix.songs.length,
         duration: mix.songs.reduce((total, song) => total + (song.duration ?? 0), 0),
-      });
-    if (id) await api("updatePlaylist", { playlistId: id, comment: mix.description }).catch(() => undefined);
-  }
+      };
+      return playlist;
+    }),
+  );
+  const created = made.filter((playlist): playlist is Playlist => playlist !== null);
   return created;
 }
 
@@ -71,6 +84,7 @@ export function MixRow() {
       input: { day, hour, tz },
       staleTime: (query) => (query.state.data?.mixes.length ? 60 * 60_000 : 0),
       refetchOnWindowFocus: false,
+      placeholderData: (previous) => previous,
       select: (result) => result.mixes as Mix[],
     }),
   );
@@ -78,13 +92,21 @@ export function MixRow() {
   const playlists = useQuery({ ...queries.playlists(), refetchOnMount: false }).data;
   useEffect(() => {
     // New playlists go straight into the cached list: a refetch could undo a delete still waiting out its undo.
-    if (!data?.length) return;
+    if (!data?.length || mixes.isPlaceholderData) return;
     void saveAsPlaylists(`${day}:${slot}`, data).then((created) => {
       if (created.length)
         queryClient.setQueryData(queries.playlists().queryKey, (current?: Playlist[]) => (current ? [...current, ...created] : current));
     });
-  }, [data, day, slot]);
-  if (mixes.isPending) return null;
+  }, [data, day, slot, mixes.isPlaceholderData]);
+  useEffect(() => {
+    if (!mixes.isSuccess) return;
+    try {
+      localStorage.setItem(SEEN_KEY, data?.length ? "1" : "0");
+    } catch {
+      return;
+    }
+  }, [mixes.isSuccess, data?.length]);
+  if (mixes.isPending) return hadMixes() ? <MixRowSkeleton /> : null;
   if (mixes.isError && !data)
     return (
       <Section title="made for you">

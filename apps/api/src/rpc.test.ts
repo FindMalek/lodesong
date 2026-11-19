@@ -1,6 +1,7 @@
 import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { createKeepClient } from "@lodesong/orpc/client";
 import { createApi } from "./api";
+import { type Cache, memoryCache } from "./cache";
 import { CoverCache } from "./covers";
 import { openLibraryDb } from "./db";
 import { recordPlay } from "./history";
@@ -231,4 +232,76 @@ test("playlists for a mood: signed in only, the words are bounded, and plain HTT
   expect(await (await call("/api/playlists/mood?mood=gym")).json()).toEqual({ mood: "gym", playlists: [], complete: true });
   expect((await call("/api/playlists/mood")).status).toBe(400);
   expect((await call(`/api/playlists/mood?mood=${"x".repeat(41)}`)).status).toBe(400);
+});
+
+async function withGroq(delayMs: number, cache?: Cache) {
+  const names = ["Abba", "Tool", "Hurt"];
+  const groq = Bun.serve({
+    port: 0,
+    idleTimeout: 30,
+    fetch: async () => {
+      await Bun.sleep(delayMs);
+      return Response.json({ choices: [{ message: { content: JSON.stringify({ focus: names }) } }] });
+    },
+  });
+  const navidrome = Bun.serve({ port: 0, fetch: () => Response.json({ "subsonic-response": { status: "ok", starred2: { song: [] } } }) });
+  const library = openLibraryDb(":memory:");
+  createIndexTables(library);
+  for (const [index, artist] of names.entries())
+    for (let i = 0; i < 10; i++) {
+      const item = { id: `${artist}-${i}`, artist, title: `${artist} ${i}` };
+      library
+        .query(
+          "insert into idx_items (server, kind, id, folder, name, norm, plays, data, generation) values ('default', 'song', ?, '1', 'n', 'n', 0, ?, 1)",
+        )
+        .run(item.id, JSON.stringify(item));
+      recordPlay(library, "default:demo", "", {
+        song: item,
+        started: Date.now() - (index * 10 + i + 1) * 3_600_000,
+        listened: 200,
+        finished: true,
+      });
+    }
+  const own = new SessionStore(":memory:", "secret", 10 * DAY_MS);
+  const made = createApi({
+    upstreams: [{ id: "default", url: `http://127.0.0.1:${navidrome.port}` }],
+    indexes: new Map(),
+    library,
+    lyrics: new LyricsService(openLibraryDb(":memory:"), ""),
+    covers: new CoverCache(`${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`, 1_000_000),
+    sessions: own,
+    limiter: new LoginLimiter(),
+    idleSeconds: 60,
+    trustProxy: false,
+    cache,
+    groq: { key: "k", model: "m", url: `http://127.0.0.1:${groq.port}` },
+  });
+  const session = own.create({ server: "default", user: "demo", token: "t", salt: "s", agent: "" });
+  const rpc = createKeepClient("http://app/api/rpc", { "x-lodesong": "1", cookie: `kp_session=${session}` }, (request) =>
+    made.rpc(request),
+  );
+  const ask = () => rpc.mixes({ day: Math.floor(Date.now() / DAY_MS), hour: 9, tz: 0 });
+  return { ask, stop: () => (groq.stop(true), navidrome.stop(true)) };
+}
+
+test("a slow groq never holds the daily mixes, and its mixes join once it answers", async () => {
+  const slow = await withGroq(6_000);
+  const started = Date.now();
+  const first = await slow.ask();
+  expect(Date.now() - started).toBeLessThan(3_500);
+  expect(first.mixes.some((mix) => mix.id === "daily-1")).toBe(true);
+  expect(first.mixes.some((mix) => mix.id === "mood-focus")).toBe(false);
+  await Bun.sleep(5_000);
+  expect((await slow.ask()).mixes.some((mix) => mix.id === "mood-focus")).toBe(true);
+  slow.stop();
+}, 20_000);
+
+test("a groq run that fails still returns the daily mixes", async () => {
+  const inner = memoryCache();
+  const broken = await withGroq(0, {
+    get: inner.get,
+    set: (key, value, ttl) => (key.startsWith("mixes-ai:") ? Promise.reject(new Error("disk")) : inner.set(key, value, ttl)),
+  });
+  expect((await broken.ask()).mixes.some((mix) => mix.id === "daily-1")).toBe(true);
+  broken.stop();
 });
