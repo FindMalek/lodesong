@@ -14,6 +14,7 @@ import { player } from "./player";
 import { queryClient } from "./queries";
 import * as Q from "./queue";
 import { sessionState } from "./session-state";
+import { throttle } from "./throttle";
 import type { Song } from "./types";
 
 // One playback session across devices: the playing tab publishes its queue and playhead, the others mirror it and
@@ -25,6 +26,7 @@ const MIRROR_MS = 1000;
 const RETRY_MS = [1000, 5000, 15_000, 60_000];
 
 const VOLUME_MS = 100;
+const VOLUME_PUBLISH_MS = 300;
 const VOLUME_HOLD_MS = 800;
 
 const CLAIM_KEY = "keep-player:device-claim:";
@@ -129,24 +131,12 @@ function upcomingHere(): string {
 }
 
 let volumeSentAt = 0;
-let volumeTimer: ReturnType<typeof setTimeout> | undefined;
-let volumeLatest: { volume: number; muted: boolean } | null = null;
+
+const sendCommandVolume = throttle((volume: number, muted: boolean) => command({ action: "volume", volume, muted }), VOLUME_MS);
 
 function sendVolume(volume: number, muted: boolean): void {
-  volumeLatest = { volume, muted };
   volumeSentAt = Date.now();
-  if (volumeTimer) return;
-  const flush = () => {
-    volumeTimer = undefined;
-    if (!volumeLatest) return;
-    command({ action: "volume", ...volumeLatest });
-    volumeLatest = null;
-  };
-  flush();
-  volumeTimer = setTimeout(() => {
-    volumeTimer = undefined;
-    flush();
-  }, VOLUME_MS);
+  sendCommandVolume(volume, muted);
 }
 
 function mirrorVolume(state: DeviceState): void {
@@ -186,7 +176,7 @@ function startPublishing(): void {
     if (next === level) return;
     level = next;
     clearTimeout(levelTimer);
-    levelTimer = setTimeout(() => publish(true), VOLUME_MS);
+    levelTimer = setTimeout(() => publish(true), VOLUME_PUBLISH_MS);
   };
   player.subscribe(() => {
     publish(false);
