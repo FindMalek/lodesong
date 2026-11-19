@@ -86,7 +86,7 @@ const QueueRow = memo(function QueueRow({ entry, state }: { entry: Entry; state:
     >
       <button
         type="button"
-        className="grid min-w-0 flex-1 grid-cols-[32px_minmax(0,1fr)_40px] items-center gap-2 px-1.5 py-1 text-left"
+        className="grid min-w-0 flex-1 grid-cols-[32px_minmax(0,1fr)_3.5rem] items-center gap-2 px-1.5 py-1 text-left"
         onClick={() => state === "next" && player.jumpTo(entry)}
         // Not `disabled`: played and current rows stay focusable for keyboard navigation.
         aria-disabled={state !== "next"}
@@ -143,7 +143,7 @@ function queueItems(queue: Queue): QueueItem[] {
       {
         kind: "header",
         label: queue.context.source ? `next from ${queue.context.source.name}` : "next up",
-        action: { label: "clear list", hint: "clear what is next, undo brings it back", run: player.clearContext },
+        action: { label: "clear rest", hint: "clear what is next, undo brings it back", run: player.clearContext },
       },
       ...upcoming.map((entry) => ({ kind: "entry" as const, entry, state: "next" as const })),
     );
@@ -345,15 +345,17 @@ export function QueuePanel({ onClose }: { onClose: () => void }) {
                     <div className="flex h-9 items-end justify-between px-1.5 pb-1.5 pointer-coarse:h-11 pointer-coarse:items-center pointer-coarse:pb-0">
                       <h3 className="truncate font-mono text-label text-faint">{item.label}</h3>
                       {item.action && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          className="-mr-1.5 h-6 px-1.5 font-mono text-label text-muted-foreground"
-                          title={item.action.hint}
-                          onClick={item.action.run}
-                        >
-                          {item.action.label}
-                        </Button>
+                        <Hint label={item.action.hint}>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="-mr-1.5 h-6 px-1.5 font-mono text-label text-muted-foreground"
+                            aria-description={item.action.hint}
+                            onClick={item.action.run}
+                          >
+                            {item.action.label}
+                          </Button>
+                        </Hint>
                       )}
                     </div>
                   ) : (

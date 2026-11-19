@@ -48,10 +48,19 @@ test("queue times share one right edge, and clearing says undo", async ({ page, 
 
   const times = panel.locator("[data-queue-index] .tabular-nums");
   await expect.poll(() => times.count()).toBeGreaterThan(2);
-  const edges = await times.evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().right)));
-  expect(new Set(edges).size).toBe(1);
+  // A mix or audiobook: hours long, the widest time there is.
+  await times.nth(1).evaluate((cell) => {
+    cell.textContent = "1:02:03";
+  });
+  const fit = await times.evaluateAll((cells) =>
+    cells.map((cell) => ({ right: Math.round(cell.getBoundingClientRect().right), over: cell.scrollWidth > cell.clientWidth })),
+  );
+  expect(new Set(fit.map((cell) => cell.right)).size).toBe(1);
+  expect(fit.some((cell) => cell.over)).toBe(false);
 
-  await panel.getByRole("button", { name: "clear queue" }).click();
+  const clear = panel.getByRole("button", { name: "clear queue" });
+  await expect(clear).toHaveAccessibleDescription(/undo brings it back/);
+  await clear.click();
   await expect(page.getByText("cleared your queue")).toBeVisible();
   await expect(panel.getByText("next in your queue")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "undo" }).last()).toBeVisible();
