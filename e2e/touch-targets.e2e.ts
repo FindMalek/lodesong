@@ -48,12 +48,7 @@ test("the primary controls on the phone pages are at least 44px", async ({ signe
     ["/stats", [page.getByRole("tab", { name: "7 days" }), page.getByRole("tab", { name: "year" })]],
     [
       "/following",
-      [
-        page
-          .getByRole("tab", { name: "all" })
-          .or(page.getByRole("button", { name: "all", exact: true }))
-          .first(),
-      ],
+      [page.getByRole("group", { name: "sort artists" }).getByRole("button").first()],
     ],
   ];
   for (const [path, controls] of pages) {
