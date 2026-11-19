@@ -7,6 +7,7 @@ import { BANDS, FLAT, headroom } from "./eq";
 const LEAD_SECONDS = 0.03;
 const RAMP_SECONDS = 0.005;
 const ARM_SECONDS = 0.6;
+const MUTE_SECONDS = 0.02;
 
 // iOS mutes Web Audio while the ringer switch is on silent unless the page says it is playback (Safari 16.4+
 // `navigator.audioSession`); elsewhere there is nothing to set.
@@ -107,7 +108,9 @@ export class Decks {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private sinkId = "";
   private volume = 1;
+  private muted = false;
   private tailUntil = 0;
+  private parkTimer: ReturnType<typeof setTimeout> | undefined;
   private armed: Deck | null = null;
   private fadesSkips = false;
 
@@ -148,6 +151,9 @@ export class Decks {
         if (this.log.length > LOG_SIZE) this.log.shift();
       });
     element.addEventListener("durationchange", () => void this.size(deck));
+    element.addEventListener("play", () => {
+      if (this.playing.element === element) this.unmute();
+    });
     const on = (name: string, handler: () => void) =>
       element.addEventListener(name, () => {
         if (this.playing.element === element) handler();
@@ -383,8 +389,11 @@ export class Decks {
   }
 
   private applyVolume(): void {
-    if (this.master) this.master.gain.value = this.volume;
-    else for (const deck of this.decks) deck.element.volume = this.volume;
+    if (this.master) {
+      if (this.muted) return;
+      this.master.gain.cancelScheduledValues(0);
+      this.master.gain.value = this.volume;
+    } else for (const deck of this.decks) deck.element.volume = this.volume;
   }
 
   setFactor(factor: number): void {
@@ -513,6 +522,7 @@ export class Decks {
     this.ensureGraph();
     // Not awaited: a suspended context's resume() can stay pending until the next gesture.
     if (this.context && this.context.state !== "running") void this.context.resume().catch(() => undefined);
+    this.unmute();
     const deck = this.playing;
     deck.wantsPlay = true;
     if (deck.sizing) return;
@@ -523,11 +533,30 @@ export class Decks {
     }
   }
 
+  // The master gain drops to silence first: WebKit keeps playing audio it already queued after `pause()`, which is the
+  // lag on a press of pause. `play()` brings it back.
   pause(): void {
     clearTimeout(this.timer);
     this.armed = null;
     this.playing.wantsPlay = false;
+    this.parkNow();
+    if (this.master && this.context?.state === "running") {
+      const time = this.context.currentTime;
+      this.master.gain.cancelScheduledValues(time);
+      this.master.gain.setValueAtTime(this.master.gain.value, time);
+      this.master.gain.linearRampToValueAtTime(0, time + MUTE_SECONDS);
+      this.muted = true;
+    }
     this.playing.element.pause();
+  }
+
+  private unmute(): void {
+    if (!this.muted || !this.master || !this.context) return;
+    this.muted = false;
+    const time = this.context.currentTime;
+    this.master.gain.cancelScheduledValues(time);
+    this.master.gain.setValueAtTime(this.master.gain.value, time);
+    this.master.gain.linearRampToValueAtTime(this.volume, time + MUTE_SECONDS);
   }
 
   seek(seconds: number): void {
@@ -575,10 +604,19 @@ export class Decks {
 
   private parkAfter(from: Deck, milliseconds: number): void {
     this.tailUntil = performance.now() + milliseconds;
-    setTimeout(() => {
+    this.parkTimer = setTimeout(() => {
       if (from !== this.playing) from.element.pause();
     }, milliseconds);
     from.songId = null;
+  }
+
+  private parkNow(): void {
+    clearTimeout(this.parkTimer);
+    this.tailUntil = 0;
+    const outgoing = this.idle;
+    if (outgoing.element.paused) return;
+    this.setGain(outgoing, 0);
+    outgoing.element.pause();
   }
 
   private handover(): boolean {

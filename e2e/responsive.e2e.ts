@@ -163,7 +163,7 @@ test("on a phone settings is a tab strip above the content, not a sidebar that s
   await page.goto("/settings/playback");
   const dialog = page.getByRole("dialog", { name: "settings" });
   const tabs = await dialog.getByRole("tablist").boundingBox();
-  const hint = await dialog.locator("p").filter({ hasText: "the next song starts before this one ends" }).boundingBox();
+  const hint = await dialog.locator("p").filter({ hasText: "the last seconds of a song fade out" }).boundingBox();
   expect(tabs).not.toBeNull();
   expect(hint).not.toBeNull();
   expect(hint?.width ?? 0).toBeGreaterThan(220);

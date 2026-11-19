@@ -680,8 +680,10 @@ export const player = {
     if (!current()) return;
     const element = decks.element;
     const shouldPlay = force ?? element.paused;
-    if (!shouldPlay) decks.pause();
-    else if (!element.src) load(true, position);
+    if (!shouldPlay) {
+      decks.pause();
+      set({ playing: false });
+    } else if (!element.src) load(true, position);
     else void decks.play().catch(() => set({ playing: false }));
   },
   next(): void {
