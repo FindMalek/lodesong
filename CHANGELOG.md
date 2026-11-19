@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/FindMalek/lodesong/compare/v1.20.0...v1.21.0) (2026-11-19)
+
+
+### Features
+
+* **video:** anthem launch film ([#574](https://github.com/FindMalek/lodesong/issues/574)) ([43492fc](https://github.com/FindMalek/lodesong/commit/43492fcd0dd44a24474117f5e2328194f8bcf4a1))
+
 ## [1.20.0](https://github.com/FindMalek/lodesong/compare/v1.19.0...v1.20.0) (2026-11-10)
 
 
