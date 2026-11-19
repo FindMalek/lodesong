@@ -148,7 +148,7 @@ export function SearchPalette({
     onOpenChange(false);
   };
   const needle = text.trim().toLowerCase();
-  const pageActions = usePageActions(open, queueOpen).filter((action) => !needle || action.label.includes(needle));
+  const pageActions = usePageActions(open, queueOpen).filter((action) => !needle || normalize(action.label).includes(normalize(needle)));
   const shortcuts = useShortcutList();
   // Commands from the shortcut registry, so the palette doubles as a command menu ("shuffle", "go to genres").
   const actions = shortcuts
@@ -260,15 +260,20 @@ export function SearchPalette({
               {needle && !(searching && query) && <CommandEmpty className="font-mono text-faint">no matches</CommandEmpty>}
               {query && !active.lyricsOnly && searching && <ResultGroupSkeleton />}
               {addFirst && addItem}
-              {pageActions.length > 0 && (
-                <CommandGroup heading="this page">
-                  {pageActions.map((action) => (
-                    <CommandItem key={action.id} value={`page-${action.id}`} onSelect={run(action.run)}>
-                      <span className="truncate">{action.label}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
+              {(["this page", "queue"] as const).map((heading) => {
+                const rows = pageActions.filter((action) => (action.group === "queue") === (heading === "queue"));
+                return (
+                  rows.length > 0 && (
+                    <CommandGroup key={heading} heading={heading}>
+                      {rows.map((action) => (
+                        <CommandItem key={action.id} value={`page-${action.id}`} onSelect={run(action.run)}>
+                          <span className="truncate">{action.label}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )
+                );
+              })}
               {recent.length > 0 && (
                 <CommandGroup heading="recent searches">
                   {recent.map((item) => (

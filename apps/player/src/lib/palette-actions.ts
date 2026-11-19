@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiQueries } from "./api-queries";
-import { player } from "./player";
+import { player, usePlayer } from "./player";
 import { queries, queryClient } from "./queries";
 import { go, usePath } from "./router";
+import type { Album, Playlist } from "./types";
 
 export interface PaletteAction {
   id: string;
   label: string;
+  group?: "queue";
   run: () => void;
 }
 
@@ -23,11 +25,17 @@ export function usePageActions(open: boolean, queueOpen: boolean): PaletteAction
   const param = id ? decodeURIComponent(id) : "";
   const album = useQuery({ ...queries.album(param), enabled: open && section === "album" && param !== "" }).data;
   const playlist = useQuery({ ...queries.playlist(param), enabled: open && section === "playlist" && param !== "" }).data;
-  if (queueOpen)
-    return [
-      { id: "queue-shuffle", label: "shuffle the queue", run: () => player.toggleShuffle() },
-      { id: "queue-clear", label: "clear up next", run: () => player.clearUpNext() },
-    ];
+  const shuffle = usePlayer((state) => state.queue.shuffle);
+  const queueActions: PaletteAction[] = queueOpen
+    ? [
+        { id: "queue-shuffle", label: shuffle ? "turn shuffle off" : "turn shuffle on", group: "queue", run: () => player.toggleShuffle() },
+        { id: "queue-clear", label: "clear up next", group: "queue", run: () => player.clearUpcoming() },
+      ]
+    : [];
+  return [...pageActionsFor(section, album, playlist), ...queueActions];
+}
+
+function pageActionsFor(section: string | undefined, album: Album | undefined, playlist: Playlist | undefined): PaletteAction[] {
   if (section === "album" && album) {
     const songs = album.song ?? [];
     const actions: PaletteAction[] = [

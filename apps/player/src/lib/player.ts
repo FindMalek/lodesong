@@ -838,6 +838,9 @@ export const player = {
   clearUpNext(): void {
     removed(Q.clearUpNext(state.queue), "cleared your queue");
   },
+  clearUpcoming(): void {
+    removed(Q.clearContext(Q.clearUpNext(state.queue)), "cleared everything up next");
+  },
   clearContext(): void {
     const source = state.queue.context.source?.name;
     removed(Q.clearContext(state.queue), source ? `cleared what was next from ${source}` : "cleared what was next");
