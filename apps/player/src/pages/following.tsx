@@ -8,6 +8,7 @@ import { PinIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Cover } from "@/components/cover";
 import { EmptyState, PageHeader, Section } from "@/components/library";
+import { ArtistRowsSkeleton } from "@/components/skeletons";
 import SyncFollows from "@/components/sync-follows";
 import { apiQueries } from "@/lib/api-queries";
 import { rpc } from "@/lib/rpc";
@@ -159,7 +160,9 @@ export function FollowingPage() {
           </div>
         }
       >
-        {artists.length ? (
+        {follows.isPending ? (
+          <ArtistRowsSkeleton count={6} className="" min={260} row="h-9.25" />
+        ) : artists.length ? (
           <ul aria-label="followed artists" className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6">
             {sorted(artists, sort, latest).map((artist) => (
               <li key={artist.name} className="flex items-center gap-2 border-b py-1">

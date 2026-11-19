@@ -4,6 +4,7 @@ import { Switch } from "@lodesong/ui/components/switch";
 import { CopyIcon, UsersIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Content, EmptyState, PageHeader, Section } from "@/components/library";
+import { PageSkeleton } from "@/components/skeletons";
 import { listen, useListen } from "@/lib/listen";
 import { HEADERS } from "@/lib/subsonic";
 import type { Song } from "@/lib/types";
@@ -80,7 +81,7 @@ export function ListenPage({ code }: { code: string | null }) {
         ) : session.status === "failed" ? (
           <EmptyState>couldn't connect · the session may be over</EmptyState>
         ) : session.status === "connecting" ? (
-          <EmptyState>connecting…</EmptyState>
+          <PageSkeleton />
         ) : connected ? (
           <div className="flex max-w-xl flex-col gap-4">
             <p className="text-muted-foreground text-sm">

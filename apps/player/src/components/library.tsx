@@ -4,6 +4,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@lodesong/ui/components/table";
 import { BanIcon, EyeIcon, EyeOffIcon, ListEndIcon, ListStartIcon, MinusIcon, PlayIcon, ScissorsIcon } from "lucide-react";
 import { type DragEvent, memo, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Loader } from "@/components/loader";
 import type { MissingTrack } from "@/lib/album-missing";
 import { useArtistNames } from "@/lib/artist-merge";
 import { current as currentDrag, endDrag, leftTarget, startDrag } from "@/lib/drag";
@@ -80,6 +81,11 @@ async function playAlbum(id: string, shuffle = false): Promise<void> {
 }
 
 const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: { album: Album; artist?: string; priority?: boolean }) {
+  const [starting, setStarting] = useState(false);
+  const start = () => {
+    setStarting(true);
+    void playAlbum(album.id).finally(() => setStarting(false));
+  };
   return (
     // Drag a card onto a playlist, the queue or the player bar (the link inside is the control; this only carries drags).
     // biome-ignore lint/a11y/noStaticElementInteractions: a drag source wrapper, not a control
@@ -98,10 +104,11 @@ const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: {
           <Button
             size="icon"
             className="pointer-events-auto translate-y-1 opacity-0 transition group-hover/album:translate-y-0 group-hover/album:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
-            onClick={() => void playAlbum(album.id)}
+            onClick={start}
+            disabled={starting}
             aria-label={`play ${album.name}`}
           >
-            <PlayIcon className="fill-current" />
+            {starting ? <Loader /> : <PlayIcon className="fill-current" />}
           </Button>
         </Hint>
       </div>
@@ -241,6 +248,7 @@ const TrackRow = memo(function TrackRow({
   measure,
   virtualIndex,
 }: TrackRowProps) {
+  const buffering = usePlayer((state) => Boolean(status) && state.buffering);
   return (
     <TableRow
       ref={measure}
@@ -268,7 +276,7 @@ const TrackRow = memo(function TrackRow({
     >
       <TableCell className="relative py-0 font-mono text-muted-foreground tabular-nums">
         <span className={cn("group-hover/row:invisible", !status && "pointer-coarse:invisible")}>
-          {status ? <Equalizer playing={status === "playing"} /> : number}
+          {status ? buffering ? <Loader label="buffering" /> : <Equalizer playing={status === "playing"} /> : number}
         </span>
         <Button
           variant="ghost"
