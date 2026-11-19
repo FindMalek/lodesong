@@ -59,7 +59,7 @@ test("in party mode only the host plays; a listener's pause button pauses the ho
   });
   await signIn(other);
   await other.goto(new URL(link).pathname);
-  await expect(other.getByText(/party mode: the host's device plays/)).toBeVisible();
+  await expect(other.getByText(/the host's device plays the audio/)).toBeVisible();
 
   await page.goto("/albums");
   await page.locator('a[href^="/album/"]').first().click();
@@ -74,4 +74,24 @@ test("in party mode only the host plays; a listener's pause button pauses the ho
   await guestBar.getByRole("button", { name: "pause" }).click();
   await expect(hostBar.getByRole("button", { name: "play", exact: true })).toBeVisible({ timeout: 10_000 });
   await guest.close();
+});
+
+test("join row lines up with the page and the toggles say what they do", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/listen");
+  const box = async (locator: ReturnType<typeof page.locator>) => (await locator.boundingBox())!;
+  const input = await box(page.getByLabel("session code"));
+  const join = await box(page.getByRole("button", { name: "join", exact: true }));
+  const heading = await box(page.getByRole("heading", { name: "join a session" }));
+  expect(Math.abs(input.y - join.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(input.height - join.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(input.x - heading.x)).toBeLessThanOrEqual(1);
+
+  await expect(page.getByText("when on, every listener can skip songs")).toBeVisible();
+  await expect(page.getByText("only your device plays audio and everyone else just controls it")).toBeVisible();
+  const skip = page.getByLabel("anyone can skip before starting");
+  const state = page.getByText("off", { exact: true }).first();
+  await expect(state).toBeVisible();
+  await skip.click();
+  await expect(page.getByText("on", { exact: true })).toHaveCount(1);
 });
