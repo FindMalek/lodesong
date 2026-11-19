@@ -121,6 +121,8 @@ const SECURITY_HEADERS = {
   "referrer-policy": "no-referrer",
 };
 
+const PREVIEW_COVER_BYTES = 400_000;
+const SEARCH_COVER_BYTES = 40_000;
 const COVER_HOSTS = /(^|\.)(ytimg\.com|sndcdn\.com|dzcdn\.net|ggpht\.com|googleusercontent\.com)$/;
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -420,7 +422,7 @@ export function createApi({
           ai: groq !== null,
           audiomuse: audiomuseUrl !== null,
           feedback: feedback !== null,
-          lyterionAdd: session.admin && lyterion !== null,
+          lyterionAdd: !publicDemo && lyterion !== null,
         })
       : json({ error: "signed out" }, 401);
   }
@@ -971,24 +973,49 @@ export function createApi({
 
   const wishlistSent = new Map<string, number[]>();
   const WISHLIST_PER_HOUR = 30;
+  const searchSent = new Map<string, number[]>();
+  const SEARCHES_PER_HOUR = 120;
+  const WISHLIST_ROUTES = new Map([
+    ["preview", "wishlist/preview"],
+    ["search", "wishlist/search"],
+    ["add", "wishlist"],
+    ["status", "wishlist/status"],
+  ]);
+
+  /** Counted per account, not per session, so signing out and in doesn't reset it; stale accounts are dropped as it goes. */
+  function overLimit(sent: Map<string, number[]>, key: string, limit: number): boolean {
+    const since = Date.now() - 3_600_000;
+    for (const [other, times] of sent) {
+      const recent = times.filter((at) => at > since);
+      if (recent.length) sent.set(other, recent);
+      else sent.delete(other);
+    }
+    const recent = sent.get(key) ?? [];
+    if (recent.length >= limit) return true;
+    sent.set(key, [...recent, Date.now()]);
+    return false;
+  }
 
   async function wishlist(request: Request & { params: { step: string } }): Promise<Response> {
     const step = request.params.step;
     if (request.headers.get(CSRF_HEADER) !== "1") return json({ error: "missing header" }, 403);
     const session = browserSession(request);
     if (!session) return json({ error: "signed out" }, 401);
-    if (!session.admin) return json({ error: "admins only" }, 403);
+    if (publicDemo) return json({ error: "not in the public demo" }, 403);
     if (!lyterion) return json({ error: "lyterion isn't set up" }, 404);
-    const route = { preview: "wishlist/preview", add: "wishlist", status: "wishlist/status" }[step];
+    const route = WISHLIST_ROUTES.get(step);
     if (!route) return json({ error: "not found" }, 404);
     const body = (await request.json().catch(() => null)) as { input?: unknown; recordingId?: unknown } | null;
     const input = typeof body?.input === "string" ? body.input.trim().slice(0, 300) : "";
     if (step !== "status" && input.length < 2) return json({ error: "paste a link or type a song name" }, 400);
     const payload = step === "status" ? { recordingId: typeof body?.recordingId === "string" ? body.recordingId : "" } : { input };
+    if (step === "search") {
+      if (overLimit(searchSent, `${session.server}/${session.user.toLowerCase()}`, SEARCHES_PER_HOUR))
+        return json({ error: "that's a lot of searches for one hour, try again later" }, 429);
+    }
     if (step === "add") {
-      const recent = (wishlistSent.get(session.id) ?? []).filter((at) => at > Date.now() - 3_600_000);
-      if (recent.length >= WISHLIST_PER_HOUR) return json({ error: "that's a lot of songs for one hour, try again later" }, 429);
-      wishlistSent.set(session.id, [...recent, Date.now()]);
+      if (overLimit(wishlistSent, `${session.server}/${session.user.toLowerCase()}`, WISHLIST_PER_HOUR))
+        return json({ error: "that's a lot of songs for one hour, try again later" }, 429);
     }
     const response = await fetcher(`${lyterion.url}/api/rpc/api-reference/player/${route}`, {
       method: "POST",
@@ -1007,11 +1034,22 @@ export function createApi({
       const { coverUrl, ...rest } = answer as { coverUrl?: unknown };
       return json({ ...rest, cover: await inlineCover(coverUrl) }, 200, { "cache-control": "private, no-store" });
     }
+    if (step === "search") {
+      const { candidates: list, unreachable } = answer as { candidates?: { coverUrl?: unknown }[]; unreachable?: unknown };
+      const candidates = await Promise.all(
+        (Array.isArray(list) ? list : [])
+          .slice(0, 8)
+          .map(async ({ coverUrl, ...rest }) => ({ ...rest, cover: await inlineCover(coverUrl, SEARCH_COVER_BYTES) })),
+      );
+      return json({ candidates, unreachable: Array.isArray(unreachable) ? unreachable : [] }, 200, {
+        "cache-control": "private, no-store",
+      });
+    }
     return json(answer, 200, { "cache-control": "private, no-store" });
   }
 
   /** The player's CSP only allows its own images, so a preview cover from YouTube, SoundCloud or Deezer rides along as a data URI. */
-  async function inlineCover(url: unknown): Promise<string | null> {
+  async function inlineCover(url: unknown, maxBytes = PREVIEW_COVER_BYTES): Promise<string | null> {
     if (typeof url !== "string") return null;
     try {
       const target = new URL(url);
@@ -1020,7 +1058,7 @@ export function createApi({
       const type = response.headers.get("content-type") ?? "";
       if (!response.ok || !/^image\/(jpeg|png|webp)/.test(type)) return null;
       const bytes = new Uint8Array(await response.arrayBuffer());
-      return bytes.length <= 400_000 ? `data:${type.split(";")[0]};base64,${Buffer.from(bytes).toString("base64")}` : null;
+      return bytes.length <= maxBytes ? `data:${type.split(";")[0]};base64,${Buffer.from(bytes).toString("base64")}` : null;
     } catch {
       return null;
     }
