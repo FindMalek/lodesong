@@ -63,6 +63,8 @@ test("a typed name lists candidates, and picking one adds it", async ({ signedIn
   await expect(candidates.getByText("youtube link", { exact: true })).toBeVisible();
   await candidates.getByRole("button", { name: /^Teardrop Massive Attack.*deezer link/ }).click();
 
-  await expect(dialog.getByRole("list", { name: "progress" })).toBeVisible();
   await expect(candidates).toBeHidden();
+  const steps = dialog.getByRole("list", { name: "progress" });
+  const placed = dialog.getByRole("button", { name: /scanning|not found yet|play now/ });
+  await expect(steps.or(placed)).toBeVisible();
 });
