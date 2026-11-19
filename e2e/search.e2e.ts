@@ -10,6 +10,7 @@ async function indexed(page: Page): Promise<void> {
 }
 
 test("⌘K finds a song and picking it plays it", async ({ signedIn: page }) => {
+  await indexed(page);
   await page.keyboard.press("ControlOrMeta+k");
   const dialog = page.getByRole("dialog", { name: "search" });
   await dialog.getByRole("combobox").fill("ember");
@@ -20,6 +21,7 @@ test("⌘K finds a song and picking it plays it", async ({ signedIn: page }) => 
 });
 
 test("⌘K: a mood like gym finds its playlists and genres, and the mix plays", async ({ signedIn: page }) => {
+  await indexed(page);
   await page.keyboard.press("ControlOrMeta+k");
   const dialog = page.getByRole("dialog", { name: "search" });
   await dialog.getByRole("combobox").fill("gym");
