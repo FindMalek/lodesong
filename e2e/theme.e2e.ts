@@ -31,3 +31,26 @@ test("a preset previews at once, saves, and survives a reload", async ({ page, s
   await page.getByRole("button", { name: "save look" }).click();
   await reset;
 });
+
+test("a shadcn preset code loads as a look, a bad one changes nothing, and reset brings the brand back", async ({ page, signedIn }) => {
+  await page.unroute("**/api/settings");
+  await page.goto("/settings/appearance");
+  const token = (name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+  const field = page.getByLabel("theme code to import");
+  const before = await token("--primary");
+
+  await field.fill("b7k!");
+  await page.getByRole("button", { name: "preview" }).click();
+  await expect(page.getByRole("alert")).toContainText("not a shadcn preset code");
+  expect(await token("--primary")).toBe(before);
+
+  await field.fill("--preset b7kBsBkh7b");
+  await page.getByRole("button", { name: "preview" }).click();
+  await expect.poll(() => token("--primary")).toBe("oklch(0.527 0.154 150.069)");
+  await expect.poll(() => token("--look-radius")).toBe("10px");
+  await expect(page.getByText("style, icons, menu and chart colors are not used")).toBeVisible();
+
+  await page.getByRole("button", { name: "reset to lodesong" }).click();
+  await expect.poll(() => token("--primary")).toBe(before);
+  await expect.poll(() => token("--look-radius")).toBe("");
+});

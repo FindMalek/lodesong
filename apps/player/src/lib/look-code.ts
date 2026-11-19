@@ -8,6 +8,7 @@ export interface Look {
   accent: (typeof ACCENTS)[number];
   radius: (typeof RADII)[number];
   font: (typeof FONTS)[number];
+  preset?: { code: string; css: string };
 }
 
 export const DEFAULT_LOOK: Look = { tone: "neutral", accent: "ink", radius: 0, font: "plex" };
@@ -22,7 +23,10 @@ export const PRESETS: { name: string; look: Look }[] = [
 
 const PREFIX = "lode1";
 
+const PRESET_PREFIX = "shadcn1";
+
 export function encodeLook(look: Look): string {
+  if (look.preset) return `${PRESET_PREFIX}.${look.preset.code}`;
   return [PREFIX, look.tone, look.accent, look.radius, look.font].join(".");
 }
 
@@ -32,6 +36,8 @@ function pick<T extends string | number>(options: readonly T[], value: string): 
 
 /** Null for anything that isn't a code this version wrote. */
 export function decodeLook(code: string): Look | null {
+  const [head, presetCode, ...extra] = code.trim().split(".");
+  if (head === PRESET_PREFIX && presetCode && !extra.length) return { ...DEFAULT_LOOK, preset: { code: presetCode, css: "" } };
   const [prefix, tone, accent, radius, font, ...rest] = code.trim().split(".");
   if (prefix !== PREFIX || rest.length || !tone || !accent || !radius || !font) return null;
   const look = { tone: pick(TONES, tone), accent: pick(ACCENTS, accent), radius: pick(RADII, radius), font: pick(FONTS, font) };
@@ -95,9 +101,12 @@ function tokens(look: Look, scheme: Scheme, dark: boolean): string {
   return pairs.map(([name, value]) => `--${name}:${value}`).join(";");
 }
 
+export const MONO_CSS = 'html,body{font-family:"JetBrains Mono Variable",ui-monospace,"SF Mono",Menlo,monospace}';
+
 /** The whole look as one stylesheet; empty for the default, so the brand stays untouched. */
 export function lookCss(look: Look): string {
+  if (look.preset) return look.preset.css;
   if (encodeLook(look) === encodeLook(DEFAULT_LOOK)) return "";
-  const font = look.font === "mono" ? 'html,body{font-family:"JetBrains Mono Variable",ui-monospace,"SF Mono",Menlo,monospace}' : "";
+  const font = look.font === "mono" ? MONO_CSS : "";
   return `:root{${tokens(look, LIGHT, false)};--look-radius:${look.radius}px}.dark{${tokens(look, DARK, true)}}${font}`;
 }

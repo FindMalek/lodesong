@@ -3,7 +3,7 @@ import { Input } from "@lodesong/ui/components/input";
 import { Slider } from "@lodesong/ui/components/slider";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { type ReactNode, useEffect, useState } from "react";
-import { previewLook, revertLook, savedLook, saveLook } from "@/lib/look-apply";
+import { previewLook, resolveLook, revertLook, savedLook, saveLook } from "@/lib/look-apply";
 import { ACCENTS, DEFAULT_LOOK, decodeLook, encodeLook, FONTS, type Look, PRESETS, RADII, TONES } from "@/lib/look-code";
 import { notify } from "@/lib/notify";
 import { useSetting } from "@/lib/settings";
@@ -53,16 +53,25 @@ export function ThemeBuilder() {
   const saved = useSetting("look");
   const [look, setLook] = useState<Look>(savedLook);
   const [code, setCode] = useState("");
-  const [bad, setBad] = useState(false);
+  const [bad, setBad] = useState("");
+  const [notes, setNotes] = useState<string[]>([]);
   const dirty = encodeLook(look) !== encodeLook(decodeLook(saved) ?? DEFAULT_LOOK);
 
   useEffect(() => revertLook, []);
 
+  // A saved shadcn preset has no stylesheet until the lazy table is loaded; this only fills the state, the page already shows the stored css.
+  useEffect(() => {
+    if (look.preset && !look.preset.css) void resolveLook(look).then(setLook);
+  }, [look]);
+
   const show = (next: Look) => {
     setLook(next);
-    setBad(false);
+    setBad("");
+    setNotes([]);
     previewLook(next);
   };
+  // Any manual choice leaves the imported shadcn preset behind.
+  const tweak = (patch: Partial<Look>) => show({ ...look, ...patch, preset: undefined });
 
   return (
     <section aria-label="custom look" className="flex flex-col pb-2">
@@ -87,10 +96,10 @@ export function ThemeBuilder() {
         </ToggleGroup>
       </div>
       <Field label="base tone">
-        <Choice label="base tone" options={TONES} value={look.tone} onChange={(tone) => show({ ...look, tone })} />
+        <Choice label="base tone" options={TONES} value={look.tone} onChange={(tone) => tweak({ tone })} />
       </Field>
       <Field label="accent">
-        <Choice label="accent" options={ACCENTS} value={look.accent} onChange={(accent) => show({ ...look, accent })} />
+        <Choice label="accent" options={ACCENTS} value={look.accent} onChange={(accent) => tweak({ accent })} />
       </Field>
       <Field label="corners">
         <div className="flex w-56 items-center gap-3">
@@ -100,13 +109,13 @@ export function ThemeBuilder() {
             max={RADII.length - 1}
             step={1}
             value={[RADII.indexOf(look.radius)]}
-            onValueChange={(value) => show({ ...look, radius: RADII[Array.isArray(value) ? (value[0] ?? 0) : value] ?? 0 })}
+            onValueChange={(value) => tweak({ radius: RADII[Array.isArray(value) ? (value[0] ?? 0) : value] ?? 0 })}
           />
           <span className="w-10 text-right font-mono text-xs tabular-nums">{look.radius} px</span>
         </div>
       </Field>
       <Field label="font">
-        <Choice label="font" options={FONTS} value={look.font} onChange={(font) => show({ ...look, font })} />
+        <Choice label="font" options={FONTS} value={look.font} onChange={(font) => tweak({ font })} />
       </Field>
       <div className="flex items-center justify-between gap-3 border-b py-3">
         <p className="text-muted-foreground text-xs">{dirty ? "previewing, not saved yet" : "saved, follows you to every browser"}</p>
@@ -116,6 +125,17 @@ export function ThemeBuilder() {
           </Button>
           <Button size="sm" disabled={!dirty} onClick={() => saveLook(look)}>
             save look
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={encodeLook(look) === encodeLook(DEFAULT_LOOK) && !dirty}
+            onClick={() => {
+              show(DEFAULT_LOOK);
+              saveLook(DEFAULT_LOOK);
+            }}
+          >
+            reset to lodesong
           </Button>
         </div>
       </div>
@@ -135,19 +155,28 @@ export function ThemeBuilder() {
           onSubmit={(event) => {
             event.preventDefault();
             const imported = decodeLook(code);
-            if (!imported) return setBad(true);
-            show(imported);
-            setCode("");
+            if (imported && !imported.preset) {
+              show(imported);
+              return setCode("");
+            }
+            // Not ours: a shadcn preset code (the table loads only now), or nothing, which changes nothing.
+            void import("@/lib/look-preset").then(({ resolvePreset }) => {
+              const result = resolvePreset(code);
+              if (!result.ok) return setBad(result.error);
+              show(result.look);
+              setNotes([result.ignored, ...result.warnings.map((warning) => `low contrast, ${warning}`)]);
+              setCode("");
+            });
           }}
         >
           <Input
             aria-label="theme code to import"
-            aria-invalid={bad}
-            placeholder="paste a theme code"
+            aria-invalid={!!bad}
+            placeholder="paste a theme code or a shadcn preset"
             value={code}
             onChange={(event) => {
               setCode(event.target.value);
-              setBad(false);
+              setBad("");
             }}
             className="font-mono"
           />
@@ -155,7 +184,16 @@ export function ThemeBuilder() {
             preview
           </Button>
         </form>
-        {bad && <p className="text-destructive text-xs">that is not a theme code</p>}
+        {bad && (
+          <p role="alert" className="text-destructive text-xs">
+            {bad}
+          </p>
+        )}
+        {notes.map((note) => (
+          <p key={note} className="text-muted-foreground text-xs">
+            {note}
+          </p>
+        ))}
       </div>
     </section>
   );

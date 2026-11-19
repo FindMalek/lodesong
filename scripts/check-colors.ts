@@ -11,6 +11,7 @@ const LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(
 const EXEMPT = [
   "apps/player/src/app.css",
   "apps/player/src/lib/look-code.ts",
+  "apps/player/src/lib/look-preset-table.ts",
   "apps/player/src/components/ui/",
   "apps/player/src/hooks/",
   "apps/player/src/lib/audio/",

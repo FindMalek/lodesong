@@ -23,9 +23,16 @@ export function saveLook(look: Look): void {
   setSetting("look", css ? encodeLook(look) : "");
 }
 
+export async function resolveLook(look: Look): Promise<Look> {
+  if (!look.preset || look.preset.css) return look;
+  const { resolvePreset } = await import("./look-preset");
+  const result = resolvePreset(look.preset.code);
+  return result.ok ? result.look : DEFAULT_LOOK;
+}
+
 /** After the server's copy arrived: make this device match it. */
-export function syncLook(): void {
-  const css = lookCss(savedLook());
+export async function syncLook(): Promise<void> {
+  const css = lookCss(await resolveLook(savedLook()));
   storeLookCss(css);
   applyLookCss(css);
 }
