@@ -189,6 +189,13 @@ export function App() {
   useEffect(() => {
     if (user && location.pathname === "/") prefetchHome();
   }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    return whenQuiet([
+      () => void import("@/lib/palette-prefetch").then((module) => module.prefetchPalette()),
+      () => void import("@/components/search-palette"),
+    ]);
+  }, [user]);
   // A reload mid-session rejoins it (the session lives in this tab's sessionStorage).
   useEffect(() => {
     if (!user) return;
@@ -418,7 +425,7 @@ export function App() {
       )}
       {(searching || searchLoaded) && (
         <Suspense>
-          <SearchPalette open={searching} onOpenChange={setSearching} />
+          <SearchPalette open={searching} onOpenChange={setSearching} queueOpen={showPanel && panel === "queue"} />
         </Suspense>
       )}
     </>

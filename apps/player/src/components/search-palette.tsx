@@ -18,6 +18,7 @@ import { ClockIcon, PlayIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { mergeArtistResults, useArtistMerges } from "@/lib/artist-merge";
+import { usePageActions } from "@/lib/palette-actions";
 import { player, usePlayer } from "@/lib/player";
 import { queries } from "@/lib/queries";
 import { go } from "@/lib/router";
@@ -48,6 +49,7 @@ import { ResultGroupSkeleton } from "./skeletons";
 
 /** Typing pauses shorter than this don't send a request; the previous results stay up meanwhile. */
 const DEBOUNCE_MS = 30;
+const POLL_MS = 30_000;
 
 function Row({ cover, title, sub, playlistId }: { cover?: string; title: string; sub: ReactNode; playlistId?: string }) {
   return (
@@ -65,7 +67,15 @@ function Row({ cover, title, sub, playlistId }: { cover?: string; title: string;
   );
 }
 
-export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function SearchPalette({
+  open,
+  onOpenChange,
+  queueOpen = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  queueOpen?: boolean;
+}) {
   const [text, setText] = useState("");
   const [query, setQuery] = useState("");
   // Adding a song replaces the results: the same box, but the text becomes what to look for.
@@ -93,9 +103,10 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
   const lyricsQuery = useQuery({ ...apiQueries.lyricsSearch(lyricsWords), enabled: lyricsWanted, placeholderData: (previous) => previous });
   const lyrics = lyricsQuery.data;
   const lyricHits = lyricsWanted ? (lyrics?.hits ?? []) : [];
-  const playlistsData = useQuery({ ...queries.playlists(), enabled: open }).data;
+  // The library changes while the palette is open (a scan, another device): poll lightly; focus refetches too.
+  const playlistsData = useQuery({ ...queries.playlists(), enabled: open, refetchInterval: open ? POLL_MS : false }).data;
   const vibe = useMemo(() => (active.chips.length || active.lyricsOnly ? null : vibeOf(active.text)), [active]);
-  const genresData = useQuery({ ...queries.genres(), enabled: open && vibe !== null }).data;
+  const genresData = useQuery({ ...queries.genres(), enabled: open && vibe !== null, refetchInterval: open ? POLL_MS : false }).data;
   const vibeGenres = useMemo(
     () =>
       vibe
@@ -137,6 +148,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
     onOpenChange(false);
   };
   const needle = text.trim().toLowerCase();
+  const pageActions = usePageActions(open, queueOpen).filter((action) => !needle || normalize(action.label).includes(normalize(needle)));
   const shortcuts = useShortcutList();
   // Commands from the shortcut registry, so the palette doubles as a command menu ("shuffle", "go to genres").
   const actions = shortcuts
@@ -200,6 +212,8 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
       title="search"
       description="search artists, albums, songs, playlists and lyrics"
       // In the middle of any window, one height whatever the results (so the input never moves); only the list scrolls.
+      // Only the overlay blurs (cheap to animate); people who asked for less transparency get the plain dim.
+      overlayClassName="supports-backdrop-filter:backdrop-blur-sm [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
       className="top-1/2 flex h-[min(calc(100dvh-2rem),32rem)] -translate-y-1/2 flex-col sm:max-w-[680px]"
     >
       {adding !== null ? (
@@ -246,6 +260,20 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
               {needle && !(searching && query) && <CommandEmpty className="font-mono text-faint">no matches</CommandEmpty>}
               {query && !active.lyricsOnly && searching && <ResultGroupSkeleton />}
               {addFirst && addItem}
+              {(["this page", "queue"] as const).map((heading) => {
+                const rows = pageActions.filter((action) => (action.group === "queue") === (heading === "queue"));
+                return (
+                  rows.length > 0 && (
+                    <CommandGroup key={heading} heading={heading}>
+                      {rows.map((action) => (
+                        <CommandItem key={action.id} value={`page-${action.id}`} onSelect={run(action.run)}>
+                          <span className="truncate">{action.label}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )
+                );
+              })}
               {recent.length > 0 && (
                 <CommandGroup heading="recent searches">
                   {recent.map((item) => (
