@@ -3,6 +3,9 @@ import type { NewRelease } from "@lodesong/shared/releases";
 /** Fixed: the home shelf reserves exactly this much before releases arrive, so nothing below moves. */
 export const RELEASE_CARD_HEIGHT = 252;
 
+const DAY = 86_400_000;
+const WEEK = 7 * DAY;
+
 function parts(date: string): [number, number, number | undefined] {
   const [year, month, day] = date.split("-").map(Number);
   return [year ?? 1970, month ?? 1, day];
