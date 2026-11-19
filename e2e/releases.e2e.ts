@@ -29,10 +29,12 @@ test("a followed artist's new release is a card with its type, date and link, an
   await expect(card.getByText("Night Owls")).toBeVisible();
   await expect(card.getByText(/^album · /)).toBeVisible();
   await expect(row.getByText("Live In Nowhere")).toHaveCount(0);
-  await expect(card.getByRole("link", { name: "Fresh Hours on musicbrainz" })).toHaveAttribute(
-    "href",
-    /musicbrainz\.org\/release-group\/rg-fresh-hours/,
-  );
+  await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute("href", /musicbrainz\.org\/release-group\/rg-fresh-hours/);
+  await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute("target", "_blank");
+  await page.context().route(/musicbrainz\.org/, (route) => route.fulfill({ body: "ok" }));
+  const [popup] = await Promise.all([page.waitForEvent("popup"), card.click({ position: { x: 80, y: 80 } })]);
+  expect(popup.url()).toContain("rg-fresh-hours");
+  await popup.close();
 
   await card.getByRole("button", { name: "get Fresh Hours" }).click();
   await expect(card.getByText("asked lyterion")).toBeVisible();
