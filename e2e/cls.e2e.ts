@@ -27,7 +27,19 @@ async function shifts(page: Page): Promise<{ cls: number; shifts: string[] }> {
   });
 }
 
-const ROUTES = ["/", "/albums", "/artists", "/songs", "/genres", "/liked", "/album/al-3", "/artist/ar-2", "/playlist/pl-1", "/folders"];
+const ROUTES = [
+  "/",
+  "/albums",
+  "/artists",
+  "/songs",
+  "/genres",
+  "/liked",
+  "/album/al-3",
+  "/artist/ar-2",
+  "/artist/ar-11",
+  "/playlist/pl-1",
+  "/folders",
+];
 
 for (const route of ROUTES)
   test(`nothing moves while ${route} loads`, async ({ page, signedIn }) => {

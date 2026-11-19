@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { createArtistMergeTables } from "./artist-merges";
 import { createFeatureTables } from "./audiomuse";
 import { createHistoryTables } from "./history";
 import { createMixTables } from "./mixes";
@@ -29,6 +30,7 @@ export function openLibraryDb(path: string): Database {
     offset_ms integer not null,
     primary key (user, song_id)
   )`);
+  createArtistMergeTables(db);
   createFeatureTables(db);
   createHistoryTables(db);
   createMomentTables(db);

@@ -8,6 +8,7 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { appearsOn } from "./appears-on";
 import { type ArtistGenres, reportGenres } from "./artist-genres";
+import { listArtistMerges, setArtistMerge } from "./artist-merges";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
 import { readCover } from "./folder-cover";
@@ -259,6 +260,12 @@ export function createRpc({
         const upstream = upstreamFor(context.session.server);
         if (!upstream) throw new ORPCError("UNAUTHORIZED", { message: "server removed from config" });
         return { albums: appearsOn(library, upstream.id, input.id, await foldersFor(context.session, upstream)) };
+      }),
+      merges: signedIn.artists.merges.handler(({ context }) => ({ merges: listArtistMerges(library, context.account) })),
+      setMerge: signedIn.artists.setMerge.handler(({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        if (!setArtistMerge(library, context.account, input)) throw new ORPCError("BAD_REQUEST", { message: "too many" });
+        return OK;
       }),
     },
     history: {

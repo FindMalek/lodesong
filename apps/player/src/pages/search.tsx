@@ -3,7 +3,7 @@ import { Button } from "@lodesong/ui/components/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@lodesong/ui/components/input-group";
 import { useQuery } from "@tanstack/react-query";
 import { PlayIcon, SearchIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Cover } from "@/components/cover";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { AlbumGrid, Content, EmptyState, Section, TrackList } from "@/components/library";
@@ -11,6 +11,7 @@ import { Link } from "@/components/link";
 import { LyricsSnippet } from "@/components/lyrics-snippet";
 import { TrackListSkeleton } from "@/components/skeletons";
 import { apiQueries } from "@/lib/api-queries";
+import { mergeArtistResults, useArtistMerges } from "@/lib/artist-merge";
 import { useSearchParam } from "@/lib/router";
 import { openResult, playLyricsHit, playResult, rememberSearch, resultSubtitle, resultTarget, resultTitle } from "@/lib/search-actions";
 import type { Album, Artist, Song } from "@/lib/types";
@@ -44,7 +45,11 @@ export function SearchPage() {
   const top = query && !parsed.lyricsOnly ? data?.top : null;
   const songs = (query && !parsed.lyricsOnly ? (data?.songs ?? []) : []) as unknown as Song[];
   const albums = (query && !parsed.lyricsOnly ? (data?.albums ?? []) : []) as unknown as Album[];
-  const artists = (query && !parsed.lyricsOnly ? (data?.artists ?? []) : []) as unknown as Artist[];
+  const merges = useArtistMerges();
+  const artists = useMemo(
+    () => mergeArtistResults((query && !parsed.lyricsOnly ? (data?.artists ?? []) : []) as unknown as Artist[], merges),
+    [data, query, parsed.lyricsOnly, merges],
+  );
   const hits = lyricsWanted ? (lyrics?.hits ?? []) : [];
   const nothing = query && !isPending && !top && !songs.length && !albums.length && !artists.length && !hits.length;
 

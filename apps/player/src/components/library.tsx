@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BanIcon, EyeIcon, EyeOffIcon, ListEndIcon, ListStartIcon, MinusIcon, PlayIcon, ScissorsIcon } from "lucide-react";
 import { type DragEvent, memo, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MissingTrack } from "@/lib/album-missing";
+import { useArtistNames } from "@/lib/artist-merge";
 import { current as currentDrag, endDrag, leftTarget, startDrag } from "@/lib/drag";
 import { clock } from "@/lib/format";
 import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
@@ -78,7 +79,7 @@ async function playAlbum(id: string, shuffle = false): Promise<void> {
   });
 }
 
-const AlbumCard = memo(function AlbumCard({ album, priority = false }: { album: Album; priority?: boolean }) {
+const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: { album: Album; artist?: string; priority?: boolean }) {
   return (
     // Drag a card onto a playlist, the queue or the player bar (the link inside is the control; this only carries drags).
     // biome-ignore lint/a11y/noStaticElementInteractions: a drag source wrapper, not a control
@@ -87,7 +88,7 @@ const AlbumCard = memo(function AlbumCard({ album, priority = false }: { album: 
         <Cover id={album.coverArt} size={180} className="mb-1.5 group-hover/album:[&_img]:opacity-85" priority={priority} />
         <Truncated text={album.name} className="text-small" />
         <span className="truncate text-meta text-muted-foreground">
-          {album.artist}
+          {artist ?? album.artist}
           {album.year ? ` · ${album.year}` : ""}
         </span>
       </Link>
@@ -135,6 +136,7 @@ const albumCardHeight = (width: number) => width + 6 + 18 + 16;
 
 /** `priority`: how many leading covers are above the fold (fetched first, not lazy). */
 export function AlbumGrid({ albums, onNearEnd, priority = 0 }: { albums: Album[]; onNearEnd?: () => void; priority?: number }) {
+  const names = useArtistNames();
   const first = new Set(albums.slice(0, priority).map((album) => album.id));
   if (!albums.length) return <EmptyState>no albums</EmptyState>;
   const menuTarget = (element: Element): MenuTarget | null => {
@@ -147,7 +149,9 @@ export function AlbumGrid({ albums, onNearEnd, priority = 0 }: { albums: Album[]
         <VirtualGrid
           items={albums}
           getKey={(album) => album.id}
-          renderItem={(album) => <AlbumCard album={album} priority={first.has(album.id)} />}
+          renderItem={(album) => (
+            <AlbumCard album={album} artist={album.artistId ? names.get(album.artistId) : undefined} priority={first.has(album.id)} />
+          )}
           min={136}
           gap={12}
           rowGap={16}

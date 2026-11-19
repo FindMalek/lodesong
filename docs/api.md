@@ -26,6 +26,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | `POST /api/follows/sync` | follow the artists you follow on Spotify, through Lyterion (admins) |
 | `GET /api/releases`, `POST /api/releases/{id}/get` | new releases by artists you follow; hand one to Lyterion |
 | `GET /api/genres/inferred?genre` | songs with no genre tag, and genres of their artists from MusicBrainz ([genres](genres.md)) |
+| `GET /api/artists/merges`, `PUT /api/artists/merges` | artists written two ways (`SHYLER`, `Shyler`) show as one; list the ones you split apart or renamed, split one, or pick the spelling to show (500 at most; not in the public demo) |
 | `GET /api/folders`, `POST /api/folders` | your playlist folders (picture versions, not the pictures) and the playlist each holds; make one |
 | `PATCH /api/folders/{id}`, `DELETE /api/folders/{id}` | rename, move or set the picture of a folder (png, jpeg or webp, 56 KB and 1024 px at most); delete one, what is inside moves up. Neither is allowed in the public demo |
 | `GET /api/folders/{id}/cover` | a folder's picture, with an `ETag` (`304` when you have it); `404` when it has none or isn't yours |

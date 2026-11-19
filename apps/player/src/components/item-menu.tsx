@@ -1,3 +1,4 @@
+import { groupArtists } from "@lodesong/shared/artist-merges";
 import { Button } from "@lodesong/ui/components/button";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@lodesong/ui/components/context-menu";
 import {
@@ -30,6 +31,7 @@ import {
   ListEndIcon,
   ListMusicIcon,
   ListStartIcon,
+  MergeIcon,
   MoreHorizontalIcon,
   PlayIcon,
   PlusIcon,
@@ -37,9 +39,11 @@ import {
   ScissorsIcon,
   Share2Icon,
   ShuffleIcon,
+  UnlinkIcon,
   UserIcon,
 } from "lucide-react";
 import { cloneElement, type MouseEvent, type ReactElement, useRef, useState } from "react";
+import { useArtistMerges, useSetArtistMerge } from "@/lib/artist-merge";
 import { clock } from "@/lib/format";
 import { isLiked, type LikeKind, setLiked } from "@/lib/likes";
 import { notify } from "@/lib/notify";
@@ -225,6 +229,7 @@ export function ItemActions({ target }: { target: MenuTarget }) {
           </DropdownMenuItem>
         </>
       )}
+      {target.kind === "artist" && <ArtistMergeItems artist={target.artist} />}
       <DropdownMenuSeparator />
       {song?.albumId && (
         <DropdownMenuItem onClick={() => go(`/album/${song.albumId}`)}>
@@ -270,6 +275,43 @@ export function ItemActions({ target }: { target: MenuTarget }) {
         >
           <DownloadIcon /> download{target.kind === "album" ? " (zip)" : ""}
         </DropdownMenuItem>
+      )}
+    </>
+  );
+}
+
+/** Artists written two ways show as one; these undo a wrong merge or pick which spelling shows. */
+function ArtistMergeItems({ artist }: { artist: { id: string; name: string } }) {
+  const index = useQuery(queries.artists());
+  const merges = useArtistMerges();
+  const set = useSetArtistMerge();
+  const all = (index.data ?? []).flatMap((letter) => letter.artist);
+  const natural = groupArtists(all, []).find((group) => group.ids.includes(artist.id));
+  if (!natural || natural.ids.length < 2) return null;
+  const current = merges.find((merge) => merge.key === natural.key);
+  const change = (merge: { unmerged: boolean; name: string | null }, message: string) => () =>
+    set.mutate({ key: natural.key, ...merge }, { onSuccess: () => notify({ message }) });
+  return (
+    <>
+      <DropdownMenuSeparator />
+      {current?.unmerged ? (
+        <DropdownMenuItem onClick={change({ unmerged: false, name: null }, `${natural.name} is one artist again`)}>
+          <MergeIcon /> merge {natural.ids.length} artists
+        </DropdownMenuItem>
+      ) : (
+        <>
+          <DropdownMenuItem onClick={change({ unmerged: true, name: null }, `${natural.name} is split apart`)}>
+            <UnlinkIcon /> unmerge {natural.ids.length} artists
+          </DropdownMenuItem>
+          {groupArtists(all, merges)
+            .find((group) => group.ids.includes(artist.id))
+            ?.names.filter((spelling) => spelling !== artist.name)
+            .map((spelling) => (
+              <DropdownMenuItem key={spelling} onClick={change({ unmerged: false, name: spelling }, `showing ${spelling}`)}>
+                <UserIcon /> show as {spelling}
+              </DropdownMenuItem>
+            ))}
+        </>
       )}
     </>
   );

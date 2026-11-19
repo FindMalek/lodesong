@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ClockIcon, PlayIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
+import { mergeArtistResults, useArtistMerges } from "@/lib/artist-merge";
 import { player, usePlayer } from "@/lib/player";
 import { queries } from "@/lib/queries";
 import { go } from "@/lib/router";
@@ -32,7 +33,7 @@ import {
   resultTitle,
 } from "@/lib/search-actions";
 import { bindingsOf, useShortcutList } from "@/lib/shortcuts";
-import type { Song } from "@/lib/types";
+import type { Artist, Song } from "@/lib/types";
 import { playVibe } from "@/lib/vibe-actions";
 import { vibePlaylists as rankedPlaylists } from "@/lib/vibe-playlists";
 import { isLink } from "@/lib/wishlist";
@@ -150,9 +151,11 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
     : [...new Map([...history].reverse().map((entry) => [entry.song.id, entry.song] as const)).values()].slice(0, 5);
   const top = results?.top;
   const songs = (results?.songs ?? []).filter((song) => !(top?.kind === "song" && song.id === top.item.id)) as unknown as Song[];
+  const merges = useArtistMerges();
+  const artistHits = useMemo(() => mergeArtistResults((results?.artists ?? []) as unknown as Artist[], merges), [results, merges]);
   const groups: [ResultKind, Record<string, unknown>[]][] = [
     ["album", results?.albums ?? []],
-    ["artist", results?.artists ?? []],
+    ["artist", artistHits as unknown as Record<string, unknown>[]],
   ];
 
   // A pasted link puts "add" first; a name offers it after what you already have.

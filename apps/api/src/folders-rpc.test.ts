@@ -286,3 +286,15 @@ test("deleting a playlist through the proxy drops its cover, even though the pla
   expect((await proxy("/rest/deletePlaylist?id=pl-1")).status).toBe(200);
   expect((await rpc.playlists.covers()).covers.map((cover) => cover.playlistId)).toEqual(["pl-2"]);
 });
+
+test("artist merges stop at a cap per account, and the public demo refuses them", async () => {
+  const { as } = setup();
+  const { rpc } = as("me");
+  for (let at = 0; at < 500; at += 1) await rpc.artists.setMerge({ key: `a${at}`, unmerged: true, name: null });
+  await expect(rpc.artists.setMerge({ key: "one more", unmerged: true, name: null })).rejects.toMatchObject({ message: "too many" });
+  await rpc.artists.setMerge({ key: "a0", unmerged: false, name: "A0" });
+  await expect(as("demo").rpc.artists.setMerge({ key: "x", unmerged: true, name: null })).resolves.toEqual({ ok: true });
+  await expect(setup(true).as("demo").rpc.artists.setMerge({ key: "x", unmerged: true, name: null })).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+});

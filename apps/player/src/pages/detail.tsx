@@ -5,7 +5,7 @@ import { Label } from "@lodesong/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@lodesong/ui/components/select";
 import { Switch } from "@lodesong/ui/components/switch";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon, FolderInputIcon, PlayIcon, RadioIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ArtistCard } from "@/components/artist-card";
@@ -22,6 +22,7 @@ import { AlbumTracklist } from "@/components/missing-tracks";
 import { PlaylistCover, PlaylistCoverActions } from "@/components/playlist-cover";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
+import { useArtistMergesQuery, useArtistNames, useGroupedArtists } from "@/lib/artist-merge";
 import { auraParams, vibe } from "@/lib/aura";
 import { cachedSummary } from "@/lib/cached";
 import { useAnalysed } from "@/lib/features";
@@ -214,6 +215,7 @@ const Kind = ({ children }: { children: ReactNode }) => (
 );
 
 export function AlbumPage({ id }: { id: string }) {
+  const artistNames = useArtistNames();
   const {
     data: album,
     error,
@@ -250,9 +252,9 @@ export function AlbumPage({ id }: { id: string }) {
         filterable
       >
         {album.artistId && (
-          <ArtistCard id={album.artistId} name={album.artist}>
+          <ArtistCard id={album.artistId} name={artistNames.get(album.artistId) ?? album.artist}>
             <Link href={`/artist/${album.artistId}`} className="self-start font-medium underline-offset-3 hover:underline">
-              {album.artist}
+              {artistNames.get(album.artistId) ?? album.artist}
             </Link>
           </ArtistCard>
         )}
@@ -347,17 +349,37 @@ export function ArtistPage({ id }: { id: string }) {
   const appearsOnAlbums = useQuery(
     rpc.artists.appearsOn.queryOptions({ input: { id }, staleTime: 5 * 60_000, select: (result) => result.albums as Album[] }),
   );
-  const name = artist?.name;
-  const top = useQuery({ ...queries.topSongs(name ?? ""), enabled: Boolean(name) });
+  const index = useQuery(queries.artists());
+  const all = useMemo(() => (index.data ?? []).flatMap((letter) => letter.artist), [index.data]);
+  const groups = useGroupedArtists(all);
+  // Which spellings and ids belong together is only known with the whole index: until then the page stays a skeleton, so it never jumps.
+  const mergesState = useArtistMergesQuery();
+  const ready = !index.isPending && !mergesState.isPending;
+  const merged = groups.find((group) => group.ids.includes(id));
+  const others = useQueries({
+    queries: (ready ? (merged?.ids ?? []) : []).filter((other) => other !== id).map((other) => queries.artist(other)),
+  });
+  const name = merged?.name ?? artist?.name;
+  const tops = useQueries({ queries: !ready ? [] : (merged?.names ?? (name ? [name] : [])).map((spelling) => queries.topSongs(spelling)) });
+  const top = {
+    isPending: !ready || tops.length === 0 || tops.some((query) => query.isPending),
+    data: tops.every((query) => query.data)
+      ? [...new Map(tops.flatMap((query) => query.data ?? []).map((song) => [song.id, song])).values()].slice(0, 10)
+      : undefined,
+  };
   if (error)
     return (
       <Content>
         <EmptyState>artist not found</EmptyState>
       </Content>
     );
-  if (!artist) return <DetailSkeleton />;
-  const albums = [...(artist.album ?? [])].sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
-  const source = { kind: "artist", name: artist.name, href: `/artist/${artist.id}` };
+  if (!artist || !ready) return <DetailSkeleton />;
+  const title = merged?.name ?? artist.name;
+  const albums = [...(artist.album ?? []), ...others.flatMap((other) => other.data?.album ?? [])].sort(
+    (a, b) => (b.year ?? 0) - (a.year ?? 0),
+  );
+  const albumCount = merged && merged.ids.length > 1 ? merged.albumCount : (artist.albumCount ?? albums.length);
+  const source = { kind: "artist", name: title, href: `/artist/${artist.id}` };
   // Only artists that exist in this library have a page to open.
   const similar = (info.data?.similarArtist ?? []).filter((other) => other.id && other.id !== artist.id).slice(0, 12);
   const bio = info.data?.biography?.replace(/<a [^>]*>.*?<\/a>\.?/g, "").trim();
@@ -369,25 +391,31 @@ export function ArtistPage({ id }: { id: string }) {
       <Hero
         cover={artist.coverArt}
         kind={<Kind>artist</Kind>}
-        title={artist.name}
+        title={title}
         onPlay={() => void everything().then((songs) => player.play(songs, 0, { shuffle: false, source }))}
         onShuffle={() => void everything().then((songs) => player.play(songs, -1, { shuffle: true, source }))}
         onQueue={() => void everything().then(player.addToQueue)}
         like={{ kind: "artist", id: artist.id }}
         extra={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void import("@/lib/radio").then((radio) => radio.startRadio({ kind: "artist", artist: { id: artist.id, name: artist.name } }))
-            }
-          >
-            <RadioIcon />
-            radio
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void import("@/lib/radio").then((radio) => radio.startRadio({ kind: "artist", artist: { id: artist.id, name: title } }))
+              }
+            >
+              <RadioIcon />
+              radio
+            </Button>
+            <ItemMoreButton target={{ kind: "artist", artist: { id: artist.id, name: title } }} label={title} className="size-8" />
+          </>
         }
       >
-        <span className="text-muted-foreground">{plural(artist.albumCount ?? albums.length, "album")}</span>
+        <span className="text-muted-foreground">{plural(albumCount, "album")}</span>
+        {merged && merged.names.length > 1 && (
+          <span className="text-muted-foreground text-xs">merged with: {merged.names.slice(1).join(", ")}</span>
+        )}
         {/* Always three lines tall: the bio arrives after the header, and the header is bottom-aligned to the cover. */}
         <p className="line-clamp-3 h-[3lh] max-w-[72ch] text-small text-muted-foreground">{bio}</p>
       </Hero>
@@ -397,9 +425,9 @@ export function ArtistPage({ id }: { id: string }) {
           {top.data ? <TrackList songs={top.data} showArtist={false} source={source} /> : <TrackListSkeleton count={10} immediate />}
         </Section>
       )}
-      {isPlaceholderData ? (
+      {isPlaceholderData || others.some((other) => other.isPending) ? (
         <Section title="albums">
-          <AlbumGridSkeleton count={artist.albumCount ?? 6} />
+          <AlbumGridSkeleton count={albumCount} />
         </Section>
       ) : (
         groupByRelease(albums).map((group) => (

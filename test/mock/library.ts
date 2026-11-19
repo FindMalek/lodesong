@@ -139,6 +139,21 @@ export function createLibrary(trackCount = 10_000, seed = 7): Library {
     artist.albumCount = artist.album?.length ?? 0;
   }
 
+  // One artist tagged two ways, as a mixed-up import leaves it.
+  for (const [index, name] of [
+    [11, "SHYLER"],
+    [12, "Shyler"],
+  ] as const) {
+    const artist = artists[index];
+    if (!artist) continue;
+    const before = artist.name;
+    artist.name = name;
+    for (const item of [...(artist.album ?? []), ...songs.filter((song) => song.artistId === artist.id)]) {
+      item.artist = name;
+      if ("path" in item && item.path) item.path = item.path.replace(before, name);
+    }
+  }
+
   for (const item of [...albums, ...songs])
     if (item.artistId === UNTAGGED_ARTIST) {
       item.genre = undefined;
