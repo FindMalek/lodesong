@@ -1,3 +1,4 @@
+import { nativeBridge, outputLevel, tapOutput } from "./audio";
 import { expect, fakeMediaClock, test, trackTitles } from "./fixtures";
 
 const playingCount = (page: import("@playwright/test").Page) =>
@@ -64,4 +65,32 @@ test("the crossfade slider sets the setting", async ({ page, signedIn }) => {
   await page.keyboard.press("Home");
   await expect(page.locator("span", { hasText: /^off$/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("keep-player:settings") ?? "{}").crossfade)).toBe(0);
+});
+
+test("pausing in the middle of a crossfade and playing again leaves only the new song audible", async ({ page, signedIn }) => {
+  await tapOutput(page);
+  await nativeBridge(page);
+  await signedIn.goto("/album/al-3");
+  const titles = await trackTitles(page);
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  const rows = page.locator("[aria-label=tracks] tbody tr[data-song-index]");
+  await rows.nth(7).focus();
+  await page.keyboard.press("x");
+  await page.keyboard.press("a");
+  await page.keyboard.press("Escape");
+  await jumpToNearEnd(page, 9);
+  const bar = page.getByRole("contentinfo");
+  await expect(bar.getByRole("link", { name: titles[7] as string })).toBeVisible({ timeout: 8000 });
+  expect(await playingCount(page)).toBe(2);
+  await bar.getByRole("button", { name: "pause" }).click();
+  await bar.getByRole("button", { name: "play" }).click();
+  await expect.poll(() => outputLevel(page), { timeout: 15_000 }).toBeGreaterThan(0.04);
+  const report = JSON.parse(
+    await page.evaluate(() => (window as unknown as { keepNative: { diagnostics: () => Promise<string> } }).keepNative.diagnostics()),
+  ) as {
+    decks: { active: boolean; paused: boolean }[];
+  };
+  expect(report.decks.filter((deck) => !deck.active).every((deck) => deck.paused)).toBe(true);
+  expect(report.decks.find((deck) => deck.active)?.paused).toBe(false);
+  expect(await playingCount(page)).toBe(1);
 });

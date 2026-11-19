@@ -389,8 +389,11 @@ export class Decks {
   }
 
   private applyVolume(): void {
-    if (this.master) this.master.gain.value = this.muted ? 0 : this.volume;
-    else for (const deck of this.decks) deck.element.volume = this.volume;
+    if (this.master) {
+      if (this.muted) return;
+      this.master.gain.cancelScheduledValues(0);
+      this.master.gain.value = this.volume;
+    } else for (const deck of this.decks) deck.element.volume = this.volume;
   }
 
   setFactor(factor: number): void {
