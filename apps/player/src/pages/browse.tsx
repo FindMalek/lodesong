@@ -8,7 +8,7 @@ import { Toggle } from "@lodesong/ui/components/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon, HeartIcon, PlayIcon, ShuffleIcon } from "lucide-react";
-import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FollowHint } from "@/components/follow-hint";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { JumpBackIn } from "@/components/jump-back-in";
@@ -226,12 +226,13 @@ export function ArtistsPage() {
   const columns = Math.max(1, Math.floor((width - LETTER_COLUMN + ARTIST_GAP) / (ARTIST_MIN + ARTIST_GAP)));
   // One virtual row per line of artists; the first line of each letter carries the letter.
   const { rows, letterRow } = useMemo(() => {
-    const rows: { letter: string; artists: Artist[]; last: boolean }[] = [];
+    const rows: { group: string; letter: string; artists: Artist[]; last: boolean }[] = [];
     const letterRow = new Map<string, number>();
     for (const group of groups) {
       letterRow.set(group.name, rows.length);
       for (let start = 0; start < group.artist.length; start += columns)
         rows.push({
+          group: group.name,
           letter: start === 0 ? group.name : "",
           artists: group.artist.slice(start, start + columns),
           last: start + columns >= group.artist.length,
@@ -239,23 +240,49 @@ export function ArtistsPage() {
     }
     return { rows, letterRow };
   }, [groups, columns]);
-  const virtualizer = usePageVirtualizer(listRef, { count: rows.length, estimateSize: (index) => (rows[index]?.last ? 44 : 28) });
+  const railRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(44);
+  // The header wraps on a phone (the rail takes its own line), so a jump has to clear its real height.
+  useLayoutEffect(() => {
+    const header = railRef.current?.closest("header");
+    if (!header) return;
+    const observer = new ResizeObserver(() => setHeaderHeight(header.offsetHeight));
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  const virtualizer = usePageVirtualizer(listRef, {
+    count: rows.length,
+    estimateSize: (index) => (rows[index]?.last ? 44 : 28),
+    scrollPaddingStart: headerHeight,
+  });
   const margin = virtualizer.options.scrollMargin;
+  const offset = virtualizer.scrollOffset ?? 0;
+  const atEnd = offset + (virtualizer.scrollRect?.height ?? 0) >= virtualizer.getTotalSize() + margin - 1;
+  const top = virtualizer.getVirtualItems().find((item) => item.end > offset + headerHeight);
+  const current = atEnd ? rows[rows.length - 1]?.group : rows[top?.index ?? 0]?.group;
+  useEffect(() => {
+    const rail = railRef.current;
+    const button = current ? rail?.querySelector<HTMLElement>(`[data-letter="${current}"]`) : null;
+    if (rail && button) rail.scrollLeft = button.offsetLeft - (rail.clientWidth - button.offsetWidth) / 2;
+  }, [current]);
 
   return (
     <>
       <PageHeader title="artists" meta={data ? plural(total, "artist") : undefined}>
         {/* The whole alphabet from the first frame (missing letters disabled), so its width never changes. */}
         <nav
+          ref={railRef}
           aria-label="jump to letter"
-          className="order-last flex w-full overflow-x-auto sm:order-none sm:w-auto sm:flex-wrap sm:justify-end"
+          className="order-last flex w-full overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-24px),transparent)] [scrollbar-width:none] sm:order-none sm:w-auto sm:flex-wrap sm:justify-end sm:mask-none"
         >
           {[...new Set([...LETTERS, ...groups.map((group) => group.name)])].map((letter) => (
             <Button
               key={letter}
+              data-letter={letter}
+              aria-current={letter === current ? "true" : undefined}
               variant="ghost"
               size="xs"
-              className="w-5 pointer-coarse:w-11 shrink-0 px-0 font-mono font-normal text-muted-foreground"
+              className="w-5 pointer-coarse:w-11 shrink-0 px-0 font-mono font-normal text-muted-foreground aria-[current=true]:bg-muted aria-[current=true]:text-foreground"
               disabled={!letterRow.has(letter)}
               onClick={() => virtualizer.scrollToIndex(letterRow.get(letter) ?? 0, { align: "start" })}
             >
