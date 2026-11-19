@@ -66,7 +66,7 @@ const QUEUE_HEADER = 36;
 const QUEUE_HEADER_TOUCH = 44;
 
 type QueueItem =
-  | { kind: "header"; label: string; action?: { label: string; run: () => void } }
+  | { kind: "header"; label: string; action?: { label: string; hint: string; run: () => void } }
   | { kind: "entry"; entry: Entry; state: "played" | "current" | "next" };
 
 const QueueRow = memo(function QueueRow({ entry, state }: { entry: Entry; state: "played" | "current" | "next" }) {
@@ -74,7 +74,11 @@ const QueueRow = memo(function QueueRow({ entry, state }: { entry: Entry; state:
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a drag source wrapper; the buttons inside are the controls
     <div
-      className={cn("group/queue flex h-10 items-center", state === "played" && "opacity-45")}
+      className={cn(
+        "group/queue flex h-10 items-center hover:bg-card",
+        state === "current" && "bg-border hover:bg-border",
+        state === "played" && "opacity-45",
+      )}
       // Upcoming songs can be dragged to another place in the queue, or onto a playlist.
       draggable={state === "next"}
       onDragStart={(event) => startDrag(event, { kind: "songs", songs: [song] }, { list: "queue", index: -1, key: entry.uid })}
@@ -82,10 +86,7 @@ const QueueRow = memo(function QueueRow({ entry, state }: { entry: Entry; state:
     >
       <button
         type="button"
-        className={cn(
-          "grid min-w-0 flex-1 grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2 px-1.5 py-1 text-left hover:bg-card",
-          state === "current" && "bg-border hover:bg-border",
-        )}
+        className="grid min-w-0 flex-1 grid-cols-[32px_minmax(0,1fr)_3.5rem] items-center gap-2 px-1.5 py-1 text-left"
         onClick={() => state === "next" && player.jumpTo(entry)}
         // Not `disabled`: played and current rows stay focusable for keyboard navigation.
         aria-disabled={state !== "next"}
@@ -95,21 +96,24 @@ const QueueRow = memo(function QueueRow({ entry, state }: { entry: Entry; state:
           <Truncated text={song.title} />
           <span className="truncate text-muted-foreground text-xs">{song.artist}</span>
         </span>
-        <span className="font-mono text-muted-foreground text-xs tabular-nums">{clock(song.duration)}</span>
+        <span className="text-right font-mono text-muted-foreground text-xs tabular-nums">{clock(song.duration)}</span>
       </button>
-      {state === "next" && (
-        <Hint label="remove from the queue" shortcut="list-remove">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="opacity-0 focus-visible:opacity-100 group-hover/queue:opacity-100"
-            onClick={() => player.remove(entry)}
-            aria-label={`remove ${song.title}`}
-          >
-            <XIcon />
-          </Button>
-        </Hint>
-      )}
+      {/* Same width on every row so the times share one right edge; the button only fades in, so nothing shifts. */}
+      <div className="flex w-7 shrink-0 justify-center">
+        {state === "next" && (
+          <Hint label="remove from the queue" shortcut="list-remove">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="opacity-0 focus-visible:opacity-100 group-focus-within/queue:opacity-100 group-hover/queue:opacity-100"
+              onClick={() => player.remove(entry)}
+              aria-label={`remove ${song.title}`}
+            >
+              <XIcon />
+            </Button>
+          </Hint>
+        )}
+      </div>
     </div>
   );
 });
@@ -126,7 +130,11 @@ function queueItems(queue: Queue): QueueItem[] {
   if (queue.current) items.push({ kind: "header", label: "now playing" }, { kind: "entry", entry: queue.current, state: "current" });
   if (queue.upNext.length)
     items.push(
-      { kind: "header", label: "next in your queue", action: { label: "clear", run: player.clearUpNext } },
+      {
+        kind: "header",
+        label: "next in your queue",
+        action: { label: "clear queue", hint: "clear your queue, undo brings it back", run: player.clearUpNext },
+      },
       ...queue.upNext.map((entry) => ({ kind: "entry" as const, entry, state: "next" as const })),
     );
   const upcoming = contextUpcoming(queue);
@@ -135,7 +143,7 @@ function queueItems(queue: Queue): QueueItem[] {
       {
         kind: "header",
         label: queue.context.source ? `next from ${queue.context.source.name}` : "next up",
-        action: { label: "clear", run: player.clearContext },
+        action: { label: "clear rest", hint: "clear what is next, undo brings it back", run: player.clearContext },
       },
       ...upcoming.map((entry) => ({ kind: "entry" as const, entry, state: "next" as const })),
     );
@@ -337,14 +345,17 @@ export function QueuePanel({ onClose }: { onClose: () => void }) {
                     <div className="flex h-9 items-end justify-between px-1.5 pb-1.5 pointer-coarse:h-11 pointer-coarse:items-center pointer-coarse:pb-0">
                       <h3 className="truncate font-mono text-label text-faint">{item.label}</h3>
                       {item.action && (
-                        <Button
-                          variant="link"
-                          size="xs"
-                          className="h-auto p-0 font-mono text-label text-muted-foreground"
-                          onClick={item.action.run}
-                        >
-                          {item.action.label}
-                        </Button>
+                        <Hint label={item.action.hint}>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="-mr-1.5 h-6 px-1.5 font-mono text-label text-muted-foreground"
+                            aria-description={item.action.hint}
+                            onClick={item.action.run}
+                          >
+                            {item.action.label}
+                          </Button>
+                        </Hint>
                       )}
                     </div>
                   ) : (
