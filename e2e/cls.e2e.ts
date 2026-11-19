@@ -36,7 +36,7 @@ for (const route of ROUTES)
     expect(await shifts(page)).toEqual({ cls: 0, shifts: [] });
   });
 
-test("the release shelf reserves its slot when it showed in the last day, and moves nothing", async ({ page, signedIn }) => {
+test("the release shelf, below every row, pops in or stays hidden and moves nothing", async ({ page, signedIn }) => {
   await signedIn.evaluate(() =>
     fetch("/api/follows", {
       method: "PUT",

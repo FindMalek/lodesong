@@ -1,22 +1,11 @@
 import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { type ReactNode, useEffect, useState } from "react";
 import { Section } from "@/components/library";
-import { RELEASE_CARD_HEIGHT } from "@/lib/releases";
 
 // Exact geometry of what replaces them (CLS 0, e2e/cls.e2e.ts); none shows in the first 150 ms,
 // so fast loads never flash.
 
 const SHOW_AFTER_MS = 150;
-
-export function NewReleasesSkeleton() {
-  return (
-    <Section title="new from artists you follow">
-      <div className="relative overflow-hidden" style={{ height: RELEASE_CARD_HEIGHT }}>
-        <Skeleton className="absolute inset-0" />
-      </div>
-    </Section>
-  );
-}
 
 export function MixRowSkeleton() {
   return (
