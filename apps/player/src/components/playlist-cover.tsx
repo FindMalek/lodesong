@@ -18,6 +18,7 @@ export function PlaylistCover({
   priority?: boolean;
 }) {
   const view = usePlaylistCover(id);
+  if (view.kind === "loading") return <div className={cn("aspect-square bg-card", className)} />;
   if (view.kind === "mosaic") return <Cover id={coverArt} size={size} className={className} priority={priority} />;
   return <FolderCover id={`playlist:${id}`} cover={view.kind === "image" ? view.url : null} className={cn("aspect-square", className)} />;
 }

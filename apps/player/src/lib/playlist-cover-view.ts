@@ -1,4 +1,4 @@
-export type PlaylistCoverView = { kind: "mosaic" } | { kind: "dither" } | { kind: "image"; url: string };
+export type PlaylistCoverView = { kind: "loading" } | { kind: "mosaic" } | { kind: "dither" } | { kind: "image"; url: string };
 
 export function coverView(
   covers: { playlistId: string; kind: "dither" | "image"; version: string }[] | undefined,

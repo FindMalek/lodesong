@@ -173,7 +173,8 @@ every other app agrees with it.
   your phone has them too.
 - **Playlists from a prompt** ("late night drive, 90s, no vocals": Groq picks artists from your library, the server
   builds the list from songs you own), and **playlist folders** (nest 4 deep, drag playlists in, a folder keeps its own
-  picture or generated aura) that live in lodesong, not in Navidrome.
+  picture or generated aura), and a playlist's cover can be the four-album mosaic, the animated dither or your own
+  picture, chosen when you make it that live in lodesong, not in Navidrome.
 - **Recap** of your month or year, **stats**, history, forgotten favourites, and a radio that learns what you skip.
 - **Following**: the artists you play most are followed for you, and their new albums, EPs and singles land on a page
   grouped by week. With Lyterion your Spotify follows come over too.

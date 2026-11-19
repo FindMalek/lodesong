@@ -298,6 +298,7 @@ export function createRpc({
       }),
       hidden: signedIn.playlists.hidden.handler(({ context, input }) => ({ songs: hiddenIn(library, context.account, input.id) })),
       covers: signedIn.playlists.covers.handler(async ({ context }) => {
+        if (listPlaylistCovers(library, context.account).length === 0) return { covers: [] };
         const known = await playlistIds(upstreamOf(context.session), context.session).catch(() => null);
         if (known) sweepPlaylistCovers(library, context.account, known);
         return { covers: listPlaylistCovers(library, context.account) };

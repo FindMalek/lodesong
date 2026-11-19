@@ -59,6 +59,7 @@ export function NewPlaylistDialog({
   const [coverKind, setCoverKind] = useState<"mosaic" | "dither" | "image">("mosaic");
   const [picture, setPicture] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
+  const radios = useRef<Record<string, HTMLButtonElement | null>>({});
 
   async function make(): Promise<void> {
     if (!prompt.trim() || making) return;
@@ -158,21 +159,48 @@ export function NewPlaylistDialog({
             <span id="playlist-cover-label" className="text-sm">
               cover
             </span>
-            <div role="radiogroup" aria-labelledby="playlist-cover-label" className="flex flex-wrap gap-1.5">
+            <div
+              role="radiogroup"
+              aria-labelledby="playlist-cover-label"
+              className="flex flex-wrap gap-1.5"
+              onKeyDown={(event) => {
+                const step =
+                  event.key === "ArrowRight" || event.key === "ArrowDown"
+                    ? 1
+                    : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                      ? -1
+                      : 0;
+                if (!step) return;
+                event.preventDefault();
+                const at = COVER_CHOICES.findIndex(([kind]) => kind === coverKind);
+                const next = COVER_CHOICES[(at + step + COVER_CHOICES.length) % COVER_CHOICES.length]?.[0] ?? "mosaic";
+                if (next !== "image" || picture) setCoverKind(next);
+                radios.current[next]?.focus();
+              }}
+            >
               {COVER_CHOICES.map(([kind, label]) => (
                 <Button
                   key={kind}
+                  ref={(element) => {
+                    radios.current[kind] = element;
+                  }}
                   type="button"
                   role="radio"
                   size="sm"
+                  tabIndex={coverKind === kind ? 0 : -1}
                   variant={coverKind === kind ? "default" : "outline"}
                   aria-checked={coverKind === kind}
-                  onClick={() => (kind === "image" ? file.current?.click() : setCoverKind(kind))}
+                  onClick={() => (kind === "image" && !picture ? file.current?.click() : setCoverKind(kind))}
                 >
                   {label}
                   {kind === "image" && picture && <span aria-hidden> ✓</span>}
                 </Button>
               ))}
+              {picture && (
+                <Button type="button" size="sm" variant="ghost" onClick={() => file.current?.click()}>
+                  change picture
+                </Button>
+              )}
             </div>
             <input
               ref={file}

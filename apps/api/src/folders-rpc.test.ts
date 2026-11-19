@@ -277,3 +277,12 @@ test("a playlist picture is private, cached by etag, refused in the demo, and sw
   const demo = setup(true).as("me");
   await expect(demo.rpc.playlists.setCover({ id: "pl-1", kind: "dither" })).rejects.toMatchObject({ code: "FORBIDDEN" });
 });
+
+test("deleting a playlist through the proxy drops its cover, even though the playlist id is still known upstream", async () => {
+  const { as } = setup();
+  const { rpc, proxy } = as("me");
+  await rpc.playlists.setCover({ id: "pl-1", kind: "dither" });
+  await rpc.playlists.setCover({ id: "pl-2", kind: "dither" });
+  expect((await proxy("/rest/deletePlaylist?id=pl-1")).status).toBe(200);
+  expect((await rpc.playlists.covers()).covers.map((cover) => cover.playlistId)).toEqual(["pl-2"]);
+});

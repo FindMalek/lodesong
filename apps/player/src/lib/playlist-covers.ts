@@ -13,7 +13,9 @@ const playlistCoversQuery = () =>
   });
 
 export function usePlaylistCover(id: string): PlaylistCoverView {
-  return coverView(useQuery(playlistCoversQuery()).data?.covers, id);
+  const covers = useQuery(playlistCoversQuery());
+  if (!covers.data && !covers.isError) return { kind: "loading" };
+  return coverView(covers.data?.covers, id);
 }
 
 export async function setPlaylistCover(id: string, kind: PlaylistCoverKind, image?: string): Promise<void> {
