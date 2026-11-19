@@ -8,11 +8,14 @@ import { PinIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Cover } from "@/components/cover";
 import { EmptyState, PageHeader, Section } from "@/components/library";
+import { Link } from "@/components/link";
 import { ArtistRowsSkeleton } from "@/components/skeletons";
 import SyncFollows from "@/components/sync-follows";
 import { apiQueries } from "@/lib/api-queries";
+import { queries } from "@/lib/queries";
 import { rpc } from "@/lib/rpc";
 import type { Artist } from "@/lib/types";
+import { done } from "@/lib/undo";
 
 type Sort = "pinned" | "a-z" | "newest";
 
@@ -47,6 +50,27 @@ function Choice<T extends string>({
         </Button>
       ))}
     </fieldset>
+  );
+}
+
+const STATUS_HELP: Record<Follow["status"], string> = {
+  pinned: "pinned: you pinned this artist, so they sort first",
+  auto: "auto-followed: you played them 3 times in the last 90 days",
+  followed: "followed",
+};
+
+function ArtistName({ name, id }: { name: string; id?: string }) {
+  if (!id) {
+    return (
+      <span className="min-w-0 flex-1 cursor-default truncate text-muted-foreground text-sm" title="not in your library yet">
+        {name}
+      </span>
+    );
+  }
+  return (
+    <Link href={`/artist/${id}`} className="min-w-0 flex-1 truncate text-sm underline-offset-3 hover:underline">
+      {name}
+    </Link>
   );
 }
 
@@ -135,6 +159,17 @@ export function FollowingPage() {
   const { follows, set } = useFollowing();
   const feed = useQuery(rpc.releases.list.queryOptions({ staleTime: 0, refetchOnWindowFocus: false }));
   const [sort, setSort] = useState<Sort>("pinned");
+  const library = useQuery(queries.artists());
+  const libraryIds = useMemo(() => {
+    const ids = new Map<string, string>();
+    for (const letter of library.data ?? []) for (const artist of letter.artist) ids.set(normalize(artist.name), artist.id);
+    return ids;
+  }, [library.data]);
+  const unfollow = (artist: Follow) => {
+    const back = (status: "followed" | "pinned" | "unfollowed") => () => set.mutateAsync({ name: artist.name, status });
+    set.mutate({ name: artist.name, status: "unfollowed" });
+    done({ label: `unfollowed ${artist.name}`, undo: back(artist.status === "pinned" ? "pinned" : "followed"), redo: back("unfollowed") });
+  };
 
   const artists = follows.data?.artists ?? [];
   const followed = useMemo(() => new Set(artists.map((artist) => normalize(artist.name))), [artists]);
@@ -166,15 +201,21 @@ export function FollowingPage() {
           <ul aria-label="followed artists" className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6">
             {sorted(artists, sort, latest).map((artist) => (
               <li key={artist.name} className="flex items-center gap-2 border-b py-1">
-                <span className="min-w-0 flex-1 truncate text-sm">{artist.name}</span>
-                {artist.status === "auto" && (
-                  <Badge variant="outline" className="font-mono font-normal" title="followed because you play them a lot">
-                    auto
+                <ArtistName name={artist.name} id={libraryIds.get(normalize(artist.name))} />
+                {artist.status !== "followed" && (
+                  <Badge
+                    variant="outline"
+                    className="font-mono font-normal"
+                    title={STATUS_HELP[artist.status]}
+                    aria-label={STATUS_HELP[artist.status]}
+                  >
+                    {artist.status === "auto" ? "auto-followed" : artist.status}
                   </Badge>
                 )}
                 <Button
                   size="icon-sm"
                   variant={artist.status === "pinned" ? "secondary" : "ghost"}
+                  className="pointer-coarse:size-11"
                   aria-label={`${artist.status === "pinned" ? "unpin" : "pin"} ${artist.name}`}
                   aria-pressed={artist.status === "pinned"}
                   onClick={() => set.mutate({ name: artist.name, status: artist.status === "pinned" ? "followed" : "pinned" })}
@@ -184,8 +225,10 @@ export function FollowingPage() {
                 <Button
                   size="icon-sm"
                   variant="ghost"
+                  className="ml-3 pointer-coarse:size-11"
                   aria-label={`unfollow ${artist.name}`}
-                  onClick={() => set.mutate({ name: artist.name, status: "unfollowed" })}
+                  title="unfollow (you can undo it)"
+                  onClick={() => unfollow(artist)}
                 >
                   <XIcon />
                 </Button>
