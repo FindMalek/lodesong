@@ -38,6 +38,8 @@ CI runs the same steps on every PR, and `main` only takes green PRs.
 
 Merge and rebase commits skip it. Typecheck, tests, size and e2e stay in CI (`bun run check`).
 
+Git worktrees share one hooks folder (the main checkout's `.git/hooks`), and `bun install` in any worktree rewrites it. A worktree without `node_modules`, or a branch without `lefthook.yml`, just skips the hook and never blocks a commit.
+
 ```sh
 bunx lefthook run pre-commit          # run it by hand on the staged files
 LEFTHOOK=0 git commit ...             # skip once (git commit --no-verify works too)
