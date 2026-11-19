@@ -89,7 +89,7 @@ const run = (action: () => Promise<unknown> | unknown) => () => {
     .catch(() => notify({ kind: "error", message: "that didn't work, try again" }));
 };
 
-export function ItemActions({ target }: { target: MenuTarget }) {
+export function ItemActions({ target, lean = false }: { target: MenuTarget; lean?: boolean }) {
   const source = sourceOf(target);
   const link = linkOf(target);
   const like = likeOf(target);
@@ -115,10 +115,12 @@ export function ItemActions({ target }: { target: MenuTarget }) {
           <DropdownMenuLabel className="font-mono text-label text-faint">{count}</DropdownMenuLabel>
         </DropdownMenuGroup>
       )}
-      <DropdownMenuItem onClick={run(async () => player.play(await songsOf(target), 0, { album, source }))}>
-        <PlayIcon /> play
-      </DropdownMenuItem>
-      {target.kind !== "songs" && (
+      {!lean && (
+        <DropdownMenuItem onClick={run(async () => player.play(await songsOf(target), 0, { album, source }))}>
+          <PlayIcon /> play
+        </DropdownMenuItem>
+      )}
+      {target.kind !== "songs" && !lean && (
         <DropdownMenuItem onClick={run(async () => player.play(await songsOf(target), -1, { shuffle: true, source }))}>
           <ShuffleIcon /> shuffle
         </DropdownMenuItem>
@@ -126,9 +128,11 @@ export function ItemActions({ target }: { target: MenuTarget }) {
       <DropdownMenuItem onClick={run(async () => player.playNext(await songsOf(target)))}>
         <ListStartIcon /> play next
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={run(async () => player.addToQueue(await songsOf(target)))}>
-        <ListEndIcon /> add to queue
-      </DropdownMenuItem>
+      {!lean && (
+        <DropdownMenuItem onClick={run(async () => player.addToQueue(await songsOf(target)))}>
+          <ListEndIcon /> add to queue
+        </DropdownMenuItem>
+      )}
       <AddToPlaylist target={target} />
       <DropdownMenuItem onClick={run(() => import("@/lib/radio").then((radio) => radio.startRadio(target)))}>
         <RadioIcon /> start radio
@@ -391,12 +395,18 @@ export function ItemMoreButton({
   label,
   className,
   extra,
+  lean,
+  onClosed,
 }: {
   target: MenuTarget;
   label: string;
   className?: string;
   /** Items after the shared ones, for the page's own (rename, delete). */
   extra?: ReactNode;
+  /** Leave out play, shuffle and add to queue when the page already shows them. */
+  lean?: boolean;
+  /** Called as the menu closes, where focus would go back to the button; return true to keep focus where it is. */
+  onClosed?: () => boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -405,8 +415,19 @@ export function ItemMoreButton({
         <MoreHorizontalIcon />
       </DropdownMenuTrigger>
       {open && (
-        <DropdownMenuContent align="end" className="min-w-48">
-          <ItemActions target={target} />
+        <DropdownMenuContent
+          align="end"
+          className="min-w-48"
+          finalFocus={
+            onClosed
+              ? () => {
+                  const keep = onClosed();
+                  return !keep;
+                }
+              : undefined
+          }
+        >
+          <ItemActions target={target} lean={lean} />
           {extra}
         </DropdownMenuContent>
       )}

@@ -2,7 +2,7 @@ import { Button } from "@lodesong/ui/components/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@lodesong/ui/components/dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@lodesong/ui/components/dropdown-menu";
 import { EyeIcon, EyeOffIcon, ImageIcon, ImageOffIcon, PencilIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ItemMoreButton } from "@/components/item-menu";
 import { usePlaylistCoverPicker } from "@/components/playlist-cover";
 import { deletePlaylist, leafOf, updatePlaylist } from "@/lib/playlists";
@@ -12,17 +12,29 @@ import type { Playlist } from "@/lib/types";
 export function PlaylistMenu({ playlist, path, onRename }: { playlist: Playlist; path: string; onRename?: () => void }) {
   const cover = usePlaylistCoverPicker(playlist.id, Boolean(onRename));
   const [confirming, setConfirming] = useState(false);
+  const renaming = useRef(false);
   return (
     <>
       <ItemMoreButton
         target={{ kind: "playlist", playlist }}
         label={leafOf(playlist.name)}
         className="size-8"
+        lean
+        onClosed={() => {
+          if (!renaming.current) return false;
+          renaming.current = false;
+          onRename?.();
+          return true;
+        }}
         extra={
           onRename && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onRename}>
+              <DropdownMenuItem
+                onClick={() => {
+                  renaming.current = true;
+                }}
+              >
                 <PencilIcon /> rename
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void updatePlaylist(playlist.id, { public: !playlist.public })}>

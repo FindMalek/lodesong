@@ -157,6 +157,23 @@ test("playlist header: play is the one primary, delete lives in the menu and ask
   await expect(header.getByRole("textbox", { name: "playlist name" })).toBeFocused();
 });
 
+test("renaming through the menu focuses the title every time", async ({ page, signedIn }) => {
+  await signedIn.goto("/");
+  await newPlaylist(page, `Rename ${Date.now()}`);
+  const header = page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) });
+  for (let round = 1; round <= 5; round++) {
+    await header.getByRole("button", { name: /^more for/ }).click();
+    await page.getByRole("menuitem", { name: "rename" }).click();
+    const input = header.getByRole("textbox", { name: "playlist name" });
+    await expect(input).toBeFocused();
+    await page.waitForTimeout(400);
+    await expect(input).toBeFocused();
+    await input.fill(`Round ${round}`);
+    await input.press("Enter");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(`Round ${round}`);
+  }
+});
+
 test("the playlist that is playing stands out in the sidebar", async ({ signedIn: page }) => {
   await page.goto("/playlist/pl-3");
   await page.getByRole("button", { name: "play", exact: true }).first().click();

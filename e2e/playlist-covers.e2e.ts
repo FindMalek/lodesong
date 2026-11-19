@@ -46,10 +46,10 @@ test("a new playlist gets the dither, or your picture; removing the cover goes b
   await header.getByRole("button", { name: /^more for/ }).click();
   await expect(page.getByRole("menuitem", { name: "add picture" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "remove cover" })).toHaveCount(0);
-  await page.keyboard.press("Escape");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("menuitem", { name: "add picture" }).click();
   await shot("mosaic");
-
-  await header.getByLabel("playlist picture").setInputFiles(FILE);
+  await (await chooser).setFiles(FILE);
   await expect(picture).toBeVisible();
   await header.getByRole("button", { name: /^more for/ }).click();
   await expect(page.getByRole("menuitem", { name: "change picture" })).toBeVisible();

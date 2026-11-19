@@ -171,3 +171,25 @@ test.describe("long list", () => {
     expect(Math.abs((await height()) - estimated)).toBeLessThanOrEqual(200);
   });
 });
+
+test("the playlist header menu rows are at least 44px on an editable playlist", async ({ signedIn: page }) => {
+  await page.locator("body").press("Shift+N");
+  const dialog = page.getByRole("dialog", { name: "new playlist" });
+  await dialog.getByLabel("name").fill(`Touch ${Date.now()}`);
+  await dialog.getByRole("button", { name: "create" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Touch");
+  const more = page.locator("header").getByRole("button", { name: /^more for/ });
+  expect(await tooSmall([more])).toEqual([]);
+  await more.click();
+  const rows = page.getByRole("menuitem");
+  await expect(page.getByRole("menuitem", { name: "delete playlist…" })).toBeVisible();
+  const names = await rows.allInnerTexts();
+  expect(names).toEqual(expect.arrayContaining(["rename", "make public", "delete playlist…"]));
+  expect(names).not.toContain("play");
+  const small: string[] = [];
+  for (const row of await rows.all()) {
+    const box = await row.boundingBox();
+    if (box && box.height < MIN - 0.5) small.push(`${await row.innerText()}: ${box.height}`);
+  }
+  expect(small).toEqual([]);
+});

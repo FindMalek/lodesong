@@ -635,11 +635,7 @@ export function PlaylistPage({ id }: { id: string }) {
         extra={
           <>
             <KeepOffline group={`playlist:${playlist.id}`} songs={playable} />
-            <PlaylistMenu
-              playlist={playlist}
-              path={path}
-              onRename={editable ? () => setTimeout(() => setRename((tick) => tick + 1), 150) : undefined}
-            />
+            <PlaylistMenu playlist={playlist} path={path} onRename={editable ? () => setRename((tick) => tick + 1) : undefined} />
             {!editable && (
               <Badge variant="outline" className="h-8 font-mono font-normal text-muted-foreground">
                 {playlist.readonly ? "smart playlist · read only" : `by ${playlist.owner}`}
@@ -653,7 +649,7 @@ export function PlaylistPage({ id }: { id: string }) {
             plural(playlist.songCount ?? songs.length, "track"),
             length(playlist.duration),
             hidden.size ? `${hidden.size} hidden` : "",
-            canEdit(playlist) ? (playlist.public ? "public" : "private") : "",
+            editable ? (playlist.public ? "public" : "private") : "",
           ]
             .filter(Boolean)
             .join(" · ")}
