@@ -24,7 +24,7 @@ export function DevicePicker() {
         render={
           <ToolButton
             on={Boolean(elsewhere)}
-            aria-label="devices"
+            aria-label={elsewhere ? `devices, playing on ${elsewhere.name}` : "devices"}
             title={elsewhere ? `playing on ${elsewhere.name}` : "play on another device"}
           />
         }

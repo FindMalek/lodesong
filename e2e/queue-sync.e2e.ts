@@ -76,4 +76,28 @@ test("your phone playing shows in the sidebar, and starting here says it's also 
   await page.goto("/album/al-26");
   await page.getByRole("button", { name: "play", exact: true }).first().click();
   await expect(page.getByText("Arpeggi is also playing · it can't be paused from here")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("contentinfo")).not.toContainText("playing on");
+});
+
+test("another device playing is named on the devices button, not in the bar", async ({ page }) => {
+  await page.route("**/auth/session", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), oneSession: true } });
+  });
+  let tell: ((devices: unknown[]) => void) | undefined;
+  await page.routeWebSocket("**/api/devices**", (ws) => {
+    const id = new URL(ws.url()).searchParams.get("id") ?? "";
+    tell = (others) => ws.send(JSON.stringify({ t: "devices", devices: [{ id, name: "Chrome on Mac", active: false }, ...others] }));
+    tell([]);
+  });
+  const { signIn } = await import("./fixtures");
+  await signIn(page);
+  await page.goto("/album/al-26");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  const bar = page.getByRole("contentinfo");
+  await expect(bar.getByRole("button", { name: "pause" })).toBeVisible();
+  await expect.poll(() => tell).toBeDefined();
+  tell?.([{ id: "phone", name: "Safari on iPhone", active: true }]);
+  await expect(bar.getByRole("button", { name: "devices, playing on Safari on iPhone" })).toBeVisible();
+  await expect(bar).not.toContainText("playing on");
 });

@@ -17,3 +17,20 @@ test("plays an album and space toggles pause", async ({ signedIn: page }) => {
   await page.locator("body").press("Space");
   await expect(bar.getByRole("button", { name: "play", exact: true })).toBeVisible();
 });
+
+test("the bar shows no file format while a song plays, the album page still does", async ({ signedIn: page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/albums");
+  await page.locator('a[href^="/album/"]').first().click();
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  const bar = page.getByRole("contentinfo");
+  await expect(bar.getByRole("button", { name: "pause" })).toBeVisible();
+  await page.waitForTimeout(1000);
+  await expect(bar).not.toContainText(/(FLAC|MP3|OPUS|AAC)|playing on/i);
+  await expect(
+    page
+      .locator("main")
+      .getByText(/\b(FLAC|MP3|OPUS|AAC)\b/i)
+      .first(),
+  ).toBeVisible();
+});
