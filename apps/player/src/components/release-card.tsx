@@ -72,7 +72,7 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
       <span className="truncate font-mono text-faint text-xs leading-4">
         {release.kind} · {when(release.date)}
       </span>
-      <span className="relative z-10 mt-1 flex h-11 items-center">
+      <span className="relative z-10 flex h-8 items-center">
         {release.canGet &&
           (release.requested ? (
             <span className="font-mono text-muted-foreground text-xs">asked lyterion</span>
@@ -80,7 +80,7 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
             <Button
               size="xs"
               variant="ghost"
-              className="-ml-2 h-11 px-2 font-mono text-muted-foreground"
+              className="-my-1.5 -ml-2 h-11 px-2 font-mono text-muted-foreground"
               disabled={get.isPending}
               aria-label={`get ${release.title}`}
               onClick={() => get.mutate({ id: release.id })}

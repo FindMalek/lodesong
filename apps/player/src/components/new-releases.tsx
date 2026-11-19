@@ -10,11 +10,12 @@ import { RELEASE_CARD_HEIGHT, thisWeek } from "@/lib/releases";
 import { rpc } from "@/lib/rpc";
 
 const SHELF = 12;
+const DAY = 86_400_000;
 const HAD_SHELF = "lodesong:had-release-shelf";
 
 function hadShelf(): boolean {
   try {
-    return localStorage.getItem(HAD_SHELF) === "1";
+    return Date.now() - Number(localStorage.getItem(HAD_SHELF)) < DAY;
   } catch {
     return false;
   }
@@ -22,16 +23,27 @@ function hadShelf(): boolean {
 
 // New albums, EPs and singles by artists you follow that aren't in the library yet. The full feed is on /following.
 export default function NewReleases() {
-  const { data } = useQuery(rpc.releases.list.queryOptions({ staleTime: 0, refetchOnWindowFocus: false }));
+  const { data, isFetching } = useQuery(rpc.releases.list.queryOptions({ staleTime: 0, refetchOnWindowFocus: false }));
   const fresh = data?.watching ? thisWeek(data.releases, Date.now()) : [];
+  const follows = useQuery(rpc.follows.list.queryOptions({ enabled: !!data && !fresh.length }));
   useEffect(() => {
-    if (!data) return;
+    if (!data || isFetching) return;
     try {
-      localStorage.setItem(HAD_SHELF, fresh.length ? "1" : "0");
+      localStorage.setItem(HAD_SHELF, fresh.length ? String(Date.now()) : "0");
     } catch {}
-  }, [data, fresh.length]);
-  if (!data) return hadShelf() ? <NewReleasesSkeleton /> : null;
-  if (!fresh.length) return null;
+  }, [data, isFetching, fresh.length]);
+  if (!fresh.length && (!data || isFetching)) return hadShelf() ? <NewReleasesSkeleton /> : null;
+  if (!fresh.length) {
+    if (follows.data?.artists.length !== 0) return null;
+    return (
+      <p className="px-5 pt-3.5 pb-1.5 font-mono text-muted-foreground text-xs">
+        new releases from artists you follow show up here.{" "}
+        <Link href="/following" className="text-foreground underline">
+          find artists to follow
+        </Link>
+      </p>
+    );
+  }
   return (
     <Section
       title="new from artists you follow"

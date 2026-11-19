@@ -14,8 +14,15 @@ const release = (id: string, date: string, kind = "album"): NewRelease => ({
   seen: false,
 });
 
-test("the home shelf keeps only releases from the last 7 days", () => {
-  const now = Date.UTC(2026, 9, 29);
-  const all = [release("today", "2026-10-29"), release("edge", "2026-10-22"), release("old", "2026-10-21"), release("soon", "2026-11-05")];
-  expect(thisWeek(all, now).map((item) => item.id)).toEqual(["today", "edge", "soon"]);
+test("the home shelf keeps only releases from the last 7 days, today included", () => {
+  const now = Date.UTC(2026, 9, 29, 15);
+  const all = [
+    release("today", "2026-10-29"),
+    release("edge", "2026-10-22"),
+    release("old", "2026-10-21"),
+    release("tomorrow", "2026-10-30"),
+    release("soon", "2026-11-05"),
+    release("month", "2026-10"),
+  ];
+  expect(thisWeek(all, now).map((item) => item.id)).toEqual(["today", "edge"]);
 });
