@@ -6,8 +6,10 @@ Every open lodesong of yours (a tab, another browser, another computer) joins on
 Connect. One of them plays; the others are remotes.
 
 - **Press play anywhere** and that device takes over: the one that was playing stops, the rest follow it.
-- **Remotes** show the same song, queue and progress. Play, pause, next, previous, seeking, picking a song, "play
-  next" and "add to queue" all go to the device that plays.
+- **Remotes** show the same song, queue and progress. Play, pause, next, previous, seeking, volume, picking a
+  song, "play next" and "add to queue" all go to the device that plays.
+- **Volume** on a remote sets the volume of the device that plays, not its own; the slider and mute button follow that
+  device, and this device's own volume comes back when it stops being a remote.
 - **The device picker** (speaker icon in the player bar, shown once there are two devices) lists them with the playing
   one checked; pick one to move playback there, from where it was. "playing on chrome on mac" shows next to the
   controls while another device plays.
@@ -18,6 +20,27 @@ Connect. One of them plays; the others are remotes.
 It is per account and needs nothing set up. `ONE_SESSION=off` on the server goes back to every tab playing on its own
 ([configuration](configuration.md)). The server passes the session over a WebSocket, so a reverse proxy in front must
 allow WebSockets ([deploy](deploy/README.md#reverse-proxies)).
+
+### Protocol
+
+Messages over `/api/devices` are JSON. A remote sends `{ t: "command", command }`; the server forwards it only to the
+playing device. The playing device sends `{ t: "state", state }` and the others receive it.
+
+| command | fields |
+|---|---|
+| `toggle` | `playing` (boolean) |
+| `next` · `previous` | none |
+| `seek` | `to` (seconds) |
+| `volume` | `volume` (0 to 1), `muted` (optional boolean) |
+| `play` · `add` | songs (see `packages/shared/src/devices.ts`) |
+
+`state` is `{ songs, position, playing, volume?, muted? }`. `volume` (0 to 1) and `muted` are optional, so an older
+device that doesn't send them still works. A value out of range or of the wrong type drops the whole message, and any
+extra field is stripped.
+
+A remote sends at most one `volume` command per 100 ms while its slider is dragged (the first at once, then the latest
+value). The playing device publishes a volume change to the other devices after 300 ms without a new one, so dragging
+its own slider doesn't resend the queue on every step.
 
 **Phones** use a Subsonic app against Navidrome directly (Arpeggi, Substreamer, Symfonium…). Those can't be remote
 controlled; the queue hands off through Navidrome instead: [sync](sync.md).

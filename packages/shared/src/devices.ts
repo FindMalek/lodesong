@@ -13,6 +13,9 @@ export interface DeviceState {
   songs: DeviceSong[];
   position: number;
   playing: boolean;
+  /** The playing device's volume (0..1) and mute, so a remote's slider shows them. */
+  volume?: number;
+  muted?: boolean;
 }
 
 export interface Device {
@@ -26,6 +29,7 @@ export type DeviceCommand =
   | { action: "next" }
   | { action: "previous" }
   | { action: "seek"; to: number }
+  | { action: "volume"; volume: number; muted?: boolean }
   | { action: "play"; songs: DeviceSong[]; start: number; shuffle: boolean; source?: { kind: string; name: string; href?: string } }
   | { action: "add"; songs: DeviceSong[]; next: boolean };
 
@@ -49,6 +53,7 @@ export const MAX_PLAY_SONGS = 500;
 export const MAX_DEVICE_MESSAGE_BYTES = 256 * 1024;
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const unit = (value: unknown): value is number => finite(value) && value >= 0 && value <= 1;
 
 function cleanSong(song: DeviceSong): DeviceSong {
   const gain = song.replayGain;
@@ -87,6 +92,9 @@ function command(value: unknown): DeviceCommand | null {
       return { action: c.action };
     case "seek":
       return finite(c.to) ? { action: "seek", to: Math.max(0, c.to) } : null;
+    case "volume":
+      if (!unit(c.volume) || (c.muted !== undefined && typeof c.muted !== "boolean")) return null;
+      return { action: "volume", volume: c.volume, ...(c.muted === undefined ? {} : { muted: c.muted }) };
     case "play": {
       const list = songs(c.songs, MAX_PLAY_SONGS);
       if (!list?.length || !finite(c.start)) return null;
@@ -132,7 +140,18 @@ export function parseDeviceMessage(raw: string): DeviceClientMessage | null {
       const state = message.state as Record<string, unknown> | undefined;
       const list = songs(state?.songs, MAX_STATE_SONGS);
       if (!list || !finite(state?.position) || typeof state.playing !== "boolean") return null;
-      return { t: "state", state: { songs: list, position: Math.max(0, state.position), playing: state.playing } };
+      if ((state.volume !== undefined && !unit(state.volume)) || (state.muted !== undefined && typeof state.muted !== "boolean"))
+        return null;
+      return {
+        t: "state",
+        state: {
+          songs: list,
+          position: Math.max(0, state.position),
+          playing: state.playing,
+          ...(state.volume === undefined ? {} : { volume: state.volume }),
+          ...(state.muted === undefined ? {} : { muted: state.muted }),
+        },
+      };
     }
     case "command": {
       const parsed = command(message.command);
