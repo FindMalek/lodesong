@@ -37,13 +37,7 @@ export function reportGenres(
     .all(server, ...filter.params)
     .map((row) => JSON.parse(row.data) as UntaggedAlbum)
     .filter(isUntagged);
-  const songs =
-    db
-      .query<{ n: number }, string[]>(
-        `select count(*) as n from idx_items i where i.server = ? and i.kind = 'song'${filter.sql}
-         and coalesce(json_extract(i.data, '$.genre'), '') = '' and coalesce(json_array_length(json_extract(i.data, '$.genres')), 0) = 0`,
-      )
-      .get(server, ...filter.params)?.n ?? 0;
+  const songs = albums.reduce((sum, album) => sum + (album.songCount ?? 0), 0);
 
   const missing = new Map<string, string>();
   const byGenre = new Map<string, InferredGenre>();
