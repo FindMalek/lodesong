@@ -57,7 +57,7 @@ function AddSong() {
   );
 }
 
-const SKIP_HELP = "when on, every listener can skip songs. when off, only you can.";
+const SKIP_HELP = "when on, listeners can skip songs, and pause or resume when party mode is on. when off, only you can.";
 const PARTY_HELP =
   "when on, only your device plays audio and everyone else just controls it. when off, everyone hears it on their own device.";
 

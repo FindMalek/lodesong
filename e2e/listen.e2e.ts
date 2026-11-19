@@ -87,7 +87,7 @@ test("join row lines up with the page and the toggles say what they do", async (
   expect(Math.abs(input.height - join.height)).toBeLessThanOrEqual(1);
   expect(Math.abs(input.x - heading.x)).toBeLessThanOrEqual(1);
 
-  await expect(page.getByText("when on, every listener can skip songs")).toBeVisible();
+  await expect(page.getByText("when on, listeners can skip songs")).toBeVisible();
   await expect(page.getByText("only your device plays audio and everyone else just controls it")).toBeVisible();
   const skip = page.getByLabel("anyone can skip before starting");
   const state = page.getByText("off", { exact: true }).first();
