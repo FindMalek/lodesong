@@ -27,6 +27,7 @@ import {
   HeartIcon,
   HeartOffIcon,
   ImageDownIcon,
+  ImagePlusIcon,
   LinkIcon,
   ListEndIcon,
   ListMusicIcon,
@@ -54,6 +55,7 @@ import { albumPref, songPref, usePrefsVersion } from "@/lib/prefs";
 import { queries } from "@/lib/queries";
 import { go } from "@/lib/router";
 import { copyShareLink, type ShareKind } from "@/lib/share-link";
+import { isDemo } from "@/lib/subsonic";
 import { type MenuTarget, songsOf, sourceOf } from "@/lib/targets";
 
 export type { MenuTarget };
@@ -81,6 +83,14 @@ function likeOf(target: MenuTarget): { kind: LikeKind; id: string; label: string
   if (target.kind === "artist") return { kind: "artist", id: target.artist.id, label: target.artist.name };
   const song = target.kind === "songs" && target.songs.length === 1 ? target.songs[0] : undefined;
   return song ? { kind: "song", id: song.id, label: song.title } : null;
+}
+
+function coverOf(target: MenuTarget): { coverId: string; what: "album" | "artist"; name: string; artist: string } | null {
+  if (target.kind === "album" && target.album.coverArt)
+    return { coverId: target.album.coverArt, what: "album", name: target.album.name, artist: target.album.artist ?? "" };
+  if (target.kind === "artist" && target.artist.coverArt)
+    return { coverId: target.artist.coverArt, what: "artist", name: target.artist.name, artist: "" };
+  return null;
 }
 
 const run = (action: () => Promise<unknown> | unknown) => () => {
@@ -234,6 +244,13 @@ export function ItemActions({ target, lean = false }: { target: MenuTarget; lean
         </>
       )}
       {target.kind === "artist" && <ArtistMergeItems artist={target.artist} />}
+      {!isDemo() && coverOf(target) && (
+        <DropdownMenuItem
+          onClick={() => openPlaylistDialog({ kind: "cover", ...(coverOf(target) as NonNullable<ReturnType<typeof coverOf>>) })}
+        >
+          <ImagePlusIcon /> find another cover…
+        </DropdownMenuItem>
+      )}
       <DropdownMenuSeparator />
       {song?.albumId && (
         <DropdownMenuItem onClick={() => go(`/album/${song.albumId}`)}>

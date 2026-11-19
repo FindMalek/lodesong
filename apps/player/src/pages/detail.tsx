@@ -244,7 +244,12 @@ export function AlbumPage({ id }: { id: string }) {
         onPlay={() => player.play(songs, 0, { album: true, shuffle: false, source })}
         onShuffle={() => player.play(songs, -1, { shuffle: true, source })}
         onQueue={() => player.addToQueue(songs)}
-        extra={<KeepOffline group={`album:${album.id}`} songs={songs} />}
+        extra={
+          <>
+            <KeepOffline group={`album:${album.id}`} songs={songs} />
+            <ItemMoreButton target={{ kind: "album", album }} label={album.name} className="size-8" />
+          </>
+        }
         like={{ kind: "album", id: album.id }}
         filterable
       >
@@ -405,7 +410,11 @@ export function ArtistPage({ id }: { id: string }) {
               <RadioIcon />
               radio
             </Button>
-            <ItemMoreButton target={{ kind: "artist", artist: { id: artist.id, name: title } }} label={title} className="size-8" />
+            <ItemMoreButton
+              target={{ kind: "artist", artist: { id: artist.id, name: title, coverArt: artist.coverArt } }}
+              label={title}
+              className="size-8"
+            />
           </>
         }
       >

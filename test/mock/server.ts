@@ -314,6 +314,20 @@ function stream(song: Song, request: Request): Response {
   return ranged(body, "audio/wav", request);
 }
 
+/** What "find another cover" can offer: two groups with art on Cover Art Archive, one without, and two on Deezer. Lighter greys than the library's. */
+const COVER_GROUPS = [
+  { id: "c0c0c0c0-0000-4000-8000-000000000001", title: "Another Take", shade: 170 },
+  { id: "c0c0c0c0-0000-4000-8000-000000000002", title: "Another Take (Deluxe)", shade: 215 },
+  { id: "c0c0c0c0-0000-4000-8000-000000000003", title: "Another Take (No Art)", shade: 0 },
+];
+const DEEZER_HITS = [
+  { id: 9001, title: "Another Take", shade: 120 },
+  { id: 9002, title: "Another Take (Remastered)", shade: 235 },
+];
+function picture(size: number, shade: number): Response {
+  return new Response(greyPng(Math.min(Math.max(size, 16), 512), shade), { headers: { "content-type": "image/png" } });
+}
+
 function cover(id: string, size: number): Response {
   const shade = 24 + ([...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 40);
   return new Response(greyPng(Math.min(Math.max(size || 300, 16), 512), shade), { headers: { "content-type": "image/png" } });
@@ -740,6 +754,39 @@ const server = Bun.serve({
           { name: "shoegaze", count: 9 },
         ],
       });
+    if (url.pathname === "/musicbrainz/ws/2/release-group" && url.searchParams.has("query"))
+      return Response.json({
+        "release-groups": COVER_GROUPS.map(({ id, title }) => ({ id, title, "artist-credit": [{ name: "Cover Artist" }] })),
+      });
+    const archived = /^\/cover-archive\/release-group\/([0-9a-f-]{36})\/front-(\d+)$/.exec(url.pathname);
+    if (archived) {
+      const group = COVER_GROUPS.find((item) => item.id === archived[1]);
+      return group?.shade ? picture(Number(archived[2]), group.shade) : new Response("not found", { status: 404 });
+    }
+    if (url.pathname === "/deezer/search/album" || url.pathname === "/deezer/search/artist") {
+      const artist = url.pathname.endsWith("artist");
+      return Response.json({
+        data: DEEZER_HITS.map(({ id, title, shade }) => ({
+          id,
+          ...(artist
+            ? { name: title, picture_medium: `${url.origin}/deezer/img/${shade}/250` }
+            : { title, artist: { name: "Cover Artist" }, cover_medium: `${url.origin}/deezer/img/${shade}/250` }),
+        })),
+      });
+    }
+    const deezer = /^\/deezer\/(album|artist)\/(\d+)$/.exec(url.pathname);
+    if (deezer) {
+      const hit = DEEZER_HITS.find((item) => String(item.id) === deezer[2]);
+      if (!hit) return new Response("not found", { status: 404 });
+      const prefix = deezer[1] === "artist" ? "picture" : "cover";
+      return Response.json({
+        id: hit.id,
+        [`${prefix}_big`]: `${url.origin}/deezer/img/${hit.shade}/500`,
+        [`${prefix}_xl`]: `${url.origin}/deezer/img/${hit.shade}/1000`,
+      });
+    }
+    const deezerImage = /^\/deezer\/img\/(\d+)\/(\d+)$/.exec(url.pathname);
+    if (deezerImage) return picture(Number(deezerImage[2]), Number(deezerImage[1]));
     if (url.pathname === "/musicbrainz/ws/2/release-group") {
       const date = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
       return Response.json({

@@ -1,4 +1,5 @@
 import { artistMergeSchema } from "@lodesong/shared/artist-merges";
+import { CANDIDATE_ID, COVER_ID, coverCandidateSchema, coverOverrideSchema } from "@lodesong/shared/cover-candidates";
 import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
 import {
@@ -200,6 +201,55 @@ export const contract = {
         tags: ["Library"],
       })
       .input(artistMergeSchema)
+      .output(ok),
+  },
+
+  covers: {
+    overrides: oc
+      .route({
+        method: "GET",
+        path: "/covers/overrides",
+        summary: "Covers you replaced",
+        description: "Cover ids whose picture you chose; the cover route serves it before asking Navidrome.",
+        tags: ["Library"],
+      })
+      .output(z.object({ overrides: z.array(coverOverrideSchema) })),
+    candidates: oc
+      .route({
+        method: "GET",
+        path: "/covers/candidates",
+        summary: "Other covers for an album or an artist",
+        description:
+          "Up to 8 pictures found by name on Cover Art Archive (through MusicBrainz) and Deezer, each with a preview. Searched by the server only; 20 a minute. Not in the public demo.",
+        tags: ["Library"],
+      })
+      .input(
+        z.object({
+          kind: z.enum(["album", "artist"]),
+          name: z.string().trim().min(1).max(200),
+          artist: z.string().trim().max(200).default(""),
+        }),
+      )
+      .output(z.object({ candidates: z.array(coverCandidateSchema) })),
+    setOverride: oc
+      .route({
+        method: "PUT",
+        path: "/covers/{id}/override",
+        summary: "Show another picture for a cover",
+        description:
+          "Takes a `candidate` id from the search; the server fetches it again and keeps it if it is a real jpeg, png or webp of at most 400 KB and 1024 px. 500 covers at most. Not in the public demo.",
+        tags: ["Library"],
+      })
+      .input(z.object({ id: z.string().regex(COVER_ID), candidate: z.string().regex(CANDIDATE_ID) }))
+      .output(z.object({ ok: z.literal(true), version: z.string() })),
+    removeOverride: oc
+      .route({
+        method: "DELETE",
+        path: "/covers/{id}/override",
+        summary: "Go back to the original cover",
+        tags: ["Library"],
+      })
+      .input(z.object({ id: z.string().regex(COVER_ID) }))
       .output(ok),
   },
 

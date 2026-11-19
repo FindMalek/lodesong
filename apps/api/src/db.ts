@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { createArtistMergeTables } from "./artist-merges";
 import { createFeatureTables } from "./audiomuse";
+import { createCoverOverrideTable } from "./cover-overrides";
 import { createHistoryTables } from "./history";
 import { createMixTables } from "./mixes";
 import { createMomentTables } from "./moments";
@@ -36,6 +37,7 @@ export function openLibraryDb(path: string): Database {
   createMomentTables(db);
   createPlaylistFolderTables(db);
   createPlaylistCoverTable(db);
+  createCoverOverrideTable(db);
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);

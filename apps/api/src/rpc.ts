@@ -11,6 +11,8 @@ import { type ArtistGenres, reportGenres } from "./artist-genres";
 import { listArtistMerges, setArtistMerge } from "./artist-merges";
 import { type Cache, memoryCache } from "./cache";
 import type { Upstream } from "./config";
+import { listCoverOverrides, removeCoverOverride, setCoverOverride } from "./cover-overrides";
+import type { CoverSources } from "./cover-sources";
 import { readCover } from "./folder-cover";
 import type { FollowSync } from "./follow-sync";
 import { type UpdateCheck, VERSION } from "./health";
@@ -64,6 +66,7 @@ export interface RpcDeps {
   releases?: ReleaseWatch | null;
   artistGenres?: ArtistGenres | null;
   followSync?: FollowSync | null;
+  coverSources?: CoverSources | null;
   publicDemo?: boolean;
 }
 
@@ -126,8 +129,10 @@ export function createRpc({
   releases = null,
   artistGenres = null,
   followSync = null,
+  coverSources = null,
   publicDemo = false,
 }: RpcDeps) {
+  const coverSearches = new Map<string, number[]>();
   const moodPlaylists = createMoodPlaylists(library, cache);
   const aiRuns = new Map<string, Promise<Made>>();
   // Mood and weekly playlists don't depend on the version of the plays, so a play or a like doesn't redo them. They run
@@ -265,6 +270,31 @@ export function createRpc({
       setMerge: signedIn.artists.setMerge.handler(({ context, input }) => {
         if (publicDemo) throw DEMO_REFUSED;
         if (!setArtistMerge(library, context.account, input)) throw new ORPCError("BAD_REQUEST", { message: "too many" });
+        return OK;
+      }),
+    },
+    covers: {
+      overrides: signedIn.covers.overrides.handler(({ context }) => ({ overrides: listCoverOverrides(library, context.account) })),
+      candidates: signedIn.covers.candidates.handler(async ({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        if (!coverSources?.enabled) return { candidates: [] };
+        const recent = (coverSearches.get(context.account) ?? []).filter((at) => at > Date.now() - 60_000);
+        if (recent.length >= 20) throw new ORPCError("TOO_MANY_REQUESTS", { message: "slow down" });
+        coverSearches.delete(context.account);
+        coverSearches.set(context.account, [...recent, Date.now()]);
+        if (coverSearches.size > 200) coverSearches.delete(coverSearches.keys().next().value as string);
+        return { candidates: await coverSources.candidates(input.kind, input.name, input.artist) };
+      }),
+      setOverride: signedIn.covers.setOverride.handler(async ({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        const picture = await coverSources?.pick(input.candidate);
+        if (!picture) throw new ORPCError("BAD_GATEWAY", { message: "couldn't fetch that picture" });
+        if (!setCoverOverride(library, context.account, input.id, picture)) throw new ORPCError("BAD_REQUEST", { message: "too many" });
+        return { ok: true as const, version: picture.hash };
+      }),
+      removeOverride: signedIn.covers.removeOverride.handler(({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        removeCoverOverride(library, context.account, input.id);
         return OK;
       }),
     },

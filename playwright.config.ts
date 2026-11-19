@@ -47,6 +47,8 @@ export default defineConfig({
         LYTERION_URL: `http://127.0.0.1:${MOCK}/lyterion`,
         LYTERION_TOKEN: "e2e-lyterion-token-0123456789",
         MUSICBRAINZ_URL: `http://127.0.0.1:${MOCK}/musicbrainz`,
+        COVER_ARCHIVE_URL: `http://127.0.0.1:${MOCK}/cover-archive`,
+        DEEZER_URL: `http://127.0.0.1:${MOCK}/deezer`,
         LRCLIB_URL: `http://127.0.0.1:${MOCK}/lrclib`,
         LYRICS_BACKFILL: "off",
         AUDIOMUSE_URL: `http://127.0.0.1:${MOCK}/audiomuse`,

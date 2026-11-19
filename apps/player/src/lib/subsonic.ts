@@ -177,7 +177,15 @@ export async function api<T>(endpoint: string, params: Params = {}): Promise<T> 
 
 /** Credential-free and size-snapped, so the browser caches each cover forever (`immutable`). `size` is in pixels. */
 export function coverUrl(id: string | undefined, size = 256): string | null {
-  return id ? `/cover/${encodeURIComponent(id)}/${snapCoverSize(size)}` : null;
+  if (!id) return null;
+  const version = coverVersions.get(id);
+  return `/cover/${encodeURIComponent(id)}/${snapCoverSize(size)}${version ? `?v=${version}` : ""}`;
+}
+
+const coverVersions = new Map<string, string>();
+export function setCoverVersions(overrides: { id: string; version: string }[]): void {
+  coverVersions.clear();
+  for (const { id, version } of overrides) coverVersions.set(id, version);
 }
 
 export function coverSrcSet(id: string, cssSize: number): string {

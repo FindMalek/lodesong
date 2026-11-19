@@ -1,6 +1,7 @@
 import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { Disc3Icon } from "lucide-react";
 import { useState } from "react";
+import { useCoverOverrides } from "@/lib/cover-overrides";
 import { coverSrcSet, coverUrl } from "@/lib/subsonic";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ interface CoverProps {
 }
 
 export function Cover({ id, size, className, alt = "", priority = false }: CoverProps) {
+  useCoverOverrides();
   const src = coverUrl(id, size);
   const [loaded, setLoaded] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);

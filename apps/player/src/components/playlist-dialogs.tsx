@@ -8,6 +8,7 @@ import { findLegacy } from "@/lib/folder-find";
 import { openPlaylistDialog, type PlaylistDialog } from "@/lib/playlist-dialogs";
 import { usePlaylistTree } from "@/lib/playlist-folders";
 import { renameFolder } from "@/lib/playlists";
+import { CoverPickerDialog } from "./cover-picker-dialog";
 import { EditFolderDialog, NewFolderDialog } from "./folder-dialogs";
 import { MovePlaylistDialog } from "./move-playlist-dialog";
 import { NewPlaylistDialog } from "./new-playlist-dialog";
@@ -70,6 +71,7 @@ export function PlaylistDialogs({ dialog }: { dialog: NonNullable<PlaylistDialog
   if (dialog.kind === "folder") return <FolderDialog path={dialog.path} onClose={close} />;
   if (dialog.kind === "folder-new") return <NewFolderDialog parentId={dialog.parentId} onClose={close} />;
   if (dialog.kind === "folder-edit") return <EditFolderDialog id={dialog.id} onClose={close} />;
+  if (dialog.kind === "cover") return <CoverPickerDialog {...dialog} onClose={close} />;
   if (dialog.kind === "folder-move") return <MovePlaylistDialog playlistId={dialog.playlistId} onClose={close} />;
   return (
     <NewPlaylistDialog

@@ -74,6 +74,17 @@ const SETTINGS = [
       "Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off.",
   },
   {
+    name: "COVER_ARCHIVE_URL",
+    fallback: "https://coverartarchive.org",
+    description:
+      "Where **find another cover** looks for album art (with the album and artist names, only when you ask). Covers are fetched by the server, never by the browser. Empty: off.",
+  },
+  {
+    name: "DEEZER_URL",
+    fallback: "https://api.deezer.com",
+    description: "The second place **find another cover** looks, for albums and artist pictures (keyless). Empty: off.",
+  },
+  {
     name: "RELEASES_AUTO_GET",
     fallback: "off",
     description:
@@ -191,6 +202,8 @@ export interface Config {
   uploadDir: string | null;
   lyterion: { url: string; token: string } | null;
   musicbrainzUrl: string;
+  coverArchiveUrl: string;
+  deezerUrl: string;
   releasesAutoGet: boolean;
   audiomuseUrl: string | null;
   indexUser: string | undefined;
@@ -256,6 +269,11 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
   if (uploadDir && !uploadDir.startsWith("/")) errors.push(`UPLOAD_DIR must be an absolute path or empty, got "${uploadDir}"`);
   const musicbrainzUrl = get("MUSICBRAINZ_URL").replace(/\/+$/, "");
   if (musicbrainzUrl && !isUrl(musicbrainzUrl)) errors.push(`MUSICBRAINZ_URL must be http(s)://host or empty, got "${musicbrainzUrl}"`);
+  const coverArchiveUrl = get("COVER_ARCHIVE_URL").replace(/\/+$/, "");
+  if (coverArchiveUrl && !isUrl(coverArchiveUrl))
+    errors.push(`COVER_ARCHIVE_URL must be http(s)://host or empty, got "${coverArchiveUrl}"`);
+  const deezerUrl = get("DEEZER_URL").replace(/\/+$/, "");
+  if (deezerUrl && !isUrl(deezerUrl)) errors.push(`DEEZER_URL must be http(s)://host or empty, got "${deezerUrl}"`);
   const lyterionUrl = get("LYTERION_URL").replace(/\/+$/, "");
   const lyterionToken = get("LYTERION_TOKEN");
   if (lyterionUrl && !isUrl(lyterionUrl)) errors.push(`LYTERION_URL must be http(s)://host or empty, got "${lyterionUrl}"`);
@@ -299,6 +317,8 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     uploadDir: uploadDir || null,
     lyterion: lyterionUrl && lyterionToken ? { url: lyterionUrl, token: lyterionToken } : null,
     musicbrainzUrl,
+    coverArchiveUrl,
+    deezerUrl,
     releasesAutoGet: flag("RELEASES_AUTO_GET", ["on"], ["off"]),
     audiomuseUrl: audiomuseUrl || null,
     indexUser,

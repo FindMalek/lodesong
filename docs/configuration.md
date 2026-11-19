@@ -20,6 +20,8 @@ boot with a message naming the variable.
 | `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced. |
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
 | `MUSICBRAINZ_URL` | `https://musicbrainz.org` | Where new releases by the artists you follow are looked up, once a week (artist names only, one request a second). Empty turns the new releases row off. |
+| `COVER_ARCHIVE_URL` | `https://coverartarchive.org` | Where **find another cover** looks for album art (with the album and artist names, only when you ask). Covers are fetched by the server, never by the browser. Empty: off. |
+| `DEEZER_URL` | `https://api.deezer.com` | The second place **find another cover** looks, for albums and artist pictures (keyless). Empty: off. |
 | `RELEASES_AUTO_GET` | `off` | `on`: with Lyterion set up, new releases by followed artists are handed to it on their own (at most ten a week). `off`: they are only listed, and **get it** on a release hands that one over. |
 | `GROQ_API_KEY` | — | Turns on playlists from a prompt ("rainy sunday, slow, warm"): Groq picks artists from your library and the player builds the list from songs you own. Also fills missing or garbled tags of uploads for review (needs `UPLOAD_DIR`). Kept server-side. Empty: off. |
 | `GROQ_MODEL` | `openai/gpt-oss-120b` | The Groq model for playlists from a prompt and for upload tags. |

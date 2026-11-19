@@ -8,6 +8,7 @@ import { LyricsBackfill, serviceAccount } from "./backfill";
 import { createCache } from "./cache";
 import { compressed } from "./compress";
 import { config } from "./config";
+import { CoverSources } from "./cover-sources";
 import { CoverCache } from "./covers";
 import { createCspReporter } from "./csp-report";
 import { openLibraryDb } from "./db";
@@ -71,6 +72,7 @@ const backfills = new Map(
 );
 for (const backfill of backfills.values()) backfill.start();
 const musicbrainz = config.musicbrainzUrl ? new MusicBrainz(config.musicbrainzUrl) : null;
+const coverSources = new CoverSources({ musicbrainz, archiveUrl: config.coverArchiveUrl, deezerUrl: config.deezerUrl });
 const artistGenres = musicbrainz ? new ArtistGenres(library, musicbrainz) : null;
 const releases = musicbrainz
   ? new ReleaseWatch(library, musicbrainz, {
@@ -83,6 +85,7 @@ const followSync = config.lyterion ? new FollowSync(library, config.lyterion, ()
 followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
 const api = createApi({
+  coverSources,
   upstreams: config.upstreams,
   covers,
   lyrics,

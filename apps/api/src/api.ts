@@ -13,6 +13,8 @@ import type { ArtistGenres } from "./artist-genres";
 import { audiomuseStatus, featuresFor, featuresIn, similarSongs, smartShuffle, syncFeatures } from "./audiomuse";
 import type { Cache } from "./cache";
 import type { Upstream } from "./config";
+import { coverOverride } from "./cover-overrides";
+import type { CoverSources } from "./cover-sources";
 import { type CoverCache, gate, snapCoverSize } from "./covers";
 import type { DeviceHub, DevicePeer } from "./devices";
 import { libraryItems } from "./doctor";
@@ -180,6 +182,7 @@ export interface ApiOptions {
   lyterion?: { url: string; token: string } | null;
   releases?: ReleaseWatch | null;
   musicbrainz?: MusicBrainz | null;
+  coverSources?: CoverSources | null;
   artistGenres?: ArtistGenres | null;
   followSync?: FollowSync | null;
   rooms?: ListenRooms;
@@ -237,6 +240,7 @@ export function createApi({
   lyterion = null,
   releases = null,
   musicbrainz = null,
+  coverSources = null,
   artistGenres = null,
   followSync = null,
   devices = null,
@@ -293,6 +297,7 @@ export function createApi({
     releases,
     artistGenres,
     followSync,
+    coverSources,
     publicDemo,
   });
 
@@ -619,6 +624,12 @@ export function createApi({
     if (!session) return json({ error: "signed out" }, 401);
     const upstream = upstreamFor(session.server);
     if (!upstream) return json({ error: "server removed from config" }, 401);
+    const chosen = coverOverride(library, dataAccount(session), request.params.id);
+    if (chosen) {
+      // The url carries the picture's hash, so that version never changes; any other asks again each time.
+      const current = new URL(request.url).searchParams.get("v") === chosen.hash;
+      return coverResponse(request, chosen, SECURITY_HEADERS, current ? "private, max-age=31536000, immutable" : "private, no-cache");
+    }
     const size = snapCoverSize(Number(request.params.size) || 256);
     const started = performance.now();
     const path = await covers.get(

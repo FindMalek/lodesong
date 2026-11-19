@@ -299,6 +299,21 @@ export class MusicBrainz {
     );
   }
 
+  /** Release groups matching an album title and artist, best first, each with a "title - artist" label. */
+  async searchReleaseGroups(title: string, artist: string): Promise<{ id: string; label: string }[] | null> {
+    const clean = (text: string) => text.replace(/["\\]/g, " ");
+    const query = encodeURIComponent(`releasegroup:"${clean(title)}" AND artist:"${clean(artist)}"`);
+    const answer = await this.get<{ "release-groups"?: { id: string; title: string; "artist-credit"?: { name: string }[] }[] }>(
+      `release-group?query=${query}&limit=8`,
+    );
+    return (
+      answer?.["release-groups"]?.map((group) => ({
+        id: group.id,
+        label: `${group.title} - ${group["artist-credit"]?.map((credit) => credit.name).join(", ") ?? artist}`.slice(0, 120),
+      })) ?? null
+    );
+  }
+
   async releaseGroups(mbid: string): Promise<ReleaseGroup[] | null> {
     const groups: ReleaseGroup[] = [];
     for (let page = 0; page < MAX_PAGES; page++) {

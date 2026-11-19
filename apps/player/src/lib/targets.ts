@@ -5,7 +5,7 @@ import type { Album, Artist, Playlist, Song } from "./types";
 export type MenuTarget =
   | { kind: "songs"; songs: Song[] }
   | { kind: "album"; album: Album }
-  | { kind: "artist"; artist: Pick<Artist, "id" | "name"> }
+  | { kind: "artist"; artist: Pick<Artist, "id" | "name" | "coverArt"> }
   | { kind: "playlist"; playlist: Playlist };
 
 /** The songs a target stands for, fetched when needed (an album card only knows its id). */
