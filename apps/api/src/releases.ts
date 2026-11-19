@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
-import type { Follow, FollowStatus, NewRelease } from "@lodesong/shared/releases";
+import type { AlbumTrack, Follow, FollowStatus, NewRelease } from "@lodesong/shared/releases";
 import { VERSION } from "./health";
 
 // Artists you play are followed for you; a weekly check asks MusicBrainz what they released lately. Nothing is
@@ -236,7 +236,7 @@ export class MusicBrainz {
   ) {}
 
   /** One request at a time, a second apart: MusicBrainz's limit for anonymous clients. */
-  private get<T>(path: string): Promise<T | null> {
+  private get<T>(path: string, onStatus?: (status: number) => void): Promise<T | null> {
     const run = this.chain.then(async () => {
       const wait = this.last + this.gapMs - Date.now();
       if (wait > 0) await Bun.sleep(wait);
@@ -245,6 +245,7 @@ export class MusicBrainz {
         headers: { "user-agent": `lodesong/${VERSION} ( https://github.com/FindMalek/lodesong )`, accept: "application/json" },
         signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
       }).catch(() => null);
+      if (response) onStatus?.(response.status);
       return response?.ok ? ((await response.json().catch(() => null)) as T | null) : null;
     });
     this.chain = run.catch(() => undefined);
@@ -274,6 +275,28 @@ export class MusicBrainz {
       .sort((a, b) => b.count - a.count)
       .slice(0, MAX_GENRES)
       .map((genre) => genre.name);
+  }
+
+  /** A release's tracks in order; `[]` when MusicBrainz has no such release, null when it couldn't be asked. */
+  async releaseTracks(mbid: string): Promise<AlbumTrack[] | null> {
+    let status = 0;
+    const answer = await this.get<{
+      media?: {
+        position?: number;
+        tracks?: { title: string; length?: number | null; "artist-credit"?: { name: string; joinphrase?: string }[] }[];
+      }[];
+    }>(`release/${encodeURIComponent(mbid)}?inc=recordings+artist-credits`, (code) => {
+      status = code;
+    });
+    if (!answer) return status === 404 ? [] : null;
+    return (answer.media ?? []).flatMap((medium, at) =>
+      (medium.tracks ?? []).map((track) => ({
+        title: track.title,
+        durationMs: track.length ?? 0,
+        artist: track["artist-credit"]?.map((credit) => credit.name + (credit.joinphrase ?? "")).join("") || undefined,
+        disc: medium.position ?? at + 1,
+      })),
+    );
   }
 
   async releaseGroups(mbid: string): Promise<ReleaseGroup[] | null> {

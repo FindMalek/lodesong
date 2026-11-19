@@ -105,3 +105,23 @@ test("marking a release seen sticks for that account only", () => {
   expect(newReleases(db, "s:u", NOW).map((release) => release.seen)).toEqual([true]);
   expect(newReleases(db, "s:other", NOW).map((release) => release.seen)).toEqual([false]);
 });
+
+test("a release's tracks come back in order across discs, with lengths", async () => {
+  const fetcher = (async () =>
+    Response.json({
+      media: [
+        { position: 1, tracks: [{ title: "One", length: 1000, "artist-credit": [{ name: "A", joinphrase: " & " }, { name: "B" }] }] },
+        { tracks: [{ title: "Two", length: null }] },
+      ],
+    })) as unknown as typeof fetch;
+  expect(await new MusicBrainz("http://mb", fetcher, 0).releaseTracks("abc")).toEqual([
+    { title: "One", durationMs: 1000, artist: "A & B", disc: 1 },
+    { title: "Two", durationMs: 0, disc: 2 },
+  ]);
+});
+
+test("only a real 404 means a release has no tracks; a failure is null", async () => {
+  const answer = (status: number) => (async () => new Response("{}", { status })) as unknown as typeof fetch;
+  expect(await new MusicBrainz("http://mb", answer(404), 0).releaseTracks("abc")).toEqual([]);
+  expect(await new MusicBrainz("http://mb", answer(503), 0).releaseTracks("abc")).toBeNull();
+});

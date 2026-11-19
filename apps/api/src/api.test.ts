@@ -5,6 +5,7 @@ import { openLibraryDb } from "./db";
 import { DeviceHub } from "./devices";
 import { LyricsService } from "./lyrics";
 import { LoginLimiter } from "./rate-limit";
+import { MusicBrainz } from "./releases";
 import { IndexSync } from "./search-index";
 import { SessionStore } from "./sessions";
 
@@ -182,4 +183,45 @@ test("release covers stay off without MusicBrainz and never reach out for a bad 
   } finally {
     globalThis.fetch = real;
   }
+});
+
+test("album tracks: signed-out, bad id, cached by lowercase id, rate limited, and a 404 is remembered", async () => {
+  let asked = 0;
+  const mb = new MusicBrainz(
+    "http://mb",
+    (async (url: string) => {
+      asked++;
+      return url.includes("00000000-0000-4000-8000-00000000000b")
+        ? new Response("{}", { status: 404 })
+        : Response.json({ media: [{ tracks: [{ title: "One", length: 1 }] }] });
+    }) as unknown as typeof fetch,
+    0,
+  );
+  const tracksApi = createApi({
+    upstreams: [navidrome],
+    indexes: new Map([["default", new IndexSync(openLibraryDb(":memory:"), navidrome, () => null)]]),
+    library: openLibraryDb(":memory:"),
+    lyrics: new LyricsService(openLibraryDb(":memory:"), ""),
+    covers: new CoverCache(`${process.env.TMPDIR ?? "/tmp"}/kp-covers-${crypto.randomUUID()}`, 1_000_000),
+    sessions,
+    limiter: new LoginLimiter(),
+    idleSeconds: 60,
+    trustProxy: false,
+    musicbrainz: mb,
+  });
+  const get = (id: string, signedIn = true) =>
+    tracksApi.albumTracks(Object.assign(signedIn ? request(`/api/album-tracks/${id}`) : new Request(`http://app/x`), { params: { id } }));
+  const good = "00000000-0000-4000-8000-00000000000a";
+  expect((await get(good, false)).status).toBe(401);
+  expect((await get("nope")).status).toBe(404);
+  expect(asked).toBe(0);
+  expect((await get(good.toUpperCase())).status).toBe(200);
+  expect((await get(good)).status).toBe(200);
+  expect(asked).toBe(1);
+  const gone = "00000000-0000-4000-8000-00000000000b";
+  expect((await get(gone)).status).toBe(404);
+  expect((await get(gone)).status).toBe(404);
+  expect(asked).toBe(2);
+  for (let i = 0; i < 20; i++) await get(`00000000-0000-4000-8000-0000000001${String(i).padStart(2, "0")}`);
+  expect((await get("00000000-0000-4000-8000-00000000ffff")).status).toBe(429);
 });

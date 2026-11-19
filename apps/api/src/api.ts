@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { DeviceCommand } from "@lodesong/shared/devices";
 import { runChecks } from "@lodesong/shared/doctor";
 import type { LyricsCoverage } from "@lodesong/shared/lyrics";
+import type { AlbumTrack } from "@lodesong/shared/releases";
 import type { LyricsSearch } from "@lodesong/shared/search";
 import { readTrack } from "@lodesong/shared/spotify-import";
 import type { Server } from "bun";
@@ -34,7 +35,7 @@ import { playlistCover, removePlaylistCover } from "./playlist-covers";
 import { folderCover, forgetPlaylist } from "./playlist-folders";
 import type { LoginLimiter } from "./rate-limit";
 import { readCapped } from "./read-capped";
-import type { ReleaseWatch } from "./releases";
+import type { MusicBrainz, ReleaseWatch } from "./releases";
 import { latestFor, lineAt, NOTHING, type NowPlayingEntry, type RemoteNow, remoteSong } from "./remote";
 import { createRpc, accountOf as dataAccount } from "./rpc";
 import { search } from "./search";
@@ -46,6 +47,8 @@ import { SHARE_KINDS, SHARE_LIFE_MS, ShareTokens } from "./share-token";
 import { needsLength, SPOOL_LIMIT, spool } from "./spool";
 import { subsonic, upstreamQuery } from "./subsonic";
 import { MAX_UPLOAD_BYTES, saveUpload, uploadPath } from "./upload";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const COOKIE = "kp_session";
 const FOLDERS_TTL_MS = 10 * 60_000;
@@ -176,6 +179,7 @@ export interface ApiOptions {
   uploadDir?: string | null;
   lyterion?: { url: string; token: string } | null;
   releases?: ReleaseWatch | null;
+  musicbrainz?: MusicBrainz | null;
   artistGenres?: ArtistGenres | null;
   followSync?: FollowSync | null;
   rooms?: ListenRooms;
@@ -232,6 +236,7 @@ export function createApi({
   uploadDir = null,
   lyterion = null,
   releases = null,
+  musicbrainz = null,
   artistGenres = null,
   followSync = null,
   devices = null,
@@ -638,6 +643,43 @@ export function createApi({
     });
   }
 
+  const albumTracksSeen = new Map<string, { at: number; tracks: AlbumTrack[] | null }>();
+  const albumTracksPending = new Map<string, Promise<AlbumTrack[] | null>>();
+  const albumTracksAsked = new Map<string, number[]>();
+
+  function remember<V>(map: Map<string, V>, key: string, value: V): void {
+    map.delete(key);
+    map.set(key, value);
+    if (map.size > 200) map.delete(map.keys().next().value as string);
+  }
+
+  async function albumTracks(request: Request & { params: { id: string } }): Promise<Response> {
+    const session = browserSession(request);
+    if (!session) return json({ error: "signed out" }, 401);
+    const id = request.params.id.toLowerCase();
+    if (!musicbrainz || !UUID.test(id)) return json({ error: "not found" }, 404);
+    const reply = (tracks: AlbumTrack[] | null) =>
+      tracks?.length ? json({ tracks }, 200, { "cache-control": "private, max-age=86400" }) : json({ error: "no track list" }, 404);
+    const seen = albumTracksSeen.get(id);
+    if (seen && seen.at > Date.now() - (seen.tracks?.length ? 86_400_000 : 300_000)) {
+      remember(albumTracksSeen, id, seen);
+      return reply(seen.tracks);
+    }
+    const recent = (albumTracksAsked.get(session.id) ?? []).filter((at) => at > Date.now() - 60_000);
+    if (recent.length >= 20) return json({ error: "slow down" }, 429);
+    remember(albumTracksAsked, session.id, [...recent, Date.now()]);
+    let pending = albumTracksPending.get(id);
+    if (!pending) {
+      if (albumTracksPending.size >= 5) return json({ error: "busy, try again shortly" }, 503, { "retry-after": "10" });
+      pending = musicbrainz.releaseTracks(id).finally(() => albumTracksPending.delete(id));
+      albumTracksPending.set(id, pending);
+    }
+    const tracks = await pending;
+    if (!tracks) return json({ error: "musicbrainz didn't answer" }, 502);
+    remember(albumTracksSeen, id, { at: Date.now(), tracks });
+    return reply(tracks);
+  }
+
   const archiveSlot = gate(4);
 
   /** Release art comes from Cover Art Archive through here: the browser never talks to it, and each cover is fetched once. */
@@ -645,7 +687,7 @@ export function createApi({
     if (!browserSession(request)) return json({ error: "signed out" }, 401);
     const id = request.params.id.toLowerCase();
     const missing = () => new Response(null, { status: 404, headers: { ...SECURITY_HEADERS, "cache-control": "private, max-age=3600" } });
-    if (!releases || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) return missing();
+    if (!releases || !UUID.test(id)) return missing();
     const path = await covers.get(
       `release:${id}`,
       512,
@@ -1219,6 +1261,7 @@ export function createApi({
     lyricsWritten,
     lyterionSummary,
     wishlist,
+    albumTracks,
     upload,
     uploadMetadata,
     searchIndex,

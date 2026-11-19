@@ -18,6 +18,7 @@ import { KeepOffline } from "@/components/keep-offline";
 import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, type ListEditing, PageHeader, Section, TrackList } from "@/components/library";
 import { LikeButton } from "@/components/like-button";
 import { Link } from "@/components/link";
+import { AlbumTracklist } from "@/components/missing-tracks";
 import { PlaylistCover, PlaylistCoverActions } from "@/components/playlist-cover";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
@@ -306,7 +307,9 @@ export function AlbumPage({ id }: { id: string }) {
         {isPlaceholderData ? (
           <TrackListSkeleton count={album.songCount ?? 12} />
         ) : (
-          <TrackList
+          <AlbumTracklist
+            mbid={album.musicBrainzId}
+            artist={album.artist ?? ""}
             songs={songs}
             showAlbum={false}
             showArtist={songs.some((song) => song.artist !== album.artist)}

@@ -21,3 +21,11 @@ export const newReleaseSchema = z.object({
   canGet: z.boolean().describe("Lyterion is set up and you may use it"),
 });
 export type NewRelease = z.infer<typeof newReleaseSchema>;
+
+export interface AlbumTrack {
+  title: string;
+  durationMs: number;
+  artist?: string;
+  /** The disc (MusicBrainz medium position) it sits on. */
+  disc?: number;
+}

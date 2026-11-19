@@ -6,6 +6,7 @@ const PAGES = [
   "/",
   "/albums",
   "/album/al-3",
+  "/album/al-5",
   "/artists",
   "/artist/ar-2",
   "/songs",
@@ -60,6 +61,11 @@ for (const scheme of ["light", "dark"] as const)
         await page.mouse.move(0, 0);
         await signedIn.goto(path);
         await page.locator("main h1, main [aria-label=tracks], main a").first().waitFor();
+        if (path === "/album/al-5")
+          await page
+            .getByText(/not in your library$/)
+            .first()
+            .waitFor();
         await page.waitForTimeout(300);
         expect(await violations(page)).toEqual([]);
       });
