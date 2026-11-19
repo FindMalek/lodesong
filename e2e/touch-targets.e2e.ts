@@ -43,6 +43,15 @@ test("the primary controls on the phone pages are at least 44px", async ({ signe
         page.getByRole("button", { name: /^like / }).first(),
       ],
     ],
+    [
+      "/playlist/pl-smart",
+      [
+        page.getByRole("button", { name: "play", exact: true }).first(),
+        page.getByRole("button", { name: "shuffle" }),
+        page.getByRole("button", { name: "keep offline" }),
+        page.locator("header").getByRole("button", { name: /^more for/ }),
+      ],
+    ],
     ["/artist/ar-2", [page.getByRole("button", { name: "radio" }), page.getByRole("button", { name: "shuffle" })]],
     ["/artists", [page.getByRole("button", { name: "A", exact: true }), page.getByRole("button", { name: "liked" })]],
     ["/stats", [page.getByRole("tab", { name: "7 days" }), page.getByRole("tab", { name: "year" })]],
@@ -161,4 +170,26 @@ test.describe("long list", () => {
     // Rows measured as they scrolled by: the list's height must not have moved, or the scrollbar and position jump.
     expect(Math.abs((await height()) - estimated)).toBeLessThanOrEqual(200);
   });
+});
+
+test("the playlist header menu rows are at least 44px on an editable playlist", async ({ signedIn: page }) => {
+  await page.locator("body").press("Shift+N");
+  const dialog = page.getByRole("dialog", { name: "new playlist" });
+  await dialog.getByLabel("name").fill(`Touch ${Date.now()}`);
+  await dialog.getByRole("button", { name: "create" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Touch");
+  const more = page.locator("header").getByRole("button", { name: /^more for/ });
+  expect(await tooSmall([more])).toEqual([]);
+  await more.click();
+  const rows = page.getByRole("menuitem");
+  await expect(page.getByRole("menuitem", { name: "delete playlist…" })).toBeVisible();
+  const names = await rows.allInnerTexts();
+  expect(names).toEqual(expect.arrayContaining(["rename", "make public", "delete playlist…"]));
+  expect(names).not.toContain("play");
+  const small: string[] = [];
+  for (const row of await rows.all()) {
+    const box = await row.boundingBox();
+    if (box && box.height < MIN - 0.5) small.push(`${await row.innerText()}: ${box.height}`);
+  }
+  expect(small).toEqual([]);
 });

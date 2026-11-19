@@ -39,13 +39,18 @@ test("a new playlist gets the dither, or your picture; removing the cover goes b
   expect(served.headers()["content-type"]).toBe("image/jpeg");
   await shot("picture");
 
-  await header.getByRole("button", { name: "remove cover" }).click();
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await page.getByRole("menuitem", { name: "remove cover" }).click();
   await expect(picture).toHaveCount(0);
   await expect(header.locator("canvas")).toHaveCount(0);
-  await expect(header.getByRole("button", { name: "remove cover" })).toHaveCount(0);
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await expect(page.getByRole("menuitem", { name: "add picture" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "remove cover" })).toHaveCount(0);
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("menuitem", { name: "add picture" }).click();
   await shot("mosaic");
-
-  await header.getByLabel("playlist picture").setInputFiles(FILE);
+  await (await chooser).setFiles(FILE);
   await expect(picture).toBeVisible();
-  await expect(header.getByRole("button", { name: "change picture" })).toBeVisible();
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await expect(page.getByRole("menuitem", { name: "change picture" })).toBeVisible();
 });
