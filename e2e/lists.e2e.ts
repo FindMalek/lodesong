@@ -45,3 +45,46 @@ test("in the queue alt+↓ reorders and delete removes", async ({ page, signedIn
   await page.keyboard.press("Delete");
   await expect(queue.getByText(titles[1] as string, { exact: true })).toHaveCount(0);
 });
+
+test("in the queue a dragged song from your own up-next takes the place of another", async ({ page, signedIn }) => {
+  await signedIn.goto("/album/al-3");
+  const titles = await trackTitles(page);
+  // The first add starts playing; the next three wait in your queue.
+  for (const title of titles.slice(0, 4)) {
+    const row = page.getByRole("row", { name: title as string }).first();
+    await row.hover();
+    await row.getByRole("button", { name: `add ${title} to queue` }).click();
+  }
+  await page.keyboard.press("q");
+  const rows = page
+    .getByRole("list", { name: "queue" })
+    .locator("li[data-queue-index]")
+    .filter({ has: page.locator("[draggable=true]") });
+  const all = async () => rows.allTextContents();
+  await expect(rows.nth(2)).toBeVisible();
+  const [first, middle, last] = await all();
+  expect(await rows.count()).toBe(3);
+  await rows.nth(2).locator("[draggable=true]").dragTo(rows.nth(0));
+  await expect.poll(all).toEqual([last, first, middle]);
+  expect(await rows.count()).toBe(3);
+});
+
+test("in the queue a song from the context dropped on your own up-next changes nothing", async ({ page, signedIn }) => {
+  await signedIn.goto("/album/al-3");
+  const titles = await trackTitles(page);
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  const added = page.getByRole("row", { name: titles[5] as string }).first();
+  await added.hover();
+  await added.getByRole("button", { name: `add ${titles[5]} to queue` }).click();
+  await page.keyboard.press("q");
+  const rows = page
+    .getByRole("list", { name: "queue" })
+    .locator("li[data-queue-index]")
+    .filter({ has: page.locator("[draggable=true]") });
+  await expect(rows.nth(2)).toBeVisible();
+  const before = await rows.allTextContents();
+  await rows.nth(2).locator("[draggable=true]").dragTo(rows.nth(0));
+  await rows.nth(0).locator("[draggable=true]").dragTo(rows.nth(2));
+  await page.waitForTimeout(300);
+  expect(await rows.allTextContents()).toEqual(before);
+});
