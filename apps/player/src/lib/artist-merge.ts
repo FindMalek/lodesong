@@ -16,7 +16,7 @@ export function mergeArtistResults<T extends Artist>(items: T[], merges: ArtistM
 }
 
 export function useArtistMergesQuery() {
-  return useQuery(rpc.artists.merges.queryOptions({ staleTime: 0 }));
+  return useQuery(rpc.artists.merges.queryOptions({ staleTime: 5 * 60_000, refetchOnWindowFocus: false }));
 }
 
 export function useArtistMerges(): ArtistMerge[] {

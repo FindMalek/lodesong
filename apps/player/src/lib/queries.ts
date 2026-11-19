@@ -23,8 +23,12 @@ export const persister = createAsyncStoragePersister({
   throttleTime: 1000,
 });
 
+// Merged artists are changed from other devices too, so a restored copy could keep showing a stale merge.
+const isArtistMerges = (query: Query) => Array.isArray(query.queryKey[0]) && query.queryKey[0].join("/") === "artists/merges";
+
 export const shouldPersist = (query: Query) =>
   query.state.status === "success" &&
+  !isArtistMerges(query) &&
   !["search", "lyricsSearch", "lyricsOffset", "session", "searchIndex", "history", "playlistHidden", "moments"].includes(
     query.queryKey[0] as string,
   );
