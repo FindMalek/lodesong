@@ -198,6 +198,7 @@ export function LikedToggle({ pressed, onPressedChange }: { pressed: boolean; on
 
 const LETTERS = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
 const LETTER_COLUMN = 48;
+const RAIL_IDLE = 150;
 const ARTIST_MIN = 220;
 const ARTIST_GAP = 24;
 
@@ -246,6 +247,7 @@ export function ArtistsPage() {
   useLayoutEffect(() => {
     const header = railRef.current?.closest("header");
     if (!header) return;
+    setHeaderHeight(header.offsetHeight);
     const observer = new ResizeObserver(() => setHeaderHeight(header.offsetHeight));
     observer.observe(header);
     return () => observer.disconnect();
@@ -260,10 +262,19 @@ export function ArtistsPage() {
   const atEnd = offset + (virtualizer.scrollRect?.height ?? 0) >= virtualizer.getTotalSize() + margin - 1;
   const top = virtualizer.getVirtualItems().find((item) => item.end > offset + headerHeight);
   const current = atEnd ? rows[rows.length - 1]?.group : rows[top?.index ?? 0]?.group;
+  // Never recenter under a finger: wait until the rail has been idle for a moment.
+  const railBusy = useRef(0);
+  const touching = useRef(false);
+  const touchRail = (down: boolean) => {
+    touching.current = down;
+    railBusy.current = Date.now();
+  };
   useEffect(() => {
     const rail = railRef.current;
     const button = current ? rail?.querySelector<HTMLElement>(`[data-letter="${current}"]`) : null;
-    if (rail && button) rail.scrollLeft = button.offsetLeft - (rail.clientWidth - button.offsetWidth) / 2;
+    if (!rail || !button || touching.current || Date.now() - railBusy.current < RAIL_IDLE) return;
+    const left = button.offsetLeft - (rail.clientWidth - button.offsetWidth) / 2;
+    rail.scrollTo({ left, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [current]);
 
   return (
@@ -272,6 +283,12 @@ export function ArtistsPage() {
         {/* The whole alphabet from the first frame (missing letters disabled), so its width never changes. */}
         <nav
           ref={railRef}
+          onTouchStart={() => touchRail(true)}
+          onTouchEnd={() => touchRail(false)}
+          onTouchCancel={() => touchRail(false)}
+          onPointerDown={() => touchRail(true)}
+          onPointerUp={() => touchRail(false)}
+          onScroll={() => (railBusy.current = Date.now())}
           aria-label="jump to letter"
           className="order-last flex w-full overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-24px),transparent)] [scrollbar-width:none] sm:order-none sm:w-auto sm:flex-wrap sm:justify-end sm:mask-none"
         >
