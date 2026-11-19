@@ -65,3 +65,34 @@ test("the playing device closing keeps where it stopped for the next one", () =>
   hub.handle("default:malek", phone, JSON.stringify({ t: "transfer", to: "phone" }));
   expect(phone.got.at(-1)).toMatchObject({ t: "take", state: { position: 12, playing: false } });
 });
+
+test("a volume command reaches only the playing device, and a bad volume is dropped", () => {
+  const hub = new DeviceHub(() => 1000);
+  const [mac, phone] = [device("mac"), device("phone")];
+  hub.join("default:malek", mac);
+  hub.join("default:malek", phone);
+  hub.handle(
+    "default:malek",
+    mac,
+    JSON.stringify({ t: "state", state: { songs: [{ id: "s1", title: "Angel" }], position: 1, playing: true, volume: 0.4, muted: false } }),
+  );
+  expect(phone.got.at(-1)).toMatchObject({ t: "state", state: { volume: 0.4, muted: false } });
+
+  const volume = (value: unknown, muted?: unknown) =>
+    JSON.stringify({ t: "command", command: { action: "volume", volume: value, ...(muted === undefined ? {} : { muted }) } });
+  hub.handle("default:malek", phone, volume(0.25, true));
+  expect(mac.got.at(-1)).toEqual({ t: "command", command: { action: "volume", volume: 0.25, muted: true } });
+
+  const before = mac.got.length;
+  for (const bad of [1.5, -0.1, "0.5", null, Number.NaN]) hub.handle("default:malek", phone, volume(bad));
+  hub.handle("default:malek", phone, volume(0.5, "yes"));
+  // The playing device can't command itself, and its own state can't carry an out-of-range volume.
+  hub.handle("default:malek", mac, volume(0.9));
+  hub.handle(
+    "default:malek",
+    mac,
+    JSON.stringify({ t: "state", state: { songs: [{ id: "s1", title: "Angel" }], position: 1, playing: true, volume: 7 } }),
+  );
+  expect(mac.got.length).toBe(before);
+  expect(phone.got.at(-1)).toMatchObject({ state: { volume: 0.4 } });
+});

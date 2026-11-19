@@ -44,11 +44,14 @@ export interface Remote {
   next(): void;
   previous(): void;
   seek(seconds: number): void;
+  volume?(volume: number, muted: boolean): void;
   play(songs: Song[], start: number, options: { shuffle?: boolean; source?: Q.QueueSource }): void;
   add(songs: Song[], next: boolean): void;
 }
 
 let remote: Remote | null = null;
+/** This device's own volume while a remote's is on the slider; the bar shows the other device's, the engine keeps ours. */
+let own: { volume: number; muted: boolean } | null = null;
 
 export type Sleep = { kind: "time"; until: number } | { kind: "track" } | { kind: "album" } | null;
 
@@ -122,7 +125,13 @@ function hasQueue(queue: Q.Queue): boolean {
 // A queue change is written after a short quiet spell (a reload right after must find it); the position and volume wait for an idle moment.
 const store = createSnapshotStore<Snapshot>({
   key: STORAGE_KEY,
-  read: () => ({ queue: state.queue, position, volume: state.volume, muted: state.muted, outputDevice: state.outputDevice }),
+  read: () => ({
+    queue: state.queue,
+    position,
+    volume: own?.volume ?? state.volume,
+    muted: own?.muted ?? state.muted,
+    outputDevice: state.outputDevice,
+  }),
   empty: () => !hasQueue(state.queue),
   active: () => state.playing,
   account: currentAccount,
@@ -350,7 +359,8 @@ window.addEventListener("online", () => {
 });
 
 function applyVolume(): void {
-  decks.setVolume(state.muted ? 0 : state.volume);
+  const level = own ?? state;
+  decks.setVolume(level.muted ? 0 : level.volume);
   decks.setFactor(currentFactor());
 }
 
@@ -716,11 +726,22 @@ export const player = {
     updatePositionState();
   },
   setVolume(volume: number): void {
+    if (remote?.volume) {
+      const next = Math.max(0, Math.min(1, volume));
+      set({ volume: next, muted: false });
+      remote.volume(next, false);
+      return;
+    }
     set({ volume: Math.max(0, Math.min(1, volume)), muted: false });
     applyVolume();
     persist();
   },
   toggleMute(): void {
+    if (remote?.volume) {
+      set({ muted: !state.muted });
+      remote.volume(state.volume, state.muted);
+      return;
+    }
     set({ muted: !state.muted });
     applyVolume();
     persist();
@@ -787,7 +808,17 @@ export const player = {
     load(false, seconds);
   },
   setRemote(next: Remote | null): void {
+    if (next?.volume && !remote) own = { volume: state.volume, muted: state.muted };
+    else if (!next && own) {
+      const back = own;
+      own = null;
+      set(back);
+      applyVolume();
+    }
     remote = next;
+  },
+  mirrorVolume(volume: number, muted: boolean): void {
+    if (own && (state.volume !== volume || state.muted !== muted)) set({ volume, muted });
   },
   isRemote: (): boolean => remote !== null,
   takenOverAt(seconds: number): void {

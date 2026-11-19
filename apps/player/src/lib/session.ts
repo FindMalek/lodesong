@@ -24,6 +24,9 @@ const HEARTBEAT_MS = 5000;
 const MIRROR_MS = 1000;
 const RETRY_MS = [1000, 5000, 15_000, 60_000];
 
+const VOLUME_MS = 100;
+const VOLUME_HOLD_MS = 800;
+
 const CLAIM_KEY = "keep-player:device-claim:";
 const CLAIM_MS = 10_000;
 
@@ -113,7 +116,8 @@ function snapshot(): DeviceState | null {
   const { queue, playing } = player.getState();
   if (!queue.current) return null;
   const entries = [queue.current, ...queue.upNext, ...Q.contextUpcoming(queue)].slice(0, MAX_STATE_SONGS);
-  return { songs: entries.map((entry) => toDeviceSong(entry.song)), position: player.getPosition(), playing };
+  const { volume, muted } = player.getState();
+  return { songs: entries.map((entry) => toDeviceSong(entry.song)), position: player.getPosition(), playing, volume, muted };
 }
 
 const ids = (songs: { id: string }[]) => songs.map((song) => song.id).join(",");
@@ -122,6 +126,32 @@ function upcomingHere(): string {
   const { queue } = player.getState();
   if (!queue.current) return "";
   return ids([queue.current, ...queue.upNext, ...Q.contextUpcoming(queue)].slice(0, MAX_STATE_SONGS).map((entry) => entry.song));
+}
+
+let volumeSentAt = 0;
+let volumeTimer: ReturnType<typeof setTimeout> | undefined;
+let volumeLatest: { volume: number; muted: boolean } | null = null;
+
+function sendVolume(volume: number, muted: boolean): void {
+  volumeLatest = { volume, muted };
+  volumeSentAt = Date.now();
+  if (volumeTimer) return;
+  const flush = () => {
+    volumeTimer = undefined;
+    if (!volumeLatest) return;
+    command({ action: "volume", ...volumeLatest });
+    volumeLatest = null;
+  };
+  flush();
+  volumeTimer = setTimeout(() => {
+    volumeTimer = undefined;
+    flush();
+  }, VOLUME_MS);
+}
+
+function mirrorVolume(state: DeviceState): void {
+  if (Date.now() - volumeSentAt < VOLUME_HOLD_MS) return;
+  if (state.volume !== undefined) player.mirrorVolume(state.volume, state.muted === true);
 }
 
 function mirror(): void {
@@ -148,7 +178,20 @@ function startPublishing(): void {
       send({ t: "state", state: now });
     }
   };
-  player.subscribe(() => publish(false));
+  let level = "";
+  let levelTimer: ReturnType<typeof setTimeout> | undefined;
+  const publishVolume = () => {
+    const { volume, muted } = player.getState();
+    const next = `${volume}|${muted}`;
+    if (next === level) return;
+    level = next;
+    clearTimeout(levelTimer);
+    levelTimer = setTimeout(() => publish(true), VOLUME_MS);
+  };
+  player.subscribe(() => {
+    publish(false);
+    publishVolume();
+  });
   setInterval(() => player.getState().playing && publish(true), HEARTBEAT_MS);
   // A seek doesn't change the song or play state; the remotes still need the new playhead.
   player.element().addEventListener("seeked", () => publish(true));
@@ -164,6 +207,7 @@ const REMOTE = {
   next: () => command({ action: "next" }),
   previous: () => command({ action: "previous" }),
   seek: (seconds: number) => command({ action: "seek", to: seconds }),
+  volume: sendVolume,
   play: (songs: Song[], start: number, options: { shuffle?: boolean; source?: Q.QueueSource }) => {
     const from = Math.max(0, start - Math.floor(MAX_PLAY_SONGS / 2));
     const list = songs.slice(from, from + MAX_PLAY_SONGS);
@@ -192,6 +236,7 @@ function applyRole(): void {
   if (remote && !player.isRemote()) {
     if (!player.element().paused) player.toggle(false);
     player.setRemote(REMOTE);
+    if (last) mirrorVolume(last.state);
     clearInterval(mirrorTimer);
     mirrorTimer = setInterval(mirror, MIRROR_MS);
     mirror();
@@ -208,7 +253,10 @@ function run(value: DeviceCommand): void {
   else if (value.action === "next") player.next();
   else if (value.action === "previous") player.previous();
   else if (value.action === "seek") player.seek(value.to);
-  else if (value.action === "play")
+  else if (value.action === "volume") {
+    player.setVolume(value.volume);
+    if (value.muted && !player.getState().muted) player.toggleMute();
+  } else if (value.action === "play")
     player.play(value.songs as Song[], value.start, {
       shuffle: value.shuffle,
       ...(value.source ? { source: value.source as Q.QueueSource } : {}),
@@ -226,6 +274,7 @@ function onMessage(message: DeviceServerMessage): void {
     case "state":
       offset = clockOffset(message.now, Date.now());
       last = { state: message.state, stamped: message.stamped };
+      mirrorVolume(message.state);
       mirror();
       return;
     case "command":
