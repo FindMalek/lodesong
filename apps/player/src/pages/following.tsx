@@ -4,14 +4,12 @@ import { Badge } from "@lodesong/ui/components/badge";
 import { Button } from "@lodesong/ui/components/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@lodesong/ui/components/input-group";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCheckIcon, PinIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { PinIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Cover } from "@/components/cover";
 import { EmptyState, PageHeader, Section } from "@/components/library";
-import { ReleaseCard } from "@/components/release-card";
 import SyncFollows from "@/components/sync-follows";
 import { apiQueries } from "@/lib/api-queries";
-import { filterKind, groupByWeek, type KindFilter } from "@/lib/releases";
 import { rpc } from "@/lib/rpc";
 import type { Artist } from "@/lib/types";
 
@@ -21,13 +19,6 @@ const SORTS: [Sort, string][] = [
   ["pinned", "pinned first"],
   ["a-z", "a-z"],
   ["newest", "newest release"],
-];
-
-const KIND_OPTIONS: [KindFilter, string][] = [
-  ["all", "all"],
-  ["album", "albums"],
-  ["ep", "eps"],
-  ["single", "singles"],
 ];
 
 function Choice<T extends string>({
@@ -138,18 +129,11 @@ function sorted(artists: Follow[], sort: Sort, latest: Map<string, string>): Fol
   return artists;
 }
 
-/** `/following`: who you follow, finding more, and what they released lately by week. */
+/** `/following`: who you follow and finding more; their new music lands in the release radar mix. */
 export function FollowingPage() {
   const { follows, set } = useFollowing();
   const feed = useQuery(rpc.releases.list.queryOptions({ staleTime: 0, refetchOnWindowFocus: false }));
-  const client = useQueryClient();
-  const seen = useMutation(
-    rpc.releases.seen.mutationOptions({
-      onSuccess: () => void client.invalidateQueries({ queryKey: rpc.releases.list.queryOptions().queryKey }),
-    }),
-  );
   const [sort, setSort] = useState<Sort>("pinned");
-  const [kind, setKind] = useState<KindFilter>("all");
 
   const artists = follows.data?.artists ?? [];
   const followed = useMemo(() => new Set(artists.map((artist) => normalize(artist.name))), [artists]);
@@ -161,9 +145,6 @@ export function FollowingPage() {
     }
     return dates;
   }, [feed.data]);
-  const shown = filterKind(feed.data?.releases ?? [], kind);
-  const unseen = shown.filter((release) => !release.seen).map((release) => release.id);
-  const weeks = useMemo(() => groupByWeek(shown, Date.now()), [shown]);
 
   return (
     <>
@@ -216,39 +197,6 @@ export function FollowingPage() {
             </EmptyState>
           )
         )}
-      </Section>
-      <Section
-        title="new releases"
-        action={
-          <div className="flex items-center gap-3">
-            <Choice label="release type" value={kind} options={KIND_OPTIONS} onChange={setKind} />
-            <Button
-              size="xs"
-              variant="ghost"
-              disabled={!unseen.length || seen.isPending}
-              onClick={() => seen.mutate({ ids: unseen.slice(0, 200) })}
-            >
-              <CheckCheckIcon /> mark all seen
-            </Button>
-          </div>
-        }
-      >
-        {feed.data && !feed.data.watching && <EmptyState>release tracking is off on this server (MUSICBRAINZ_URL is empty)</EmptyState>}
-        {feed.data?.watching && !weeks.length && (
-          <EmptyState>
-            {kind === "all" ? "nothing new in the last three months from the artists you follow" : `no ${kind}s lately`}
-          </EmptyState>
-        )}
-        {weeks.map((week) => (
-          <section key={week.label} aria-label={week.label} className="mb-5">
-            <h3 className="mb-2 font-mono text-faint text-xs">{week.label}</h3>
-            <ul className="flex flex-wrap gap-3">
-              {week.releases.map((release) => (
-                <ReleaseCard key={release.id} release={release} />
-              ))}
-            </ul>
-          </section>
-        ))}
       </Section>
     </>
   );
