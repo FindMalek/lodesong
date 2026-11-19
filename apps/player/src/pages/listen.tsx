@@ -57,6 +57,49 @@ function AddSong() {
   );
 }
 
+const SKIP_HELP = "when on, listeners can skip songs, and pause or resume when party mode is on. when off, only you can.";
+const PARTY_HELP =
+  "when on, only your device plays audio and everyone else just controls it. when off, everyone hears it on their own device.";
+
+/** A labelled switch with a one-line description and its state spelled out. */
+function Toggle({
+  id,
+  label,
+  help,
+  checked,
+  name,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  help: string;
+  checked: boolean;
+  name: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 text-sm">
+      <Switch
+        id={id}
+        aria-label={name}
+        aria-describedby={`${id}-help`}
+        checked={checked}
+        onCheckedChange={(on) => onChange(on === true)}
+        className="mt-0.5"
+      />
+      <div className="flex flex-col gap-0.5">
+        <label htmlFor={id} className="flex items-center gap-2">
+          {label}
+          <span className="font-mono text-muted-foreground text-xs">{checked ? "on" : "off"}</span>
+        </label>
+        <p id={`${id}-help`} className="text-muted-foreground text-xs">
+          {help}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** `/listen` starts or ends a session; `/listen/<code>` joins one. */
 export function ListenPage({ code }: { code: string | null }) {
   const session = useListen();
@@ -106,27 +149,27 @@ export function ListenPage({ code }: { code: string | null }) {
               </div>
             )}
             {session.status === "host" && (
-              <div className="flex items-center gap-2 text-sm">
-                <Switch
-                  aria-label="anyone can skip"
+              <>
+                <Toggle
+                  id="skip-live"
+                  name="anyone can skip"
+                  label="anyone can skip"
+                  help={SKIP_HELP}
                   checked={session.anyoneCanSkip}
-                  onCheckedChange={(checked) => listen.setAnyoneCanSkip(checked === true)}
+                  onChange={(on) => listen.setAnyoneCanSkip(on)}
                 />
-                anyone can skip
-              </div>
-            )}
-            {session.status === "host" && (
-              <div className="flex items-center gap-2 text-sm">
-                <Switch
-                  aria-label="party mode"
+                <Toggle
+                  id="party-live"
+                  name="party mode"
+                  label="party mode"
+                  help={PARTY_HELP}
                   checked={session.partyMode}
-                  onCheckedChange={(checked) => listen.setPartyMode(checked === true)}
+                  onChange={(on) => listen.setPartyMode(on)}
                 />
-                party mode · only this device plays, the others are remotes
-              </div>
+              </>
             )}
             {session.status === "listener" && session.partyMode && (
-              <p className="font-mono text-muted-foreground text-xs">party mode: the host's device plays · your controls go to it</p>
+              <p className="font-mono text-muted-foreground text-xs">the host's device plays the audio. your controls are sent to it.</p>
             )}
             {session.status === "listener" && (
               <div className="flex flex-col gap-3">
@@ -165,23 +208,23 @@ export function ListenPage({ code }: { code: string | null }) {
               play music together with people on this server. start a session and share its link: they sign in with their own account and
               hear what you play.
             </p>
-            <div className="flex items-center gap-2 text-sm">
-              <Switch
-                aria-label="anyone can skip before starting"
-                checked={anyoneCanSkip}
-                onCheckedChange={(checked) => setAnyoneCanSkip(checked === true)}
-              />
-              anyone can skip
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Switch
-                aria-label="party mode before starting"
-                checked={partyMode}
-                onCheckedChange={(checked) => setPartyMode(checked === true)}
-              />
-              party mode · only this device plays
-            </div>
-            <Button size="sm" className="w-fit" onClick={() => void listen.host(anyoneCanSkip, partyMode)}>
+            <Toggle
+              id="skip-new"
+              name="anyone can skip before starting"
+              label="anyone can skip"
+              help={SKIP_HELP}
+              checked={anyoneCanSkip}
+              onChange={setAnyoneCanSkip}
+            />
+            <Toggle
+              id="party-new"
+              name="party mode before starting"
+              label="party mode"
+              help={PARTY_HELP}
+              checked={partyMode}
+              onChange={setPartyMode}
+            />
+            <Button className="w-fit" onClick={() => void listen.host(anyoneCanSkip, partyMode)}>
               start a session
             </Button>
           </div>
@@ -190,7 +233,7 @@ export function ListenPage({ code }: { code: string | null }) {
       {!connected && session.status !== "connecting" && (
         <Section title="join a session">
           <form
-            className="flex max-w-md gap-2 px-4 pb-4"
+            className="flex max-w-md items-center gap-2 pb-4"
             onSubmit={(event) => {
               event.preventDefault();
               if (joinCode.trim()) listen.join(joinCode.trim().toLowerCase());
@@ -203,7 +246,7 @@ export function ListenPage({ code }: { code: string | null }) {
               value={joinCode}
               onChange={(event) => setJoinCode(event.target.value)}
             />
-            <Button type="submit" variant="outline" size="sm">
+            <Button type="submit" variant="outline">
               join
             </Button>
           </form>
