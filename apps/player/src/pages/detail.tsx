@@ -22,7 +22,7 @@ import { AlbumTracklist } from "@/components/missing-tracks";
 import { PlaylistCover, PlaylistCoverActions } from "@/components/playlist-cover";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
-import { useGroupedArtists } from "@/lib/artist-merge";
+import { useArtistMergesQuery, useArtistNames, useGroupedArtists } from "@/lib/artist-merge";
 import { auraParams, vibe } from "@/lib/aura";
 import { cachedSummary } from "@/lib/cached";
 import { useAnalysed } from "@/lib/features";
@@ -215,6 +215,7 @@ const Kind = ({ children }: { children: ReactNode }) => (
 );
 
 export function AlbumPage({ id }: { id: string }) {
+  const artistNames = useArtistNames();
   const {
     data: album,
     error,
@@ -251,9 +252,9 @@ export function AlbumPage({ id }: { id: string }) {
         filterable
       >
         {album.artistId && (
-          <ArtistCard id={album.artistId} name={album.artist}>
+          <ArtistCard id={album.artistId} name={artistNames.get(album.artistId) ?? album.artist}>
             <Link href={`/artist/${album.artistId}`} className="self-start font-medium underline-offset-3 hover:underline">
-              {album.artist}
+              {artistNames.get(album.artistId) ?? album.artist}
             </Link>
           </ArtistCard>
         )}
@@ -351,12 +352,17 @@ export function ArtistPage({ id }: { id: string }) {
   const index = useQuery(queries.artists());
   const all = useMemo(() => (index.data ?? []).flatMap((letter) => letter.artist), [index.data]);
   const groups = useGroupedArtists(all);
+  // Which spellings and ids belong together is only known with the whole index: until then the page stays a skeleton, so it never jumps.
+  const mergesState = useArtistMergesQuery();
+  const ready = !index.isPending && !mergesState.isPending;
   const merged = groups.find((group) => group.ids.includes(id));
-  const others = useQueries({ queries: (merged?.ids ?? []).filter((other) => other !== id).map((other) => queries.artist(other)) });
+  const others = useQueries({
+    queries: (ready ? (merged?.ids ?? []) : []).filter((other) => other !== id).map((other) => queries.artist(other)),
+  });
   const name = merged?.name ?? artist?.name;
-  const tops = useQueries({ queries: (merged?.names ?? (name ? [name] : [])).map((spelling) => queries.topSongs(spelling)) });
+  const tops = useQueries({ queries: !ready ? [] : (merged?.names ?? (name ? [name] : [])).map((spelling) => queries.topSongs(spelling)) });
   const top = {
-    isPending: tops.length === 0 || tops.some((query) => query.isPending),
+    isPending: !ready || tops.length === 0 || tops.some((query) => query.isPending),
     data: tops.every((query) => query.data)
       ? [...new Map(tops.flatMap((query) => query.data ?? []).map((song) => [song.id, song])).values()].slice(0, 10)
       : undefined,
@@ -367,7 +373,7 @@ export function ArtistPage({ id }: { id: string }) {
         <EmptyState>artist not found</EmptyState>
       </Content>
     );
-  if (!artist) return <DetailSkeleton />;
+  if (!artist || !ready) return <DetailSkeleton />;
   const title = merged?.name ?? artist.name;
   const albums = [...(artist.album ?? []), ...others.flatMap((other) => other.data?.album ?? [])].sort(
     (a, b) => (b.year ?? 0) - (a.year ?? 0),
@@ -419,9 +425,9 @@ export function ArtistPage({ id }: { id: string }) {
           {top.data ? <TrackList songs={top.data} showArtist={false} source={source} /> : <TrackListSkeleton count={10} immediate />}
         </Section>
       )}
-      {isPlaceholderData ? (
+      {isPlaceholderData || others.some((other) => other.isPending) ? (
         <Section title="albums">
-          <AlbumGridSkeleton count={artist.albumCount ?? 6} />
+          <AlbumGridSkeleton count={albumCount} />
         </Section>
       ) : (
         groupByRelease(albums).map((group) => (

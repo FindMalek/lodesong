@@ -263,7 +263,8 @@ export function createRpc({
       }),
       merges: signedIn.artists.merges.handler(({ context }) => ({ merges: listArtistMerges(library, context.account) })),
       setMerge: signedIn.artists.setMerge.handler(({ context, input }) => {
-        setArtistMerge(library, context.account, input);
+        if (publicDemo) throw DEMO_REFUSED;
+        if (!setArtistMerge(library, context.account, input)) throw new ORPCError("BAD_REQUEST", { message: "too many" });
         return OK;
       }),
     },

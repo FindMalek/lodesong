@@ -22,6 +22,7 @@ test("SHYLER and Shyler show as one artist, with both artists' albums on its pag
   await expect(page.getByText("merged with: SHYLER")).toBeVisible();
   await expect(page.getByText(`${total} album`, { exact: false }).first()).toBeVisible();
   await expect(page.locator("[data-grid-index]")).toHaveCount(total);
+  await expect(page.locator("[data-grid-index]").getByText(/^SHYLER/)).toHaveCount(0);
 
   await page.getByRole("button", { name: "more for Shyler" }).click();
   const saved = page.waitForResponse((response) => response.url().includes("/artists/merges") && response.ok());

@@ -3,6 +3,7 @@ import { Cover } from "@/components/cover";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { EmptyState } from "@/components/library";
 import { Link } from "@/components/link";
+import { useArtistNames } from "@/lib/artist-merge";
 import { length } from "@/lib/format";
 import type { Album } from "@/lib/types";
 import { usePageVirtualizer } from "@/lib/virtual";
@@ -11,6 +12,7 @@ const ROW = 44;
 
 /** The albums page's list view: one dense row per album, virtualized like the artists list. */
 export function AlbumRows({ albums, onNearEnd }: { albums: Album[]; onNearEnd?: () => void }) {
+  const names = useArtistNames();
   const listRef = useRef<HTMLDivElement>(null);
   const virtualizer = usePageVirtualizer(listRef, { count: albums.length, estimateSize: () => ROW });
   const items = virtualizer.getVirtualItems();
@@ -41,7 +43,9 @@ export function AlbumRows({ albums, onNearEnd }: { albums: Album[]; onNearEnd?: 
             >
               <Cover id={album.coverArt} size={32} alt="" className="size-8 shrink-0" />
               <span className="min-w-0 flex-1 truncate text-small">{album.name}</span>
-              <span className="hidden w-48 shrink-0 truncate text-xs text-muted-foreground sm:block">{album.artist}</span>
+              <span className="hidden w-48 shrink-0 truncate text-xs text-muted-foreground sm:block">
+                {(album.artistId && names.get(album.artistId)) || album.artist}
+              </span>
               <span className="w-10 shrink-0 text-right font-mono text-muted-foreground text-xs tabular-nums">{album.year ?? ""}</span>
               <span className="hidden w-16 shrink-0 text-right font-mono text-muted-foreground text-xs tabular-nums md:block">
                 {album.songCount ? `${album.songCount} tr` : ""}

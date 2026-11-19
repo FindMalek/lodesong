@@ -1,6 +1,7 @@
 import { type ArtistGroup, type ArtistMerge, groupArtists } from "@lodesong/shared/artist-merges";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { queries } from "./queries";
 import { rpc } from "./rpc";
 import type { Artist } from "./types";
 
@@ -14,9 +15,12 @@ export function mergeArtistResults<T extends Artist>(items: T[], merges: ArtistM
   }));
 }
 
+export function useArtistMergesQuery() {
+  return useQuery(rpc.artists.merges.queryOptions({ staleTime: 0 }));
+}
+
 export function useArtistMerges(): ArtistMerge[] {
-  const { data } = useQuery(rpc.artists.merges.queryOptions({ staleTime: 0 }));
-  return data?.merges ?? [];
+  return useArtistMergesQuery().data?.merges ?? [];
 }
 
 export function useGroupedArtists(artists: Artist[]): ArtistGroup<Artist>[] {
@@ -31,4 +35,19 @@ export function useSetArtistMerge() {
       onSuccess: () => client.invalidateQueries({ queryKey: rpc.artists.merges.queryOptions().queryKey }),
     }),
   );
+}
+
+/** Shown name by artist id, for artists that are merged or renamed; the rest keep the name on their albums. */
+export function useArtistNames(): Map<string, string> {
+  const { data } = useQuery(queries.artists());
+  const merges = useArtistMerges();
+  return useMemo(() => {
+    const names = new Map<string, string>();
+    for (const group of groupArtists(
+      (data ?? []).flatMap((letter) => letter.artist),
+      merges,
+    ))
+      if (group.names.length > 1 || group.ids.length > 1) for (const id of group.ids) names.set(id, group.name);
+    return names;
+  }, [data, merges]);
 }

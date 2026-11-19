@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { normalize } from "./normalize";
 
+export const MAX_ARTIST_MERGES = 500;
+
 export const artistMergeSchema = z.object({
   key: z.string().trim().min(1).max(200).describe("`normalize(name)` of the merged artists"),
   unmerged: z.boolean().describe("Kept as separate artists"),
