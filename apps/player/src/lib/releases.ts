@@ -1,5 +1,10 @@
+import type { NewRelease } from "@lodesong/shared/releases";
+
 /** Fixed: the home shelf reserves exactly this much before releases arrive, so nothing below moves. */
 export const RELEASE_CARD_HEIGHT = 252;
+
+const DAY = 86_400_000;
+const WEEK = 7 * DAY;
 
 function parts(date: string): [number, number, number | undefined] {
   const [year, month, day] = date.split("-").map(Number);
@@ -17,4 +22,13 @@ export function when(date: string): string {
   return new Date(time(date))
     .toLocaleDateString("en", { timeZone: "UTC", month: "short", ...(day ? { day: "numeric" } : { year: "numeric" }) })
     .toLowerCase();
+}
+
+export function thisWeek(releases: NewRelease[], now: number): NewRelease[] {
+  const today = now - (now % DAY);
+  return releases.filter((release) => {
+    if (!parts(release.date)[2]) return false;
+    const at = time(release.date);
+    return at >= today - WEEK && at <= today;
+  });
 }

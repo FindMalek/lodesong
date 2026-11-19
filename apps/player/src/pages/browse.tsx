@@ -8,13 +8,14 @@ import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-gro
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ArrowRightIcon, HeartIcon, PlayIcon, ShuffleIcon } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FollowHint } from "@/components/follow-hint";
 import { ListContextMenu, type MenuTarget } from "@/components/item-menu";
 import { JumpBackIn } from "@/components/jump-back-in";
 import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, PageHeader, Section, TrackList } from "@/components/library";
 import { Link } from "@/components/link";
 import { ListFilterBar } from "@/components/list-filter-bar";
 import { MixRow } from "@/components/mix-row";
-import { ArtistRowsSkeleton, Delayed, NewReleasesSkeleton, TrackListSkeleton } from "@/components/skeletons";
+import { ArtistRowsSkeleton, Delayed, TrackListSkeleton } from "@/components/skeletons";
 import { plural } from "@/lib/format";
 import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
 import { usePageView } from "@/lib/page-view";
@@ -131,7 +132,9 @@ export function HomePage() {
 
   return (
     <>
-      <PageHeader title="home" />
+      <PageHeader title="home">
+        <FollowHint />
+      </PageHeader>
       {nothing ? (
         <Content>
           <Empty>
@@ -154,14 +157,14 @@ export function HomePage() {
         </Content>
       ) : (
         <>
-          <Suspense fallback={<NewReleasesSkeleton />}>
-            <NewReleases />
-          </Suspense>
           <JumpBackIn />
           <MixRow />
           <AlbumRow title="recently added" query={newest} priority={8} action={<SeeAll sort="added" />} />
           <AlbumRow title="recently played" query={recent} action={<SeeAll sort="played" />} />
           <AlbumRow title="most played" query={frequent} action={<SeeAll sort="plays" />} />
+          <Suspense fallback={null}>
+            <NewReleases />
+          </Suspense>
         </>
       )}
     </>

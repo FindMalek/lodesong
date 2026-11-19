@@ -29,10 +29,15 @@ test("a followed artist's new release is a card with its type, date and link, an
   await expect(card.getByText("Night Owls")).toBeVisible();
   await expect(card.getByText(/^album · /)).toBeVisible();
   await expect(row.getByText("Live In Nowhere")).toHaveCount(0);
-  await expect(card.getByRole("link", { name: "Fresh Hours on musicbrainz" })).toHaveAttribute(
+  await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute(
     "href",
-    /musicbrainz\.org\/release-group\/rg-fresh-hours/,
+    "https://musicbrainz.org/release-group/rg-fresh-hours",
   );
+  await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute("target", "_blank");
+  await page.context().route("https://musicbrainz.org/**", (route) => route.fulfill({ body: "ok" }));
+  const [popup] = await Promise.all([page.waitForEvent("popup"), card.click({ position: { x: 80, y: 80 } })]);
+  expect(popup.url()).toContain("rg-fresh-hours");
+  await popup.close();
 
   await card.getByRole("button", { name: "get Fresh Hours" }).click();
   await expect(card.getByText("asked lyterion")).toBeVisible();
@@ -75,6 +80,31 @@ test("a followed artist's new songs go into the release radar, not onto the foll
     await fetch(`${process.env.E2E_MOCK_URL}/mock/added?id=${song.id}&mode=off`, { method: "POST" });
     await call("/api/index", { method: "POST" });
   }
+});
+
+test("a shelf of releases older than a week is hidden, and the menu does not open the card link", async ({ signedIn: page }) => {
+  await follow(page, "Night Owls");
+  await page.goto("/");
+  const row = page.getByRole("list", { name: "new releases" });
+  await expect(async () => {
+    await page.reload();
+    await expect(row).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  let opened = false;
+  page.on("popup", () => {
+    opened = true;
+  });
+  const card = row.getByRole("listitem").filter({ hasText: "Fresh Hours" });
+  await card.getByRole("button", { name: "more for Fresh Hours" }).click();
+  await expect(page.getByRole("menuitem", { name: "open on musicbrainz" })).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(opened).toBe(false);
+  await page.keyboard.press("Escape");
+
+  await page.clock.install({ time: Date.now() + 10 * 86_400_000 });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "recently added" })).toBeVisible();
+  await expect(row).toHaveCount(0);
 });
 
 test("the following page finds an artist through a typo, pins and unfollows it", async ({ signedIn: page }) => {

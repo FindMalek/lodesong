@@ -1,7 +1,8 @@
 import type { NewRelease } from "@lodesong/shared/releases";
 import { Button } from "@lodesong/ui/components/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@lodesong/ui/components/dropdown-menu";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckIcon, ExternalLinkIcon } from "lucide-react";
+import { CheckIcon, EllipsisIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { RELEASE_CARD_HEIGHT, when } from "@/lib/releases";
 import { rpc } from "@/lib/rpc";
@@ -37,7 +38,7 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
   const { get, seen } = useReleaseActions();
   const [artFailed, setArtFailed] = useState(false);
   return (
-    <li className="flex w-40 shrink-0 flex-col" style={{ height: RELEASE_CARD_HEIGHT }}>
+    <li className="group/release relative flex w-40 shrink-0 flex-col" style={{ height: RELEASE_CARD_HEIGHT }}>
       <div
         aria-hidden
         className="relative flex size-40 shrink-0 items-center justify-center font-mono text-3xl text-foreground/40 outline outline-muted"
@@ -58,19 +59,28 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
           <span className="absolute top-1.5 left-1.5 bg-foreground px-1 font-mono text-label text-background leading-4">new</span>
         )}
       </div>
-      <span className="mt-2 truncate font-medium text-sm leading-5">{release.title}</span>
+      <a
+        href={release.url}
+        target="_blank"
+        rel="noreferrer"
+        title="open on musicbrainz"
+        className="mt-2 truncate font-medium text-sm leading-5 outline-none after:absolute after:inset-0 focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-ring"
+      >
+        {release.title}
+      </a>
       <span className="truncate text-muted-foreground text-xs leading-4">{release.artist}</span>
       <span className="truncate font-mono text-faint text-xs leading-4">
         {release.kind} · {when(release.date)}
       </span>
-      <span className="mt-2 flex h-6 items-center gap-1">
+      <span className="relative z-10 flex h-8 items-center">
         {release.canGet &&
           (release.requested ? (
             <span className="font-mono text-muted-foreground text-xs">asked lyterion</span>
           ) : (
             <Button
               size="xs"
-              variant="outline"
+              variant="ghost"
+              className="-my-1.5 -ml-2 h-11 px-2 font-mono text-muted-foreground"
               disabled={get.isPending}
               aria-label={`get ${release.title}`}
               onClick={() => get.mutate({ id: release.id })}
@@ -78,28 +88,31 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
               get it
             </Button>
           ))}
-        <span className="ml-auto flex">
-          {!release.seen && (
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={`mark ${release.title} seen`}
-              title="mark seen"
-              onClick={() => seen.mutate({ ids: [release.id] })}
-            >
-              <CheckIcon />
-            </Button>
-          )}
-          <Button
-            size="icon-xs"
-            variant="ghost"
-            title="open on musicbrainz"
-            render={<a href={release.url} target="_blank" rel="noreferrer" aria-label={`${release.title} on musicbrainz`} />}
-          >
-            <ExternalLinkIcon />
-          </Button>
-        </span>
       </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              size="icon"
+              variant="secondary"
+              aria-label={`more for ${release.title}`}
+              className="absolute top-0 right-0 z-10 size-11 opacity-0 group-focus-within/release:opacity-100 group-hover/release:opacity-100 data-popup-open:opacity-100 pointer-coarse:opacity-100 sm:size-8"
+            />
+          }
+        >
+          <EllipsisIcon />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-max">
+          {!release.seen && (
+            <DropdownMenuItem className="min-h-11 sm:min-h-0" onClick={() => seen.mutate({ ids: [release.id] })}>
+              <CheckIcon /> mark seen
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem className="min-h-11 sm:min-h-0" render={<a href={release.url} target="_blank" rel="noreferrer" />}>
+            <ExternalLinkIcon /> open on musicbrainz
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </li>
   );
 }

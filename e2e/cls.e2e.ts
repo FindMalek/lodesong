@@ -36,6 +36,23 @@ for (const route of ROUTES)
     expect(await shifts(page)).toEqual({ cls: 0, shifts: [] });
   });
 
+test("the release shelf, below every row, pops in or stays hidden and moves nothing", async ({ page, signedIn }) => {
+  await signedIn.evaluate(() =>
+    fetch("/api/follows", {
+      method: "PUT",
+      headers: { "x-lodesong": "1", "content-type": "application/json" },
+      body: JSON.stringify({ name: "Night Owls", status: "pinned" }),
+    }),
+  );
+  await expect(async () => {
+    await signedIn.goto("/");
+    await expect(signedIn.getByRole("list", { name: "new releases" })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await page.addInitScript(watchShifts);
+  await signedIn.goto("/");
+  expect(await shifts(page)).toEqual({ cls: 0, shifts: [] });
+});
+
 test.describe(() => {
   // The album request is held with page.route, which doesn't see requests the service worker makes.
   test.use({ serviceWorkers: "block" });
