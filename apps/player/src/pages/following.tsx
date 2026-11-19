@@ -1,3 +1,4 @@
+import { groupArtists } from "@lodesong/shared/artist-merges";
 import { normalize } from "@lodesong/shared/normalize";
 import type { Follow } from "@lodesong/shared/releases";
 import { Badge } from "@lodesong/ui/components/badge";
@@ -12,6 +13,7 @@ import { Link } from "@/components/link";
 import { ArtistRowsSkeleton } from "@/components/skeletons";
 import SyncFollows from "@/components/sync-follows";
 import { apiQueries } from "@/lib/api-queries";
+import { useArtistMerges } from "@/lib/artist-merge";
 import { queries } from "@/lib/queries";
 import { rpc } from "@/lib/rpc";
 import type { Artist } from "@/lib/types";
@@ -59,17 +61,18 @@ const STATUS_HELP: Record<Follow["status"], string> = {
   followed: "followed",
 };
 
-function ArtistName({ name, id }: { name: string; id?: string }) {
-  if (!id) {
+function ArtistName({ name, match }: { name: string; match?: { id: string; name: string } }) {
+  if (!match) {
     return (
-      <span className="min-w-0 flex-1 cursor-default truncate text-muted-foreground text-sm" title="not in your library yet">
-        {name}
+      <span className="flex min-w-0 flex-1 items-baseline gap-2 text-sm" title="not in your library yet">
+        <span className="truncate text-muted-foreground">{name}</span>
+        <span className="shrink-0 font-mono text-muted-foreground text-xs">not in library</span>
       </span>
     );
   }
   return (
-    <Link href={`/artist/${id}`} className="min-w-0 flex-1 truncate text-sm underline-offset-3 hover:underline">
-      {name}
+    <Link href={`/artist/${match.id}`} className="min-w-0 flex-1 truncate text-sm underline-offset-3 hover:underline">
+      {match.name}
     </Link>
   );
 }
@@ -160,15 +163,26 @@ export function FollowingPage() {
   const feed = useQuery(rpc.releases.list.queryOptions({ staleTime: 0, refetchOnWindowFocus: false }));
   const [sort, setSort] = useState<Sort>("pinned");
   const library = useQuery(queries.artists());
-  const libraryIds = useMemo(() => {
-    const ids = new Map<string, string>();
-    for (const letter of library.data ?? []) for (const artist of letter.artist) ids.set(normalize(artist.name), artist.id);
-    return ids;
-  }, [library.data]);
-  const unfollow = (artist: Follow) => {
+  const merges = useArtistMerges();
+  const libraryArtists = useMemo(() => {
+    const groups = new Map<string, { id: string; name: string }>();
+    for (const group of groupArtists(
+      (library.data ?? []).flatMap((letter) => letter.artist),
+      merges,
+    ))
+      if (!groups.has(group.key)) groups.set(group.key, { id: group.id, name: group.name });
+    return groups;
+  }, [library.data, merges]);
+  const unfollow = (artist: Follow, row: HTMLElement | null) => {
+    const next = row?.nextElementSibling ?? row?.previousElementSibling;
+    const target = next?.querySelector<HTMLElement>("a, button") ?? row?.parentElement;
+    target?.focus();
     const back = (status: "followed" | "pinned" | "unfollowed") => () => set.mutateAsync({ name: artist.name, status });
     set.mutate({ name: artist.name, status: "unfollowed" });
-    done({ label: `unfollowed ${artist.name}`, undo: back(artist.status === "pinned" ? "pinned" : "followed"), redo: back("unfollowed") });
+    done(
+      { label: `unfollowed ${artist.name}`, undo: back(artist.status === "pinned" ? "pinned" : "followed"), redo: back("unfollowed") },
+      8000,
+    );
   };
 
   const artists = follows.data?.artists ?? [];
@@ -198,10 +212,10 @@ export function FollowingPage() {
         {follows.isPending ? (
           <ArtistRowsSkeleton count={6} className="" min={260} row="h-9.25" />
         ) : artists.length ? (
-          <ul aria-label="followed artists" className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6">
+          <ul aria-label="followed artists" tabIndex={-1} className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-x-6">
             {sorted(artists, sort, latest).map((artist) => (
               <li key={artist.name} className="flex items-center gap-2 border-b py-1">
-                <ArtistName name={artist.name} id={libraryIds.get(normalize(artist.name))} />
+                <ArtistName name={artist.name} match={libraryArtists.get(normalize(artist.name))} />
                 {artist.status !== "followed" && (
                   <Badge
                     variant="outline"
@@ -228,7 +242,7 @@ export function FollowingPage() {
                   className="ml-3 pointer-coarse:size-11"
                   aria-label={`unfollow ${artist.name}`}
                   title="unfollow (you can undo it)"
-                  onClick={() => unfollow(artist)}
+                  onClick={(event) => unfollow(artist, event.currentTarget.closest("li"))}
                 >
                   <XIcon />
                 </Button>

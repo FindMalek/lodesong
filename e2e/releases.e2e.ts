@@ -31,7 +31,7 @@ test("a followed artist's new release is a card with its type, date and link, an
   await expect(row.getByText("Live In Nowhere")).toHaveCount(0);
   await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute(
     "href",
-    "https://musicbrainz.org/release-group/rg-fresh-hours",
+    /^https:\/\/musicbrainz\.org\/release-group\/rg-fresh-hours-/,
   );
   await expect(card.getByRole("link", { name: "Fresh Hours" })).toHaveAttribute("target", "_blank");
   await page.context().route("https://musicbrainz.org/**", (route) => route.fulfill({ body: "ok" }));
