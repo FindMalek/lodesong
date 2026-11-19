@@ -49,7 +49,7 @@ import { Truncated } from "./truncated";
 
 export type Panel = "queue" | "lyrics" | "info" | null;
 
-const ICON_BUTTON = "size-8 rounded-none text-muted-foreground hover:bg-transparent hover:text-foreground";
+const ICON_BUTTON = "size-8 pointer-coarse:size-11 rounded-none text-muted-foreground hover:bg-transparent hover:text-foreground";
 
 /** audiocn's time readout reads the live position; this re-renders it once a second instead of every frame. */
 function Elapsed() {
@@ -64,7 +64,7 @@ const CoverDetails = lazy(() => import("./now-playing-details").then((module) =>
 const ArtistCard = lazy(() => import("./artist-card").then((module) => ({ default: module.ArtistCard })));
 
 /** Title, artist and like; song info is a small button on the cover, shown when you hover it. */
-function NowPlaying({ song, panel, onPanel }: { song: Song; panel: Panel; onPanel: (panel: Panel) => void }) {
+function NowPlaying({ song, panel, onPanel, showLike }: { song: Song; panel: Panel; onPanel: (panel: Panel) => void; showLike: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
       <div className="group/cover relative shrink-0">
@@ -103,9 +103,11 @@ function NowPlaying({ song, panel, onPanel }: { song: Song; panel: Panel; onPane
           </Suspense>
         )}
       </div>
-      <Hint label="like" shortcut="like">
-        <LikeButton kind="song" id={song.id} label={song.title} className="shrink-0" />
-      </Hint>
+      {showLike && (
+        <Hint label="like" shortcut="like">
+          <LikeButton kind="song" id={song.id} label={song.title} className="shrink-0" />
+        </Hint>
+      )}
     </div>
   );
 }
@@ -148,7 +150,7 @@ const BAR_GRID: Record<BarMode, string> = {
   full: "grid h-16 grid-cols-[minmax(0,1fr)_minmax(320px,1.4fr)_minmax(0,1fr)] gap-4 px-3.5",
   laptop: "grid h-16 grid-cols-[minmax(0,1fr)_minmax(300px,1.4fr)_minmax(0,1fr)] gap-3 px-3.5",
   compact: "grid h-16 grid-cols-[minmax(0,1fr)_minmax(250px,1.3fr)_auto] gap-3 px-3",
-  mobile: "grid h-auto grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5 px-3 py-1.5",
+  mobile: "grid h-auto grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1.5 px-3 py-2",
 };
 
 const DevicePicker = lazy(() => import("./device-picker").then((module) => ({ default: module.DevicePicker })));
@@ -216,7 +218,7 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
   const roomy = mode === "full" || mode === "laptop";
 
   const controls = (
-    <AudioPlayerControls className={cn("justify-center gap-2.5", mobile && "gap-1")}>
+    <AudioPlayerControls className={cn("justify-center gap-2.5", mobile && "gap-0")}>
       {!mobile && (
         <Hint label="shuffle" shortcut="shuffle">
           <ToolButton on={shuffle} onClick={player.toggleShuffle} aria-label="shuffle" aria-pressed={shuffle}>
@@ -232,7 +234,7 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
         </Hint>
       )}
       <Hint label={controller.playing ? "pause" : "play"} shortcut="play-pause">
-        <AudioPlayerPlay className="size-8 rounded-none" aria-label={controller.playing ? "pause" : "play"}>
+        <AudioPlayerPlay className="size-8 rounded-none pointer-coarse:size-11" aria-label={controller.playing ? "pause" : "play"}>
           {({ playing }) =>
             slow ? (
               <Loader className="size-4" label="buffering" />
@@ -260,7 +262,7 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
   );
 
   const seek = (
-    <div className="flex min-w-0 items-center gap-2.5">
+    <div className="flex min-w-0 items-center gap-3">
       <Elapsed />
       <div className="relative flex flex-1 items-center">
         <AudioPlayerSeek aria-label="seek" className={cn(buffering && "opacity-60")} />
@@ -313,7 +315,7 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
     >
       <UpNextPeek />
       <AudioPlayer player={controller} shortcuts={false} onPrevious={player.previous} onNext={player.next} className={BAR_GRID[mode]}>
-        <NowPlaying song={song} panel={panel} onPanel={onPanel} />
+        <NowPlaying song={song} panel={panel} onPanel={onPanel} showLike={!mobile} />
 
         {mobile ? (
           <>
