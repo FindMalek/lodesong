@@ -60,9 +60,9 @@ export async function redo(): Promise<void> {
   notify({ message: `redid: ${target.label}`, id: "undo", action: { label: "undo", onClick: () => void undo(target) } });
 }
 
-export function done(action: Undoable): void {
+export function done(action: Undoable, duration?: number): void {
   record(action);
-  notify({ message: action.label, action: { label: "undo", onClick: () => void undo(action) } });
+  notify({ message: action.label, duration, action: { label: "undo", onClick: () => void undo(action) } });
 }
 
 function clearHistory(): void {

@@ -745,7 +745,13 @@ const server = Bun.serve({
       return Response.json({
         "release-group-count": 3,
         "release-groups": [
-          { id: "rg-fresh-hours", title: "Fresh Hours", "primary-type": "Album", "secondary-types": [], "first-release-date": date },
+          {
+            id: `rg-fresh-hours-${url.searchParams.get("artist")}`,
+            title: "Fresh Hours",
+            "primary-type": "Album",
+            "secondary-types": [],
+            "first-release-date": date,
+          },
           {
             id: `rg-single-${url.searchParams.get("artist")}`,
             title: "Late Single",
