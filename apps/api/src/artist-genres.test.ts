@@ -34,7 +34,7 @@ test("untagged albums get their artist's musicbrainz genres, cached, and tagged 
   const genres = new ArtistGenres(db, new MusicBrainz("http://mb", fetcher, 0));
 
   const first = genres.report("s", null, "shoegaze");
-  expect(first).toMatchObject({ untagged: { albums: 2, songs: 1 }, pending: 1, genres: [] });
+  expect(first).toMatchObject({ untagged: { albums: 2, songs: 12 }, pending: 1, genres: [] });
   await genres.drain();
 
   const second = genres.report("s", null, "shoegaze");

@@ -460,13 +460,13 @@ export function GenresPage() {
         )}
         {loaded && guess && guess.untagged.songs > 0 && (
           <p className="mt-6 max-w-prose font-mono text-muted-foreground text-xs leading-relaxed">
-            {plural(guess.untagged.songs, "song")} in {plural(guess.untagged.albums, "album")} have no genre tag, so they are in no genre
+            {plural(guess.untagged.songs, "song")} in {plural(guess.untagged.albums, "album")} have no genre tag, so they are not counted
             above. genres are read from the files' tags: add them in the files (lyterion can backfill them), then rescan in navidrome.
           </p>
         )}
         {loaded && guess && guess.genres.length > 0 && (
           <section aria-label="inferred genres" className="mt-6">
-            <h2 className="mb-2.5 font-mono text-muted-foreground text-xs">inferred from artists · not in your tags</h2>
+            <h2 className="mb-2.5 font-mono text-muted-foreground text-xs">no genre tag · guessed from the artist</h2>
             <ul className="flex flex-wrap gap-2">
               {guess.genres.map((genre) => (
                 <li key={genre.name}>

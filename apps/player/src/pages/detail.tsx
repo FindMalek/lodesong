@@ -507,7 +507,7 @@ export function GenrePage({ name }: { name: string }) {
         )}
       </Section>
       {inferred.data && inferred.data.length > 0 && (
-        <Section title="inferred · no genre tag, by artists in this genre">
+        <Section title="no genre tag · guessed from the artist">
           <AlbumGrid albums={inferred.data} />
         </Section>
       )}
