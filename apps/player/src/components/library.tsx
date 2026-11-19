@@ -263,11 +263,16 @@ const TrackRow = memo(function TrackRow({
       onDragEnd={endDrag}
     >
       <TableCell className="relative py-0 font-mono text-muted-foreground tabular-nums">
-        <span className="group-hover/row:invisible">{status ? <Equalizer playing={status === "playing"} /> : number}</span>
+        <span className={cn("group-hover/row:invisible", !status && "pointer-coarse:invisible")}>
+          {status ? <Equalizer playing={status === "playing"} /> : number}
+        </span>
         <Button
           variant="ghost"
           size="icon-xs"
-          className="invisible absolute top-1/2 left-1 -translate-y-1/2 focus-visible:visible group-hover/row:visible"
+          className={cn(
+            "invisible absolute inset-y-0 left-1 my-auto focus-visible:visible group-hover/row:visible pointer-coarse:visible pointer-coarse:left-0",
+            status && "pointer-coarse:invisible",
+          )}
           onClick={() => onPlay(index)}
           aria-label={`play ${song.title}`}
         >
@@ -303,7 +308,7 @@ const TrackRow = memo(function TrackRow({
           <Rating id={song.id} value={song.userRating} label={song.title} />
         </TableCell>
       )}
-      <TableCell className="w-8 py-0">
+      <TableCell className="w-8 py-0 pointer-coarse:w-11">
         <LikeButton kind="song" id={song.id} label={song.title} quiet />
       </TableCell>
       <TableCell className="py-0 text-right font-mono text-muted-foreground tabular-nums">
@@ -311,14 +316,26 @@ const TrackRow = memo(function TrackRow({
         {clock(song.duration)}
       </TableCell>
       <TableCell className="py-0">
-        <div className="flex justify-end opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+        <div className="flex justify-end opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100">
           <Hint label="play next" shortcut="list-play-next">
-            <Button variant="ghost" size="icon-xs" onClick={() => player.playNext([song])} aria-label={`play ${song.title} next`}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="pointer-coarse:hidden"
+              onClick={() => player.playNext([song])}
+              aria-label={`play ${song.title} next`}
+            >
               <ListStartIcon />
             </Button>
           </Hint>
           <Hint label="add to queue" shortcut="list-queue">
-            <Button variant="ghost" size="icon-xs" onClick={() => player.addToQueue([song])} aria-label={`add ${song.title} to queue`}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="pointer-coarse:hidden"
+              onClick={() => player.addToQueue([song])}
+              aria-label={`add ${song.title} to queue`}
+            >
               <ListEndIcon />
             </Button>
           </Hint>
@@ -484,7 +501,7 @@ function TrackRows({
   const virtual = items.length > VIRTUALIZE_FROM;
   const virtualizer = usePageVirtualizer(listRef, {
     count: items.length,
-    estimateSize: (index) => (items[index]?.kind === "disc" ? 32 : showArtist ? 44 : 34),
+    estimateSize: (index) => (items[index]?.kind === "disc" ? 32 : showArtist || matchMedia("(pointer: coarse)").matches ? 44 : 34),
     enabled: virtual,
   });
   const windowItems = virtualizer.getVirtualItems();
@@ -692,13 +709,13 @@ function TrackRows({
           aria-rowcount={virtual ? items.length + 1 : undefined}
         >
           <colgroup>
-            <col className="w-10" />
+            <col className="w-10 pointer-coarse:w-11" />
             <col />
             {showAlbum && <col className="w-[38%] max-lg:hidden" />}
             {ratings && <col className="w-20" />}
-            <col className="w-8" />
+            <col className="w-8 pointer-coarse:w-11" />
             <col className="w-14" />
-            <col className={editing ? "w-32" : "w-20"} />
+            <col className={editing ? "w-32 pointer-coarse:w-28" : "w-20 pointer-coarse:w-11"} />
           </colgroup>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

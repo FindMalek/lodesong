@@ -109,7 +109,7 @@ function SeeAll({ sort }: { sort: SongSort }) {
       href="/songs"
       aria-label={`see all, ${sort}`}
       title="see all songs"
-      className="text-muted-foreground hover:text-foreground"
+      className="text-muted-foreground hover:text-foreground pointer-coarse:grid pointer-coarse:size-11 pointer-coarse:place-items-center"
       onClick={() => {
         try {
           localStorage.setItem("keep-player:view:songs", JSON.stringify({ sort }));
@@ -242,7 +242,7 @@ export function ArtistsPage() {
               key={letter}
               variant="ghost"
               size="xs"
-              className="w-5 shrink-0 px-0 font-mono font-normal text-muted-foreground"
+              className="w-5 pointer-coarse:w-11 shrink-0 px-0 font-mono font-normal text-muted-foreground"
               disabled={!letterRow.has(letter)}
               onClick={() => virtualizer.scrollToIndex(letterRow.get(letter) ?? 0, { align: "start" })}
             >

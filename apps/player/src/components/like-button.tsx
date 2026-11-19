@@ -25,7 +25,9 @@ export function LikeButton({
       aria-label={liked ? `unlike ${label}` : `like ${label}`}
       aria-pressed={liked}
       className={cn(
-        quiet && !liked && "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100",
+        quiet &&
+          !liked &&
+          "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100",
         className,
       )}
       onClick={(event) => {

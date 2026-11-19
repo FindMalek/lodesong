@@ -63,6 +63,7 @@ function PanelFrame({
 
 const QUEUE_ROW = 40;
 const QUEUE_HEADER = 36;
+const QUEUE_HEADER_TOUCH = 44;
 
 type QueueItem =
   | { kind: "header"; label: string; action?: { label: string; run: () => void } }
@@ -206,7 +207,8 @@ export function QueuePanel({ onClose }: { onClose: () => void }) {
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => listRef.current?.closest<HTMLElement>("[data-slot=scroll-area-viewport]") ?? null,
-    estimateSize: (index) => (items[index]?.kind === "header" ? QUEUE_HEADER : QUEUE_ROW),
+    estimateSize: (index) =>
+      items[index]?.kind === "header" ? (matchMedia("(pointer: coarse)").matches ? QUEUE_HEADER_TOUCH : QUEUE_HEADER) : QUEUE_ROW,
     overscan: 10,
     scrollMargin: listRef.current?.offsetTop ?? 6,
   });
@@ -332,7 +334,7 @@ export function QueuePanel({ onClose }: { onClose: () => void }) {
                   style={{ transform: `translateY(${virtual.start - margin}px)` }}
                 >
                   {item.kind === "header" ? (
-                    <div className="flex h-9 items-end justify-between px-1.5 pb-1.5">
+                    <div className="flex h-9 items-end justify-between px-1.5 pb-1.5 pointer-coarse:h-11 pointer-coarse:items-center pointer-coarse:pb-0">
                       <h3 className="truncate font-mono text-label text-faint">{item.label}</h3>
                       {item.action && (
                         <Button
