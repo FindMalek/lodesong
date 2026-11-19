@@ -95,17 +95,42 @@ test("the time column sits flush with the right edge of the track list, hovered 
   const grid = page.getByRole("grid", { name: "tracks" });
   const row = grid.locator("tbody tr[data-song-index]").first();
   await expect(row).toBeVisible();
-  const gap = async (): Promise<number[]> => {
-    const edge = (await grid.boundingBox())?.x ?? 0;
-    const right = edge + ((await grid.boundingBox())?.width ?? 0);
-    const cell = await row.locator("td").last().boundingBox();
-    const head = await grid.locator("thead th").last().boundingBox();
-    return [right - ((cell?.x ?? 0) + (cell?.width ?? 0)), right - ((head?.x ?? 0) + (head?.width ?? 0))];
+  const measure = () =>
+    grid.evaluate((table) => {
+      const textRight = (cell: Element): { left: number; right: number } => {
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        const range = document.createRange();
+        let node = walker.nextNode();
+        while (node && !node.textContent?.trim()) node = walker.nextNode();
+        if (!node) return { left: 0, right: 0 };
+        range.selectNodeContents(node);
+        const box = range.getBoundingClientRect();
+        return { left: box.left, right: box.right };
+      };
+      const row = table.querySelector("tbody tr[data-song-index]") as HTMLElement;
+      const heads = [...table.querySelectorAll("thead th")];
+      const head = heads.find((th) => th.textContent?.trim() === "time") as Element;
+      const time = row.querySelectorAll("td")[heads.indexOf(head)] as HTMLElement;
+      const box = table.getBoundingClientRect();
+      const inner = box.right - Number.parseFloat(getComputedStyle(time).paddingRight);
+      const buttons = [...row.querySelectorAll("button")].filter((b) => !time.contains(b));
+      return {
+        inner,
+        time: textRight(time),
+        head: textRight(head),
+        buttonsRight: Math.max(...buttons.map((b) => b.getBoundingClientRect().right)),
+      };
+    });
+  const check = async (): Promise<void> => {
+    const m = await measure();
+    expect(m.inner - m.time.right).toBeLessThan(3);
+    expect(Math.abs(m.head.right - m.time.right)).toBeLessThan(2);
+    expect(m.buttonsRight).toBeLessThanOrEqual(m.time.left);
   };
-  for (const g of await gap()) expect(g).toBeLessThan(3);
+  await check();
   const before = await grid.boundingBox();
   await row.hover();
-  for (const g of await gap()) expect(g).toBeLessThan(3);
+  await check();
   expect((await grid.boundingBox())?.width).toBe(before?.width);
   await expect(row.locator("td").last()).toHaveText(/^\s*\d+:\d\d\s*$/);
 });
