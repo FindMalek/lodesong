@@ -28,6 +28,10 @@ export function PlaylistCover({
   return <FolderCover id={`playlist:${id}`} cover={view.kind === "image" ? view.url : null} className={cn("aspect-square", className)} />;
 }
 
+/** A 24px button with a 44px hit area on touch screens. */
+const ACTION =
+  "relative text-muted-foreground pointer-coarse:before:absolute pointer-coarse:before:-inset-x-1 pointer-coarse:before:-inset-y-2.5";
+
 /** Under a playlist's cover: put a picture on it, or drop the dither or picture to go back to the four-album mosaic. */
 export function PlaylistCoverActions({ id }: { id: string }) {
   const view = usePlaylistCover(id);
@@ -35,17 +39,11 @@ export function PlaylistCoverActions({ id }: { id: string }) {
   if (isDemo() || view.kind === "loading") return null;
   return (
     <div className="mt-1.5 flex flex-wrap gap-x-2">
-      <Button type="button" variant="ghost" size="xs" className="text-muted-foreground" onClick={() => file.current?.click()}>
+      <Button type="button" variant="ghost" size="xs" className={ACTION} onClick={() => file.current?.click()}>
         {view.kind === "mosaic" ? "add picture" : "change picture"}
       </Button>
       {view.kind !== "mosaic" && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          className="text-muted-foreground"
-          onClick={() => void setPlaylistCover(id, "mosaic")}
-        >
+        <Button type="button" variant="ghost" size="xs" className={ACTION} onClick={() => void setPlaylistCover(id, "mosaic")}>
           remove cover
         </Button>
       )}

@@ -303,6 +303,7 @@ export function createRpc({
         if (known) sweepPlaylistCovers(library, context.account, known);
         return { covers: listPlaylistCovers(library, context.account) };
       }),
+      // Covers belong to the account and change only its own view; per account is intended, lodesong is a single-user app.
       setCover: signedIn.playlists.setCover.handler(async ({ context, input }) => {
         if (publicDemo) throw DEMO_REFUSED;
         await requirePlaylists(upstreamOf(context.session), context.session, [input.id]);

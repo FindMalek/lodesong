@@ -112,5 +112,5 @@ test("the new playlist dialog doesn't offer cover choices the demo would refuse"
   await page.locator("body").press("Shift+N");
   const dialog = page.getByRole("dialog", { name: "new playlist" });
   await expect(dialog.getByLabel("name")).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "animated dither" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "add a picture" })).not.toBeVisible();
 });

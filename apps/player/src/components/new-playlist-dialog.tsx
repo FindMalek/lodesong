@@ -152,7 +152,14 @@ export function NewPlaylistDialog({
               {picture ? "change picture" : "add a picture"}
             </Button>
             {picture && (
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="remove picture" onClick={() => setPicture(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="relative pointer-coarse:before:absolute pointer-coarse:before:-inset-2"
+                aria-label="remove picture"
+                onClick={() => setPicture(null)}
+              >
                 <XIcon />
               </Button>
             )}
