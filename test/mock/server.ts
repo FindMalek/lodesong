@@ -42,11 +42,10 @@ function fail(code: number, message: string): Response {
 
 function authorized(params: Params): boolean {
   const salt = params.get("s") ?? "";
-  const user = params.get("u");
-  const secret = user === SIDE_USER ? SIDE_USER : PASSWORD;
   const token = createHash("md5")
-    .update(secret + salt)
+    .update(PASSWORD + salt)
     .digest("hex");
+  const user = params.get("u");
   return (user === USER || user === SIDE_USER) && params.get("t") === token;
 }
 
