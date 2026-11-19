@@ -5,6 +5,8 @@ import {
   idSchema,
   importSchema,
   nameSchema,
+  PLAYLIST_COVER_KINDS,
+  playlistCoversSchema,
   playlistFolderSchema,
   playlistFoldersSchema,
 } from "@lodesong/shared/playlist-folders";
@@ -324,6 +326,24 @@ export const contract = {
       .route({ method: "PUT", path: "/playlists/{id}/hidden", summary: "Hide or show a song in a playlist", tags: ["Playlists"] })
       .input(z.object({ id: z.string().min(1), songId: z.string().min(1), hidden: z.boolean() }))
       .output(hiddenSchema),
+    covers: oc
+      .route({
+        method: "GET",
+        path: "/playlists/covers",
+        summary: "Playlists whose cover is not Navidrome's four-album mosaic",
+        tags: ["Playlists"],
+      })
+      .output(playlistCoversSchema),
+    setCover: oc
+      .route({
+        method: "PUT",
+        path: "/playlists/{id}/cover",
+        summary: "Choose a playlist's cover: the mosaic, the animated dither or an uploaded picture",
+        description: "The picture is a png, jpeg or webp data URL, at most 56 KB and 1024 px a side. Not in the public demo.",
+        tags: ["Playlists"],
+      })
+      .input(z.object({ id: idSchema, kind: z.enum(PLAYLIST_COVER_KINDS), image: coverSchema.optional() }))
+      .output(ok),
   },
 
   folders: {

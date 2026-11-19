@@ -42,15 +42,20 @@ import { FitWhy } from "./fit-why";
 import { ListContextMenu, type MenuTarget } from "./item-menu";
 import { KeyCombo } from "./key-combo";
 import { LyricsSnippet } from "./lyrics-snippet";
+import { PlaylistCover } from "./playlist-cover";
 import { ResultGroupSkeleton } from "./skeletons";
 
 /** Typing pauses shorter than this don't send a request; the previous results stay up meanwhile. */
 const DEBOUNCE_MS = 30;
 
-function Row({ cover, title, sub }: { cover?: string; title: string; sub: ReactNode }) {
+function Row({ cover, title, sub, playlistId }: { cover?: string; title: string; sub: ReactNode; playlistId?: string }) {
   return (
     <>
-      <Cover id={cover} size={32} className="size-8 shrink-0" />
+      {playlistId ? (
+        <PlaylistCover id={playlistId} coverArt={cover} size={32} className="size-8 shrink-0" />
+      ) : (
+        <Cover id={cover} size={32} className="size-8 shrink-0" />
+      )}
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-body">{title}</span>
         <span className="truncate text-muted-foreground text-xs">{sub}</span>
@@ -314,6 +319,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                     <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
                       <Row
                         cover={playlist.coverArt}
+                        playlistId={playlist.id}
                         title={playlist.name}
                         sub={
                           <>
@@ -368,7 +374,7 @@ export function SearchPalette({ open, onOpenChange }: { open: boolean; onOpenCha
                 <CommandGroup heading="playlists">
                   {playlists.map((playlist) => (
                     <CommandItem key={playlist.id} value={`pl-${playlist.id}`} onSelect={run(() => go(`/playlist/${playlist.id}`))}>
-                      <Row cover={playlist.coverArt} title={playlist.name} sub={`${playlist.songCount} songs`} />
+                      <Row cover={playlist.coverArt} playlistId={playlist.id} title={playlist.name} sub={`${playlist.songCount} songs`} />
                     </CommandItem>
                   ))}
                 </CommandGroup>

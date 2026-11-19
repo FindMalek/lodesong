@@ -19,6 +19,7 @@ import type { LyricsService } from "./lyrics";
 import { listening, madeForYou, mixesVersion, nearToday, slotOf } from "./mixes";
 import { addMoment, deleteMoment, listMoments, updateMoment } from "./moments";
 import { type Groq, moodMixes } from "./mood-mixes";
+import { listPlaylistCovers, setPlaylistCover, sweepPlaylistCovers } from "./playlist-covers";
 import {
   createFolder,
   type FolderResult,
@@ -29,7 +30,7 @@ import {
   removeFolder,
   updateFolder,
 } from "./playlist-folders";
-import { playlistsExist } from "./playlist-lookup";
+import { playlistIds, playlistsExist } from "./playlist-lookup";
 import { createMoodPlaylists } from "./playlist-mood";
 import { changeAlbum, changeSong, readPrefs } from "./prefs";
 import { ban, listBans, unban } from "./radio";
@@ -296,6 +297,21 @@ export function createRpc({
         return found;
       }),
       hidden: signedIn.playlists.hidden.handler(({ context, input }) => ({ songs: hiddenIn(library, context.account, input.id) })),
+      covers: signedIn.playlists.covers.handler(async ({ context }) => {
+        if (listPlaylistCovers(library, context.account).length === 0) return { covers: [] };
+        const known = await playlistIds(upstreamOf(context.session), context.session).catch(() => null);
+        if (known) sweepPlaylistCovers(library, context.account, known);
+        return { covers: listPlaylistCovers(library, context.account) };
+      }),
+      // Covers belong to the account and change only its own view; per account is intended, lodesong is a single-user app.
+      setCover: signedIn.playlists.setCover.handler(async ({ context, input }) => {
+        if (publicDemo) throw DEMO_REFUSED;
+        await requirePlaylists(upstreamOf(context.session), context.session, [input.id]);
+        const picture = input.kind === "image" && input.image ? await readCover(input.image) : null;
+        if (input.kind === "image" && !picture) throw new ORPCError("BAD_REQUEST", { message: "bad picture" });
+        setPlaylistCover(library, context.account, input.id, input.kind, picture);
+        return OK;
+      }),
       hide: signedIn.playlists.hide.handler(({ context, input }) => {
         library
           .query(

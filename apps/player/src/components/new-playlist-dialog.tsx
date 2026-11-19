@@ -5,12 +5,15 @@ import { Label } from "@lodesong/ui/components/label";
 import { Switch } from "@lodesong/ui/components/switch";
 import { Textarea } from "@lodesong/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { SparklesIcon } from "lucide-react";
-import { useState } from "react";
+import { SparklesIcon, XIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
+import { coverFromFile } from "@/lib/folder-cover-file";
+import { notify } from "@/lib/notify";
+import { setPlaylistCover } from "@/lib/playlist-covers";
 import { createPlaylist } from "@/lib/playlists";
 import { go } from "@/lib/router";
-import { HEADERS } from "@/lib/subsonic";
+import { HEADERS, isDemo } from "@/lib/subsonic";
 import type { Song } from "@/lib/types";
 
 interface Made {
@@ -47,6 +50,8 @@ export function NewPlaylistDialog({
   const [made, setMade] = useState<Made | null>(null);
   const [making, setMaking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [picture, setPicture] = useState<string | null>(null);
+  const file = useRef<HTMLInputElement>(null);
 
   async function make(): Promise<void> {
     if (!prompt.trim() || making) return;
@@ -75,6 +80,7 @@ export function NewPlaylistDialog({
     const id = await createPlaylist(trimmed, { comment: comment.trim(), isPublic, songs: made?.songs ?? songs });
     setSaving(false);
     if (!id) return;
+    if (!isDemo()) await setPlaylistCover(id, picture ? "image" : "dither", picture ?? undefined);
     if (folderId) await import("@/lib/folder-edits").then((edits) => edits.placePlaylist(id, folderId));
     onOpenChange(false);
     go(`/playlist/${id}`);
@@ -139,6 +145,41 @@ export function NewPlaylistDialog({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="playlist-description">description</Label>
             <Textarea id="playlist-description" rows={2} value={comment} onChange={(event) => setComment(event.target.value)} />
+          </div>
+          <div className="flex items-center gap-3" hidden={isDemo()}>
+            {picture && <img src={picture} alt="" className="size-12 shrink-0 object-cover" />}
+            <Button type="button" variant="outline" size="sm" onClick={() => file.current?.click()}>
+              {picture ? "change picture" : "add a picture"}
+            </Button>
+            {picture && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="relative pointer-coarse:before:absolute pointer-coarse:before:-inset-2"
+                aria-label="remove picture"
+                onClick={() => setPicture(null)}
+              >
+                <XIcon />
+              </Button>
+            )}
+            {!picture && <span className="text-muted-foreground text-xs">without one it gets the dither</span>}
+            <input
+              ref={file}
+              type="file"
+              tabIndex={-1}
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="playlist picture"
+              className="sr-only"
+              onChange={(event) => {
+                const picked = event.target.files?.[0];
+                event.target.value = "";
+                if (picked)
+                  void coverFromFile(picked).then((data) =>
+                    data ? setPicture(data) : notify({ kind: "error", message: "couldn't use that picture, try a png, jpeg or webp" }),
+                  );
+              }}
+            />
           </div>
           <div className="flex items-center gap-2">
             <Switch id="playlist-public" checked={isPublic} onCheckedChange={setPublic} />

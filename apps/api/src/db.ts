@@ -3,6 +3,7 @@ import { createFeatureTables } from "./audiomuse";
 import { createHistoryTables } from "./history";
 import { createMixTables } from "./mixes";
 import { createMomentTables } from "./moments";
+import { createPlaylistCoverTable } from "./playlist-covers";
 import { createPlaylistFolderTables } from "./playlist-folders";
 import { createPlaylistTables } from "./playlist-songs";
 import { createPrefTables } from "./prefs";
@@ -32,6 +33,7 @@ export function openLibraryDb(path: string): Database {
   createHistoryTables(db);
   createMomentTables(db);
   createPlaylistFolderTables(db);
+  createPlaylistCoverTable(db);
   createPrefTables(db);
   createRadioTables(db);
   createReleaseTables(db);

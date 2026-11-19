@@ -36,6 +36,19 @@ export const coverSchema = z
   .max(MAX_COVER_LENGTH)
   .regex(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/);
 
+export const PLAYLIST_COVER_KINDS = ["mosaic", "dither", "image"] as const;
+export type PlaylistCoverKind = (typeof PLAYLIST_COVER_KINDS)[number];
+
+export const playlistCoversSchema = z.object({
+  covers: z.array(
+    z.object({
+      playlistId: idSchema,
+      kind: z.enum(["dither", "image"]),
+      version: z.string().describe("Changes when the picture does; the image is at /playlists/{id}/cover"),
+    }),
+  ),
+});
+
 export const importSchema = z
   .object({
     parentId: idSchema.nullable(),
