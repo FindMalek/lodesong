@@ -6,9 +6,9 @@ board with a `Phase` and `Priority` field.
 
 **Where it stands (1.20, Nov 2026):** the web player, the Mac app, the iPhone and Android shells, a Linux and Windows
 shell, the following page, inferred genres, previews, the public demo, the launch film and the API are in. v1 is done
-as a product; what is left is *getting music you do not own yet* and a native iPhone app. Release Radar from followed
-artists, candidate search, fetch rest, playlist cover choices, the queue drag test and the instant pause are open pull
-requests, marked "in review" below.
+as a product; what is left is *getting music you do not own yet* and a native iPhone app. Candidate search, fetch the rest of an album,
+Release Radar from followed artists, playlist cover choices, the queue drag test, the instant pause, clickable release
+cards, a faster Made for you and the phone touch targets have shipped; the rows below mark what is still open.
 
 **Shipped, no longer open work:** the iPhone device checklist ([#410](https://github.com/FindMalek/lodesong/issues/410)), Android shell ([#411](https://github.com/FindMalek/lodesong/issues/411)), AltStore source
 ([#412](https://github.com/FindMalek/lodesong/issues/412)), WebKit and phone e2e ([#413](https://github.com/FindMalek/lodesong/issues/413)), public demo ([#416](https://github.com/FindMalek/lodesong/issues/416)), mobile budgets in CI ([#417](https://github.com/FindMalek/lodesong/issues/417)), screen-reader pass
@@ -35,24 +35,51 @@ pipeline without the play. Design notes: [music import](design/music-import.md),
 
 | | what | pri | size | status |
 |---|---|---|---|---|
-| [#578](https://github.com/FindMalek/lodesong/issues/578) | **search with candidates**: a typed name returns 5 to 8 matches (Deezer, SoundCloud, YouTube) to pick from, not one guess | P0 | M | in review ([#595](https://github.com/FindMalek/lodesong/pull/595)) |
-| [#579](https://github.com/FindMalek/lodesong/issues/579) | **missing-tracks strip** on album and artist pages: "own 2 of 10", greyed missing rows, **Fetch rest** and **Play from web** | P1 | L | Fetch rest in review ([#596](https://github.com/FindMalek/lodesong/pull/596)) |
+| [#578](https://github.com/FindMalek/lodesong/issues/578) | **search with candidates**: a typed name returns 5 to 8 matches (Deezer, SoundCloud, YouTube) to pick from, not one guess | P0 | M | shipped ([#595](https://github.com/FindMalek/lodesong/pull/595), [lyterion#197](https://github.com/FindMalek/lyterion/pull/197)) |
+| [#579](https://github.com/FindMalek/lodesong/issues/579) | **missing-tracks strip** on album and artist pages: "own 2 of 10", greyed missing rows, **Fetch rest** and **Play from web** | P1 | L | Fetch rest shipped ([#596](https://github.com/FindMalek/lodesong/pull/596)); Play from web todo (under [#581](https://github.com/FindMalek/lodesong/issues/581)) |
 | [#580](https://github.com/FindMalek/lodesong/issues/580) | **artist Discover tab**: full discography (MusicBrainz or Deezer), each release in library, partial or missing, Fetch or Play on every row | P1 | L | todo |
 | [#582](https://github.com/FindMalek/lodesong/issues/582) | **batch add**: queue many songs at once. Lyterion refuses a wish while a run is live, so adds go one by one | P1 | M | todo |
-| [#583](https://github.com/FindMalek/lodesong/issues/583) | **new releases from followed artists go into the Release Radar**; remove the "get it" cards | P1 | M | in review ([#597](https://github.com/FindMalek/lodesong/pull/597)) |
+| [#583](https://github.com/FindMalek/lodesong/issues/583) | **new releases from followed artists go into the Release Radar**; remove the "get it" cards | P1 | M | shipped ([#597](https://github.com/FindMalek/lodesong/pull/597)) |
 | [#581](https://github.com/FindMalek/lodesong/issues/581) | start streaming while it downloads, then swap to the file without a gap | P1 | L | todo |
 
 ### Playback and polish
 
 | | what | pri | size | status |
 |---|---|---|---|---|
-| [#590](https://github.com/FindMalek/lodesong/issues/590) | pause silences at once (master gain ramp) and the button updates before the event; confirm on the Mac app | P0 | S | in review ([#600](https://github.com/FindMalek/lodesong/pull/600)), Mac check still needed |
-| [#589](https://github.com/FindMalek/lodesong/issues/589) | crossfade: say what it does, then a smarter fade that spares an ending that already fades out | P1 | M | text in review ([#600](https://github.com/FindMalek/lodesong/pull/600)), smart fade todo |
-| [#586](https://github.com/FindMalek/lodesong/issues/586) | drag and drop: queue, playlists into folders, tracks inside a playlist | P1 | L | queue test in review ([#599](https://github.com/FindMalek/lodesong/pull/599)), rest todo |
-| [#584](https://github.com/FindMalek/lodesong/issues/584) | playlist covers: choice at creation (mosaic, dither, upload) is in review; then show them outside the playlist page too (search palette) | P2 | S | in review ([#598](https://github.com/FindMalek/lodesong/pull/598)) |
+| [#590](https://github.com/FindMalek/lodesong/issues/590) | pause silences at once (master gain ramp) and the button updates before the event; confirm on the Mac app | P0 | S | pause ramp shipped ([#600](https://github.com/FindMalek/lodesong/pull/600)), Mac app check todo |
+| [#589](https://github.com/FindMalek/lodesong/issues/589) | crossfade: say what it does, then a smarter fade that spares an ending that already fades out | P1 | M | text shipped ([#600](https://github.com/FindMalek/lodesong/pull/600)), smart fade todo |
+| [#586](https://github.com/FindMalek/lodesong/issues/586) | drag and drop: queue, playlists into folders, tracks inside a playlist | P1 | L | queue test shipped ([#599](https://github.com/FindMalek/lodesong/pull/599)), touch reorder and the rest todo |
+| [#584](https://github.com/FindMalek/lodesong/issues/584) | playlist covers: a picture at creation, the dither otherwise, removing the cover goes back to the mosaic; showing them outside the playlist page (search palette) todo | P2 | S | shipped ([#598](https://github.com/FindMalek/lodesong/pull/598)) |
 | [#585](https://github.com/FindMalek/lodesong/issues/585) | dither that says something: speed, pixel size and density driven by the playlist's mood and energy; a larger blurred copy as the playlist background | P2 | M | todo |
 | [#587](https://github.com/FindMalek/lodesong/issues/587) | playlist tags under the title, not next to the sort buttons | P2 | S | todo |
 | [#588](https://github.com/FindMalek/lodesong/issues/588) | inferred genre: fix the "inferred, no genre tag, by artists in this genre" copy and logic | P2 | S | todo |
+| [#602](https://github.com/FindMalek/lodesong/issues/602) | home: release cards you can click, past week only, shelf at the bottom | P1 | S | shipped ([#620](https://github.com/FindMalek/lodesong/pull/620)) |
+| [#603](https://github.com/FindMalek/lodesong/issues/603) | Made for you: daily mixes first, no pop in | P1 | S | shipped ([#625](https://github.com/FindMalek/lodesong/pull/625)) |
+| [#606](https://github.com/FindMalek/lodesong/issues/606) | same artist written two ways (SHYLER vs Shyler) merged on the lodesong side; track rows and the lyterion tag fix todo | P1 | S | shipped ([#622](https://github.com/FindMalek/lodesong/pull/622)), rest todo |
+| [#609](https://github.com/FindMalek/lodesong/issues/609) | tap targets of 44px across the phone ui | P1 | S | shipped ([#623](https://github.com/FindMalek/lodesong/pull/623)) |
+| [#610](https://github.com/FindMalek/lodesong/issues/610) | visible row actions on touch screens | P1 | S | shipped ([#623](https://github.com/FindMalek/lodesong/pull/623)) |
+| [#632](https://github.com/FindMalek/lodesong/issues/632) | player bar: remove the 'playing on chrome on mac' text | P2 | S | in review ([#635](https://github.com/FindMalek/lodesong/pull/635)) |
+| [#633](https://github.com/FindMalek/lodesong/issues/633) | player bar: remove the file format (FLAC, MP3...) from the bottom bar | P2 | S | in review ([#635](https://github.com/FindMalek/lodesong/pull/635)) |
+| [#604](https://github.com/FindMalek/lodesong/issues/604) | loading play icon, skeletons and page placeholders | P1 | M | todo |
+| [#608](https://github.com/FindMalek/lodesong/issues/608) | library-wide check: every page has a skeleton, empty state and error state | P1 | M | todo |
+| [#607](https://github.com/FindMalek/lodesong/issues/607) | refetch cover action for albums and artists | P1 | S | todo |
+| [#611](https://github.com/FindMalek/lodesong/issues/611) | track list time column leaves a dead strip on the right | P2 | S | todo |
+| [#612](https://github.com/FindMalek/lodesong/issues/612) | phone player bar: seek bar and times collide with the cover | P1 | S | todo |
+| [#613](https://github.com/FindMalek/lodesong/issues/613) | artists A-Z rail is cut off and too small on phone | P2 | S | todo |
+| [#614](https://github.com/FindMalek/lodesong/issues/614) | settings on phone: tab row cut off, tiny slider and toggles | P1 | S | todo |
+| [#615](https://github.com/FindMalek/lodesong/issues/615) | playlist header: too many competing actions, delete next to a toggle | P2 | S | todo |
+| [#616](https://github.com/FindMalek/lodesong/issues/616) | queue panel: misaligned times, hidden row controls, bare clear | P2 | S | todo |
+| [#617](https://github.com/FindMalek/lodesong/issues/617) | following: names are not links, unexplained badge, misclick risk | P2 | S | todo |
+| [#618](https://github.com/FindMalek/lodesong/issues/618) | listen together: misaligned join row, unclear toggles and jargon | P2 | S | todo |
+| [#619](https://github.com/FindMalek/lodesong/issues/619) | search palette empty state: no recents, two search fields on results | P2 | S | todo |
+| [#621](https://github.com/FindMalek/lodesong/issues/621) | home and stats nits: jargon, missing border, truncated text, sparse chart | P2 | S | todo |
+| [#605](https://github.com/FindMalek/lodesong/issues/605) | theme: import a shadcn preset code | P2 | M | todo |
+| [#628](https://github.com/FindMalek/lodesong/issues/628) | command palette (cmd+k) best practices: prefetch, live data, contextual, blur | P2 | M | todo |
+| [#629](https://github.com/FindMalek/lodesong/issues/629) | mobile gestures: no react renders while dragging, transform and opacity only | P2 | M | todo |
+| [#630](https://github.com/FindMalek/lodesong/issues/630) | predictive preloading: pointer velocity predicts the click, preload the route first | P2 | M | todo |
+| [#631](https://github.com/FindMalek/lodesong/issues/631) | remote volume control: change the volume of the device that is playing | P2 | M | todo |
+| [#626](https://github.com/FindMalek/lodesong/issues/626) | trackpad haptics for reordering and other drag interactions | P3 | S | todo |
+| [#627](https://github.com/FindMalek/lodesong/issues/627) | pre-commit hooks with lefthook: format, oxlint, react doctor | P3 | S | todo |
 | | Daily Mix cover: the dither plus four album images inside the playlist | P2 | S | todo, no issue yet |
 | | `browse.e2e.ts` fails on WebKit (the genre filter never shows "N of M") | P1 | S | todo, no issue yet |
 | | settings search, a "what's new" in the web app, visual regression, gapless verified per format | P2 | M | todo, no issue yet |
