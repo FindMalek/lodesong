@@ -4,6 +4,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@lodesong/ui/components/table";
 import { BanIcon, EyeIcon, EyeOffIcon, ListEndIcon, ListStartIcon, MinusIcon, PlayIcon, ScissorsIcon } from "lucide-react";
 import { type DragEvent, memo, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Loader } from "@/components/loader";
 import type { MissingTrack } from "@/lib/album-missing";
 import { useArtistNames } from "@/lib/artist-merge";
 import { current as currentDrag, endDrag, leftTarget, startDrag } from "@/lib/drag";
@@ -80,6 +81,12 @@ async function playAlbum(id: string, shuffle = false): Promise<void> {
 }
 
 const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: { album: Album; artist?: string; priority?: boolean }) {
+  const [starting, setStarting] = useState(false);
+  const start = () => {
+    if (starting) return;
+    setStarting(true);
+    void playAlbum(album.id).finally(() => setStarting(false));
+  };
   return (
     // Drag a card onto a playlist, the queue or the player bar (the link inside is the control; this only carries drags).
     // biome-ignore lint/a11y/noStaticElementInteractions: a drag source wrapper, not a control
@@ -97,11 +104,15 @@ const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: {
         <Hint label={`play ${album.name}`}>
           <Button
             size="icon"
-            className="pointer-events-auto translate-y-1 opacity-0 transition group-hover/album:translate-y-0 group-hover/album:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
-            onClick={() => void playAlbum(album.id)}
+            className={cn(
+              "pointer-events-auto translate-y-1 opacity-0 transition group-hover/album:translate-y-0 group-hover/album:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100",
+              starting && "translate-y-0 opacity-100",
+            )}
+            onClick={start}
+            aria-disabled={starting || undefined}
             aria-label={`play ${album.name}`}
           >
-            <PlayIcon className="fill-current" />
+            {starting ? <Loader /> : <PlayIcon className="fill-current" />}
           </Button>
         </Hint>
       </div>
@@ -221,6 +232,18 @@ function RuleIcons({ trim, never, hidden }: RuleMarks) {
   );
 }
 
+/** True once the current song has been buffering for 150 ms straight, so a scrub never flashes the loader. */
+function useSlowBuffering(current: boolean): boolean {
+  const buffering = usePlayer((state) => current && state.buffering);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!buffering) return setSlow(false);
+    const id = setTimeout(() => setSlow(true), 150);
+    return () => clearTimeout(id);
+  }, [buffering]);
+  return slow;
+}
+
 const TrackRow = memo(function TrackRow({
   song,
   index,
@@ -241,6 +264,7 @@ const TrackRow = memo(function TrackRow({
   measure,
   virtualIndex,
 }: TrackRowProps) {
+  const buffering = useSlowBuffering(Boolean(status));
   return (
     <TableRow
       ref={measure}
@@ -268,7 +292,17 @@ const TrackRow = memo(function TrackRow({
     >
       <TableCell className="relative py-0 font-mono text-muted-foreground tabular-nums">
         <span className={cn("group-hover/row:invisible", !status && "pointer-coarse:invisible")}>
-          {status ? <Equalizer playing={status === "playing"} /> : number}
+          {status ? (
+            buffering ? (
+              <span aria-hidden>
+                <Loader />
+              </span>
+            ) : (
+              <Equalizer playing={status === "playing"} />
+            )
+          ) : (
+            number
+          )}
         </span>
         <Button
           variant="ghost"

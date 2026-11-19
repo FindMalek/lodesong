@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpIcon, FolderIcon } from "lucide-react";
 import { Content, EmptyState, PageHeader, TrackList } from "@/components/library";
 import { Link } from "@/components/link";
+import { ArtistRowsSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { VirtualGrid } from "@/components/virtual-grid";
 import { queries } from "@/lib/queries";
 import { go } from "@/lib/router";
@@ -46,6 +47,7 @@ export function FoldersPage({ id }: { id: string | null }) {
       <>
         <PageHeader title="folders" meta="/music" />
         <Content>
+          {root.isPending && <ArtistRowsSkeleton count={24} className="" min={260} />}
           {root.data && entries.length === 0 && <EmptyState>empty</EmptyState>}
           <FolderList folders={entries} />
         </Content>
@@ -67,6 +69,7 @@ export function FoldersPage({ id }: { id: string | null }) {
         )}
       </PageHeader>
       <Content>
+        {directory.isPending && <TrackListSkeleton count={8} />}
         {folders.length > 0 && <FolderList folders={folders} />}
         {songs.length > 0 && (
           <TrackList

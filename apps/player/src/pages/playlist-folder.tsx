@@ -5,6 +5,7 @@ import { useState } from "react";
 import { FolderCover } from "@/components/folder-cover";
 import { Content, EmptyState, PageHeader, Section } from "@/components/library";
 import { Link } from "@/components/link";
+import { PageSkeleton } from "@/components/skeletons";
 import { endDrag, startDrag } from "@/lib/drag";
 import { folderDrop } from "@/lib/folder-drop";
 import { findFolder, pathTo } from "@/lib/folder-find";
@@ -33,8 +34,10 @@ export function PlaylistFolderPage({ id }: { id: string }) {
                 try again
               </Button>
             </EmptyState>
+          ) : loaded.isPending ? (
+            <PageSkeleton />
           ) : (
-            <EmptyState>{loaded.isPending ? "loading…" : "that folder isn't here any more"}</EmptyState>
+            <EmptyState>that folder isn't here any more</EmptyState>
           )}
         </Content>
       </>

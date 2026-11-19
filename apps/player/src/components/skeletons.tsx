@@ -77,17 +77,43 @@ export function HeroSkeleton() {
   );
 }
 
-export function ArtistRowsSkeleton({ count }: { count: number }) {
+function LoadingStatus() {
+  return (
+    <span role="status" className="sr-only">
+      loading
+    </span>
+  );
+}
+
+export function ArtistRowsSkeleton({
+  count,
+  className = "pl-12",
+  min = 220,
+  row = "h-6.5",
+}: {
+  count: number;
+  className?: string;
+  min?: number;
+  row?: string;
+}) {
   return (
     <Delayed>
-      <div aria-hidden className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-6 pl-12">
-        {Array.from({ length: count }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
-          <div key={index} className="flex h-6.5 items-center justify-between px-1.5">
-            <Skeleton className="h-3" style={{ width: `${40 + ((index * 29) % 40)}%` }} />
-            <Skeleton className="h-3 w-4" />
-          </div>
-        ))}
+      <div aria-busy>
+        <LoadingStatus />
+        <div
+          aria-hidden
+          data-testid="rows-skeleton"
+          className={`grid gap-x-6 ${className}`}
+          style={{ gridTemplateColumns: `repeat(auto-fill,minmax(${min}px,1fr))` }}
+        >
+          {Array.from({ length: count }, (_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+            <div key={index} className={`flex ${row} items-center justify-between px-1.5`}>
+              <Skeleton className="h-3" style={{ width: `${40 + ((index * 29) % 40)}%` }} />
+              <Skeleton className="h-3 w-4" />
+            </div>
+          ))}
+        </div>
       </div>
     </Delayed>
   );
@@ -108,6 +134,22 @@ export function ResultGroupSkeleton({ count = 4 }: { count?: number }) {
             </div>
           </div>
         ))}
+      </div>
+    </Delayed>
+  );
+}
+
+export function PageSkeleton({ lines = 3 }: { lines?: number }) {
+  return (
+    <Delayed>
+      <div aria-busy data-testid="page-skeleton" className="py-6">
+        <LoadingStatus />
+        <div aria-hidden className="flex max-w-xl flex-col gap-3">
+          {Array.from({ length: lines }, (_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
+            <Skeleton key={index} className="h-4" style={{ width: `${90 - index * 18}%` }} />
+          ))}
+        </div>
       </div>
     </Delayed>
   );
