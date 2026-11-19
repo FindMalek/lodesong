@@ -15,6 +15,7 @@ import {
 } from "@lodesong/ui/components/dropdown-menu";
 import {
   EllipsisIcon,
+  HeartIcon,
   InfoIcon,
   MicVocalIcon,
   MoonIcon,
@@ -26,8 +27,9 @@ import {
   SpeakerIcon,
 } from "lucide-react";
 import type { BarMode } from "@/lib/bar-mode";
+import { toggleLiked, useLiked } from "@/lib/likes";
 import { MINI_PLAYER_SUPPORTED, openMiniPlayer } from "@/lib/mini-player";
-import { player, usePlayer } from "@/lib/player";
+import { currentSong, player, usePlayer } from "@/lib/player";
 import { CAN_PICK_OUTPUT, useOutputDevices } from "@/lib/use-output-devices";
 import type { Panel } from "./player-bar";
 import { chooseSleep, SLEEP_OPTIONS, sleepValue } from "./sleep-menu";
@@ -61,6 +63,8 @@ export function PlayerMore({ mode, panel, onPanel }: { mode: BarMode; panel: Pan
   const shuffle = usePlayer((state) => state.queue.shuffle);
   const repeat = usePlayer((state) => state.queue.repeat);
   const mobile = mode === "mobile";
+  const song = usePlayer(currentSong);
+  const liked = useLiked(song?.id ?? "");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<ToolButton on={sleep !== null} aria-label="more controls" />}>
@@ -69,6 +73,12 @@ export function PlayerMore({ mode, panel, onPanel }: { mode: BarMode; panel: Pan
       <DropdownMenuContent side="top" align="end" className="min-w-52">
         {mobile && (
           <>
+            {song && (
+              <DropdownMenuCheckboxItem checked={liked} onCheckedChange={() => void toggleLiked("song", song.id, song.title)}>
+                <HeartIcon />
+                like
+              </DropdownMenuCheckboxItem>
+            )}
             <DropdownMenuItem onClick={() => player.previous()}>
               <SkipBackIcon />
               previous
