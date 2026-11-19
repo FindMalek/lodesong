@@ -450,12 +450,12 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
               variant="line"
               className={
                 narrow
-                  ? "w-full flex-wrap justify-start font-mono group-data-[orientation=horizontal]/tabs:h-auto"
+                  ? "grid w-full grid-cols-3 font-mono group-data-[orientation=horizontal]/tabs:h-auto"
                   : "w-full items-stretch font-mono"
               }
             >
               {SECTIONS.map((section) => (
-                <TabsTrigger key={section} value={section} className={narrow ? "flex-none" : undefined}>
+                <TabsTrigger key={section} value={section} className={narrow ? "w-full" : undefined}>
                   {section}
                 </TabsTrigger>
               ))}
