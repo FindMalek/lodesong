@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiQueries } from "./api-queries";
 import { player, usePlayer } from "./player";
-import { queries, queryClient } from "./queries";
+import { queries } from "./queries";
 import { go, usePath } from "./router";
 import type { Album, Playlist } from "./types";
 
@@ -10,13 +9,6 @@ export interface PaletteAction {
   label: string;
   group?: "queue";
   run: () => void;
-}
-
-/** Everything the palette shows when it opens, fetched ahead so it never loads in front of you. */
-export function prefetchPalette(): void {
-  void queryClient.prefetchQuery(apiQueries.session());
-  void queryClient.prefetchQuery(queries.playlists());
-  void queryClient.prefetchQuery(queries.genres());
 }
 
 /** The first actions for the page behind the palette: an album's play and queue, a playlist's own, the open queue's. */
