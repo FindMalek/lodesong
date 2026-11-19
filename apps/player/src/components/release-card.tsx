@@ -41,7 +41,7 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
     <li className="group/release relative flex w-40 shrink-0 flex-col" style={{ height: RELEASE_CARD_HEIGHT }}>
       <div
         aria-hidden
-        className="relative flex size-40 shrink-0 items-center justify-center font-mono text-3xl text-foreground/40 outline outline-muted"
+        className="relative flex size-40 shrink-0 items-center justify-center font-mono text-3xl text-foreground/40 border"
         style={{ background: `color-mix(in oklab, var(--card), var(--foreground) ${4 + (tone(release.id) % 5) * 3}%)` }}
       >
         {initials(release.title)}
@@ -75,7 +75,7 @@ export function ReleaseCard({ release }: { release: NewRelease }) {
       <span className="relative z-10 flex h-8 items-center">
         {release.canGet &&
           (release.requested ? (
-            <span className="font-mono text-muted-foreground text-xs">asked lyterion</span>
+            <span className="font-mono text-muted-foreground text-xs">requested</span>
           ) : (
             <Button
               size="xs"

@@ -132,7 +132,7 @@ export function MixRow() {
               <Aura id={`${mix.id}-${day}`} songs={mix.songs} className="size-full" />
               <Dither id={`${mix.id}-${day}`} className="absolute inset-0 size-full" />
               <span className="absolute inset-0 flex items-end p-2 font-medium font-mono text-sm">
-                <span className="bg-background/70 px-1">{mix.name}</span>
+                <span className="bg-background px-1">{mix.name}</span>
               </span>
             </span>
           );
@@ -153,7 +153,9 @@ export function MixRow() {
               >
                 <PlayIcon className="fill-current" />
               </Button>
-              <span className="line-clamp-2 text-muted-foreground text-xs">{mix.description}</span>
+              <span className="line-clamp-2 text-muted-foreground text-xs" title={mix.description}>
+                {mix.description}
+              </span>
             </li>
           );
         })}

@@ -14,6 +14,7 @@ export function DayChart({ days }: { days: DayMinutes[] }) {
   const max = Math.max(1, ...days.map((day) => day.minutes));
   const peak = days.reduce((best, day, index) => (day.minutes > (days[best]?.minutes ?? 0) ? index : best), 0);
   const total = days.reduce((sum, day) => sum + day.minutes, 0);
+  const sparse = days.length > 7 && days.filter((day) => day.minutes > 0).length < 3;
   const shown = active ?? peak;
   const current = days[shown];
   const clamp = (index: number): number => Math.min(last, Math.max(0, index));
@@ -52,7 +53,7 @@ export function DayChart({ days }: { days: DayMinutes[] }) {
         aria-valuenow={shown}
         aria-valuetext={`${label(current.day)}: ${plural(current.minutes, "minute")}`}
         aria-describedby="day-chart-summary"
-        className="flex h-32 touch-pan-y items-end border-b outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className={`flex ${sparse ? "h-16" : "h-32"} touch-pan-y items-end border-b outline-none focus-visible:ring-3 focus-visible:ring-ring/50`}
         onPointerDown={at}
         onPointerMove={at}
         onPointerLeave={() => !focused && setActive(null)}
@@ -77,6 +78,11 @@ export function DayChart({ days }: { days: DayMinutes[] }) {
         <span>{label(days[0]?.day ?? current.day)}</span>
         <span>{label(days[last]?.day ?? current.day)}</span>
       </div>
+      {sparse && (
+        <p className="font-mono text-muted-foreground text-xs">
+          only {plural(days.filter((day) => day.minutes > 0).length, "day")} of {days.length} so far · this fills in as you listen
+        </p>
+      )}
     </div>
   );
 }
