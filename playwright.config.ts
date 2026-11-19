@@ -6,7 +6,8 @@ const APP = 4580 + OFFSET;
 const MOCK = 4599 + OFFSET;
 const WEBKIT_SPECS =
   /(webkit|audio-output|audio-gesture|navigation|settings|responsive|now-playing|queue|sticky-bar|sidebar-resize|demo)\.e2e/;
-const PHONE_SPECS = /(webkit|audio-gesture|settings|responsive|now-playing|touch-targets|artists-rail|player-bar-phone)\.e2e/;
+const PHONE_SPECS =
+  /(webkit|audio-gesture|settings|settings-phone|responsive|now-playing|touch-targets|artists-rail|player-bar-phone)\.e2e/;
 process.env.E2E_MOCK_URL = `http://127.0.0.1:${MOCK}`;
 
 export default defineConfig({
