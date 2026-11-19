@@ -20,6 +20,7 @@ import { startListeningHistory } from "@/lib/listening";
 import { openMiniPlayer, setAutoMiniPlayer, useMiniWindow } from "@/lib/mini-player";
 import { notify } from "@/lib/notify";
 import { PageScrollContext } from "@/lib/page-scroll";
+import { prefetchPalette } from "@/lib/palette-actions";
 import { currentSong, player, usePlayer } from "@/lib/player";
 import { openPlaylistDialog, playlistDialogKey, usePlaylistDialog } from "@/lib/playlist-dialogs";
 import { loadPrefs } from "@/lib/prefs";
@@ -188,6 +189,11 @@ export function App() {
   // Opening on the home page: its rows load while its code does, not after.
   useEffect(() => {
     if (user && location.pathname === "/") prefetchHome();
+  }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    prefetchPalette();
+    return whenQuiet([() => void import("@/components/search-palette")]);
   }, [user]);
   // A reload mid-session rejoins it (the session lives in this tab's sessionStorage).
   useEffect(() => {
@@ -418,7 +424,7 @@ export function App() {
       )}
       {(searching || searchLoaded) && (
         <Suspense>
-          <SearchPalette open={searching} onOpenChange={setSearching} />
+          <SearchPalette open={searching} onOpenChange={setSearching} queueOpen={showPanel && panel === "queue"} />
         </Suspense>
       )}
     </>
