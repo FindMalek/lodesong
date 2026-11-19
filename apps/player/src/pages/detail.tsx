@@ -553,7 +553,7 @@ export function PlaylistPage({ id }: { id: string }) {
         coverSlot={
           <>
             <PlaylistCover id={playlist.id} coverArt={playlist.coverArt} size={160} className="w-26 sm:w-38 short:w-22" priority />
-            {editable && <PlaylistCoverActions id={playlist.id} />}
+            <PlaylistCoverActions id={playlist.id} editable={editable} />
           </>
         }
         kind={

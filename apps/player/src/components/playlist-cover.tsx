@@ -33,12 +33,12 @@ const ACTION =
   "relative text-muted-foreground pointer-coarse:before:absolute pointer-coarse:before:-inset-x-1 pointer-coarse:before:-inset-y-2.5";
 
 /** Under a playlist's cover: put a picture on it, or drop the dither or picture to go back to the four-album mosaic. */
-export function PlaylistCoverActions({ id }: { id: string }) {
+export function PlaylistCoverActions({ id, editable }: { id: string; editable: boolean }) {
   const view = usePlaylistCover(id);
   const file = useRef<HTMLInputElement>(null);
-  if (isDemo() || view.kind === "loading") return null;
+  if (isDemo() || !editable || view.kind === "loading") return <div className="mt-1.5 h-12" />;
   return (
-    <div className="mt-1.5 flex flex-wrap gap-x-2">
+    <div className="mt-1.5 flex min-h-12 flex-wrap content-start gap-x-2">
       <Button type="button" variant="ghost" size="xs" className={ACTION} onClick={() => file.current?.click()}>
         {view.kind === "mosaic" ? "add picture" : "change picture"}
       </Button>
