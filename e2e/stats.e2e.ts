@@ -38,6 +38,9 @@ test("stats show what you played, forgotten favourites make a playlist, and the 
   await chart.focus();
   await page.keyboard.press("End");
   await expect(chart).toHaveAttribute("aria-valuetext", /: \d[\d,]* minutes?$/);
+  await expect(page.getByText(/^only 1 day of 30 so far/)).toBeVisible();
+  const tab = page.getByRole("tablist", { name: "range" }).getByRole("tab", { name: "30 days" });
+  expect((await tab.boundingBox())?.height).toBeGreaterThanOrEqual(28);
   // The figures sit in equal tiles, each saying what it counts, and the clock has a legend.
   const tiles = page.locator("dl > div");
   await expect(tiles).toHaveCount(6);
