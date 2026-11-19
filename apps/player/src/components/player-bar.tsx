@@ -30,7 +30,6 @@ import { VolumeControlMute, VolumeControlSlider } from "@/components/ui/volume-c
 import { type BarMode, useBarMode } from "@/lib/bar-mode";
 import { dropTarget } from "@/lib/drag";
 import { useEngineController } from "@/lib/engine-controller";
-import { quality } from "@/lib/format";
 import { notify } from "@/lib/notify";
 import { useCachedIds } from "@/lib/offline";
 import { currentSong, player, usePlayer, usePosition } from "@/lib/player";
@@ -153,14 +152,6 @@ const BAR_GRID: Record<BarMode, string> = {
 };
 
 const DevicePicker = lazy(() => import("./device-picker").then((module) => ({ default: module.DevicePicker })));
-
-/** Next to the controls while another device plays: where the sound is coming from. */
-function PlayingOn() {
-  const { devices, you } = useSession();
-  const active = devices.find((device) => device.active);
-  if (!active || active.id === you) return null;
-  return <span className="truncate font-mono text-label text-muted-foreground">playing on {active.name}</span>;
-}
 
 /** The picker loads with the menu library once there is a second device to pick. */
 function Devices() {
@@ -304,11 +295,8 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
         retry
       </Button>
     </span>
-  ) : roomy ? (
-    <span className="mr-2 truncate font-mono text-meta text-muted-foreground">
-      {offline && offlineInBar && !buffering && <OfflineMark />}
-      {buffering ? "loading…" : quality(song.suffix, song.bitRate)}
-    </span>
+  ) : roomy && (buffering || (offline && offlineInBar)) ? (
+    <span className="mr-2 truncate font-mono text-meta text-muted-foreground">{buffering ? "loading…" : <OfflineMark />}</span>
   ) : null;
 
   return (
@@ -346,7 +334,6 @@ export function PlayerBar({ panel, onPanel }: { panel: Panel; onPanel: (panel: P
             </div>
 
             <div className="flex min-w-0 items-center justify-end gap-1">
-              <PlayingOn />
               {status}
               <Hint label="lyrics" shortcut="lyrics">
                 <ToolButton on={panel === "lyrics"} onClick={() => onPanel(panel === "lyrics" ? null : "lyrics")} aria-label="lyrics">

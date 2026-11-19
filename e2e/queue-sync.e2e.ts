@@ -76,4 +76,5 @@ test("your phone playing shows in the sidebar, and starting here says it's also 
   await page.goto("/album/al-26");
   await page.getByRole("button", { name: "play", exact: true }).first().click();
   await expect(page.getByText("Arpeggi is also playing · it can't be paused from here")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("contentinfo")).not.toContainText("playing on");
 });
