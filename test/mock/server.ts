@@ -7,6 +7,8 @@ import { greyPng } from "./png";
 const PORT = Number(process.env.MOCK_PORT ?? 4599);
 const USER = "demo";
 const PASSWORD = "demo";
+// A second account, so a spec can leave plays and follows without touching demo's.
+const SIDE_USER = "radar";
 const library = createLibrary(Number(process.env.MOCK_TRACKS ?? 10_000));
 const albumsById = new Map(library.albums.map((album) => [album.id, album]));
 const songsById = new Map(library.songs.map((song) => [song.id, song]));
@@ -40,10 +42,12 @@ function fail(code: number, message: string): Response {
 
 function authorized(params: Params): boolean {
   const salt = params.get("s") ?? "";
+  const user = params.get("u");
+  const password = user === SIDE_USER ? SIDE_USER : PASSWORD;
   const token = createHash("md5")
-    .update(PASSWORD + salt)
+    .update(password + salt)
     .digest("hex");
-  return params.get("u") === USER && params.get("t") === token;
+  return (user === USER || user === SIDE_USER) && params.get("t") === token;
 }
 
 function withStar<T extends { id: string }>(item: T): T {
@@ -195,9 +199,11 @@ function pausedStream(body: Uint8Array<ArrayBuffer>, seconds: number, onDone = (
 }
 
 // Controls for streams the page can't route (the service worker's): `POST /mock/slow?id=&seconds=` stalls the next
-// stream like `mockPause`; `POST /mock/added?id=` marks one song as added to the library just now; `GET /mock/streams?id=` lists its streams and whether the client hung up early.
+// stream like `mockPause`; `POST /mock/added?id=` marks one song as added to the library just now (`&mode=off` puts it back); `GET /mock/streams?id=` lists its streams and whether the client hung up early.
 const slowNext = new Map<string, number>();
 const streamLog: { id: string; aborted: boolean; finished: boolean }[] = [];
+
+const added = new Map<string, string | undefined>();
 
 function control(url: URL, request: Request): Response {
   const id = url.searchParams.get("id") ?? "";
@@ -220,7 +226,14 @@ function control(url: URL, request: Request): Response {
   if (url.pathname === "/mock/added" && request.method === "POST") {
     const song = songsById.get(id);
     if (!song) return new Response("not found", { status: 404 });
-    song.created = new Date().toISOString();
+    const original = added.get(id) ?? song.created;
+    if (url.searchParams.get("mode") === "off") {
+      song.created = original;
+      added.delete(id);
+    } else {
+      added.set(id, original);
+      song.created = new Date().toISOString();
+    }
     return Response.json({ ok: true });
   }
   if (url.pathname === "/mock/streams") return Response.json(streamLog.filter((entry) => entry.id === id));
@@ -311,7 +324,13 @@ function handle(endpoint: string, params: Params, request: Request): Response {
     case "getMusicFolders":
       return ok({ musicFolders: { musicFolder: [{ id: 1, name: "music" }] } });
     case "getUser":
-      return ok({ user: { username: params.get("username"), adminRole: params.get("username") === USER, folder: [1] } });
+      return ok({
+        user: {
+          username: params.get("username"),
+          adminRole: params.get("username") === USER || params.get("username") === SIDE_USER,
+          folder: [1],
+        },
+      });
     case "getLicense":
       return ok({ license: { valid: true } });
     case "getOpenSubsonicExtensions":
