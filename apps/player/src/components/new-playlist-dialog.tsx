@@ -5,7 +5,7 @@ import { Label } from "@lodesong/ui/components/label";
 import { Switch } from "@lodesong/ui/components/switch";
 import { Textarea } from "@lodesong/ui/components/textarea";
 import { useQuery } from "@tanstack/react-query";
-import { SparklesIcon } from "lucide-react";
+import { SparklesIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { apiQueries } from "@/lib/api-queries";
 import { coverFromFile } from "@/lib/folder-cover-file";
@@ -15,12 +15,6 @@ import { createPlaylist } from "@/lib/playlists";
 import { go } from "@/lib/router";
 import { HEADERS, isDemo } from "@/lib/subsonic";
 import type { Song } from "@/lib/types";
-
-const COVER_CHOICES = [
-  ["mosaic", "four albums"],
-  ["dither", "animated dither"],
-  ["image", "my picture"],
-] as const;
 
 interface Made {
   name: string;
@@ -56,10 +50,8 @@ export function NewPlaylistDialog({
   const [made, setMade] = useState<Made | null>(null);
   const [making, setMaking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [coverKind, setCoverKind] = useState<"mosaic" | "dither" | "image">("mosaic");
   const [picture, setPicture] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
-  const radios = useRef<Record<string, HTMLButtonElement | null>>({});
 
   async function make(): Promise<void> {
     if (!prompt.trim() || making) return;
@@ -88,8 +80,7 @@ export function NewPlaylistDialog({
     const id = await createPlaylist(trimmed, { comment: comment.trim(), isPublic, songs: made?.songs ?? songs });
     setSaving(false);
     if (!id) return;
-    if (!isDemo() && (coverKind === "dither" || (coverKind === "image" && picture)))
-      await setPlaylistCover(id, coverKind, picture ?? undefined);
+    if (!isDemo()) await setPlaylistCover(id, picture ? "image" : "dither", picture ?? undefined);
     if (folderId) await import("@/lib/folder-edits").then((edits) => edits.placePlaylist(id, folderId));
     onOpenChange(false);
     go(`/playlist/${id}`);
@@ -155,53 +146,17 @@ export function NewPlaylistDialog({
             <Label htmlFor="playlist-description">description</Label>
             <Textarea id="playlist-description" rows={2} value={comment} onChange={(event) => setComment(event.target.value)} />
           </div>
-          <div className="flex flex-col gap-1.5" hidden={isDemo()}>
-            <span id="playlist-cover-label" className="text-sm">
-              cover
-            </span>
-            <div
-              role="radiogroup"
-              aria-labelledby="playlist-cover-label"
-              className="flex flex-wrap gap-1.5"
-              onKeyDown={(event) => {
-                const step =
-                  event.key === "ArrowRight" || event.key === "ArrowDown"
-                    ? 1
-                    : event.key === "ArrowLeft" || event.key === "ArrowUp"
-                      ? -1
-                      : 0;
-                if (!step) return;
-                event.preventDefault();
-                const at = COVER_CHOICES.findIndex(([kind]) => kind === coverKind);
-                const next = COVER_CHOICES[(at + step + COVER_CHOICES.length) % COVER_CHOICES.length]?.[0] ?? "mosaic";
-                if (next !== "image" || picture) setCoverKind(next);
-                radios.current[next]?.focus();
-              }}
-            >
-              {COVER_CHOICES.map(([kind, label]) => (
-                <Button
-                  key={kind}
-                  ref={(element) => {
-                    radios.current[kind] = element;
-                  }}
-                  type="button"
-                  role="radio"
-                  size="sm"
-                  tabIndex={coverKind === kind ? 0 : -1}
-                  variant={coverKind === kind ? "default" : "outline"}
-                  aria-checked={coverKind === kind}
-                  onClick={() => (kind === "image" && !picture ? file.current?.click() : setCoverKind(kind))}
-                >
-                  {label}
-                  {kind === "image" && picture && <span aria-hidden> ✓</span>}
-                </Button>
-              ))}
-              {picture && (
-                <Button type="button" size="sm" variant="ghost" onClick={() => file.current?.click()}>
-                  change picture
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center gap-3" hidden={isDemo()}>
+            {picture && <img src={picture} alt="" className="size-12 shrink-0 object-cover" />}
+            <Button type="button" variant="outline" size="sm" onClick={() => file.current?.click()}>
+              {picture ? "change picture" : "add a picture"}
+            </Button>
+            {picture && (
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="remove picture" onClick={() => setPicture(null)}>
+                <XIcon />
+              </Button>
+            )}
+            {!picture && <span className="text-muted-foreground text-xs">without one it gets the dither</span>}
             <input
               ref={file}
               type="file"
@@ -213,11 +168,9 @@ export function NewPlaylistDialog({
                 const picked = event.target.files?.[0];
                 event.target.value = "";
                 if (picked)
-                  void coverFromFile(picked).then((data) => {
-                    if (!data) return notify({ kind: "error", message: "couldn't use that picture, try a png, jpeg or webp" });
-                    setPicture(data);
-                    setCoverKind("image");
-                  });
+                  void coverFromFile(picked).then((data) =>
+                    data ? setPicture(data) : notify({ kind: "error", message: "couldn't use that picture, try a png, jpeg or webp" }),
+                  );
               }}
             />
           </div>

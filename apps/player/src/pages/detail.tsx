@@ -18,7 +18,7 @@ import { KeepOffline } from "@/components/keep-offline";
 import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, type ListEditing, PageHeader, Section, TrackList } from "@/components/library";
 import { LikeButton } from "@/components/like-button";
 import { Link } from "@/components/link";
-import { PlaylistCover } from "@/components/playlist-cover";
+import { PlaylistCover, PlaylistCoverActions } from "@/components/playlist-cover";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
 import { auraParams, vibe } from "@/lib/aura";
@@ -550,7 +550,12 @@ export function PlaylistPage({ id }: { id: string }) {
     <>
       <Hero
         cover={playlist.coverArt}
-        coverSlot={<PlaylistCover id={playlist.id} coverArt={playlist.coverArt} size={160} className="w-26 sm:w-38 short:w-22" priority />}
+        coverSlot={
+          <>
+            <PlaylistCover id={playlist.id} coverArt={playlist.coverArt} size={160} className="w-26 sm:w-38 short:w-22" priority />
+            {editable && <PlaylistCoverActions id={playlist.id} />}
+          </>
+        }
         kind={
           parts.length > 1 ? (
             <Breadcrumb>
