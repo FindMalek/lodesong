@@ -148,7 +148,11 @@ export function createRpc({
       })().finally(() => aiRuns.delete(key));
       aiRuns.set(key, run);
     }
-    return Promise.race([run, new Promise<Made>((resolve) => setTimeout(() => resolve([]), AI_WAIT_MS))]);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<Made>((resolve) => {
+      timer = setTimeout(() => resolve([]), AI_WAIT_MS);
+    });
+    return Promise.race([run.catch((): Made => []), late]).finally(() => clearTimeout(timer));
   };
   const folderLimit = publicDemo ? MAX_DEMO_FOLDERS : MAX_FOLDERS;
   const upstreamOf = (session: Session): Upstream => {

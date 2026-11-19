@@ -92,12 +92,12 @@ export function MixRow() {
   const playlists = useQuery({ ...queries.playlists(), refetchOnMount: false }).data;
   useEffect(() => {
     // New playlists go straight into the cached list: a refetch could undo a delete still waiting out its undo.
-    if (!data?.length) return;
+    if (!data?.length || mixes.isPlaceholderData) return;
     void saveAsPlaylists(`${day}:${slot}`, data).then((created) => {
       if (created.length)
         queryClient.setQueryData(queries.playlists().queryKey, (current?: Playlist[]) => (current ? [...current, ...created] : current));
     });
-  }, [data, day, slot]);
+  }, [data, day, slot, mixes.isPlaceholderData]);
   useEffect(() => {
     if (!mixes.isSuccess) return;
     try {

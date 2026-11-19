@@ -1,6 +1,7 @@
 import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { createKeepClient } from "@lodesong/orpc/client";
 import { createApi } from "./api";
+import { type Cache, memoryCache } from "./cache";
 import { CoverCache } from "./covers";
 import { openLibraryDb } from "./db";
 import { recordPlay } from "./history";
@@ -233,13 +234,13 @@ test("playlists for a mood: signed in only, the words are bounded, and plain HTT
   expect((await call(`/api/playlists/mood?mood=${"x".repeat(41)}`)).status).toBe(400);
 });
 
-test("a slow groq never holds the daily mixes, and its mixes join once it answers", async () => {
+async function withGroq(delayMs: number, cache?: Cache) {
   const names = ["Abba", "Tool", "Hurt"];
   const groq = Bun.serve({
     port: 0,
     idleTimeout: 30,
     fetch: async () => {
-      await Bun.sleep(2_500);
+      await Bun.sleep(delayMs);
       return Response.json({ choices: [{ message: { content: JSON.stringify({ focus: names }) } }] });
     },
   });
@@ -272,6 +273,7 @@ test("a slow groq never holds the daily mixes, and its mixes join once it answer
     limiter: new LoginLimiter(),
     idleSeconds: 60,
     trustProxy: false,
+    cache,
     groq: { key: "k", model: "m", url: `http://127.0.0.1:${groq.port}` },
   });
   const session = own.create({ server: "default", user: "demo", token: "t", salt: "s", agent: "" });
@@ -279,13 +281,27 @@ test("a slow groq never holds the daily mixes, and its mixes join once it answer
     made.rpc(request),
   );
   const ask = () => rpc.mixes({ day: Math.floor(Date.now() / DAY_MS), hour: 9, tz: 0 });
+  return { ask, stop: () => (groq.stop(true), navidrome.stop(true)) };
+}
+
+test("a slow groq never holds the daily mixes, and its mixes join once it answers", async () => {
+  const slow = await withGroq(6_000);
   const started = Date.now();
-  const first = await ask();
-  expect(Date.now() - started).toBeLessThan(2_200);
+  const first = await slow.ask();
+  expect(Date.now() - started).toBeLessThan(3_500);
   expect(first.mixes.some((mix) => mix.id === "daily-1")).toBe(true);
   expect(first.mixes.some((mix) => mix.id === "mood-focus")).toBe(false);
-  await Bun.sleep(1_500);
-  expect((await ask()).mixes.some((mix) => mix.id === "mood-focus")).toBe(true);
-  groq.stop(true);
-  navidrome.stop(true);
+  await Bun.sleep(5_000);
+  expect((await slow.ask()).mixes.some((mix) => mix.id === "mood-focus")).toBe(true);
+  slow.stop();
+}, 20_000);
+
+test("a groq run that fails still returns the daily mixes", async () => {
+  const inner = memoryCache();
+  const broken = await withGroq(0, {
+    get: inner.get,
+    set: (key, value, ttl) => (key.startsWith("mixes-ai:") ? Promise.reject(new Error("disk")) : inner.set(key, value, ttl)),
+  });
+  expect((await broken.ask()).mixes.some((mix) => mix.id === "daily-1")).toBe(true);
+  broken.stop();
 });

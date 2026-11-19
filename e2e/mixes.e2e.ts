@@ -102,7 +102,7 @@ test.describe(() => {
   });
 });
 
-test("daily mixes come back within two seconds on a cold cache, groq or not", async ({ page, signedIn }) => {
+test("daily mixes come back within two seconds on a cold cache", async ({ page, signedIn }) => {
   await playOneArtist(page);
   const call = callFrom(page);
   const started = Date.now();
