@@ -7,7 +7,7 @@ genres of the artist) only on files it places itself, and older files have nothi
 ## What lodesong shows
 
 - **How many have no genre.** Under the tag genres, the page says how many songs, in how many albums, carry no genre tag
-  and that they are in no genre above. It counts from the [library index](search.md), so it needs the index to have synced.
+  and that they are not counted above. It counts from the [library index](search.md), so it needs the index to have synced.
 - **Inferred genres.** With `MUSICBRAINZ_URL` set (the default), the artist of every album without a genre is looked up on
   MusicBrainz and its top three genres are kept. They are listed apart, under "no genre tag · guessed from the artist", in a lighter
   badge, with the number of albums. A genre page shows those albums in their own "no genre tag" section below the tagged ones.

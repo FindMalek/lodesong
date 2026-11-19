@@ -91,4 +91,5 @@ test("songs with no genre tag are counted, and their artist's genres are listed 
   await inferred.getByRole("link", { name: /shoegaze/ }).click();
   await expect(page.getByText(/^no genre tag · guessed from the artist/)).toBeVisible();
   await expect(page.locator('a[href^="/album/"]')).toHaveCount(2);
+  await expect(page.getByText("no albums", { exact: true })).toHaveCount(0);
 });

@@ -464,6 +464,7 @@ export function GenrePage({ name }: { name: string }) {
   const inferred = useQuery(
     rpc.genres.inferred.queryOptions({ input: { genre: name }, staleTime: 0, select: (result) => result.albums as Album[] }),
   );
+  const hasInferred = (inferred.data?.length ?? 0) > 0;
   const source = { kind: "genre", name: name.toLowerCase(), href: `/genre/${encodeURIComponent(name)}` };
 
   return (
@@ -497,15 +498,17 @@ export function GenrePage({ name }: { name: string }) {
           <TrackList songs={popular} source={source} />
         </Section>
       )}
-      <Section title="albums">
-        {data ? (
-          <AlbumGrid albums={data} />
-        ) : (
-          <Delayed>
-            <AlbumGridSkeleton count={24} />
-          </Delayed>
-        )}
-      </Section>
+      {!(data?.length === 0 && hasInferred) && (
+        <Section title="albums">
+          {data ? (
+            <AlbumGrid albums={data} />
+          ) : (
+            <Delayed>
+              <AlbumGridSkeleton count={24} />
+            </Delayed>
+          )}
+        </Section>
+      )}
       {inferred.data && inferred.data.length > 0 && (
         <Section title="no genre tag · guessed from the artist">
           <AlbumGrid albums={inferred.data} />
