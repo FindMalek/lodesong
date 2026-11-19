@@ -29,6 +29,11 @@ function top(map: Map<string, StatItem>): StatItem[] {
   return [...map.values()].sort((a, b) => b.plays - a.plays || b.minutes - a.minutes).slice(0, TOP);
 }
 
+/** Rounded minutes, but a day with any listening never reads 0. */
+function dayMinutes(minutes: number): number {
+  return minutes > 0 ? Math.max(1, Math.round(minutes)) : 0;
+}
+
 function bump(map: Map<string, StatItem>, id: string, name: string, minutes: number, counted: boolean, extra?: Partial<StatItem>) {
   const item = map.get(id) ?? { id, name, plays: 0, minutes: 0, ...extra };
   if (counted) item.plays++;
@@ -108,7 +113,7 @@ export function listeningStats(db: Database, account: string, from: number, to: 
   const lastDay = localDay(Math.min(to, now) - 1, tz);
   const days = [];
   for (let day = firstDay; day <= lastDay && days.length < 400; day++)
-    days.push({ day: new Date(day * DAY).toISOString().slice(0, 10), minutes: Math.round(byDay.get(day) ?? 0) });
+    days.push({ day: new Date(day * DAY).toISOString().slice(0, 10), minutes: dayMinutes(byDay.get(day) ?? 0) });
 
   return {
     from,
