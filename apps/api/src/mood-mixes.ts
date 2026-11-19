@@ -19,6 +19,8 @@ const SYSTEM = `You sort a person's favourite artists into listening moods. Answ
 {"focus": [artist names], "late night": [artist names], "energy": [artist names]}
 Use names copied exactly from the list. An artist can be in more than one mood or in none. Give 3 to 10 per mood when the list allows.`;
 
+const GROQ_TIMEOUT_MS = 8_000;
+
 type Moods = Partial<Record<Mood, string[]>>;
 
 export type Groq = { key: string; model: string; url: string };
@@ -56,7 +58,7 @@ export async function weeklyAnswer<T>(
         { role: "user", content: ask.user },
       ],
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
   }).catch(() => null);
   if (!response?.ok) return null;
   const body = (await response.json().catch(() => null)) as { choices?: { message?: { content?: string } }[] } | null;
