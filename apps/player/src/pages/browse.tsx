@@ -1,3 +1,4 @@
+import { groupArtists } from "@lodesong/shared/artist-merges";
 import { Alert, AlertAction, AlertTitle } from "@lodesong/ui/components/alert";
 import { Badge } from "@lodesong/ui/components/badge";
 import { Button } from "@lodesong/ui/components/button";
@@ -16,6 +17,7 @@ import { Link } from "@/components/link";
 import { ListFilterBar } from "@/components/list-filter-bar";
 import { MixRow } from "@/components/mix-row";
 import { ArtistRowsSkeleton, Delayed, TrackListSkeleton } from "@/components/skeletons";
+import { useArtistMerges } from "@/lib/artist-merge";
 import { plural } from "@/lib/format";
 import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
 import { usePageView } from "@/lib/page-view";
@@ -203,13 +205,21 @@ export function ArtistsPage() {
   const { data } = useQuery(queries.artists());
   const [likedOnly, setLikedOnly] = useState(false);
   const starred = useQuery({ ...queries.starred(), enabled: likedOnly });
+  const merges = useArtistMerges();
   const groups = useMemo(() => {
-    if (!likedOnly) return data ?? [];
-    const ids = new Set((starred.data?.artist ?? []).map((artist) => artist.id));
-    return (data ?? [])
-      .map((group) => ({ ...group, artist: group.artist.filter((artist) => ids.has(artist.id)) }))
-      .filter((group) => group.artist.length);
-  }, [data, likedOnly, starred.data]);
+    const letterOf = new Map((data ?? []).flatMap((group) => group.artist.map((artist) => [artist.id, group.name] as const)));
+    const liked = likedOnly ? new Set((starred.data?.artist ?? []).map((artist) => artist.id)) : null;
+    const byLetter = new Map<string, Artist[]>();
+    for (const group of groupArtists(
+      (data ?? []).flatMap((letter) => letter.artist),
+      merges,
+    )) {
+      if (liked && !group.ids.some((id) => liked.has(id))) continue;
+      const letter = letterOf.get(group.id) ?? "#";
+      byLetter.set(letter, [...(byLetter.get(letter) ?? []), { id: group.id, name: group.name, albumCount: group.albumCount }]);
+    }
+    return (data ?? []).flatMap((group) => (byLetter.has(group.name) ? [{ ...group, artist: byLetter.get(group.name) ?? [] }] : []));
+  }, [data, likedOnly, starred.data, merges]);
   const total = groups.reduce((sum, group) => sum + group.artist.length, 0);
   const listRef = useRef<HTMLDivElement>(null);
   const { width } = useColumns(listRef, ARTIST_MIN, ARTIST_GAP);

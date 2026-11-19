@@ -1,3 +1,4 @@
+import { artistMergeSchema } from "@lodesong/shared/artist-merges";
 import { inferredGenresSchema } from "@lodesong/shared/genres";
 import { albumSchema, mixSchema, songSchema } from "@lodesong/shared/library";
 import {
@@ -181,6 +182,25 @@ export const contract = {
       })
       .input(z.object({ id: z.string().min(1) }))
       .output(z.object({ albums: z.array(albumSchema) })),
+    merges: oc
+      .route({
+        method: "GET",
+        path: "/artists/merges",
+        summary: "Artists you split apart or renamed",
+        description: "Artists whose names normalize the same show as one; these are the ones you changed.",
+        tags: ["Library"],
+      })
+      .output(z.object({ merges: z.array(artistMergeSchema) })),
+    setMerge: oc
+      .route({
+        method: "PUT",
+        path: "/artists/merges",
+        summary: "Split an artist apart, or choose the spelling to show",
+        description: "Neither unmerged nor named puts the artist back to the default.",
+        tags: ["Library"],
+      })
+      .input(artistMergeSchema)
+      .output(ok),
   },
 
   history: {
