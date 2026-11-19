@@ -42,7 +42,7 @@ import {
   UnlinkIcon,
   UserIcon,
 } from "lucide-react";
-import { cloneElement, type MouseEvent, type ReactElement, useRef, useState } from "react";
+import { cloneElement, type MouseEvent, type ReactElement, type ReactNode, useRef, useState } from "react";
 import { useArtistMerges, useSetArtistMerge } from "@/lib/artist-merge";
 import { clock } from "@/lib/format";
 import { isLiked, type LikeKind, setLiked } from "@/lib/likes";
@@ -386,7 +386,18 @@ export function ListContextMenu({
   );
 }
 
-export function ItemMoreButton({ target, label, className }: { target: MenuTarget; label: string; className?: string }) {
+export function ItemMoreButton({
+  target,
+  label,
+  className,
+  extra,
+}: {
+  target: MenuTarget;
+  label: string;
+  className?: string;
+  /** Items after the shared ones, for the page's own (rename, delete). */
+  extra?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -396,6 +407,7 @@ export function ItemMoreButton({ target, label, className }: { target: MenuTarge
       {open && (
         <DropdownMenuContent align="end" className="min-w-48">
           <ItemActions target={target} />
+          {extra}
         </DropdownMenuContent>
       )}
     </DropdownMenu>

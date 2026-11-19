@@ -103,7 +103,12 @@ test("delete waits 10 s for an undo, folders rename their playlists, smart playl
   const stamp = Date.now();
   await signedIn.goto("/");
   await newPlaylist(page, `Old ${stamp} / Keep`);
-  await page.getByRole("button", { name: "delete playlist" }).click();
+  await page
+    .locator("header")
+    .getByRole("button", { name: /^more for/ })
+    .click();
+  await page.getByRole("menuitem", { name: "delete playlist…" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "delete", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("navigation", { name: "sidebar" }).getByText(`Old ${stamp}`)).toHaveCount(0);
   await page.getByRole("button", { name: "undo" }).click();
@@ -118,8 +123,38 @@ test("delete waits 10 s for an undo, folders rename their playlists, smart playl
 
   await page.goto("/playlist/pl-smart");
   await expect(page.getByText("smart playlist · read only")).toBeVisible();
-  await expect(page.getByRole("button", { name: "delete playlist" })).toHaveCount(0);
+  await page
+    .locator("header")
+    .getByRole("button", { name: /^more for/ })
+    .click();
+  await expect(page.getByRole("menuitem", { name: "delete playlist…" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: /^playlist name:/ })).toHaveCount(0);
+});
+
+test("playlist header: play is the one primary, delete lives in the menu and asks first, visibility is meta text", async ({
+  page,
+  signedIn,
+}) => {
+  await signedIn.goto("/");
+  await newPlaylist(page, `Header ${Date.now()}`);
+  const header = page.locator("header").filter({ has: page.getByRole("heading", { level: 1 }) });
+  await expect(header.getByRole("button", { name: "play", exact: true })).toBeVisible();
+  await expect(header.getByRole("button", { name: "delete playlist" })).toHaveCount(0);
+  await expect(header.getByRole("switch")).toHaveCount(0);
+  await expect(header.getByText(/· private$/)).toBeVisible();
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await page.getByRole("menuitem", { name: "make public" }).click();
+  await expect(header.getByText(/· public$/)).toBeVisible();
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await page.getByRole("menuitem", { name: "delete playlist…" }).click();
+  const confirm = page.getByRole("dialog");
+  await expect(confirm).toContainText("delete");
+  await confirm.getByRole("button", { name: "cancel" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Header");
+  await header.getByRole("button", { name: /^more for/ }).click();
+  await page.getByRole("menuitem", { name: "rename" }).click();
+  await expect(header.getByRole("textbox", { name: "playlist name" })).toBeFocused();
 });
 
 test("the playlist that is playing stands out in the sidebar", async ({ signedIn: page }) => {

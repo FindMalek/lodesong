@@ -43,6 +43,15 @@ test("the primary controls on the phone pages are at least 44px", async ({ signe
         page.getByRole("button", { name: /^like / }).first(),
       ],
     ],
+    [
+      "/playlist/pl-smart",
+      [
+        page.getByRole("button", { name: "play", exact: true }).first(),
+        page.getByRole("button", { name: "shuffle" }),
+        page.getByRole("button", { name: "keep offline" }),
+        page.locator("header").getByRole("button", { name: /^more for/ }),
+      ],
+    ],
     ["/artist/ar-2", [page.getByRole("button", { name: "radio" }), page.getByRole("button", { name: "shuffle" })]],
     ["/artists", [page.getByRole("button", { name: "A", exact: true }), page.getByRole("button", { name: "liked" })]],
     ["/stats", [page.getByRole("tab", { name: "7 days" }), page.getByRole("tab", { name: "year" })]],

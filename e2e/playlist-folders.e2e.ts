@@ -121,7 +121,11 @@ test("a playlist moves without dragging, and dragging it over another playlist n
   await sidebar.getByRole("link", { name: mover }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(mover);
 
-  await page.getByRole("button", { name: "move to folder" }).click();
+  await page
+    .locator("header")
+    .getByRole("button", { name: /^more for/ })
+    .click();
+  await page.getByRole("menuitem", { name: "move to folder…" }).click();
   const again = page.getByRole("dialog", { name: "move to folder" });
   await expect(again.getByLabel("folder")).not.toHaveValue("");
   await again.getByLabel("folder").selectOption({ label: "top level" });

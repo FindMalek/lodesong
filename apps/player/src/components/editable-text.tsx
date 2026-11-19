@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /** Text that turns into an input on click: enter or leaving saves, esc cancels. Plain text when not editable. */
@@ -10,6 +10,7 @@ export function EditableText({
   placeholder,
   className,
   reserve = false,
+  edit = 0,
 }: {
   value: string;
   onSave: (value: string) => void;
@@ -19,8 +20,14 @@ export function EditableText({
   className?: string;
   /** Not editable yet but will be (still loading): show the placeholder as plain text so nothing moves when it is. */
   reserve?: boolean;
+  /** Bump to start editing from outside (a menu's rename). */
+  edit?: number;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request starts editing
+  useEffect(() => {
+    if (edit) setDraft(value);
+  }, [edit]);
   if (!editable) {
     if (value) return <span className={className}>{value}</span>;
     return reserve && placeholder ? <span className={cn("text-faint", className)}>{placeholder}</span> : null;

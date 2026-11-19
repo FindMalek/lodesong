@@ -1,12 +1,10 @@
 import { Badge } from "@lodesong/ui/components/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@lodesong/ui/components/breadcrumb";
 import { Button } from "@lodesong/ui/components/button";
-import { Label } from "@lodesong/ui/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@lodesong/ui/components/select";
-import { Switch } from "@lodesong/ui/components/switch";
 import { ToggleGroup, ToggleGroupItem } from "@lodesong/ui/components/toggle-group";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { ExternalLinkIcon, FolderInputIcon, PlayIcon, RadioIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { ExternalLinkIcon, PlayIcon, RadioIcon, SearchIcon } from "lucide-react";
 import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ArtistCard } from "@/components/artist-card";
 import { Aura } from "@/components/aura";
@@ -19,7 +17,8 @@ import { AlbumGrid, AlbumGridSkeleton, Content, EmptyState, type ListEditing, Pa
 import { LikeButton } from "@/components/like-button";
 import { Link } from "@/components/link";
 import { AlbumTracklist } from "@/components/missing-tracks";
-import { PlaylistCover, PlaylistCoverActions } from "@/components/playlist-cover";
+import { PlaylistCover } from "@/components/playlist-cover";
+import { PlaylistMenu } from "@/components/playlist-menu";
 import { Delayed, HeroSkeleton, TrackListSkeleton } from "@/components/skeletons";
 import { discStarts, groupByRelease, topArtists, topSongs } from "@/lib/album-browse";
 import { useArtistMergesQuery, useArtistNames, useGroupedArtists } from "@/lib/artist-merge";
@@ -30,10 +29,8 @@ import { length, plural, quality } from "@/lib/format";
 import type { LikeKind } from "@/lib/likes";
 import { openListFilter } from "@/lib/list-filter";
 import { player } from "@/lib/player";
-import { openPlaylistDialog } from "@/lib/playlist-dialogs";
 import {
   canEdit,
-  deletePlaylist,
   folderOf,
   hiddenQuery,
   leafOf,
@@ -546,6 +543,7 @@ export function PlaylistPage({ id }: { id: string }) {
   const hiddenIds = useQuery(hiddenQuery(id)).data;
   const hidden = useMemo(() => new Set(hiddenIds ?? []), [hiddenIds]);
   const [sort, setSort] = useState<PlaylistSort>("custom");
+  const [rename, setRename] = useState(0);
   const path = usePath();
   const songs = playlist?.entry ?? [];
   const shown = useMemo(() => sortSongs(songs, sort), [songs, sort]);
@@ -584,7 +582,6 @@ export function PlaylistPage({ id }: { id: string }) {
         coverSlot={
           <>
             <PlaylistCover id={playlist.id} coverArt={playlist.coverArt} size={160} className="w-26 sm:w-38 short:w-22" priority />
-            <PlaylistCoverActions id={playlist.id} editable={editable} />
           </>
         }
         kind={
@@ -612,6 +609,7 @@ export function PlaylistPage({ id }: { id: string }) {
             label="playlist name"
             value={leafOf(playlist.name)}
             editable={editable}
+            edit={rename}
             onSave={(name) => name && void updatePlaylist(playlist.id, { name: folder ? `${folder} / ${name}` : name })}
           />
         }
@@ -637,36 +635,12 @@ export function PlaylistPage({ id }: { id: string }) {
         extra={
           <>
             <KeepOffline group={`playlist:${playlist.id}`} songs={playable} />
-            <Hint label="move to a folder">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="move to folder"
-                onClick={() => openPlaylistDialog({ kind: "folder-move", playlistId: playlist.id })}
-              >
-                <FolderInputIcon />
-              </Button>
-            </Hint>
-            <ItemMoreButton target={{ kind: "playlist", playlist }} label={leafOf(playlist.name)} className="size-8" />
-            {editable ? (
-              <>
-                <Hint label={playlist.public ? "others on this server can see it" : "only you can see it"}>
-                  <Label className="flex h-8 items-center gap-2 px-2 font-mono font-normal text-muted-foreground text-xs">
-                    <Switch
-                      checked={Boolean(playlist.public)}
-                      onCheckedChange={(value) => void updatePlaylist(playlist.id, { public: value })}
-                      aria-label="public"
-                    />
-                    public
-                  </Label>
-                </Hint>
-                <Hint label="delete this playlist (undo for 10 s)">
-                  <Button variant="ghost" size="icon" aria-label="delete playlist" onClick={() => deletePlaylist(playlist, path)}>
-                    <Trash2Icon />
-                  </Button>
-                </Hint>
-              </>
-            ) : (
+            <PlaylistMenu
+              playlist={playlist}
+              path={path}
+              onRename={editable ? () => setTimeout(() => setRename((tick) => tick + 1), 150) : undefined}
+            />
+            {!editable && (
               <Badge variant="outline" className="h-8 font-mono font-normal text-muted-foreground">
                 {playlist.readonly ? "smart playlist · read only" : `by ${playlist.owner}`}
               </Badge>
@@ -675,7 +649,12 @@ export function PlaylistPage({ id }: { id: string }) {
         }
       >
         <span className="text-muted-foreground">
-          {[plural(playlist.songCount ?? songs.length, "track"), length(playlist.duration), hidden.size ? `${hidden.size} hidden` : ""]
+          {[
+            plural(playlist.songCount ?? songs.length, "track"),
+            length(playlist.duration),
+            hidden.size ? `${hidden.size} hidden` : "",
+            canEdit(playlist) ? (playlist.public ? "public" : "private") : "",
+          ]
             .filter(Boolean)
             .join(" · ")}
         </span>
