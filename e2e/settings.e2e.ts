@@ -1,4 +1,4 @@
-import { expect, signIn, test, trackTitles } from "./fixtures";
+import { expect, onPhone, signIn, test, trackTitles } from "./fixtures";
 
 test("settings has every section, links to each tab, and changes apply at once", async ({ page, signedIn }) => {
   await signedIn.getByRole("button", { name: /demo$/ }).click();
@@ -65,6 +65,11 @@ test("the notifications setting hides plain confirmations but never errors or th
     await page.goto("/album/al-21");
     await page.getByRole("button", { name: "play", exact: true }).first().click();
     const row = page.getByRole("row", { name: new RegExp(titles[3] as string) }).first();
+    if (onPhone()) {
+      await row.getByRole("button", { name: `more for ${titles[3]}`, exact: true }).click();
+      await page.getByRole("menuitem", { name: "add to queue" }).click();
+      return;
+    }
     await row.hover();
     await row.getByRole("button", { name: `add ${titles[3]} to queue`, exact: true }).click();
   };
