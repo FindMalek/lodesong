@@ -12,6 +12,18 @@ const SIDE_USER = "radar";
 const library = createLibrary(Number(process.env.MOCK_TRACKS ?? 10_000));
 const albumsById = new Map(library.albums.map((album) => [album.id, album]));
 const songsById = new Map(library.songs.map((song) => [song.id, song]));
+const GAPPED_ALBUM = "al-5";
+const GAPPED_MBID = "5a5a5a5a-0000-4000-8000-0000000000a5";
+/** Tagged like a real two-disc release with tracks missing: disc 1 lacks its third, disc 2 its first. */
+function gapped(songs: Song[]): Song[] {
+  const seen = [0, 0];
+  return songs.map((song) => {
+    const disc = song.discNumber === 2 ? 1 : 0;
+    const at = seen[disc] as number;
+    seen[disc] = at + 1;
+    return { ...song, track: disc === 0 ? (at < 2 ? at + 1 : at + 2) : at + 2 };
+  });
+}
 const starred = new Map<string, string>();
 const ratings = new Map<string, number>();
 const nowPlaying = new Map<string, { song: Song; at: number }>();
@@ -343,7 +355,15 @@ function handle(endpoint: string, params: Params, request: Request): Response {
       return ok({ albumList2: { album: page(albumList(params), params).map(summary) } });
     case "getAlbum": {
       const album = albumsById.get(id);
-      return album ? ok({ album: { ...withStar(album), song: album.song?.map(withStar) } }) : fail(70, "album not found");
+      return album
+        ? ok({
+            album: {
+              ...withStar(album),
+              musicBrainzId: album.id === GAPPED_ALBUM ? GAPPED_MBID : undefined,
+              song: album.id === GAPPED_ALBUM ? gapped(album.song ?? []).map(withStar) : album.song?.map(withStar),
+            },
+          })
+        : fail(70, "album not found");
     }
     case "getSong": {
       const song = songsById.get(id);
@@ -696,6 +716,22 @@ const server = Bun.serve({
     if (url.pathname === "/musicbrainz/ws/2/artist") {
       const name = /artist:"(.*)"/.exec(url.searchParams.get("query") ?? "")?.[1] ?? "";
       return Response.json({ artists: [{ id: `mb-${name.toLowerCase().replace(/\W+/g, "-")}`, name, score: 100 }] });
+    }
+    if (url.pathname === `/musicbrainz/ws/2/release/${GAPPED_MBID}`) {
+      const owned = (albumsById.get(GAPPED_ALBUM)?.song ?? []).map((song) => ({
+        title: song.title,
+        length: (song.duration ?? 0) * 1000,
+        disc: song.discNumber ?? 1,
+      }));
+      const extra = (title: string) => ({ title, length: 180_000 });
+      const one = owned.filter((song) => song.disc === 1);
+      const two = owned.filter((song) => song.disc === 2);
+      return Response.json({
+        media: [
+          { position: 1, tracks: [...one.slice(0, 2), extra("Middle Cut"), ...one.slice(2)] },
+          { position: 2, tracks: [extra("Disc Two Opener"), ...two, extra("Bonus Cut 1"), extra("Bonus Cut 2")] },
+        ],
+      });
     }
     if (url.pathname.startsWith("/musicbrainz/ws/2/artist/"))
       return Response.json({

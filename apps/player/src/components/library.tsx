@@ -4,6 +4,7 @@ import { Skeleton } from "@lodesong/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@lodesong/ui/components/table";
 import { BanIcon, EyeIcon, EyeOffIcon, ListEndIcon, ListStartIcon, MinusIcon, PlayIcon, ScissorsIcon } from "lucide-react";
 import { type DragEvent, memo, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import type { MissingTrack } from "@/lib/album-missing";
 import { current as currentDrag, endDrag, leftTarget, startDrag } from "@/lib/drag";
 import { clock } from "@/lib/format";
 import { closeListFilter, songMatches, useListFilter } from "@/lib/list-filter";
@@ -355,7 +356,7 @@ const TrackRow = memo(function TrackRow({
 // Survives minification, so the render-count e2e test can find rows in React's fiber tree.
 TrackRow.displayName = "TrackRow";
 
-type TrackItem = { kind: "disc"; disc: number } | { kind: "song"; song: Song; index: number };
+type TrackItem = { kind: "disc"; disc: number } | { kind: "song"; song: Song; index: number } | { kind: "missing"; row: MissingTrack };
 
 interface RowEditing {
   remove: (index: number) => void;
@@ -371,7 +372,13 @@ export interface ListEditing {
   toggleHidden: (song: Song) => void;
 }
 
-type TrackListOptions = TrackListProps & { onNearEnd?: () => void; source?: QueueSource; editing?: ListEditing };
+type TrackListOptions = TrackListProps & {
+  onNearEnd?: () => void;
+  source?: QueueSource;
+  editing?: ListEditing;
+  /** Release tracks the library lacks, shown muted among the owned ones. */
+  missing?: MissingTrack[];
+};
 
 /** A track list; `filterable` lets ⌘F filter it in place, while playing a match still plays the whole list from there. */
 export function TrackList({ filterable = false, ...incoming }: TrackListOptions & { filterable?: boolean }) {
@@ -402,6 +409,7 @@ export function TrackList({ filterable = false, ...incoming }: TrackListOptions 
           songs={shown}
           context={shown === props.songs ? undefined : props.songs}
           editing={shown === props.songs ? props.editing : undefined}
+          missing={active && query ? undefined : props.missing}
         />
       )}
     </div>
@@ -418,6 +426,7 @@ function TrackRows({
   source,
   onNearEnd,
   editing,
+  missing,
 }: TrackListOptions & { context?: Song[] }) {
   const playingId = usePlayer((state) => currentSong(state)?.id);
   const playing = usePlayer((state) => state.playing);
@@ -454,11 +463,23 @@ function TrackRows({
     let lastDisc: number | undefined;
     return songs.flatMap((song, index) => {
       const disc = song.discNumber ?? 1;
-      const header: TrackItem[] = multiDisc && disc !== lastDisc ? [{ kind: "disc", disc }] : [];
+      const startsDisc = multiDisc && disc !== lastDisc;
       lastDisc = disc;
-      return [...header, { kind: "song", song, index }];
+      const due: TrackItem[] = (missing ?? []).filter((row) => row.before === index).map((row) => ({ kind: "missing", row }));
+      // A track of an earlier disc closes that disc, above the next disc's header.
+      const closing = startsDisc ? due.filter((item) => item.kind === "missing" && item.row.disc < disc) : [];
+      const opening = startsDisc ? due.filter((item) => !closing.includes(item)) : due;
+      const last: TrackItem[] =
+        index === songs.length - 1 ? (missing ?? []).filter((row) => row.before > index).map((row) => ({ kind: "missing", row })) : [];
+      return [
+        ...closing,
+        ...(startsDisc ? [{ kind: "disc" as const, disc }] : []),
+        ...opening,
+        { kind: "song" as const, song, index },
+        ...last,
+      ];
     });
-  }, [songs, asAlbum]);
+  }, [songs, asAlbum, missing]);
   const listRef = useRef<HTMLDivElement>(null);
   const virtual = items.length > VIRTUALIZE_FROM;
   const virtualizer = usePageVirtualizer(listRef, {
@@ -707,6 +728,24 @@ function TrackRows({
                   <TableCell colSpan={columns} className={cn(LABEL, "px-2 pt-3 pb-1")}>
                     disc {item.disc}
                   </TableCell>
+                </TableRow>
+              ) : item.kind === "missing" ? (
+                <TableRow
+                  key={`missing-${item.row.position}`}
+                  ref={virtual ? virtualizer.measureElement : undefined}
+                  data-index={virtualIndex}
+                  title="not in your library"
+                  className={cn("border-muted hover:bg-card", showArtist ? "h-11" : "h-8.5")}
+                >
+                  <TableCell className="py-0 font-mono text-faint tabular-nums">{item.row.number}</TableCell>
+                  <TableCell colSpan={2 + (showAlbum ? 1 : 0) + (ratings ? 1 : 0)} className="py-0 text-faint">
+                    <Truncated text={item.row.title} />
+                    <span className="sr-only"> not in your library</span>
+                  </TableCell>
+                  <TableCell className="py-0 text-right font-mono text-faint tabular-nums">
+                    {item.row.durationMs > 0 ? clock(item.row.durationMs / 1000) : ""}
+                  </TableCell>
+                  <TableCell className="py-0" />
                 </TableRow>
               ) : (
                 <TrackRow

@@ -98,7 +98,7 @@ test("on your own playlist, a row dropped onto another takes its place", async (
   const name = `Order ${Date.now()}`;
   await signedIn.goto("/");
   await newPlaylist(page, name);
-  await page.goto("/album/al-5");
+  await page.goto("/album/al-3");
   const titles = await trackTitles(page);
   for (const title of titles.slice(0, 3))
     await page
