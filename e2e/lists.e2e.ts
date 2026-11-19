@@ -88,3 +88,24 @@ test("in the queue a song from the context dropped on your own up-next changes n
   await page.waitForTimeout(300);
   expect(await rows.allTextContents()).toEqual(before);
 });
+
+test("the time column sits flush with the right edge of the track list, hovered or not", async ({ page, signedIn }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signedIn.goto("/album/al-3");
+  const grid = page.getByRole("grid", { name: "tracks" });
+  const row = grid.locator("tbody tr[data-song-index]").first();
+  await expect(row).toBeVisible();
+  const gap = async (): Promise<number[]> => {
+    const edge = (await grid.boundingBox())?.x ?? 0;
+    const right = edge + ((await grid.boundingBox())?.width ?? 0);
+    const cell = await row.locator("td").last().boundingBox();
+    const head = await grid.locator("thead th").last().boundingBox();
+    return [right - ((cell?.x ?? 0) + (cell?.width ?? 0)), right - ((head?.x ?? 0) + (head?.width ?? 0))];
+  };
+  for (const g of await gap()) expect(g).toBeLessThan(3);
+  const before = await grid.boundingBox();
+  await row.hover();
+  for (const g of await gap()) expect(g).toBeLessThan(3);
+  expect((await grid.boundingBox())?.width).toBe(before?.width);
+  await expect(row.locator("td").last()).toHaveText(/^\s*\d+:\d\d\s*$/);
+});
