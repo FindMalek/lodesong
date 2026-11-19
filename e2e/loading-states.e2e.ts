@@ -63,6 +63,15 @@ test("folders: a skeleton while the folder tree loads, then folders, nothing mov
 });
 
 test("a folder that can't be found says so after the skeleton", async ({ page, signedIn }) => {
+  await slow(page, "**/api/folders");
   await signedIn.goto("/playlist-folder/nope");
+  await expect(page.getByTestId("page-skeleton")).toBeVisible();
+  await expect(page.getByTestId("page-skeleton").getByRole("status")).toHaveText("loading");
   await expect(page.getByText("that folder isn't here any more")).toBeVisible({ timeout: 10_000 });
+});
+
+test("listen: a skeleton while connecting to a session", async ({ page, signedIn }) => {
+  await page.routeWebSocket("**/*", () => undefined);
+  await signedIn.goto("/listen/zzzzzz");
+  await expect(page.getByTestId("page-skeleton")).toBeVisible({ timeout: 5000 });
 });

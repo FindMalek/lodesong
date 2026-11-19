@@ -83,6 +83,7 @@ async function playAlbum(id: string, shuffle = false): Promise<void> {
 const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: { album: Album; artist?: string; priority?: boolean }) {
   const [starting, setStarting] = useState(false);
   const start = () => {
+    if (starting) return;
     setStarting(true);
     void playAlbum(album.id).finally(() => setStarting(false));
   };
@@ -103,9 +104,12 @@ const AlbumCard = memo(function AlbumCard({ album, artist, priority = false }: {
         <Hint label={`play ${album.name}`}>
           <Button
             size="icon"
-            className="pointer-events-auto translate-y-1 opacity-0 transition group-hover/album:translate-y-0 group-hover/album:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
+            className={cn(
+              "pointer-events-auto translate-y-1 opacity-0 transition group-hover/album:translate-y-0 group-hover/album:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100",
+              starting && "translate-y-0 opacity-100",
+            )}
             onClick={start}
-            disabled={starting}
+            aria-disabled={starting || undefined}
             aria-label={`play ${album.name}`}
           >
             {starting ? <Loader /> : <PlayIcon className="fill-current" />}
@@ -228,6 +232,18 @@ function RuleIcons({ trim, never, hidden }: RuleMarks) {
   );
 }
 
+/** True once the current song has been buffering for 150 ms straight, so a scrub never flashes the loader. */
+function useSlowBuffering(current: boolean): boolean {
+  const buffering = usePlayer((state) => current && state.buffering);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!buffering) return setSlow(false);
+    const id = setTimeout(() => setSlow(true), 150);
+    return () => clearTimeout(id);
+  }, [buffering]);
+  return slow;
+}
+
 const TrackRow = memo(function TrackRow({
   song,
   index,
@@ -248,7 +264,7 @@ const TrackRow = memo(function TrackRow({
   measure,
   virtualIndex,
 }: TrackRowProps) {
-  const buffering = usePlayer((state) => Boolean(status) && state.buffering);
+  const buffering = useSlowBuffering(Boolean(status));
   return (
     <TableRow
       ref={measure}
@@ -276,7 +292,17 @@ const TrackRow = memo(function TrackRow({
     >
       <TableCell className="relative py-0 font-mono text-muted-foreground tabular-nums">
         <span className={cn("group-hover/row:invisible", !status && "pointer-coarse:invisible")}>
-          {status ? buffering ? <Loader label="buffering" /> : <Equalizer playing={status === "playing"} /> : number}
+          {status ? (
+            buffering ? (
+              <span aria-hidden>
+                <Loader />
+              </span>
+            ) : (
+              <Equalizer playing={status === "playing"} />
+            )
+          ) : (
+            number
+          )}
         </span>
         <Button
           variant="ghost"
