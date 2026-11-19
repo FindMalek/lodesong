@@ -34,3 +34,27 @@ test("your queue sits before the album, survives a reload, and saves as a playli
   await page.getByRole("button", { name: "save", exact: true }).click();
   await expect(page.getByRole("link", { name })).toBeVisible();
 });
+
+test("queue times share one right edge, and clearing says undo", async ({ page, signedIn }) => {
+  await tapOutput(page);
+  await signedIn.goto("/album/al-3");
+  await page.getByRole("button", { name: "play", exact: true }).first().click();
+  const queued = page.locator("[aria-label=tracks] tbody tr").nth(1);
+  await queued.hover();
+  await queued.getByRole("button", { name: /^add .* to queue$/ }).click();
+  await page.keyboard.press("q");
+  const panel = page.getByRole("complementary", { name: "queue" });
+  await expect(panel.getByText("next in your queue")).toBeVisible();
+
+  const times = panel.locator("[data-queue-index] .tabular-nums");
+  await expect.poll(() => times.count()).toBeGreaterThan(2);
+  const edges = await times.evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().right)));
+  expect(new Set(edges).size).toBe(1);
+
+  await panel.getByRole("button", { name: "clear queue" }).click();
+  await expect(page.getByText("cleared your queue")).toBeVisible();
+  await expect(panel.getByText("next in your queue")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "undo" }).last()).toBeVisible();
+  await page.locator("body").press("ControlOrMeta+z");
+  await expect(panel.getByText("next in your queue")).toBeVisible();
+});
