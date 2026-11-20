@@ -274,7 +274,7 @@ Navidrome. [lyterion](docs/lyterion.md)
 | [API](docs/api.md) | the typed API, its reference at `/api`, tokens for your own integrations |
 | [architecture](docs/architecture.md) · [security](docs/security.md) | how it's built, what's protected |
 | [demo library](docs/demo-library.md) · [previews](docs/previews.md) | the generated library, per-PR previews |
-| [troubleshooting](docs/troubleshooting.md) | when something's off |
+| [troubleshooting](docs/troubleshooting.md) · [managed Mac](docs/macos/managed-mac.md) | when something's off, a Mac with no admin rights |
 | [contributing](CONTRIBUTING.md) · [roadmap](docs/ROADMAP.md) | working on it |
 
 ## FAQ

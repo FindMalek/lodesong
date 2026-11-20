@@ -33,7 +33,7 @@ Download `lodesong-macos.zip` from the [latest release](https://github.com/FindM
 unzip, move **lodesong** to Applications. It isn't signed by Apple yet: the first time, right-click it → **Open**
 (or `xattr -dr com.apple.quarantine "/Applications/lodesong.app"`). It asks for your lodesong address once.
 macOS 14 or later. On managed Macs, `apps/macos/pkg.sh` builds a pkg that installs through Fleet or any MDM: see
-[the Fleet guide](../../docs/macos/fleet.md).
+[the Fleet guide](../../docs/macos/fleet.md). No admin rights at all, or a server the Mac can't reach: [managed Mac](../../docs/macos/managed-mac.md).
 
 ## No sound?
 
