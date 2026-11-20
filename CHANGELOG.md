@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.1](https://github.com/FindMalek/lodesong/compare/v1.22.0...v1.22.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **macos:** safe update swap ([#665](https://github.com/FindMalek/lodesong/issues/665)) ([520479f](https://github.com/FindMalek/lodesong/commit/520479f729e7936b0c69a7ec4ae7162ea3ee7781))
+
 ## [1.22.0](https://github.com/FindMalek/lodesong/compare/v1.21.0...v1.22.0) (2026-11-20)
 
 
