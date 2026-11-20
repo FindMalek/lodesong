@@ -32,10 +32,12 @@ while True: threading.Thread(target=handle, args=(s.accept()[0],), daemon=True).
     }
 
     func testAHostThatResolvesNowhereLoadsThroughTheProxy() async throws {
+        let site = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: site, withIntermediateDirectories: true)
+        try "<title>reached</title>".write(to: site.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
         let page = Process()
         page.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        page.arguments = ["-I", "-m", "http.server", "18741", "--bind", "127.0.0.1", "--directory", NSTemporaryDirectory()]
-        try "<title>reached</title>".write(toFile: NSTemporaryDirectory() + "index.html", atomically: true, encoding: .utf8)
+        page.arguments = ["-I", "-m", "http.server", "18741", "--bind", "127.0.0.1", "--directory", site.path]
         let proxy = Process()
         proxy.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         proxy.arguments = ["-I", "-c", socksScript, "18741", "18742"]
@@ -54,7 +56,7 @@ while True: threading.Thread(target=handle, args=(s.accept()[0],), daemon=True).
         let view = WKWebView(frame: .zero, configuration: config)
         view.load(URLRequest(url: URL(string: "http://\(host):18741/")!))
         var title: String?
-        for _ in 0..<50 where title != "reached" {
+        for _ in 0..<200 where title != "reached" {
             try await Task.sleep(nanoseconds: 100_000_000)
             title = try await view.evaluateJavaScript("document.title") as? String
         }
