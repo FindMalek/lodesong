@@ -93,12 +93,12 @@ struct Version: Comparable, CustomStringConvertible {
 
     /// Swaps the new app in once this one has quit, then opens it.
     func restart() {
-        guard let staged else { return }
-        let current = Bundle.main.bundleURL.path
-        let script = """
-        while kill -0 \(ProcessInfo.processInfo.processIdentifier) 2>/dev/null; do sleep 0.2; done
-        rm -rf "\(current)" && mv "\(staged.path)" "\(current)" && open "\(current)"
-        """
+        guard let staged, FileManager.default.fileExists(atPath: staged.path) else {
+            state = .failed("The update is gone. Check for updates again.")
+            return
+        }
+        let script = Self.swapScript(pid: ProcessInfo.processInfo.processIdentifier,
+                                     current: Bundle.main.bundleURL.path, staged: staged.path)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", script]
@@ -106,21 +106,40 @@ struct Version: Comparable, CustomStringConvertible {
         NSApp.terminate(nil)
     }
 
+    /// Keeps the old app until the new one is in place, and puts it back if the move fails, so a missing or half
+    /// written update can't leave the Mac with no app.
+    static func swapScript(pid: Int32, current: String, staged: String, open: String = "open") -> String {
+        """
+        while kill -0 \(pid) 2>/dev/null; do sleep 0.2; done
+        old="\(current).old"
+        rm -rf "$old"
+        if [ -d "\(staged)" ] && mv "\(current)" "$old"; then
+          if mv "\(staged)" "\(current)"; then rm -rf "$old"; else mv "$old" "\(current)"; fi
+        fi
+        \(open) "\(current)"
+        """
+    }
+
     private static func stage(_ url: URL, version: String) async throws -> URL {
         let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("engineer.findmalek.lodesong/update/\(version)")
-        try? FileManager.default.removeItem(at: folder)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let work = folder.deletingLastPathComponent().appendingPathComponent(".\(version)-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: work) }
         let (zip, _) = try await URLSession.shared.download(from: url)
         let unzip = Process()
         unzip.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        unzip.arguments = ["-x", "-k", zip.path, folder.path]
+        unzip.arguments = ["-x", "-k", zip.path, work.path]
         try unzip.run()
         unzip.waitUntilExit()
-        let app = folder.appendingPathComponent("lodesong.app")
+        let unzipped = work.appendingPathComponent("lodesong.app")
         guard unzip.terminationStatus == 0,
-              Bundle(url: app)?.bundleIdentifier == Bundle.main.bundleIdentifier
+              Bundle(url: unzipped)?.bundleIdentifier == Bundle.main.bundleIdentifier
         else { throw CocoaError(.fileReadCorruptFile) }
+        try? FileManager.default.removeItem(at: folder)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let app = folder.appendingPathComponent("lodesong.app")
+        try FileManager.default.moveItem(at: unzipped, to: app)
         return app
     }
 
