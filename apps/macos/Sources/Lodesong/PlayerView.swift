@@ -19,6 +19,11 @@ import WebKit
     static func makeConfiguration() -> WKWebViewConfiguration {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+        let preferences = Preferences.shared
+        if preferences.localProxy, let host = preferences.server?.host(),
+           let proxy = LocalProxy.configuration(host: host, port: preferences.localProxyPort) {
+            config.websiteDataStore.proxyConfigurations = [proxy]
+        }
         config.mediaTypesRequiringUserActionForPlayback = []
         // The player names this device "the desktop app" in its device picker.
         config.applicationNameForUserAgent = "lodesong-desktop"

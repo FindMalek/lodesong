@@ -19,6 +19,12 @@ import Observation
     var menuBarItem: Bool {
         didSet { UserDefaults.standard.set(menuBarItem, forKey: "menuBarItem") }
     }
+    var localProxy: Bool {
+        didSet { UserDefaults.standard.set(localProxy, forKey: "localProxy") }
+    }
+    var localProxyPort: UInt16 {
+        didSet { UserDefaults.standard.set(Int(localProxyPort), forKey: "localProxyPort") }
+    }
 
     /// Where PR previews live (`player-pr-<n>.<domain>`); `defaults write` to point it elsewhere.
     var previewDomain: String {
@@ -31,5 +37,7 @@ import Observation
         notch = defaults.object(forKey: "notch") as? Bool ?? Self.hasNotch
         notchWhilePaused = defaults.object(forKey: "notchWhilePaused") as? Bool ?? true
         menuBarItem = defaults.object(forKey: "menuBarItem") as? Bool ?? !Self.hasNotch
+        localProxy = defaults.bool(forKey: "localProxy")
+        localProxyPort = UInt16(exactly: defaults.integer(forKey: "localProxyPort")).flatMap { $0 > 0 ? $0 : nil } ?? 1055
     }
 }

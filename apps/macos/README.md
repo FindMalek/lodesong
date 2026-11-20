@@ -19,6 +19,9 @@ The player in its own window, and an island around the notch, made to feel like 
   included. Launch to ready: ~0.4 s.
 - **Closing the window keeps the music going**; the Dock icon or ⌘1 brings it back. Media keys and Now Playing work
   through WebKit, the same as in Safari.
+- **A server your network can't reach:** if its address doesn't answer from inside your LAN (no NAT loopback), turn on
+  **Reach it through a local SOCKS proxy** in Settings (⌘,) and set the port of a proxy on `127.0.0.1` (a userspace
+  Tailscale uses 1055). Only the server's host goes through it, and nothing changes while no proxy listens.
 - **Your login** stays in the app between launches (its own WebKit store, apart from Safari's).
 - **Updates over the air:** it checks GitHub's releases at launch and every few hours (when macOS says it's cheap to),
   downloads a new version in the background and asks to restart. After the restart, **What's New** lists everything
