@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.22.0](https://github.com/FindMalek/lodesong/compare/v1.21.0...v1.22.0) (2026-11-20)
+
+
+### Features
+
+* **album:** fetch missing tracks ([#596](https://github.com/FindMalek/lodesong/issues/596)) ([10675db](https://github.com/FindMalek/lodesong/commit/10675db22693a21a821440799ea7f9eff172e743))
+
+
+### Bug Fixes
+
+* **player:** phone bar layout ([#639](https://github.com/FindMalek/lodesong/issues/639)) ([c606b35](https://github.com/FindMalek/lodesong/commit/c606b359d8ec0bd5d5c9385f258e4d1425e07292))
+
 ## [1.21.0](https://github.com/FindMalek/lodesong/compare/v1.20.0...v1.21.0) (2026-11-19)
 
 
