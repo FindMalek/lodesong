@@ -16,6 +16,7 @@ export interface Settings {
   ratings: boolean;
   offlineInBar: boolean;
   loadingBar: boolean;
+  diagnostics: boolean;
   miniPlayerWhenHidden: boolean;
   queueSync: boolean;
   followOtherDevices: boolean;
@@ -56,6 +57,7 @@ const DEFAULTS: Settings = {
   ratings: false,
   offlineInBar: false,
   loadingBar: false,
+  diagnostics: true,
   miniPlayerWhenHidden: false,
   queueSync: true,
   followOtherDevices: false,

@@ -68,6 +68,22 @@ const SETTINGS = [
     description: "The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`.",
   },
   {
+    name: "DIAGNOSTICS",
+    fallback: "on",
+    description:
+      "`on`: errors and warnings from this server and the player are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies.",
+  },
+  {
+    name: "GLITCHTIP_DSN",
+    fallback: "",
+    description: "Your GlitchTip (or Sentry) project DSN. Empty: errors aren't reported.",
+  },
+  { name: "O2_URL", fallback: "", description: "Your OpenObserve address, to ship warning and error logs to. Empty: logs aren't shipped." },
+  { name: "O2_ORG", fallback: "default", description: "The OpenObserve organization." },
+  { name: "O2_STREAM", fallback: "lodesong", description: "The OpenObserve stream the logs go to." },
+  { name: "O2_USER", fallback: "", description: "OpenObserve user (basic auth). Needed with `O2_URL`." },
+  { name: "O2_PASSWORD", fallback: "", description: "OpenObserve password or ingest token. Needed with `O2_URL`." },
+  {
     name: "MUSICBRAINZ_URL",
     fallback: "https://musicbrainz.org",
     description:
@@ -175,6 +191,7 @@ const SETTINGS = [
 type Env = Record<string, string | undefined>;
 
 export interface Config {
+  diagnostics: { on: boolean; dsn: string; o2: { url: string; org: string; stream: string; auth: string } | null };
   port: number;
   dataDir: string;
   upstreams: Upstream[];
@@ -311,6 +328,19 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     purgeShares: flag("SHARE_PURGE", ["on"], ["off"]),
     trustProxy: flag("TRUST_PROXY", ["1", "true", "yes", "on"], ["0", "false", "no", "off", ""]),
     updateCheck: flag("UPDATE_CHECK", ["on"], ["off"]),
+    diagnostics: {
+      on: flag("DIAGNOSTICS", ["on"], ["off"]),
+      dsn: get("GLITCHTIP_DSN"),
+      o2:
+        get("O2_URL") && get("O2_USER") && get("O2_PASSWORD")
+          ? {
+              url: get("O2_URL").replace(/\/+$/, ""),
+              org: get("O2_ORG"),
+              stream: get("O2_STREAM"),
+              auth: `Basic ${btoa(`${get("O2_USER")}:${get("O2_PASSWORD")}`)}`,
+            }
+          : null,
+    },
   };
   return { config, errors };
 }

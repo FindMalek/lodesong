@@ -291,7 +291,7 @@ real one. See [demo library](docs/demo-library.md).
 **Does it change my music files?** No. It reads through Navidrome's API. Likes, ratings, playlists and plays are
 stored by Navidrome; lodesong keeps only its own data (sessions, its search and lyrics cache, history) in `/data`.
 
-**Does it phone home?** No telemetry, no analytics. It talks to your Navidrome and, by default, to two public services:
+**Does it phone home?** Not to us: there is no analytics and nothing goes to any service of ours. Errors and warnings go only to *your own* GlitchTip and OpenObserve, and only if you set `GLITCHTIP_DSN` or `O2_URL`; never song titles, addresses with tokens or cookies. `DIAGNOSTICS=off` stops it on the server, and each device has a switch in settings. It talks to your Navidrome and, by default, to two public services:
 LRCLIB for lyrics Navidrome doesn't have (the song's title and artist) and MusicBrainz once a week for new releases by the
 artists you follow (artist names only). `LRCLIB_URL=` and `MUSICBRAINZ_URL=` (empty) turn each off. The rest is opt-in:
 Groq for playlists from a prompt and upload tags, only with `GROQ_API_KEY` (it gets artist names, never your files);
