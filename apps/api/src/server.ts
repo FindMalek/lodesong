@@ -23,6 +23,7 @@ import { LoginLimiter } from "./rate-limit";
 import { lyterionHandOff, MusicBrainz, ReleaseWatch } from "./releases";
 import { IndexSync } from "./search-index";
 import { SessionStore } from "./sessions";
+import { createClientReporter, Telemetry } from "./telemetry";
 import { MAX_UPLOAD_BYTES } from "./upload";
 
 // Dead-code eliminated per build: the executable only contains the static server, dev only the bundler route.
@@ -115,6 +116,9 @@ const api = createApi({
 const health = new HealthCheck(config.upstreams, undefined, config.demoAccount !== null);
 
 const cspReport = createCspReporter();
+const telemetry = new Telemetry({ ...config.diagnostics, release: VERSION });
+telemetry.install();
+const clientReport = createClientReporter(telemetry);
 
 // The player's own links, so a pasted one unfurls. Dev serves the bundler's page as is.
 const shareRoutes = pageWith
@@ -143,6 +147,7 @@ const server = Bun.serve({
     "/api/share": { GET: api.shareList, POST: api.shareCreate },
     "/api/share/:id": { DELETE: api.shareRemove },
     "/api/csp-report": { POST: cspReport },
+    "/api/diagnostics": { POST: clientReport },
     "/api/health": { GET: () => health.response() },
     "/api/rpc/*": api.rpc,
     "/api/folders/:id/cover": { GET: api.folderPicture },

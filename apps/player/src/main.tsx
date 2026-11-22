@@ -1,6 +1,7 @@
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createRoot } from "react-dom/client";
 import { App } from "./app";
+import "./lib/error-report";
 import "./lib/install";
 import "./lib/look";
 import "./lib/motion";
