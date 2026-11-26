@@ -128,12 +128,12 @@ struct LyricsHit: Equatable {
 /// The lodesong endpoints the web player uses for lyrics (docs/lyrics.md).
 extension ServerClient {
     func lyrics(song id: String) async throws -> Lyrics {
-        try await api("api/lyrics/\(id)")
+        try await api("lyrics/\(id)")
     }
 
     func lyricsNudge(song id: String) async throws -> Int {
         struct Answer: Decodable { let offset: Double }
-        let answer: Answer = try await api("api/lyrics/\(id)/offset")
+        let answer: Answer = try await api("lyrics/\(id)/offset")
         return Int(answer.offset)
     }
 
@@ -156,7 +156,7 @@ extension ServerClient {
             }
             let hits: [Hit]
         }
-        let answer: Answer = try await api("api/search/lyrics", ["q": query])
+        let answer: Answer = try await api("search/lyrics", ["q": query])
         return answer.hits.map { LyricsHit(song: $0.song, start: $0.start, text: $0.text) }
     }
 
@@ -165,12 +165,5 @@ extension ServerClient {
         request.setValue("1", forHTTPHeaderField: "x-lodesong")
         request.timeoutInterval = 20
         return request
-    }
-
-    private func api<Answer: Decodable>(_ path: String, _ query: [String: String] = [:]) async throws -> Answer {
-        let (data, response) = try await session.data(for: apiRequest(url(path, query)))
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard status == 200 else { throw ServerError.message("The server answered \(status).") }
-        return try JSONDecoder().decode(Answer.self, from: data)
     }
 }
