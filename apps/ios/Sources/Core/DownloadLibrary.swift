@@ -27,6 +27,8 @@ final class DownloadLibrary: @unchecked Sendable {
         var collections: [KeptCollection] = []
         /// Song id to a path under `root`. Relative, because iOS moves the app's folder on updates and re-signing.
         var files: [String: String] = [:]
+        /// Removed by hand, so downloading every playlist leaves them alone. Optional: older lists don't have it.
+        var skipped: [DownloadRef]?
     }
 
     /// What iOS plays as it is. Anything else (Vorbis, WMA…) is asked for as mp3, `ogg` too: it may hold Vorbis.
@@ -72,14 +74,42 @@ final class DownloadLibrary: @unchecked Sendable {
     func keep(_ ref: DownloadRef, from store: LibraryStore) {
         locked {
             guard !manifest.collections.contains(where: { $0.ref == ref }), let found = Self.find(ref, in: store, songs: store.songs()) else { return }
+            manifest.skipped?.removeAll { $0 == ref }
             manifest.collections.append(found)
             save()
+        }
+    }
+
+    /// Keeps every playlist with songs in it, except the ones removed by hand.
+    func keepPlaylists(from store: LibraryStore) {
+        locked {
+            let known = Set(manifest.collections.map(\.ref) + (manifest.skipped ?? []))
+            let songs = store.songs()
+            let added = store.playlists().compactMap { playlist -> KeptCollection? in
+                let ref = DownloadRef(kind: .playlist, id: playlist.id)
+                guard !known.contains(ref), let found = Self.find(ref, in: store, songs: songs), !found.songs.isEmpty else { return nil }
+                return found
+            }
+            guard !added.isEmpty else { return }
+            manifest.collections += added
+            save()
+        }
+    }
+
+    /// Every song with a file on the phone, once, by title.
+    func downloaded() -> [Song] {
+        locked {
+            var seen = Set<String>()
+            return manifest.collections.flatMap(\.songs)
+                .filter { manifest.files[$0.id] != nil && seen.insert($0.id).inserted }
+                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         }
     }
 
     func remove(_ ref: DownloadRef) {
         locked {
             manifest.collections.removeAll { $0.ref == ref }
+            manifest.skipped = (manifest.skipped ?? []).filter { $0 != ref } + [ref]
             sweep()
         }
     }
@@ -177,13 +207,13 @@ final class DownloadLibrary: @unchecked Sendable {
     }
 
     /// Only says yes when the file's length can be read and is clearly less than the song's.
-    private static func isShort(_ file: URL, expected: Int?) -> Bool {
+    static func isShort(_ file: URL, expected: Int?) -> Bool {
         guard let expected, expected > 0, let audio = try? AVAudioFile(forReading: file) else { return false }
         return Double(audio.length) / audio.fileFormat.sampleRate < Double(expected) * 0.9 - 2
     }
 
     /// The extension the file should have, read from its first bytes: the player goes by the extension.
-    private static func audioKind(_ file: URL, suffix: String?) -> String? {
+    static func audioKind(_ file: URL, suffix: String?) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
         defer { try? handle.close() }
         let head = [UInt8]((try? handle.read(upToCount: 4096)) ?? Data())
@@ -218,7 +248,7 @@ final class DownloadLibrary: @unchecked Sendable {
         }
     }
 
-    private static func fileName(_ id: String) -> String {
+    static func fileName(_ id: String) -> String {
         id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? id
     }
 

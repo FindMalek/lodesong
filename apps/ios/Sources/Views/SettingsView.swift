@@ -43,7 +43,7 @@ private struct SettingsList: View {
                 LabeledContent("Signed in as", value: model.user)
                 LabeledContent("Server", value: model.client?.server.host() ?? "")
                 LabeledContent("Status") {
-                    Text(model.syncing ? "Syncing…" : model.syncError == nil ? "Connected" : "Can't reach the server")
+                    Text(model.offlineMode ? "Offline Mode" : model.syncing ? "Syncing…" : model.syncError == nil ? "Connected" : "Can't reach the server")
                 }
                 if let last = model.lastSync {
                     LabeledContent("Last Synced", value: last.formatted(.relative(presentation: .named)))
@@ -58,7 +58,9 @@ private struct SettingsList: View {
                         if model.syncing { ProgressView() }
                     }
                 }
-                .disabled(model.syncing)
+                .disabled(model.syncing || model.offlineMode)
+                Toggle("Offline Mode", isOn: $model.offlineMode)
+                NavigationLink { ServerSettings() } label: { Label("Server Addresses", systemImage: "network") }
             } footer: {
                 if let error = model.syncError { Text(error) }
             }
@@ -67,6 +69,7 @@ private struct SettingsList: View {
                 NavigationLink { AppearanceSettings() } label: { Label("Appearance", systemImage: "paintpalette") }
                 NavigationLink { StorageSettings() } label: { Label("Storage", systemImage: "internaldrive") }
                 NavigationLink { AboutSettings() } label: { Label("About", systemImage: "info.circle") }
+                NavigationLink { LogsView() } label: { Label("Logs", systemImage: "doc.text") }
             }
             Section {
                 Button("Sign Out", role: .destructive) {

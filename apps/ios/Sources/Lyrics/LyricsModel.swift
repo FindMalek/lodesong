@@ -23,7 +23,7 @@ final class LyricsModel: ObservableObject {
 
     /// Each account has its own folder: song ids are only unique on one server.
     private var store: LyricsStore? {
-        guard let app, let server = app.client?.server else { return nil }
+        guard let app, let server = app.client?.identity else { return nil }
         let key = DownloadLibrary.folder(server: server, user: app.user)
         if let cached, cached.key == key { return cached.store }
         let store = LyricsStore(root: URL.applicationSupportDirectory.appending(path: "Lyrics/\(key)"))
@@ -31,7 +31,7 @@ final class LyricsModel: ObservableObject {
         return store
     }
 
-    private var client: ServerClient? { app?.needsSignIn == false ? app?.client : nil }
+    private var client: ServerClient? { app?.live }
 
     func saved(_ song: String) -> SavedLyrics? { store?.load(song) }
 

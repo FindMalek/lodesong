@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// What the player screens draw. A copy of the player, so screenshots can stand one in.
 struct Playback {
@@ -178,6 +179,7 @@ struct NowPlayingView: View {
     @State private var showingQueue = NowPlayingView.startsInQueue
     @AppStorage(Pref.movingBackground) private var movingBackground = true
     @AppStorage(Pref.keepAwake) private var keepAwake = false
+    @AppStorage(Pref.coverSkipSeconds) private var coverSkipSeconds = 0
     @Namespace private var cover
     @State private var showingLyrics = NowPlayingView.startsInLyrics
 
@@ -217,6 +219,10 @@ struct NowPlayingView: View {
                         .scaleEffect(playback.isPlaying ? 1 : 0.82)
                         .shadow(color: .black.opacity(0.4), radius: 24, y: 14)
                         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: playback.isPlaying)
+                        .gesture(SidewaysSwipe(enabled: coverSkipSeconds > 0) { across in
+                            Haptic.tap()
+                            player.skip(by: Double(across > 0 ? coverSkipSeconds : -coverSkipSeconds))
+                        })
                     Spacer(minLength: 12)
                 }
                 VStack(spacing: proxy.size.height < 700 || showingQueue ? 8 : 20) {
@@ -325,6 +331,45 @@ struct NowPlayingView: View {
                 .contentShape(.rect)
         }
         .accessibilityLabel(label)
+    }
+}
+
+/// A swipe left or right that wins over the player's own swipe to close, which goes sideways too.
+/// A drag up or down never starts it, so that still closes the player. SwiftUI's gestures lose to that swipe.
+private struct SidewaysSwipe: UIGestureRecognizerRepresentable {
+    let enabled: Bool
+    let swiped: (CGFloat) -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var enabled = false
+
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard enabled, let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let speed = pan.velocity(in: pan.view)
+            return abs(speed.x) > abs(speed.y) * 2
+        }
+
+        func gestureRecognizer(_ recognizer: UIGestureRecognizer, shouldBeRequiredToFailBy other: UIGestureRecognizer) -> Bool {
+            other is UIPanGestureRecognizer
+        }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        context.coordinator.enabled = enabled
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.enabled = enabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let across = recognizer.translation(in: recognizer.view).x
+        if recognizer.state == .ended, abs(across) > 40 { swiped(across) }
     }
 }
 

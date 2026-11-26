@@ -8,6 +8,8 @@ struct LyricsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var shown: (song: String, saved: SavedLyrics)?
     @State private var loading = true
+    @AppStorage(Pref.movingBackground) private var movingBackground = true
+    @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
 
     var body: some View {
         let playback = player.playback(model.library)
@@ -30,7 +32,7 @@ struct LyricsView: View {
             controls(playback.isPlaying)
         }
         .foregroundStyle(.white)
-        .background { ArtworkBackground(id: song?.coverArt) }
+        .background { ArtworkBackground(id: song?.coverArt, moving: movingBackground) }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: song?.id) { await load(song?.id) }
@@ -96,7 +98,7 @@ struct LyricsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("These lyrics have no timing.").font(.footnote).foregroundStyle(.white.opacity(0.6))
                 ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { _, line in
-                    Text(line.text.isEmpty ? " " : line.text).font(.title2.bold())
+                    Text(line.text.isEmpty ? " " : line.text).font(lyricSize.plain.bold())
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,6 +149,9 @@ struct LyricsView: View {
 
 private struct SyncedLines: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(Pref.tint) private var tint = "red"
+    @AppStorage(Pref.tintCustom) private var tintCustom = ""
+    @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
     let player: PlayerModel
     let lyrics: Lyrics
     let nudge: Int
@@ -235,7 +240,8 @@ private struct SyncedLines: View {
             player.seek(to: max(0, (line.start + Double(nudge)) / 1000 + 0.01))
         } label: {
             text(line, current: current)
-                .font(.title.bold())
+                .font(lyricSize.synced.bold())
+                .foregroundStyle(current ? Theme.tint(tint, custom: tintCustom) : .white)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(.rect)
@@ -253,9 +259,32 @@ private struct SyncedLines: View {
         var out = AttributedString()
         for (index, word) in words.enumerated() {
             var part = AttributedString(index == 0 ? word.text : " " + word.text)
-            part.foregroundColor = .white.opacity(index < sung ? 1 : 0.4)
+            part.foregroundColor = Theme.tint(tint, custom: tintCustom).opacity(index < sung ? 1 : 0.5)
             out += part
         }
         return Text(out)
+    }
+}
+
+/// How big the words are, on top of the system's own text size.
+enum LyricSize: String, CaseIterable {
+    case small, medium, large, extraLarge
+
+    var title: String { self == .extraLarge ? "Extra Large" : rawValue.capitalized }
+    var synced: Font {
+        switch self {
+        case .small: return .title3
+        case .medium: return .title
+        case .large: return .largeTitle
+        case .extraLarge: return .system(size: 42)
+        }
+    }
+    var plain: Font {
+        switch self {
+        case .small: return .body
+        case .medium: return .title2
+        case .large: return .title
+        case .extraLarge: return .largeTitle
+        }
     }
 }

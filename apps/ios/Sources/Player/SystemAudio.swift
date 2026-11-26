@@ -130,10 +130,11 @@ final class SystemAudio {
     private func fetch(_ cover: String, _ client: ServerClient) {
         fetching = cover
         Task {
-            let data = try? await client.session.data(from: client.coverURL(cover, size: 600)).0
+            // Through the cache, so the lock screen has a cover offline too.
+            let image = await ArtworkCache.shared.image(cover, size: 600, client: client)
             guard fetching == cover else { return }
             fetching = nil
-            guard let image = data.flatMap(UIImage.init(data:)) else { return }
+            guard let image else { return }
             artwork = (cover, Self.artwork(image))
             info[MPMediaItemPropertyArtwork] = artwork?.image
             // The elapsed time in `info` is from when the song was last shown; the lock screen already counted on from it.

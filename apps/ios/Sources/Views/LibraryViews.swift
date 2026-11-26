@@ -1,15 +1,9 @@
 import SwiftUI
 
-/// The rows and the grid on the Library page, each of which Settings can hide.
-enum LibrarySection: String, CaseIterable {
-    case playlists, artists, albums, songs, downloaded, recentlyAdded
-
-    var title: String { self == .recentlyAdded ? "Recently Added" : rawValue.capitalized }
-}
-
 struct LibraryView: View {
     @EnvironmentObject private var model: AppModel
     @AppStorage(Pref.hiddenLibrary) private var hidden = ""
+    @AppStorage(Pref.libraryOrder) private var order = ""
 
     private func shows(_ section: LibrarySection) -> Bool { !hidden.split(separator: ",").contains(Substring(section.rawValue)) }
 
@@ -20,21 +14,7 @@ struct LibraryView: View {
             if model.offline {
                 OfflineNotice().listRowSeparator(.hidden)
             }
-            if shows(.playlists) { row("Playlists", "music.note.list", .playlists) }
-            if shows(.artists) { row("Artists", "music.mic", .artists) }
-            if shows(.albums) { row("Albums", "square.stack", .albums) }
-            if shows(.songs) { row("Songs", "music.note", .songs) }
-            if shows(.downloaded) { row("Downloaded", "arrow.down.circle", .downloaded) }
-            if shows(.recentlyAdded), !added.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Recently Added").font(.title2.bold())
-                    LazyVGrid(columns: gridColumns, spacing: 20) {
-                        ForEach(added) { AlbumTile(album: $0, section: "library") }
-                    }
-                }
-                .padding(.top, 20)
-                .listRowSeparator(.hidden)
-            }
+            ForEach(LibrarySection.ordered(order).filter(shows), id: \.self) { section($0) }
         }
         .listStyle(.plain)
         .refreshable { await model.sync() }
@@ -46,6 +26,28 @@ struct LibraryView: View {
                 ToolbarItem { ProgressView() }
             }
             ToolbarItem { AccountButton() }
+        }
+    }
+
+    @ViewBuilder private func section(_ section: LibrarySection) -> some View {
+        switch section {
+        case .playlists: row("Playlists", "music.note.list", .playlists)
+        case .artists: row("Artists", "music.mic", .artists)
+        case .albums: row("Albums", "square.stack", .albums)
+        case .songs: row("Songs", "music.note", .songs)
+        case .downloaded: row("Downloaded", "arrow.down.circle", .downloaded)
+        case .recentlyAdded:
+            let albums = added
+            if !albums.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Recently Added").font(.title2.bold())
+                    LazyVGrid(columns: gridColumns, spacing: 20) {
+                        ForEach(albums) { AlbumTile(album: $0, section: "library") }
+                    }
+                }
+                .padding(.top, 20)
+                .listRowSeparator(.hidden)
+            }
         }
     }
 

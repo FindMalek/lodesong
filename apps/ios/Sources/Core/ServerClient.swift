@@ -16,6 +16,11 @@ enum ServerError: LocalizedError, Equatable {
 struct ServerClient {
     let server: URL
     var session: URLSession = .shared
+    /// The account's main address, when `server` is its second one.
+    var home: URL?
+
+    /// What this account's files are keyed by, whichever address is in use.
+    var identity: URL { home ?? server }
 
     /// "music.example.com" becomes https; an address on your own network (an IP, a port, `.local`) stays http.
     static func normalize(_ raw: String) -> URL? {
@@ -40,6 +45,11 @@ struct ServerClient {
         url("rest/getCoverArt", ["id": id, "size": String(size)])
     }
 
+    /// Names a cover in the cache, the same through either address.
+    func coverKey(_ id: String, size: Int) -> URL {
+        ServerClient(server: identity).coverURL(id, size: size)
+    }
+
     func signIn(user: String, password: String) async throws {
         var request = URLRequest(url: url("auth/login"))
         request.httpMethod = "POST"
@@ -62,6 +72,12 @@ struct ServerClient {
     }
 
     private struct SignedIn: Decodable { let user: String }
+
+    /// A first page of album ids, to tell whether an address serves the same library.
+    func albumIDs() async throws -> [String] {
+        let query = ["query": "", "artistCount": "0", "songCount": "0", "albumCount": "50"]
+        return try await rest("search3", query).searchResult3?.album?.map(\.id) ?? []
+    }
 
     func librarySnapshot(knownPlaylists: [String: String]) async throws -> LibrarySnapshot {
         var snapshot = LibrarySnapshot()

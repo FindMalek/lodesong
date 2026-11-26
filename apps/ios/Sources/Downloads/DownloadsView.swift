@@ -21,6 +21,17 @@ struct DownloadsView: View {
             NewTracksToggle()
 
             Section {
+                Toggle("Download All Playlists", isOn: $downloads.allPlaylists)
+            } footer: {
+                Text("New playlists too. A playlist you remove stays removed. To download one only, use its download button.")
+            }
+
+            Section {
+                NavigationLink { DownloadQueueView() } label: { LabeledContent("Queue", value: downloads.pending.count.formatted()) }
+                NavigationLink { DownloadedSongsView() } label: { LabeledContent("Downloaded Songs", value: downloads.songs.count.formatted()) }
+            }
+
+            Section {
                 ForEach(downloads.collections) { kept in
                     VStack(alignment: .leading) {
                         Text(kept.name).lineLimit(1)
@@ -39,11 +50,6 @@ struct DownloadsView: View {
             }
         }
         .navigationTitle("Downloads")
-        .overlay {
-            if downloads.collections.isEmpty {
-                ContentUnavailableView("No Downloads", systemImage: "arrow.down.circle", description: Text("Downloaded playlists and albums show here."))
-            }
-        }
     }
 
     private func detail(_ kept: KeptCollection) -> String {
@@ -59,5 +65,58 @@ struct DownloadsView: View {
 
     private func size(_ bytes: Int) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
+}
+
+/// What still has to come down, in the order it will.
+struct DownloadQueueView: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var downloads: DownloadsModel
+
+    var body: some View {
+        let pending = downloads.pending
+        List {
+            if !pending.isEmpty && model.offlineMode {
+                Text("Paused while Offline Mode is on.").foregroundStyle(.secondary)
+            }
+            ForEach(pending) { song in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(song.title).lineLimit(1)
+                        Text(song.artist ?? " ").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    Text(downloads.failed.contains(song.id) ? "Failed" : "Waiting")
+                        .font(.subheadline)
+                        .foregroundStyle(downloads.failed.contains(song.id) ? .red : .secondary)
+                }
+            }
+        }
+        .overlay {
+            if pending.isEmpty { ContentUnavailableView("Nothing Waiting", systemImage: "checkmark.circle") }
+        }
+        .navigationTitle("Download Queue")
+        .toolbar {
+            if downloads.failures > 0 { Button("Retry", systemImage: "arrow.clockwise") { downloads.retry() } }
+        }
+    }
+}
+
+struct DownloadedSongsView: View {
+    @EnvironmentObject private var downloads: DownloadsModel
+
+    var body: some View {
+        let songs = downloads.songs
+        List {
+            if !songs.isEmpty { PlayShuffleButtons(songs: songs).listRowSeparator(.hidden) }
+            ForEach(Array(songs.enumerated()), id: \.element.id) { index, _ in
+                SongRow(songs: songs, index: index)
+            }
+        }
+        .listStyle(.plain)
+        .overlay {
+            if songs.isEmpty { ContentUnavailableView("No Downloaded Songs", systemImage: "arrow.down.circle") }
+        }
+        .navigationTitle("Downloaded Songs")
     }
 }

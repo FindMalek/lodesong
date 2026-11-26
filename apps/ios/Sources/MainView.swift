@@ -37,7 +37,7 @@ struct MainView: View {
                 .environmentObject(router)
         }
         .environmentObject(router)
-        .onAppear { AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)") }
+        .onAppear { AccountData.adopt("\(model.client?.identity.absoluteString ?? "") \(model.user)") }
         #if DEBUG
         .task(id: model.library.songs.count) {
             guard !openedDebugScreen, !model.library.songs.isEmpty else { return }

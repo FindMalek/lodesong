@@ -37,7 +37,7 @@ final class ArtworkCache {
     }
 
     private func keptFile(_ id: String, client: ServerClient) -> URL {
-        kept.appending(path: Self.hash(client.coverURL(id, size: 800)))
+        kept.appending(path: Self.hash(client.coverKey(id, size: 800)))
     }
 
     private static func hash(_ url: URL) -> String {
@@ -67,11 +67,12 @@ final class ArtworkCache {
         #endif
         guard let client else { return nil }
         let url = client.coverURL(id, size: size)
-        let file = folder.appending(path: Self.hash(url))
+        let file = folder.appending(path: Self.hash(client.coverKey(id, size: size)))
         if let data = await Task.detached(operation: { try? Data(contentsOf: file) }).value, let image = UIImage(data: data) {
             return store(image, id: id, size: size)
         }
-        guard let (data, response) = try? await URLSession.shared.data(from: url),
+        guard !UserDefaults.standard.bool(forKey: Pref.offlineMode),
+              let (data, response) = try? await URLSession.shared.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let image = UIImage(data: data)
         else {
