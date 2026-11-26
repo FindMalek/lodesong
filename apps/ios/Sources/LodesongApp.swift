@@ -4,6 +4,7 @@ import SwiftUI
 struct LodesongApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var player = PlayerModel()
+    @StateObject private var lyrics = LyricsModel()
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(Pref.appearance) private var appearance = "system"
     @AppStorage(Pref.tint) private var tint = "red"
@@ -17,10 +18,12 @@ struct LodesongApp: App {
             .environmentObject(model)
             .environmentObject(player)
             .environmentObject(model.downloads)
+            .environmentObject(lyrics)
             .tint(Theme.tint(tint, custom: tintCustom))
             .preferredColorScheme(Theme.colorScheme(appearance))
             .task {
                 player.attach(app: model, downloads: model.downloads)
+                lyrics.attach(app: model)
                 #if DEBUG
                 await model.debugSignIn()
                 player.accountChanged()
