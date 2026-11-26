@@ -270,6 +270,15 @@ struct DeviceMirror: Equatable {
         state = new
     }
 
+    /// Stops the clock where it is, for when nothing more will be heard: what plays on unheard must not count.
+    mutating func freeze(now: Date = Date()) {
+        guard state != nil else { return }
+        let here = position(at: now)
+        state?.position = here
+        state?.playing = false
+        since = now
+    }
+
     func position(at now: Date = Date()) -> Double {
         guard let state else { return 0 }
         let position = state.playing ? state.position + max(0, now.timeIntervalSince(since)) : state.position

@@ -1011,8 +1011,8 @@ final class PlayerModel: ObservableObject {
         } else if UIApplication.shared.applicationState == .background, !awaitingDevices {
             link.close()
             if isRemote {
-                remoteTick?.cancel()
-                remoteTick = nil
+                mirror.freeze()
+                showRemote()
             } else {
                 forgetSession()
             }

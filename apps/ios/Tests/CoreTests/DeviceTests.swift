@@ -34,6 +34,17 @@ final class DeviceTests: XCTestCase {
         XCTAssertNil(mirror.playingOn)
     }
 
+    func testTimeAfterTheLinkClosedIsNotCounted() {
+        var mirror = DeviceMirror()
+        _ = mirror.list([mac, phone], me: "phone", playingHere: false, now: start)
+        mirror.heard(playing, now: start)
+        mirror.freeze(now: start + 5)
+
+        // Reopened much later, with the other device gone.
+        let left = mirror.list([phone], me: "phone", playingHere: false, now: start + 3600)
+        XCTAssertEqual(left?.position, 15)
+    }
+
     func testTheOwnQueueIsNeverReplacedUnasked() {
         let one = Song(id: "s1", title: "One"), other = Song(id: "x", title: "Mine")
         XCTAssertEqual(playing.leftover(upcoming: [other]), .offer)
