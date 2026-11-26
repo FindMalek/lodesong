@@ -1,6 +1,11 @@
 import Foundation
 
 enum Radio {
+    /// Whether infinite play should add songs: asked before fetching them, and again before adding them.
+    static func wantsMore(on: Bool, remote: Bool, repeatMode: RepeatMode, sleepTimer: SleepTimer?, queue: PlayQueue) -> Bool {
+        on && !remote && repeatMode == .off && sleepTimer != .endOfQueue && queue.current != nil && queue.songs.count - queue.index <= 5
+    }
+
     /// The first `count` songs of `candidates` that aren't in `excluding`, each once.
     static func pick(_ candidates: [Song], excluding: Set<String>, count: Int) -> [Song] {
         var seen = excluding

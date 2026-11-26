@@ -91,6 +91,14 @@ extension PlayerModel {
         }
     }
 
+    /// `first` then `more`. When `first` is already on it isn't started again, which would count another play.
+    func startRadio(_ first: Song, _ more: [Song]) {
+        guard onNow?.id == first.id else { return start([first] + more) }
+        let follow = { self.follow(with: more) }
+        guard !isRemote, UserDefaults.standard.bool(Pref.confirmReplace, or: false), wouldReplace([first] + more) else { return follow() }
+        Popup.show("Replace the Queue?", message: "The songs still to come are dropped.", action: "Replace", perform: follow)
+    }
+
     func startShuffled(_ songs: [Song]) {
         guard !songs.isEmpty else { return }
         replacing(songs) { self.shuffle(songs) }

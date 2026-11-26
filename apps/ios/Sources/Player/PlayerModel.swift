@@ -194,15 +194,31 @@ final class PlayerModel: ObservableObject {
         edit { $0.clearUpcoming() }
     }
 
-    /// Plays `song` now without dropping the queue.
-    func playNow(_ song: Song) {
+    /// Puts `songs` after the current one, which carries on where it is. A remote can only add, not drop.
+    func follow(with songs: [Song]) {
+        if isRemote {
+            command(.add(songs, next: true))
+        } else {
+            edit { $0.replaceUpcoming(songs) }
+        }
+        if !(isRemote ? mirror.state?.playing == true : isPlaying) { toggle() }
+    }
+
+    /// The song that is on, here or on the device that plays.
+    var onNow: Song? { isRemote ? mirror.state?.songs.first : current }
+
+    /// Plays `song` now without dropping the queue. False when offline mode doesn't have it.
+    func playNow(_ song: Song) -> Bool {
         if isRemote {
             command(.add([song], next: true))
-            return command(.next)
+            command(.next)
+            return true
         }
+        guard app?.offlineMode != true || localFile(song.id) != nil else { return false }
         let target = queue.isEmpty ? 0 : index + 1
         edit { $0.insertNext([song]) }
         jump(to: target)
+        return true
     }
 
     func clearHistory() {
@@ -212,8 +228,7 @@ final class PlayerModel: ObservableObject {
 
     /// Keeps infinite play ahead: with few songs left, ones like the current song go on the end.
     private func topUp() {
-        guard defaults.bool(Pref.infinitePlay, or: false), !isRemote, repeatMode == .off, sleepTimer != .endOfQueue,
-              toppingUp == nil, loaded != nil, let song = current, queue.count - index <= 5, let client else { return }
+        guard wantsMore, toppingUp == nil, loaded != nil, let song = current, let client else { return }
         // Once for each song and queue, so a server with nothing to give isn't asked over and over.
         let key = "\(queueNumber) \(song.id) \(queue.count)"
         guard key != toppedUp else { return }
@@ -228,11 +243,19 @@ final class PlayerModel: ObservableObject {
             self.toppingUp = nil
             // Another queue started meanwhile, or it was turned off: these belong to neither.
             guard number == self.queueNumber, account == self.account else { return self.topUp() }
-            guard self.defaults.bool(Pref.infinitePlay, or: false), !self.isRemote, !more.isEmpty else { return }
+            // Repeat, End of Queue, offline mode or the end of playback may have come while the server answered.
+            guard self.wantsMore, self.loaded != nil, self.client != nil else { return self.toppedUp = "" }
+            guard !more.isEmpty else { return }
             // Anything queued by hand while the server answered is not added a second time.
             let queued = Set(self.queue.map(\.id))
+            // The queue can come back to this size, by clearing it for one, and must be filled again then.
+            self.toppedUp = ""
             self.edit { $0.append(more.filter { !queued.contains($0.id) }) }
         }
+    }
+
+    private var wantsMore: Bool {
+        Radio.wantsMore(on: defaults.bool(Pref.infinitePlay, or: false), remote: isRemote, repeatMode: repeatMode, sleepTimer: sleepTimer, queue: line)
     }
 
     // MARK: - Likes and ratings
@@ -734,7 +757,9 @@ final class PlayerModel: ObservableObject {
     private func ended(_ item: AVPlayerItem?) {
         guard let item, item === loaded?.item else { return }
         if sleepTimer?.stops(after: line) == true {
-            setSleepTimer(nil)
+            // Not `setSleepTimer`: it tops up, and this is where playback was asked to stop.
+            sleepTimer = nil
+            holdAtEnd()
             guard let target = line.following(repeatMode), line.jump(to: target) else { return finish() }
             load(at: 0, play: false)
             return push()

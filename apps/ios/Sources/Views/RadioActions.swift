@@ -13,7 +13,7 @@ enum RadioActions {
             defer { busy = false }
             let more = await client.radio(from: seed, excluding: [first.id], count: 40)
             guard !more.isEmpty else { return Popup.show("Can't Start Radio", message: "Your server found no similar songs, or can't be reached.") }
-            player.start([first] + more)
+            player.startRadio(first, more)
         }
     }
 }

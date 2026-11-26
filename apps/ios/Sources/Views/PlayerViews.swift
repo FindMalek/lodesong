@@ -197,6 +197,7 @@ struct NowPlayingView: View {
     @State private var showingQueue = NowPlayingView.startsInQueue
     @State private var showingMore = NowPlayingView.startsInMore
     @State private var showingDevices = NowPlayingView.startsInDevices
+    @State private var afterMore: PlayerButton?
     @AppStorage(Pref.playerStyle) private var style = "arpeggi"
     @AppStorage(Pref.coverSwipe) private var coverSwipe = true
     @AppStorage(Pref.reverseCoverSwipe) private var reverseCoverSwipe = false
@@ -322,10 +323,21 @@ struct NowPlayingView: View {
         // A drag in the queue reorders or scrolls it, so it must not pull the player closed.
         .interactiveDismissDisabled(showingQueue)
         // Outside the forced dark look, so the sheet follows the app's own theme.
-        .sheet(isPresented: $showingMore) {
-            if let song { QuickSettings(song: song) }
+        .sheet(isPresented: $showingMore, onDismiss: openAfterMore) {
+            if let song { QuickSettings(song: song) { afterMore = $0 } }
         }
         .sheet(isPresented: $showingDevices) { DeviceList() }
+    }
+
+    /// What "..." was asked to show, once its sheet is gone: only one can be up at a time.
+    private func openAfterMore() {
+        switch afterMore {
+        case .lyrics: showingLyrics = true
+        case .queue: withAnimation(.spring(duration: 0.35)) { showingQueue = true }
+        case .airplay: showingDevices = true
+        default: break
+        }
+        afterMore = nil
     }
 
     /// The artwork shrunk beside the names, above the queue.
@@ -429,7 +441,7 @@ struct NowPlayingView: View {
     private func bottomButtons(_ song: Song?) -> some View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
-            ForEach(PlayerButton.shown(order: buttonOrder, hidden: hiddenButtons), id: \.self) { button in
+            ForEach(PlayerButton.shown(order: buttonOrder, hidden: hiddenButtons, remote: player.isRemote), id: \.self) { button in
                 bottomButton(button, song)
                 Spacer(minLength: 0)
             }
@@ -632,7 +644,7 @@ struct QueueView: View {
             List(songs) { song in
                 Button {
                     Haptic.tap()
-                    player.playNow(song)
+                    if !player.playNow(song) { Popup.show("Not on This iPhone", message: "Offline Mode only plays downloaded songs.") }
                 } label: {
                     rowLabel(song)
                 }

@@ -115,4 +115,23 @@ final class PlaybackTests: XCTestCase {
     func testSleepTimerButtonIsOffUntilAsked() {
         XCTAssertEqual(PlayerButton.shown(order: "queue", hidden: PlayerButton.hiddenByDefault), [.queue, .airplay, .settings, .dismiss, .lyrics])
     }
+
+    func testTheDevicesButtonCannotBeHiddenWhileAnotherDevicePlays() {
+        XCTAssertFalse(PlayerButton.shown(order: "", hidden: "airplay").contains(.airplay))
+        XCTAssertTrue(PlayerButton.shown(order: "", hidden: "airplay", remote: true).contains(.airplay))
+    }
+
+    func testInfinitePlayAddsNothingOnceRepeatOrEndOfQueueIsPicked() {
+        let queue = PlayQueue(songs: songs("a"))
+        XCTAssertTrue(Radio.wantsMore(on: true, remote: false, repeatMode: .off, sleepTimer: nil, queue: queue))
+        XCTAssertFalse(Radio.wantsMore(on: true, remote: false, repeatMode: .all, sleepTimer: nil, queue: queue))
+        XCTAssertFalse(Radio.wantsMore(on: true, remote: false, repeatMode: .off, sleepTimer: .endOfQueue, queue: queue))
+    }
+
+    func testRadioFromTheSongThatIsOnKeepsItAndReplacesWhatFollows() {
+        var queue = PlayQueue(songs: songs("a", "b", "c"), index: 1)
+        queue.replaceUpcoming(songs("r"))
+        XCTAssertEqual(queue.songs.map(\.id), ["a", "b", "r"])
+        XCTAssertEqual(queue.current?.id, "b")
+    }
 }

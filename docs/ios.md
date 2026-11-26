@@ -151,17 +151,14 @@ A second address that stops accepting your sign in is dropped, not asked for you
 
 ## Now playing and the queue
 
-| Arpeggi style | Apple Music style | Mono, all buttons | Queue | History |
-|---|---|---|---|---|
-| ![arpeggi style](ios/style-arpeggi.png) | ![apple music style](ios/style-apple.png) | ![mono background](ios/style-mono.png) | ![queue](ios/style-queue.png) | ![history](ios/style-history.png) |
-
 - Two styles. **Arpeggi style** is the default: names in the middle, shuffle and repeat beside the controls, no volume
   slider. It was designed from Arpeggi's public App Store picture and release notes, not copied from the app, so
   expect differences. **Apple Music style** has the names on the left and a volume slider.
 - **Settings → Player** (also from "..." on now playing): cover shrinking when paused, mesh or mono background,
   scrolling titles, the cover swipe (changes song, can be reversed), the swipe on the names and controls (steps 5 to
   30 seconds, 10 by default), the mini player swipe, which buttons sit at the bottom and in what order (the sleep timer
-  is off at first), and previous and next or skip for the lock screen, headphones and car.
+  is off at first; "..." has lyrics, queue and devices
+  too, and the devices button stays while another device plays), and previous and next or skip for the lock screen, headphones and car.
 - "..." also has the song's actions, sleep timer, playback, streaming, cache and scrobbling settings.
 - The queue: **infinite play** adds similar songs when five or fewer are left (not with repeat on), **history** lists
   the last 200 songs heard on this phone whatever queue they were in, and its menu has the sleep timer (minutes, end of

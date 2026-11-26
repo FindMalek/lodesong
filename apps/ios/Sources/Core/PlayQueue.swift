@@ -79,6 +79,11 @@ struct PlayQueue: Equatable {
         songs.removeSubrange(min(index + 1, songs.count)...)
     }
 
+    mutating func replaceUpcoming(_ added: [Song]) {
+        clearUpcoming()
+        append(added)
+    }
+
     /// Same meaning as SwiftUI's `onMove`: `target` counts positions before anything is taken out.
     /// The song that is current stays current, wherever it ends up.
     mutating func move(from source: IndexSet, to target: Int) {

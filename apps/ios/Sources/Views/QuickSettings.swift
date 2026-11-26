@@ -15,6 +15,8 @@ struct QuickSettings: View {
     @AppStorage(Pref.cellularBitRate) private var cellularBitRate = 0
     @State private var showingPlayerSettings = QuickSettings.startsInPlayerSettings
     let song: Song
+    /// Lyrics, queue or devices, which stay reachable here when their bottom button is hidden.
+    let open: (PlayerButton) -> Void
 
     private static var startsInPlayerSettings: Bool {
         #if DEBUG
@@ -41,6 +43,11 @@ struct QuickSettings: View {
                             Button("Go to Artist", systemImage: "music.mic") { router.open(.artist(artist)) }
                         }
                     }
+                }
+                Section {
+                    show("Lyrics", "quote.bubble", .lyrics)
+                    show("Queue", "list.bullet", .queue)
+                    show("AirPlay and Devices", "airplayaudio", .airplay)
                 }
                 Section("Player") {
                     PlayerStylePicker()
@@ -90,5 +97,12 @@ struct QuickSettings: View {
             .navigationDestination(isPresented: $showingPlayerSettings) { PlayerSettings() }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private func show(_ title: String, _ symbol: String, _ button: PlayerButton) -> some View {
+        Button(title, systemImage: symbol) {
+            open(button)
+            dismiss()
+        }
     }
 }

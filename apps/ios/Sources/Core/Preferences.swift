@@ -77,9 +77,10 @@ enum PlayerButton: String, CaseIterable {
         return named + allCases.filter { !seen.contains($0) }
     }
 
-    static func shown(order: String, hidden: String) -> [PlayerButton] {
+    /// While another device plays, the devices button is the way back, so it can't be hidden.
+    static func shown(order: String, hidden: String, remote: Bool = false) -> [PlayerButton] {
         let hidden = Set(hidden.split(separator: ",").map(String.init))
-        return ordered(order).filter { !hidden.contains($0.rawValue) }
+        return ordered(order).filter { !hidden.contains($0.rawValue) || (remote && $0 == .airplay) }
     }
 }
 
