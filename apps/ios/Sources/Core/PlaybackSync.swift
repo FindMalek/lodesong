@@ -8,10 +8,12 @@ struct RemoteQueue: Equatable {
     var changed: String
     var changedBy: String
 
-    var date: Date? {
-        // Servers send up to nanoseconds, which the parser refuses.
-        ISO8601DateFormatter().date(from: changed.replacingOccurrences(of: #"\.\d+"#, with: "", options: .regularExpression))
-    }
+    var date: Date? { serverDate(changed) }
+}
+
+func serverDate(_ text: String) -> Date? {
+    // Servers send up to nanoseconds, which the parser refuses.
+    ISO8601DateFormatter().date(from: text.replacingOccurrences(of: #"\.\d+"#, with: "", options: .regularExpression))
 }
 
 /// What a saved queue holds. The phone only saves when this differs from what it last saved, restored or took

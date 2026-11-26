@@ -193,6 +193,7 @@ struct MiniPlayer: View {
 struct NowPlayingView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var router: Router
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
     @State private var showingMore = NowPlayingView.startsInMore
@@ -377,7 +378,13 @@ struct NowPlayingView: View {
             ScrollingText(text: song?.artist ?? " ", font: compact ? .subheadline : .title3, alignment: alignment)
                 .foregroundStyle(.white.opacity(0.7))
             if album, let name = song?.album, !name.isEmpty {
-                ScrollingText(text: name, font: .subheadline, alignment: alignment).foregroundStyle(.white.opacity(0.5))
+                Button {
+                    if let found = model.album(id: song?.albumId) { router.open(.album(found)) }
+                } label: {
+                    ScrollingText(text: name, font: .subheadline, alignment: alignment).foregroundStyle(.white.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the album")
             }
         }
         .accessibilityElement(children: .combine)

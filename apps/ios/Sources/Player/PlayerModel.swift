@@ -796,7 +796,10 @@ final class PlayerModel: ObservableObject {
             asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: HTTPCookieStorage.shared.cookies(for: url) ?? []])
         }
         let fileBytes = source == .file ? (try? file?.resourceValues(forKeys: [.fileSizeKey]))?.fileSize : nil
-        let detail = StreamLine.text(song, source: source, limit: limit > 0 ? limit : 320, format: format, fileType: file?.pathExtension, fileBytes: fileBytes)
+        let line = StreamLine.text(song, source: source, limit: limit > 0 ? limit : 320, format: format, fileType: file?.pathExtension, fileBytes: fileBytes)
+        // A download has its own icon beside the line.
+        let held = source != .file ? "Streaming" : downloads?.localURL(song: song.id) == nil ? "Cached" : nil
+        let detail = [held, line].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source, key: key(song), detail: detail)
         made.status = made.item.observe(\.status) { [weak self] item, _ in
             guard item.status != .unknown else { return }

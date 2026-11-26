@@ -87,7 +87,7 @@ struct CollectionHeader<Cover: View, Byline: View>: View {
             .padding(.top, 18)
             download.status.padding(.top, 10)
             if let description = description?.trimmingCharacters(in: .whitespacesAndNewlines), !description.isEmpty {
-                Text(description)
+                Text(linkedText(description))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

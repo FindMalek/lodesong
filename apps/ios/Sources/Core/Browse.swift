@@ -51,6 +51,18 @@ func genreList(_ songs: [Song]) -> [(name: String, songs: [Song])] {
 }
 
 /// A server's biography is a bit of HTML that ends in a "Read more" link.
+/// Web addresses in plain text made tappable. Anyone may write a public playlist's description, so no other scheme.
+func linkedText(_ text: String) -> AttributedString {
+    var linked = AttributedString(text)
+    let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+    for match in detector?.matches(in: text, range: NSRange(text.startIndex..., in: text)) ?? [] {
+        guard let url = match.url, ["http", "https"].contains(url.scheme?.lowercased()),
+              let range = Range(match.range, in: text), let place = Range(range, in: linked) else { continue }
+        linked[place].link = url
+    }
+    return linked
+}
+
 func plainBiography(_ html: String) -> String {
     var text = html.replacingOccurrences(of: #"(?s)<a [^>]*>.*?</a>\.?"#, with: "", options: .regularExpression)
     text = text.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)

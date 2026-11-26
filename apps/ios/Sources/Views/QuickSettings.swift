@@ -7,7 +7,6 @@ struct QuickSettings: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var lyrics: LyricsModel
     @Environment(\.dismiss) private var dismiss
-    @AppStorage(Pref.speed) private var speed = 1.0
     @AppStorage(Pref.replayGain) private var replayGain = "auto"
     @AppStorage(Pref.infinitePlay) private var infinitePlay = false
     @AppStorage(Pref.queueSync) private var queueSync = true
@@ -28,6 +27,8 @@ struct QuickSettings: View {
         NavigationStack {
             Form {
                 Section {
+                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }
+                    Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }
                     RadioItem(song: song)
                     AddToPlaylistItem { [song] }
                     MarkItems(item: song)
@@ -60,9 +61,7 @@ struct QuickSettings: View {
                         Text("Per Album").tag("album")
                         Text("Off").tag("off")
                     }
-                    Picker("Speed", selection: $speed) {
-                        ForEach([0.75, 1, 1.25, 1.5, 2], id: \.self) { Text("\($0.formatted())×").tag($0) }
-                    }
+                    SpeedRows()
                     Toggle("Sync Queue Across Devices", isOn: $queueSync)
                 } header: {
                     Text("Playback")
@@ -80,11 +79,10 @@ struct QuickSettings: View {
                     Text("Changing the type empties the cache. Your downloads are not touched.")
                 }
                 Section("Scrobbling") { ScrobbleRows() }
-                if let source = lyrics.saved(song.id)?.lyrics.source {
-                    Section {
+                Section("Lyrics") {
+                    LyricsSourcePicker()
+                    if let source = lyrics.saved(song.id)?.lyrics.source {
                         LabeledContent("Lyrics From", value: source == "lrclib" ? "LRCLIB" : "Your Server")
-                    } footer: {
-                        Text("Your server picks where lyrics come from.")
                     }
                 }
                 Section {
