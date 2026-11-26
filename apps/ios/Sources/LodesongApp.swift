@@ -4,7 +4,6 @@ import SwiftUI
 struct LodesongApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var player = PlayerModel()
-    @StateObject private var downloads = DownloadsModel()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,13 +13,21 @@ struct LodesongApp: App {
             }
             .environmentObject(model)
             .environmentObject(player)
-            .environmentObject(downloads)
+            .environmentObject(model.downloads)
             #if DEBUG
             .task { await model.debugSignIn() }
             #endif
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active { Task { await model.sync() } }
+            if phase == .background { model.downloads.scheduleRefresh() }
+        }
+        .backgroundTask(.appRefresh(DownloadsModel.refreshTask)) {
+            await model.downloads.scheduleRefresh()
+            await model.backgroundRefresh()
+        }
+        .backgroundTask(.urlSession(DownloadSession.identifier)) {
+            await model.downloads.finishBackgroundEvents()
         }
     }
 }
