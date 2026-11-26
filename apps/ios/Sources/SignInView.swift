@@ -77,7 +77,7 @@ struct SignInView: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
         .onAppear {
-            server = model.client?.server.absoluteString ?? server
+            server = model.signInAddress?.absoluteString ?? server
             user = model.user
         }
     }

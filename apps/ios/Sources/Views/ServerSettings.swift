@@ -15,9 +15,20 @@ struct ServerSettings: View {
                 if let second = model.secondServer {
                     LabeledContent("Second", value: second.absoluteString)
                 }
-                LabeledContent("In Use", value: model.client?.server.host() ?? "")
+                if let main = model.mainServer, let second = model.secondServer, !model.switchesByItself {
+                    Picker("Use", selection: Binding(get: { model.client?.server ?? main }, set: { model.use($0) })) {
+                        Text("Main").tag(main)
+                        Text("Second").tag(second)
+                    }
+                } else {
+                    LabeledContent("In Use", value: model.client?.server.host() ?? "")
+                }
             } footer: {
-                Text("The main address is tried first, the second one when it doesn't answer. Downloads stay as they are.")
+                if model.secondServer != nil && !model.switchesByItself {
+                    Text("Switching is automatic only when both addresses use https. A plain http address is trusted on whatever network you are on. Downloads stay as they are.")
+                } else {
+                    Text("With two https addresses, the main one is tried first and the second when it doesn't answer. Downloads stay as they are.")
+                }
             }
             if model.secondServer != nil {
                 Section {

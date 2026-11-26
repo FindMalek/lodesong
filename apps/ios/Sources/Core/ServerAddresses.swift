@@ -2,9 +2,24 @@ import Foundation
 
 /// One server, reachable two ways: the main address (say at home) and a second one (say away).
 enum ServerAddresses {
-    /// The main address whenever it answers, else the second, else stay put.
-    static func pick(main: URL, second: URL?, current: URL, reachable: (URL) async -> Bool) async -> URL {
+    /// Only between two https addresses does the app move by itself: with plain http, whatever holds that address
+    /// on the network at hand would be sent the session.
+    static func automatic(main: URL, second: URL?) -> Bool {
+        main.scheme == "https" && second?.scheme == "https"
+    }
+
+    /// Where to be before asking anyone: what the user picked, else an https address over an http one, else the main.
+    /// With no pick this is also the only address whose "signed out" asks for the password again.
+    static func starting(main: URL, second: URL?, picked: URL? = nil) -> URL {
         guard let second else { return main }
+        if automatic(main: main, second: second) { return main }
+        if let picked, picked == main || picked == second { return picked }
+        return main.scheme != "https" && second.scheme == "https" ? second : main
+    }
+
+    /// The main address whenever it answers, else the second, else stay put. Not automatic: nothing is asked.
+    static func pick(main: URL, second: URL?, picked: URL?, current: URL, reachable: (URL) async -> Bool) async -> URL {
+        guard let second, automatic(main: main, second: second) else { return starting(main: main, second: second, picked: picked) }
         if await reachable(main) { return main }
         if await reachable(second) { return second }
         return current == second ? second : main

@@ -29,6 +29,7 @@ final class DownloadLibrary: @unchecked Sendable {
         var files: [String: String] = [:]
         /// Removed by hand, so downloading every playlist leaves them alone. Optional: older lists don't have it.
         var skipped: [DownloadRef]?
+        var allPlaylists: Bool?
     }
 
     /// What iOS plays as it is. Anything else (Vorbis, WMA…) is asked for as mp3, `ogg` too: it may hold Vorbis.
@@ -70,6 +71,12 @@ final class DownloadLibrary: @unchecked Sendable {
     }
 
     var collections: [KeptCollection] { locked { manifest.collections } }
+
+    /// This account wants every playlist, those made later too.
+    var allPlaylists: Bool {
+        get { locked { manifest.allPlaylists ?? false } }
+        set { locked { manifest.allPlaylists = newValue; save() } }
+    }
 
     func keep(_ ref: DownloadRef, from store: LibraryStore) {
         locked {

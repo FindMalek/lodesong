@@ -27,9 +27,11 @@ final class DownloadsModel: ObservableObject {
         }
     }
     /// Takes every playlist, those made later too. Turning it off keeps what is already here.
-    @Published var allPlaylists = UserDefaults.standard.bool(forKey: "downloadAllPlaylists") {
-        didSet {
-            UserDefaults.standard.set(allPlaylists, forKey: "downloadAllPlaylists")
+    var allPlaylists: Bool {
+        get { library?.allPlaylists ?? false }
+        set {
+            library?.allPlaylists = newValue
+            revision += 1
             keepPlaylists()
         }
     }

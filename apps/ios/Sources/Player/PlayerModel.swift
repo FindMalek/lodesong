@@ -112,9 +112,9 @@ final class PlayerModel: ObservableObject {
     /// Whether playing `songs` would drop what is still to come.
     func wouldReplace(_ songs: [Song]) -> Bool { line.wouldLose(songs) }
 
-    /// A downloaded file, or one cached ahead, for the quality now asked for.
+    /// A downloaded file, or one cached ahead.
     func localFile(_ id: String) -> URL? {
-        downloads?.localURL(song: id) ?? songCache?.file(id, limit: bitRateLimit)
+        downloads?.localURL(song: id) ?? songCache?.file(id)
     }
 
     func next() {
@@ -457,7 +457,7 @@ final class PlayerModel: ObservableObject {
         guard wanted != fillKey else { return }
         fillKey = wanted
         filling?.cancel()
-        cache.prune(ahead: ahead.map(\.id), current: count > 0 ? current?.id : nil, limit: limit)
+        cache.prune(keeping: count > 0 ? ahead.map(\.id) + [current?.id].compactMap { $0 } : [])
         guard isPlaying, let client, !ahead.isEmpty else {
             // Nothing is fetched while paused; ask again once it plays.
             if !isPlaying { fillKey = "" }

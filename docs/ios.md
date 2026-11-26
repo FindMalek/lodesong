@@ -139,10 +139,15 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 
 ## Two server addresses
 
-Settings → **Server Addresses** takes a second address of the same server, say a LAN one as the main address and a
-public one as the second. The main one is tried first on every sync and network change. It needs your password once,
-and downloads, covers and plays are shared between the two. A plain `http` address is trusted on whatever network you
-are on, so prefer HTTPS.
+Settings → **Server Addresses** takes a second address of the same server. It needs your password once, and
+downloads, covers and plays are shared between the two.
+
+- Both `https`: the main one is tried first on every sync and network change, the second when it doesn't answer.
+- Either one plain `http`: nothing switches by itself. The `https` one is used until you pick the other under **Use**.
+  An `http` address is trusted on whatever network you are on, so whoever holds it there receives your session:
+  pick it only on a network you trust, and prefer HTTPS for both.
+
+A second address that stops accepting your sign in is dropped, not asked for your password: remove it and add it again.
 
 ## Settings
 

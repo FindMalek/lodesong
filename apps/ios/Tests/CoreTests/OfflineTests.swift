@@ -72,24 +72,37 @@ final class OfflineTests: XCTestCase {
         await cache.fill(songs("s-1", "s.2"), limit: 128, client: client) {}
         await cache.fill(songs("s-1"), limit: 128, client: client) {}
         XCTAssertEqual(AudioServer.asked, ["format=mp3&id=s-1&maxBitRate=128", "format=mp3&id=s.2&maxBitRate=128"])
-        XCTAssertNil(cache.file("s-1", limit: 0))
+        // A copy at another bit rate still counts.
+        await cache.fill(songs("s-1"), limit: 0, client: client) {}
+        XCTAssertEqual(AudioServer.asked.count, 2)
 
-        cache.prune(ahead: ["s.2"], current: nil, limit: 128)
-        XCTAssertNil(cache.file("s-1", limit: 128))
-        XCTAssertNotNil(cache.file("s.2", limit: 128))
-        cache.prune(ahead: [], current: "s.2", limit: 0)
-        XCTAssertNotNil(cache.file("s.2", limit: 128))
+        cache.prune(keeping: ["s.2"])
+        XCTAssertNil(cache.file("s-1"))
+        XCTAssertNotNil(cache.file("s.2"))
     }
 
     func testTheMainAddressWinsWhenItAnswersElseTheSecond() async {
-        let main = URL(string: "http://home.test")!, second = URL(string: "https://away.test")!
+        let main = URL(string: "https://home.test")!, second = URL(string: "https://away.test")!
         func pick(_ up: Set<URL>, current: URL) async -> URL {
-            await ServerAddresses.pick(main: main, second: second, current: current) { up.contains($0) }
+            await ServerAddresses.pick(main: main, second: second, picked: nil, current: current) { up.contains($0) }
         }
         let both = await pick([main, second], current: second)
         let away = await pick([second], current: main)
         let neither = await pick([], current: second)
         XCTAssertEqual([both, away, neither], [main, second, second])
+    }
+
+    func testAPlainHTTPAddressIsOnlyUsedWhenPicked() async {
+        let lan = URL(string: "http://192.168.1.5:4533")!, secure = URL(string: "https://music.test")!
+        func pick(_ main: URL, _ second: URL, picked: URL? = nil) async -> URL {
+            await ServerAddresses.pick(main: main, second: second, picked: picked, current: lan) { _ in
+                XCTFail("nothing is asked when switching is not automatic")
+                return true
+            }
+        }
+        let used = [await pick(lan, secure), await pick(secure, lan), await pick(secure, lan, picked: lan)]
+        XCTAssertEqual(used, [secure, secure, lan])
+        XCTAssertEqual(ServerAddresses.starting(main: secure, second: lan), secure)
     }
 
     func testAnotherServersLibraryIsNotASecondAddress() {

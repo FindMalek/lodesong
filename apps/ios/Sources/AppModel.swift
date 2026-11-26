@@ -46,7 +46,7 @@ final class AppModel: ObservableObject {
             }
         }
     }
-    /// Another way to the same server, tried when the main address doesn't answer.
+    /// Another way to the same server. Used by itself only between two https addresses, see `ServerAddresses`.
     @Published private(set) var secondServer = UserDefaults.standard.url(forKey: "server2")
 
     let downloads = DownloadsModel()
@@ -57,6 +57,11 @@ final class AppModel: ObservableObject {
 
     var user: String { defaults.string(forKey: "user") ?? "" }
     var mainServer: URL? { defaults.url(forKey: "server") }
+    /// The address chosen by hand, when switching isn't automatic.
+    private var pickedServer: URL? { defaults.url(forKey: "serverPicked") }
+    var switchesByItself: Bool { mainServer.map { ServerAddresses.automatic(main: $0, second: secondServer) } ?? false }
+    /// Where a password may be asked for and sent: never a fallback.
+    var signInAddress: URL? { mainServer.map { ServerAddresses.starting(main: $0, second: secondServer) } }
     /// The client to ask the server with, nil when nothing should be asked.
     var live: ServerClient? { needsSignIn || offlineMode ? nil : client }
 
@@ -65,7 +70,9 @@ final class AppModel: ObservableObject {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         // Without a database there is no app to show; a crash here is a full disk or a broken install.
         store = try! LibraryStore(path: folder.appending(path: "library.sqlite").path)
-        client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
+        let second = defaults.url(forKey: "server2")
+        let picked = defaults.url(forKey: "serverPicked")
+        client = defaults.url(forKey: "server").map { ServerClient(server: ServerAddresses.starting(main: $0, second: second, picked: picked), home: $0) }
         needsSignIn = defaults.string(forKey: "user") == nil || defaults.bool(forKey: "signedOut")
         library = Self.load(store)
         connectDownloads()
@@ -94,6 +101,8 @@ final class AppModel: ObservableObject {
         defaults.set(main, forKey: "server")
         defaults.set(user, forKey: "user")
         defaults.set(false, forKey: "signedOut")
+        // Typed by hand, so it is a pick.
+        defaults.set(server, forKey: "serverPicked")
         client = ServerClient(server: server, home: main)
         syncError = nil
         needsSignIn = false
@@ -117,25 +126,38 @@ final class AppModel: ObservableObject {
 
     func removeSecondServer() {
         setSecondServer(nil)
-        guard let main = mainServer, client?.server != main else { return }
-        client = ServerClient(server: main)
+        if let main = mainServer { move(to: main) }
+    }
+
+    /// The user's own choice of address.
+    func use(_ server: URL) {
+        defaults.set(server, forKey: "serverPicked")
+        syncError = nil
+        move(to: server)
+        Task { await sync() }
+    }
+
+    private func move(to server: URL) {
+        guard let main = mainServer, server != client?.server else { return }
+        client = ServerClient(server: server, home: main)
         connectDownloads()
+        AppLog.shared.add("Now using \(server.absoluteString)")
     }
 
     private func setSecondServer(_ server: URL?) {
         secondServer = server
         defaults.set(server, forKey: "server2")
+        defaults.removeObject(forKey: "serverPicked")
     }
 
-    /// Moves to whichever address answers. Files stay keyed to the main one, so nothing is fetched twice.
+    /// Moves to the address to be on now. Files stay keyed to the main one, so nothing is fetched twice.
     func chooseAddress() async {
         guard !offlineMode, let main = mainServer, let second = secondServer, let current = client?.server else { return }
-        let next = await ServerAddresses.pick(main: main, second: second, current: current) { await ServerClient(server: $0).reachable() }
+        let picked = pickedServer
+        let next = await ServerAddresses.pick(main: main, second: second, picked: picked, current: current) { await ServerClient(server: $0).reachable() }
         // Signed out or changed while asking.
-        guard !needsSignIn, !offlineMode, secondServer == second, mainServer == main, next != client?.server else { return }
-        client = ServerClient(server: next, home: main)
-        connectDownloads()
-        AppLog.shared.add("Now using \(next.absoluteString)")
+        guard !needsSignIn, !offlineMode, secondServer == second, mainServer == main, pickedServer == picked else { return }
+        move(to: next)
     }
 
     func sync() async {
@@ -173,7 +195,13 @@ final class AppModel: ObservableObject {
             downloads.librarySynced()
             AppLog.shared.add("Synced \(library.songs.count) songs")
         } catch ServerError.signedOut {
-            if !Task.isCancelled { needsSignIn = true }
+            guard !Task.isCancelled else { return }
+            guard let home = signInAddress, client.server != home else { return needsSignIn = true }
+            // A fallback saying no is not a reason to ask for the password there: go back instead.
+            defaults.removeObject(forKey: "serverPicked")
+            move(to: home)
+            syncError = "The other address didn't accept the sign in. Remove it and add it again."
+            AppLog.shared.add("Sign in refused at \(client.server.absoluteString)")
         } catch {
             if !Task.isCancelled {
                 syncError = error.localizedDescription
@@ -196,7 +224,8 @@ final class AppModel: ObservableObject {
         defaults.set(true, forKey: "signedOut")
         needsSignIn = true
         connectDownloads()
-        let others = [mainServer, secondServer].compactMap { $0 }.filter { $0 != client?.server }
+        // Nothing is posted to a plain http address that isn't in use.
+        let others = [mainServer, secondServer].compactMap { $0 }.filter { $0 != client?.server && $0.scheme == "https" }
         signOutTask = Task {
             await stopSync()
             await client?.signOut()
