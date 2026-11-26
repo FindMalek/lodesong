@@ -29,8 +29,8 @@ final class DownloadLibrary: @unchecked Sendable {
         var files: [String: String] = [:]
     }
 
-    /// What iOS plays as it is. Anything else (Ogg Opus, Vorbis, WMA…) is asked for as mp3.
-    private static let playable: Set<String> = ["mp3", "m4a", "m4b", "mp4", "aac", "flac", "wav", "aif", "aiff", "caf"]
+    /// What iOS plays as it is. Anything else (Vorbis, WMA…) is asked for as mp3, `ogg` too: it may hold Vorbis.
+    private static let playable: Set<String> = ["mp3", "m4a", "m4b", "mp4", "aac", "flac", "wav", "aif", "aiff", "caf", "opus"]
 
     /// Names this account's folder. Transfers carry it, so one account's file never lands in another's.
     var key: String { root.lastPathComponent }
@@ -195,6 +195,8 @@ final class DownloadLibrary: @unchecked Sendable {
         if text(0, "FORM"), text(8, "AIF") { return "aiff" }
         if text(4, "ftyp") { return "m4a" }
         if text(0, "caff") { return "caf" }
+        // Ogg only when it holds Opus: iOS can't open Vorbis.
+        if head.count >= 36, text(0, "OggS"), text(28, "OpusHead") { return "opus" }
         // A bare MPEG or ADTS frame, sometimes after zero padding.
         guard let start = head.firstIndex(where: { $0 != 0 }), start + 1 < head.count, head[start] == 0xFF, head[start + 1] & 0xE0 == 0xE0 else { return nil }
         return head[start + 1] & 0xF6 == 0xF0 ? "aac" : "mp3"
