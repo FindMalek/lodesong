@@ -62,6 +62,14 @@ final class DownloadLibraryTests: XCTestCase {
         XCTAssertTrue(finish("s1", wav(seconds: 60), format: "mp3"))
     }
 
+    func testAnOriginalOggFileIsKeptOnlyWhenItHoldsOpus() throws {
+        try keepOne(suffix: "opus")
+        let ogg = { (codec: String) in Data("OggS".utf8) + Data(count: 24) + Data(codec.utf8) }
+        XCTAssertFalse(finish("s1", ogg("\u{1}vorbis\0")))
+        XCTAssertTrue(finish("s1", ogg("OpusHead")))
+        XCTAssertEqual(downloads.localURL(song: "s1")?.pathExtension, "opus")
+    }
+
     func testEachServerAndUserHasItsOwnFolder() {
         let folder = { DownloadLibrary.folder(server: URL(string: $0)!, user: $1) }
         XCTAssertEqual(folder("http://music.test", "demo"), folder("https://Music.test", "Demo"))
@@ -146,7 +154,8 @@ final class DownloadLibraryTests: XCTestCase {
         let format = { (suffix: String) in
             DownloadLibrary.url(Song(id: "s", title: "s", suffix: suffix), quality: .original, client: client).query ?? ""
         }
-        XCTAssertTrue(format("opus").contains("format=mp3"))
+        XCTAssertTrue(format("opus").contains("format=raw"))
+        XCTAssertTrue(format("ogg").contains("format=mp3"))
         XCTAssertTrue(format("flac").contains("format=raw"))
     }
 }

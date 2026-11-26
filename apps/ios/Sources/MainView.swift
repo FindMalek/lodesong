@@ -99,12 +99,16 @@ struct AlbumsView: View {
 }
 
 struct SongsView: View {
+    @EnvironmentObject private var player: PlayerModel
     let title: String
     let songs: [Song]
 
     var body: some View {
-        List(Array(songs.enumerated()), id: \.offset) { _, song in
-            Row(cover: song.coverArt, title: song.title, subtitle: song.artist)
+        List(Array(songs.enumerated()), id: \.offset) { offset, song in
+            Button { player.play(songs, at: offset) } label: {
+                Row(cover: song.coverArt, title: song.title, subtitle: song.artist)
+            }
+            .buttonStyle(.plain)
         }
         .navigationTitle(title)
         .overlay { if songs.isEmpty { ContentUnavailableView("No Songs", systemImage: "music.note") } }
