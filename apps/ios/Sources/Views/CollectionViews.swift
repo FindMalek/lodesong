@@ -232,12 +232,6 @@ struct CollectionMenu: ViewModifier {
     /// Only playlists can be reordered.
     let sort: Binding<SongSort>?
     @State private var showingDownloads = false
-    @State private var link: SharedLink?
-    @State private var sharing = false
-
-    private struct SharedLink: Identifiable {
-        let id: URL
-    }
 
     func body(content: Content) -> some View {
         content
@@ -250,6 +244,17 @@ struct CollectionMenu: ViewModifier {
                         }
                         .disabled(songs.isEmpty)
                         Section {
+                            AddToPlaylistItem { songs }
+                            Button("Select Songs", systemImage: "checkmark.circle") {
+                                SheetPresenter.show(model, player) { SelectSongsView(songs: songs) }
+                            }
+                            .disabled(songs.isEmpty)
+                            if kind == "album", let album = model.album(id: id) { MarkItems(item: album.markable) }
+                        }
+                        if let playlist = model.library.playlists.first(where: { kind == "playlist" && $0.id == id }), playlist.editable(by: model.user) {
+                            Section { PlaylistEditItems(playlist: playlist) }
+                        }
+                        Section {
                             if let sort {
                                 Picker(selection: sort) {
                                     ForEach(SongSort.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -259,8 +264,7 @@ struct CollectionMenu: ViewModifier {
                                 }
                                 .pickerStyle(.menu)
                             }
-                            Button("Share Link", systemImage: "square.and.arrow.up", action: share)
-                                .disabled(model.offline || model.live == nil || sharing)
+                            ShareItem(kind: kind, id: id)
                             Button("Download Settings", systemImage: "arrow.down.circle") { showingDownloads = true }
                         }
                     }
@@ -274,32 +278,5 @@ struct CollectionMenu: ViewModifier {
                         .toolbar { Button("Done", systemImage: "checkmark") { showingDownloads = false } }
                 }
             }
-            .sheet(item: $link) { link in
-                ShareSheet(url: link.id).presentationDetents([.medium, .large])
-            }
     }
-
-    /// The link is only made when asked for: each one is kept by the server until it is stopped or expires.
-    private func share() {
-        guard let client = model.live else { return }
-        sharing = true
-        Task {
-            defer { sharing = false }
-            do {
-                link = SharedLink(id: try await client.shareLink(kind: kind, id: id))
-            } catch {
-                Popup.show("Can't Share", message: error.localizedDescription)
-            }
-        }
-    }
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: [url], applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

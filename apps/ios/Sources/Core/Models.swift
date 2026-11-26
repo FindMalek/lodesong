@@ -4,6 +4,9 @@ struct Artist: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     var coverArt: String?
+    /// When this account liked it, and its 1 to 5 star rating.
+    var starred: String?
+    var userRating: Int?
 }
 
 struct Album: Codable, Identifiable, Hashable {
@@ -16,6 +19,8 @@ struct Album: Codable, Identifiable, Hashable {
     /// When the server first saw it, ISO 8601, so it sorts as text.
     var created: String?
     var genre: String?
+    var starred: String?
+    var userRating: Int?
 }
 
 struct Song: Codable, Identifiable, Hashable {
@@ -67,9 +72,19 @@ struct Playlist: Codable, Identifiable, Hashable {
     /// The playlist's description.
     var comment: String?
     var owner: String?
+    var `public`: Bool?
     /// Set on smart playlists, whose `changed` only moves once someone asks for their songs.
     var readonly: Bool?
     var validUntil: String?
+}
+
+/// `SongMarks` goes by id, and the server likes and rates albums and artists the same way as songs.
+extension Album {
+    var markable: Song { Song(id: id, title: name, starred: starred, userRating: userRating) }
+}
+
+extension Artist {
+    var markable: Song { Song(id: id, title: name, starred: starred, userRating: userRating) }
 }
 
 /// Everything one sync brings back. Playlist entries are only listed for playlists that changed.

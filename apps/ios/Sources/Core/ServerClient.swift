@@ -103,12 +103,16 @@ struct ServerClient {
         snapshot.artists = try await all("artist") { $0.searchResult3?.artist }
         snapshot.albums = try await all("album") { $0.searchResult3?.album }
         snapshot.songs = try await all("song") { $0.searchResult3?.song }
-        snapshot.playlists = try await rest("getPlaylists").playlists?.playlist ?? []
+        snapshot.playlists = try await playlists()
         for playlist in snapshot.playlists where playlist.changed == nil || knownPlaylists[playlist.id] != playlist.changed
             || playlist.readonly == true || playlist.validUntil != nil {
             snapshot.entries[playlist.id] = try await rest("getPlaylist", ["id": playlist.id]).playlist?.entry ?? []
         }
         return snapshot
+    }
+
+    func playlists() async throws -> [Playlist] {
+        try await rest("getPlaylists").playlists?.playlist ?? []
     }
 
     func songs(matching query: String) async throws -> [Song] {
@@ -158,6 +162,24 @@ struct ServerClient {
         let body = try JSONDecoder().decode(Envelope.self, from: data).body
         guard body.status == "ok" else { throw ServerError.message(body.error?.message ?? "The server refused \(endpoint).") }
         return body
+    }
+
+    /// A Subsonic call as a form post, for changes: the answer's bytes once the server said ok.
+    func post(rest endpoint: String, _ fields: [(String, String)]) async throws -> Data {
+        var request = URLRequest(url: url("rest/\(endpoint)"))
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "content-type")
+        let safe = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
+        request.httpBody = Data((fields + [("f", "json")]).map { "\($0.0)=\($0.1.addingPercentEncoding(withAllowedCharacters: safe) ?? "")" }.joined(separator: "&").utf8)
+        let (data, status) = try await send(request)
+        if status == 401 { throw ServerError.signedOut }
+        // lodesong refuses with plain JSON, the public demo for one.
+        guard status == 200 else {
+            throw ServerError.message((try? JSONDecoder().decode([String: String].self, from: data))?["error"] ?? "The server answered \(status).")
+        }
+        let body = try JSONDecoder().decode(Envelope.self, from: data).body
+        guard body.status == "ok" else { throw ServerError.message(body.error?.message ?? "The server refused \(endpoint).") }
+        return data
     }
 
     func send(_ request: URLRequest) async throws -> (Data, Int) {
