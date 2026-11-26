@@ -65,4 +65,12 @@ final class AdditionsTests: XCTestCase {
         XCTAssertFalse(done.unsettled)
         XCTAssertEqual(done.wish.cover, wish.cover)
     }
+
+    func testASongAlreadyInTheLibraryIsRecognisedByTitleAndArtist() {
+        let wish = Wish(title: "Svefn-g-englar", artists: ["Sigur Rós"])
+
+        XCTAssertTrue(wish.isSame(as: Song(id: "s1", title: "Svefn g englar", artist: "sigur ros")))
+        XCTAssertFalse(wish.isSame(as: Song(id: "s2", title: "Svefn-g-englar", artist: "Someone")))
+        XCTAssertFalse(Wish(title: "Teardrop", artists: []).isSame(as: Song(id: "s3", title: "Teardrop")))
+    }
 }

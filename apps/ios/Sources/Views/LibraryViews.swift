@@ -137,6 +137,7 @@ struct ArtistsView: View {
                                 Text(artist.name).lineLimit(1)
                             }
                         }
+                        .contextMenu { ArtistMenu(artist: artist) }
                     }
                 }
                 .sectionIndexLabel(group.letter)
@@ -154,6 +155,7 @@ struct ArtistsView: View {
 
 struct SongsView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var player: PlayerModel
     @State private var filter = ""
     @State private var songs: [Song] = []
     @State private var groups: [(letter: String, items: [(index: Int, song: Song)])] = []
@@ -179,6 +181,13 @@ struct SongsView: View {
         .overlay { if songs.isEmpty && !filter.isEmpty { ContentUnavailableView.search(text: filter) } }
         .libraryState(model.library.songs.isEmpty, "No Songs", "music.note")
         .navigationTitle("Songs")
+        .toolbar {
+            Button("Select", systemImage: "checkmark.circle") {
+                let songs = songs
+                SheetPresenter.show(model, player) { SelectSongsView(songs: songs) }
+            }
+            .disabled(songs.isEmpty)
+        }
         // Sorting thousands of songs on every redraw would stutter, so it happens only when the input changes.
         .task(id: [filter, String(model.library.songs.count), String(model.syncing)]) {
             let matches = filter.isEmpty ? model.library.songs : model.library.songs.filter {

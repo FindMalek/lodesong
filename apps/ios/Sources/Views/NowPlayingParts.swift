@@ -148,6 +148,12 @@ struct QuickSettings: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    AddToPlaylistItem { [song] }
+                    MarkItems(item: song)
+                    ShareItem(kind: "song", id: song.id)
+                    Button("Song Info", systemImage: "info.circle") { SheetPresenter.show(model, player) { SongInfoView(song: song) } }
+                }
                 if let album = model.album(id: song.albumId) {
                     Section {
                         Button("Go to Album", systemImage: "square.stack") { router.open(.album(album)) }

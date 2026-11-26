@@ -5,6 +5,7 @@ struct PlaylistsView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var downloads: DownloadsModel
     @EnvironmentObject private var router: Router
+    @EnvironmentObject private var player: PlayerModel
     var folder: String?
     @AppStorage("playlistsLayout") private var layout = "grid"
     @AppStorage("playlistsSort") private var sort = PlaylistSort.title
@@ -63,6 +64,13 @@ struct PlaylistsView: View {
         .libraryState(model.library.playlists.isEmpty && model.library.shelf.folders.isEmpty, "No Playlists", "music.note.list")
         .navigationTitle(page.title)
         .toolbar {
+            // A new playlist has no folder, so this is only on the top page.
+            if folder == nil {
+                Button("New Playlist", systemImage: "plus") {
+                    SheetPresenter.show(model, player) { PlaylistEditorView(playlist: nil) }
+                }
+                .disabled(!model.canEdit)
+            }
             Menu("View Options", systemImage: downloadedOnly ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease") {
                 Picker("View", selection: $layout) {
                     Label("Grid", systemImage: "square.grid.2x2").tag("grid")

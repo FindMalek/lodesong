@@ -107,6 +107,7 @@ struct PlaylistView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var downloads: DownloadsModel
     let playlist: Playlist
+    @Environment(\.dismiss) private var dismiss
     @State private var songs: [Song]?
     @State private var query = ""
     @FocusState private var searching: Bool
@@ -144,7 +145,7 @@ struct PlaylistView: View {
             }
             if let songs {
                 ForEach(found, id: \.self) { index in
-                    SongRow(songs: ordered, index: index).listRowBackground(Color.clear)
+                    SongRow(songs: ordered, index: index, remove: remover(index, ordered: ordered, in: playlist)).listRowBackground(Color.clear)
                 }
                 if songs.isEmpty {
                     ContentUnavailableView("Empty Playlist", systemImage: "music.note.list")
@@ -161,9 +162,26 @@ struct PlaylistView: View {
         .scrollDismissesKeyboard(.immediately)
         .modifier(TopWash(cover: playlist.coverArt ?? songs?.first?.coverArt))
         .refreshable { await model.sync() }
-        .task(id: model.syncing) { songs = model.entries(playlist: playlist.id) }
+        .task(id: model.libraryRevision) { songs = model.entries(playlist: playlist.id) }
+        // Deleted from here or elsewhere: there is no page left to show.
+        .onChange(of: model.libraryRevision) {
+            if !model.library.playlists.contains(where: { $0.id == playlist.id }) { dismiss() }
+        }
         .modifier(BarTitle(title: playlist.name, after: 380))
         .modifier(CollectionMenu(kind: "playlist", id: playlist.id, songs: ordered, sort: $sort))
+    }
+
+    /// Rows may be sorted; the server removes by the place in the playlist's own order.
+    private func remover(_ index: Int, ordered: [Song], in playlist: Playlist) -> (() -> Void)? {
+        guard playlist.editable(by: model.user), let songs else { return nil }
+        return {
+            let id = ordered[index].id
+            // Sorting keeps equal songs in order, so the n-th copy shown is the n-th copy in the playlist.
+            let nth = ordered[..<index].filter { $0.id == id }.count
+            let places = songs.indices.filter { songs[$0].id == id }
+            guard places.indices.contains(nth) else { return }
+            PlaylistActions.remove(at: places[nth], of: songs, from: playlist, model: model)
+        }
     }
 }
 
@@ -272,6 +290,13 @@ struct ArtistView: View {
             if albums.isEmpty { ContentUnavailableView("No Albums", systemImage: "square.stack") }
         }
         .modifier(BarTitle(title: artist.name, after: ArtistHero.height - 110))
+        .toolbar {
+            ToolbarItem {
+                Menu("More", systemImage: "ellipsis") {
+                    ArtistMenu(artist: model.artist(id: artist.id) ?? artist)
+                }
+            }
+        }
     }
 
     private func heading(_ title: String) -> some View {

@@ -45,6 +45,23 @@ final class LibraryStore: @unchecked Sendable {
         }
     }
 
+    /// The playlists alone, all or nothing. Entries not given stay as they are.
+    func applyPlaylists(_ playlists: [Playlist], entries: [String: [Song]]) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        let gone = Set(self.playlists().map(\.id)).subtracting(playlists.map(\.id))
+        try run("begin")
+        do {
+            try replace("playlist", with: playlists)
+            for (id, songs) in entries { try replace("entry", parent: id, with: songs) }
+            for id in gone { try replace("entry", parent: id, with: [Song]()) }
+            try run("commit")
+        } catch {
+            try? run("rollback")
+            throw error
+        }
+    }
+
     func clear() throws { try run("delete from item") }
 
     /// Replaces one kind of row, all or nothing.

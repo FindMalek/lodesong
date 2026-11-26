@@ -31,6 +31,9 @@ struct AlbumTile: View {
             Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(songs) }
             Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(songs) }
             Divider()
+            AddToPlaylistItem { songs }
+            MarkItems(item: album.markable)
+            ShareItem(kind: "album", id: album.id)
             if downloads.state(album: album.id) == .none {
                 Button("Download", systemImage: "arrow.down.circle") { downloads.keep(album: album.id) }
             } else {
@@ -87,6 +90,9 @@ struct PlaylistMenu: View {
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(model.entries(playlist: playlist.id)) }
         Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(model.entries(playlist: playlist.id)) }
         Divider()
+        AddToPlaylistItem { model.entries(playlist: playlist.id) }
+        ShareItem(kind: "playlist", id: playlist.id)
+        PlaylistEditItems(playlist: playlist)
         if downloads.state(playlist: playlist.id) == .none {
             Button("Download", systemImage: "arrow.down.circle") { downloads.keep(playlist: playlist.id) }
         } else {
@@ -106,6 +112,18 @@ struct ArtistCircle: View {
             }
         }
         .buttonStyle(.plain)
+        .contextMenu { ArtistMenu(artist: artist) }
+    }
+}
+
+struct ArtistMenu: View {
+    @EnvironmentObject private var model: AppModel
+    let artist: Artist
+
+    var body: some View {
+        MarkItems(item: artist.markable)
+        ShareItem(kind: "artist", id: artist.id)
+        AddToPlaylistItem { model.library.albums(artist: artist.id).flatMap { model.library.songs(album: $0.id) } }
     }
 }
 

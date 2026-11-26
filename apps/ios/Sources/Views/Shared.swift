@@ -33,7 +33,7 @@ struct PlaylistCover: View {
                 Artwork(id: playlist.coverArt ?? covers.first, symbol: "music.note.list", size: size, radius: radius)
             }
         }
-        .task(id: model.syncing) {
+        .task(id: model.libraryRevision) {
             guard playlist.coverArt == nil else { return }
             var seen = Set<String>()
             covers = Array(model.entries(playlist: playlist.id).compactMap(\.coverArt).filter { seen.insert($0).inserted }.prefix(4))
@@ -135,11 +135,22 @@ struct SongMenu: View {
     @EnvironmentObject private var player: PlayerModel
     @EnvironmentObject private var router: Router
     let song: Song
+    /// Set on a playlist's own page, where the song can be taken out of it.
+    var remove: (() -> Void)?
 
     var body: some View {
         Button("Play", systemImage: "play") { player.start([song]) }
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }
         Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }
+        Divider()
+        AddToPlaylistItem { [song] }
+        if let remove {
+            Button("Remove from Playlist", systemImage: "minus.circle", role: .destructive, action: remove)
+                .disabled(!model.canEdit)
+        }
+        MarkItems(item: song)
+        ShareItem(kind: "song", id: song.id)
+        Button("Song Info", systemImage: "info.circle") { SheetPresenter.show(model, player) { SongInfoView(song: song) } }
         Divider()
         if let album = model.album(id: song.albumId) {
             Button("Go to Album", systemImage: "square.stack") { router.open(.album(album)) }
@@ -196,6 +207,7 @@ struct SongRow: View {
     var numbered = false
     /// Under the title: the album instead of the artist, on the artist's own page.
     var showsAlbum = false
+    var remove: (() -> Void)?
     @AppStorage(Pref.swipeLeading) private var swipeLeading = SwipeAction.playNext
     @AppStorage(Pref.swipeTrailing) private var swipeTrailing = SwipeAction.addToQueue
 
@@ -225,7 +237,7 @@ struct SongRow: View {
             }
             .buttonStyle(.plain)
             Menu {
-                SongMenu(song: song)
+                SongMenu(song: song, remove: remove)
             } label: {
                 Image(systemName: "ellipsis").frame(width: 32, height: 32).contentShape(.rect)
             }
@@ -236,7 +248,7 @@ struct SongRow: View {
         .swipeActions(edge: .leading) { swipeButton(swipeLeading) }
         .swipeActions(edge: .trailing) { swipeButton(swipeTrailing) }
         .contextMenu {
-            SongMenu(song: song)
+            SongMenu(song: song, remove: remove)
         } preview: {
             PreviewCard(model: model, cover: song.coverArt, title: song.title, subtitle: song.artist)
         }

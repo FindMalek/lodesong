@@ -195,3 +195,18 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, adding music by name, CarPlay
 browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).
+
+## Beta builds
+
+To get an update after every iOS change merged to `main`, add this source in SideStore and install lodesong from it,
+over the app you have (same app, so downloads and sign in should stay):
+
+```
+https://raw.githubusercontent.com/FindMalek/lodesong/ios-beta/altstore.json
+```
+
+- A beta is the next patch as a prerelease, like `1.22.2-beta.57`: newer than release 1.22.1, older than 1.22.2 and
+  1.23.0. After a release, betas move past it with the next iOS change.
+- It comes from the `ios-beta` branch: no tags or releases, one commit that each build replaces
+  (`apps/ios/altstore/beta.sh`). Don't create a tag with that name.
+- A new build can take about 5 minutes to appear (GitHub caches raw files).
