@@ -33,10 +33,51 @@ enum Pref {
     static let showAlbum = "showAlbum"
     static let coverShrinks = "coverShrinks"
     static let streamInfo = "streamInfo"
+    static let autoDownloadOnOpen = "autoDownloadOnOpen"
+    static let autoDownloadPeriodic = "autoDownloadPeriodic"
+    /// Zero leaves it to iOS.
+    static let concurrentDownloads = "concurrentDownloads"
+    static let cacheKeeps = "cacheKeeps"
+    static let cacheLimit = "cacheLimitMB"
+    static let keepStreamed = "keepStreamedSong"
+    static let streamFormat = "streamFormat"
+    static let fallbackFormat = "fallbackFormat"
 
     /// Heard for this share of the song, or for this long, whichever comes first.
     static func pastScrobblePoint(_ seconds: TimeInterval, duration: TimeInterval, percent: Int, minutes: Int) -> Bool {
         seconds >= Double(minutes) * 60 || (duration > 0 && seconds >= duration * Double(percent) / 100)
+    }
+}
+
+/// What asked for a library sync, which decides whether kept playlists take its changes.
+enum SyncTrigger: Hashable {
+    /// Something the user did.
+    case manual
+    case open, periodic, background
+
+    /// A background wake counts for either setting: iOS picks the time, so it is neither.
+    func allowed(onOpen: Bool, periodic: Bool) -> Bool {
+        switch self {
+        case .manual: true
+        case .open: onOpen
+        case .periodic: periodic
+        case .background: onOpen || periodic
+        }
+    }
+}
+
+/// How the songs fetched by the player are held.
+struct CacheSettings: Equatable {
+    /// Songs stay until the size limit pushes them out, somewhere iOS doesn't clear. Off, they are temporary.
+    let keeps: Bool
+    /// Zero is no limit.
+    let maxBytes: Int
+    let keepStreamed: Bool
+
+    init(_ defaults: UserDefaults = .standard) {
+        keeps = defaults.bool(Pref.cacheKeeps, or: false)
+        maxBytes = defaults.int(Pref.cacheLimit, or: 1000) * 1_000_000
+        keepStreamed = defaults.bool(Pref.keepStreamed, or: false)
     }
 }
 

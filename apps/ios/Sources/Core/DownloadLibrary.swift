@@ -17,6 +17,8 @@ struct KeptCollection: Codable, Identifiable {
     var name: String
     var songs: [Song]
     var onServer = true
+    /// Takes the library's changes on its own: yes, no, or nil to go by the app's settings.
+    var follows: Bool?
     var id: DownloadRef { ref }
 }
 
@@ -121,13 +123,26 @@ final class DownloadLibrary: @unchecked Sendable {
         }
     }
 
-    /// Brings every kept collection in line with the library: new songs, removed songs, order.
-    func reconcile(with store: LibraryStore) {
+    func setFollows(_ follows: Bool?, _ ref: DownloadRef) {
+        locked {
+            guard let index = manifest.collections.firstIndex(where: { $0.ref == ref }) else { return }
+            manifest.collections[index].follows = follows
+            save()
+        }
+    }
+
+    /// Brings kept collections in line with the library: new songs, removed songs, order.
+    /// `manual` takes them all; otherwise each goes by its own choice, then by `auto`.
+    func reconcile(with store: LibraryStore, manual: Bool = true, auto: Bool = true) {
         locked {
             let songs = store.songs()
             guard !manifest.collections.isEmpty, !songs.isEmpty else { return }
             manifest.collections = manifest.collections.map { kept in
-                if let found = Self.find(kept.ref, in: store, songs: songs) { return found }
+                guard manual || kept.follows ?? auto else { return kept }
+                if var found = Self.find(kept.ref, in: store, songs: songs) {
+                    found.follows = kept.follows
+                    return found
+                }
                 // Gone from the server (or renamed ids after a rescan): the files stay until the user removes them.
                 var missing = kept
                 missing.onServer = false
@@ -275,7 +290,12 @@ final class DownloadLibrary: @unchecked Sendable {
         save()
         for (id, path) in unwanted {
             try? FileManager.default.removeItem(at: root.appendingPathComponent(path))
-            setResumeData(nil, song: id)
+        }
+        // Half finished transfers of songs nothing wants any more.
+        let resume = root.appendingPathComponent("resume")
+        let names = Set(wanted.map(Self.fileName))
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: resume.path)) ?? [] where !names.contains(name) {
+            try? FileManager.default.removeItem(at: resume.appendingPathComponent(name))
         }
     }
 

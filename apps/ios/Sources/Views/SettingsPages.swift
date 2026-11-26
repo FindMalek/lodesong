@@ -15,24 +15,42 @@ struct PlaybackSettings: View {
     @AppStorage(Pref.cacheAhead) private var cacheAhead = 0
     @AppStorage(Pref.confirmReplace) private var confirmReplace = false
     @AppStorage(Pref.coverSkipSeconds) private var coverSkipSeconds = 0
+    @AppStorage(Pref.streamFormat) private var streamFormat = StreamFormat.mp3
+    @AppStorage(Pref.fallbackFormat) private var fallbackFormat = StreamFormat.mp3
+    @AppStorage(Pref.cacheKeeps) private var cacheKeeps = false
+    @AppStorage(Pref.cacheLimit) private var cacheLimit = 1000
+    @AppStorage(Pref.keepStreamed) private var keepStreamed = false
 
     var body: some View {
         Form {
             Section {
                 quality("On Wi-Fi", $wifiBitRate)
                 quality("On Cellular", $cellularBitRate)
+                format("Convert To", $streamFormat)
+                format("If That Fails", $fallbackFormat)
             } header: {
                 Text("Streaming Quality")
             } footer: {
-                Text("Applies from the next song. A converted stream can't always be scrubbed. Downloads play as they are.")
+                Text("Applies from the next song. A converted stream can't always be scrubbed. The format is used when a song has to be converted; your server must offer it. Downloads play as they are.")
             }
             Section {
                 Picker("Cache Songs Ahead", selection: $cacheAhead) {
                     Text("Off").tag(0)
                     ForEach([1, 3, 5, 10], id: \.self) { Text($0 == 1 ? "1 Song" : "\($0) Songs").tag($0) }
                 }
+                Toggle("Keep the Streamed Song", isOn: $keepStreamed)
+                Picker("Cache Type", selection: $cacheKeeps) {
+                    Text("Temporary").tag(false)
+                    Text("Download").tag(true)
+                }
+                Picker("Size Limit", selection: $cacheLimit) {
+                    ForEach([250, 500, 1000, 2000, 5000, 10000], id: \.self) { Text(ByteCountFormatter.string(fromByteCount: Int64($0) * 1_000_000, countStyle: .file)).tag($0) }
+                    Text("No Limit").tag(0)
+                }
+            } header: {
+                Text("Song Cache")
             } footer: {
-                Text("Fetches what comes next in full, in the quality above, so a bad connection doesn't stop it. Temporary: a song goes once the queue moves past it.")
+                Text("Fetched in the quality above, so a bad connection doesn't stop what comes next. Keeping the streamed song fetches it a second time, which uses more data. Temporary: a song goes once the queue moves past it, and iOS may clear it. Download: songs stay until the size limit removes the oldest. Neither touches your downloads.")
             }
             Section {
                 Picker("ReplayGain", selection: $replayGain) {
@@ -76,6 +94,12 @@ struct PlaybackSettings: View {
         .pickerStyle(.navigationLink)
         .navigationTitle("Playback")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func format(_ title: String, _ value: Binding<StreamFormat>) -> some View {
+        Picker(title, selection: value) {
+            ForEach(StreamFormat.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
     }
 
     private func quality(_ title: String, _ value: Binding<Int>) -> some View {
@@ -199,6 +223,9 @@ private struct LibrarySectionsList: View {
 struct StorageSettings: View {
     @EnvironmentObject private var downloads: DownloadsModel
     @State private var covers = 0
+    @State private var downloadCovers = 0
+    @State private var temporary = 0
+    @State private var kept = 0
 
     var body: some View {
         Form {
@@ -208,10 +235,23 @@ struct StorageSettings: View {
                 }
             }
             Section {
+                LabeledContent("Temporary Cache", value: size(temporary))
+                LabeledContent("Downloaded Cache", value: size(kept))
+                Button("Clear Song Cache", role: .destructive) {
+                    SongCache.clear(SongCache.temporary)
+                    SongCache.clear(SongCache.kept)
+                    measure()
+                }
+                .disabled(temporary + kept == 0)
+            } footer: {
+                Text("Songs the player fetched. Your downloads are not touched.")
+            }
+            Section {
+                LabeledContent("Covers of Downloads", value: size(downloadCovers))
                 LabeledContent("Artwork Cache", value: size(covers))
                 Button("Clear Artwork Cache", role: .destructive) {
                     ArtworkCache.shared.clear()
-                    covers = ArtworkCache.shared.diskSize()
+                    measure()
                 }
                 .disabled(covers == 0)
             } footer: {
@@ -220,7 +260,14 @@ struct StorageSettings: View {
         }
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { covers = ArtworkCache.shared.diskSize() }
+        .onAppear(perform: measure)
+    }
+
+    private func measure() {
+        covers = ArtworkCache.shared.diskSize()
+        downloadCovers = SongCache.size(of: URL.applicationSupportDirectory.appending(path: "covers"))
+        temporary = SongCache.size(of: SongCache.temporary)
+        kept = SongCache.size(of: SongCache.kept)
     }
 
     private func size(_ bytes: Int) -> String {

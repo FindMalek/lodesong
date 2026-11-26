@@ -285,7 +285,7 @@ final class PlayerModel: ObservableObject {
     /// Songs fetched ahead for this account.
     private var songCache: SongCache? {
         guard let app, let server = app.client?.identity else { return nil }
-        let folder = URL.cachesDirectory.appending(path: "ahead/\(DownloadLibrary.folder(server: server, user: app.user))")
+        let folder = (CacheSettings(defaults).keeps ? SongCache.kept : SongCache.temporary).appending(path: DownloadLibrary.folder(server: server, user: app.user))
         if cached?.folder != folder { cached = SongCache(folder: folder) }
         return cached
     }
@@ -526,20 +526,26 @@ final class PlayerModel: ObservableObject {
     }
 
     private func key(_ song: Song) -> String {
-        "\(song.id) \(bitRateLimit) \(client?.server.absoluteString ?? "") \(localFile(song.id)?.lastPathComponent ?? "")"
+        "\(song.id) \(bitRateLimit) \(StreamFormat.preferred(defaults)) \(StreamFormat.fallback(defaults)) \(client?.server.absoluteString ?? "") \(localFile(song.id)?.lastPathComponent ?? "")"
     }
 
     private func cacheAhead() {
         guard let cache = songCache else { return }
         let count = defaults.int(Pref.cacheAhead, or: 0)
         let limit = bitRateLimit
+        let settings = CacheSettings(defaults)
+        let formats = [StreamFormat.preferred(defaults), StreamFormat.fallback(defaults)]
         let ahead = Array(queue.dropFirst(index + 1).prefix(count)).filter { downloads?.localURL(song: $0.id) == nil }
-        let wanted = "\(count) \(limit) \(client?.server.absoluteString ?? "") \(current?.id ?? "") \(ahead.map(\.id))"
+        let streamed = settings.keepStreamed ? [current].compactMap { $0 }.filter { downloads?.localURL(song: $0.id) == nil } : []
+        let fetch = ahead + streamed
+        let wanted = "\(count) \(limit) \(formats) \(settings) \(client?.server.absoluteString ?? "") \(current?.id ?? "") \(ahead.map(\.id))"
         guard wanted != fillKey else { return }
         fillKey = wanted
         filling?.cancel()
-        cache.prune(keeping: count > 0 ? ahead.map(\.id) + [current?.id].compactMap { $0 } : [])
-        guard isPlaying, let client, !ahead.isEmpty else {
+        let window = ahead.map(\.id) + [current?.id].compactMap { $0 }
+        if !settings.keeps { cache.prune(keeping: window) }
+        cache.trim(to: settings.maxBytes, keeping: window)
+        guard isPlaying, let client, !fetch.isEmpty else {
             // Nothing is fetched while paused; ask again once it plays.
             if !isPlaying { fillKey = "" }
             return
@@ -547,7 +553,7 @@ final class PlayerModel: ObservableObject {
         let before = filling
         filling = Task { [weak self] in
             await before?.value
-            await cache.fill(ahead, limit: limit, client: client) { [weak self] in
+            await cache.fill(fetch, limit: limit, formats: formats, maxBytes: settings.maxBytes, keeping: window, client: client) { [weak self] in
                 await MainActor.run { self?.refreshAhead() }
             }
         }
@@ -579,17 +585,19 @@ final class PlayerModel: ObservableObject {
     private func make(_ song: Song) -> Loaded? {
         let file = localFile(song.id)
         let limit = bitRateLimit
-        guard let source = AudioSource.pick(suffix: song.suffix, hasFile: file != nil, limited: limit > 0, failed: failed[song.id] ?? []) else { return nil }
+        let (preferred, fallback) = (StreamFormat.preferred(defaults), StreamFormat.fallback(defaults))
+        guard let source = AudioSource.pick(suffix: song.suffix, hasFile: file != nil, limited: limit > 0, hasFallback: fallback != preferred, failed: failed[song.id] ?? []) else { return nil }
+        let format = source == .fallback ? fallback : preferred
         let asset: AVURLAsset
         if source == .file, let file {
             asset = AVURLAsset(url: file, options: AudioSource.mimeType(file: file, suffix: song.suffix).map { [AVURLAssetOverrideMIMETypeKey: $0] })
         } else {
-            guard let url = client?.streamURL(song: song.id, source: source, bitRate: limit > 0 ? limit : 320) else { return nil }
+            guard let url = client?.streamURL(song: song.id, source: source, bitRate: limit > 0 ? limit : 320, format: format) else { return nil }
             // The server only answers a signed-in session, and AVFoundation has to be handed its cookie.
             asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: HTTPCookieStorage.shared.cookies(for: url) ?? []])
         }
         let fileBytes = source == .file ? (try? file?.resourceValues(forKeys: [.fileSizeKey]))?.fileSize : nil
-        let detail = StreamLine.text(song, source: source, limit: limit > 0 ? limit : 320, fileType: file?.pathExtension, fileBytes: fileBytes)
+        let detail = StreamLine.text(song, source: source, limit: limit > 0 ? limit : 320, format: format, fileType: file?.pathExtension, fileBytes: fileBytes)
         var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source, key: key(song), detail: detail)
         made.status = made.item.observe(\.status) { [weak self] item, _ in
             guard item.status != .unknown else { return }
