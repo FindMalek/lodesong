@@ -47,7 +47,8 @@ final class ArtworkCache {
     func clear() {
         memory.removeAllObjects()
         palettes = [:]
-        for url in [folder, kept] { try? FileManager.default.removeItem(at: url) }
+        // `kept` holds the covers of downloads, which have to survive offline.
+        try? FileManager.default.removeItem(at: folder)
         makeFolders()
     }
 
