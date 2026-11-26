@@ -7,10 +7,45 @@ final class PlaybackTests: XCTestCase {
 
     func testPlayNextGoesRightAfterTheCurrentSongAndAddGoesLast() {
         var queue = PlayQueue(songs: songs("a", "b", "c"), index: 1)
-        queue.insertNext(Song(id: "next", title: "next"))
-        queue.append(Song(id: "last", title: "last"))
+        queue.insertNext(songs("next"))
+        queue.append(songs("last"))
         XCTAssertEqual(queue.songs.map(\.id), ["a", "b", "next", "c", "last"])
         XCTAssertEqual(queue.current?.id, "b")
+    }
+
+    func testPlayNextOnAnEmptyQueueKeepsTheOrderGiven() {
+        var queue = PlayQueue()
+        queue.insertNext(songs("a", "b", "c"))
+        XCTAssertEqual(queue.songs.map(\.id), ["a", "b", "c"])
+        XCTAssertEqual(queue.current?.id, "a")
+    }
+
+    func testMovingAndRemovingKeepTheCurrentSongCurrent() {
+        var queue = PlayQueue(songs: songs("a", "b", "c", "d"), index: 1)
+        queue.move(from: [3], to: 0)
+        XCTAssertEqual(queue.songs.map(\.id), ["d", "a", "b", "c"])
+        XCTAssertEqual(queue.current?.id, "b")
+        XCTAssertFalse(queue.remove(at: [0]))
+        XCTAssertEqual(queue.current?.id, "b")
+        XCTAssertTrue(queue.remove(at: [1]))
+        XCTAssertEqual(queue.current?.id, "c")
+    }
+
+    func testTurningShuffleOffPutsWhatIsToComeBackInOrder() {
+        let all = (0..<50).map { Song(id: "s\($0)", title: "\($0)") }
+        var queue = PlayQueue(songs: all, index: 2)
+        queue.setShuffled(true)
+        XCTAssertEqual(Array(queue.songs.prefix(3)), Array(all.prefix(3)))
+        XCTAssertNotEqual(queue.songs, all)
+        queue.setShuffled(false)
+        XCTAssertEqual(queue.songs, all)
+    }
+
+    func testRepeatDecidesWhatFollowsTheLastSong() {
+        let queue = PlayQueue(songs: songs("a", "b"), index: 1)
+        XCTAssertNil(queue.following(.off))
+        XCTAssertEqual(queue.following(.all), 0)
+        XCTAssertEqual(queue.following(.one), 1)
     }
 
     func testShuffleCoversEverySongOnce() {

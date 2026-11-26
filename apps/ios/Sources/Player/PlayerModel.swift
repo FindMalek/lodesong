@@ -2,13 +2,24 @@ import AVFoundation
 import Network
 import UIKit
 
+/// Where the current song is. Its own object, so only the views that draw progress redraw twice a second.
+@MainActor
+final class PlayerClock: ObservableObject {
+    @Published fileprivate(set) var position: TimeInterval = 0
+}
+
 /// What every screen uses to control playback. An `AVQueuePlayer` holding the current song and the one after it,
 /// so the next song starts without a gap.
 @MainActor
 final class PlayerModel: ObservableObject {
     @Published private var line = PlayQueue()
     @Published private(set) var isPlaying = false
-    @Published private(set) var position: TimeInterval = 0
+    let clock = PlayerClock()
+    private(set) var position: TimeInterval {
+        get { clock.position }
+        set { clock.position = newValue }
+    }
+    @Published private(set) var repeatMode = RepeatMode(rawValue: UserDefaults.standard.string(forKey: "repeatMode") ?? "") ?? .off
     @Published private(set) var duration: TimeInterval = 0
     /// A newer queue saved by another device, waiting for `resumeOffer` or `dismissOffer`.
     @Published var offer: RemoteQueue?
@@ -16,6 +27,7 @@ final class PlayerModel: ObservableObject {
     var queue: [Song] { line.songs }
     var index: Int { line.index }
     var current: Song? { line.current }
+    var isShuffled: Bool { line.shuffled }
 
     func play(_ songs: [Song], at start: Int = 0) {
         guard songs.indices.contains(start) else { return }
@@ -30,11 +42,56 @@ final class PlayerModel: ObservableObject {
     }
 
     func playNext(_ song: Song) {
-        edit { $0.insertNext(song) }
+        playNext([song])
     }
 
     func addToQueue(_ song: Song) {
-        edit { $0.append(song) }
+        addToQueue([song])
+    }
+
+    /// Keeps the order given, and writes the queue once however many there are.
+    func playNext(_ songs: [Song]) {
+        guard !songs.isEmpty else { return }
+        edit { $0.insertNext(songs) }
+    }
+
+    func addToQueue(_ songs: [Song]) {
+        guard !songs.isEmpty else { return }
+        edit { $0.append(songs) }
+    }
+
+    func move(from source: IndexSet, to target: Int) {
+        edit { $0.move(from: source, to: target) }
+    }
+
+    func remove(at offsets: IndexSet) {
+        var changed = line
+        guard changed.remove(at: offsets) else { return edit { $0 = changed } }
+        // The current song went. Carry on with what followed it, if anything is left to follow.
+        let play = isPlaying && queue.indices.contains { $0 > index && !offsets.contains($0) }
+        line = changed
+        store.save(queue: line, account: account)
+        guard current != nil else {
+            unload()
+            isPlaying = false
+            position = 0
+            duration = 0
+            store.clear()
+            return updateNowPlaying()
+        }
+        load(at: 0, play: play)
+    }
+
+    func toggleShuffle() {
+        edit { $0.setShuffled(!$0.shuffled) }
+    }
+
+    /// Off, the whole queue, then the one song.
+    func cycleRepeat() {
+        let modes = RepeatMode.allCases
+        repeatMode = modes[(modes.firstIndex(of: repeatMode)! + 1) % modes.count]
+        defaults.set(repeatMode.rawValue, forKey: "repeatMode")
+        lineUp()
     }
 
     func jump(to index: Int) {
@@ -47,7 +104,7 @@ final class PlayerModel: ObservableObject {
     }
 
     func next() {
-        if line.jump(to: index + 1) { load(at: 0, play: isPlaying) } else { finish() }
+        if line.jump(to: index + 1) || (repeatMode == .all && line.jump(to: 0)) { load(at: 0, play: isPlaying) } else { finish() }
     }
 
     /// Back to the start of the song first, as every player does; then to the one before.
@@ -297,7 +354,7 @@ final class PlayerModel: ObservableObject {
     /// Keeps the engine's second item matching the queue, so it is already buffered when the first ends.
     private func lineUp() {
         guard let loaded else { return }
-        let upcoming = line.upcoming
+        let upcoming = line.following(repeatMode).map { line.songs[$0] }
         if let lined, lined.song.id == upcoming?.id, engine.items().contains(lined.item) { return }
         for item in engine.items() where item !== loaded.item { engine.remove(item) }
         lined = upcoming.flatMap(make)
@@ -306,7 +363,7 @@ final class PlayerModel: ObservableObject {
 
     /// The engine moved to the lined up item by itself.
     private func advanced() {
-        guard let next = lined, engine.currentItem === next.item, line.jump(to: index + 1) else { return }
+        guard let next = lined, engine.currentItem === next.item, let target = line.following(repeatMode), line.jump(to: target) else { return }
         loaded = next
         lined = nil
         position = 0
@@ -326,7 +383,7 @@ final class PlayerModel: ObservableObject {
         guard let item, item === loaded?.item else { return }
         // With a good item lined up the engine moves on and `advanced` takes it from there.
         if let lined, lined.item.status != .failed, engine.items().contains(lined.item) { return }
-        if line.jump(to: index + 1) { load(at: 0, play: isPlaying) } else { finish() }
+        if let target = line.following(repeatMode), line.jump(to: target) { load(at: 0, play: isPlaying) } else { finish() }
     }
 
     private func finish() {
