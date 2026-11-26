@@ -11,6 +11,10 @@ final class AdditionsModel: ObservableObject {
     @Published private(set) var available = false
 
     var unsettled: Bool { items.contains(where: \.unsettled) }
+    /// Each new round restarts `follow`, with its full time again.
+    @Published private(set) var round = 0
+
+    func restart() { round += 1 }
 
     func load() {
         let data = UserDefaults.standard.data(forKey: Self.key) ?? Data()
@@ -30,6 +34,7 @@ final class AdditionsModel: ObservableObject {
         items.removeAll { $0.id == addition.id || $0.input == input }
         items = Array(([addition] + items).prefix(20))
         save()
+        restart()
     }
 
     func addition(_ input: String) -> Addition? { items.first { $0.input == input } }
@@ -43,6 +48,7 @@ final class AdditionsModel: ObservableObject {
     func lookAgain(_ id: String) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].looks = 0
+        restart()
     }
 
     /// Polls until nothing is left to wait for. A server that can't answer is asked again.
