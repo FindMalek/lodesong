@@ -212,7 +212,10 @@ final class AppModel: ObservableObject {
         do {
             try await LibrarySync.run(client: client, store: store)
             let store = store
-            library = await Task.detached { Self.load(store) }.value
+            var loaded = await Task.detached { Self.load(store) }.value
+            // A folder may have been picked while loading.
+            loaded.folder = store.folder()
+            library = loaded
             syncError = nil
             lastSync = Date()
             defaults.set(lastSync, forKey: "lastSync")
@@ -243,14 +246,20 @@ final class AppModel: ObservableObject {
 
     func entries(playlist id: String) -> [Song] { store.entries(playlist: id) }
 
+    /// Counts picks, so a slow one doesn't undo a later one.
+    private var folderPick = 0
+
     /// Nil shows everything again, which needs no server.
     func chooseFolder(_ folder: MusicFolder?) async throws {
+        folderPick += 1
+        let pick = folderPick
         var choice: FolderChoice?
         if let folder {
             guard let client = live else { throw ServerError.message("Connect to your server to pick a music folder.") }
+            let account = user
             choice = FolderChoice(id: folder.id, name: folder.name, songs: try await client.songIDs(folder: folder.id))
-            // Signed out or into another account while asking.
-            guard !needsSignIn, self.client?.identity == client.identity else { return }
+            // Picked again, signed out or into another account while asking.
+            guard pick == folderPick, !needsSignIn, self.client?.identity == client.identity, user == account else { return }
         }
         try store.saveFolder(choice)
         library.folder = choice

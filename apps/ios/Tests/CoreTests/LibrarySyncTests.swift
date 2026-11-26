@@ -72,6 +72,14 @@ final class LibrarySyncTests: XCTestCase {
         XCTAssertNil(store.folder())
     }
 
+    func testAFailedFolderRequestKeepsTheOldChoiceAndTheSync() async throws {
+        let choice = FolderChoice(id: "2", name: "Live", songs: ["old"])
+        try store.saveFolder(choice)
+        try await LibrarySync.run(client: client, store: store)
+        XCTAssertEqual(store.folder(), choice)
+        XCTAssertEqual(store.songs().map(\.id), ["s1"])
+    }
+
     func testSmartPlaylistsAreAskedEveryTime() async throws {
         StubServer.answers["getPlaylists"] = #""playlists":{"playlist":[{"id":"p1","name":"Smart","changed":"t1","readonly":true}]}"#
         try await LibrarySync.run(client: client, store: store)

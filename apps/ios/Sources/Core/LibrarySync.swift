@@ -6,7 +6,13 @@ enum LibrarySync {
         let snapshot = try await client.librarySnapshot(knownPlaylists: store.playlistStamps())
         try Task.checkCancellation()
         try store.apply(snapshot)
-        try await refreshFolder(client: client, store: store)
+        // The library is in by now: a folder that can't be asked about keeps its old songs rather than failing the sync.
+        do {
+            try await refreshFolder(client: client, store: store)
+        } catch {
+            try Task.checkCancellation()
+            AppLog.shared.add("Music folder not refreshed: \(error.localizedDescription)")
+        }
         await ShelfSync.run(client: client, store: store, pictures: pictures)
     }
 
