@@ -222,6 +222,40 @@ final class AppModel: ObservableObject {
 
     func entries(playlist id: String) -> [Song] { store.entries(playlist: id) }
 
+    /// Changes need the server there and then: nothing is queued, so offline they are off rather than lost.
+    var canEdit: Bool { live != nil && !offline }
+
+    /// Runs one change to the playlists, then brings them in again so screens and downloads follow.
+    /// `change` answers the id of a playlist it made. A failed change refreshes too: it may be why it failed.
+    @discardableResult
+    func editPlaylists(_ id: String?, _ change: (ServerClient) async throws -> String?) async throws -> String? {
+        guard canEdit, let client = live else { throw ServerError.message("Connect to your server to edit playlists.") }
+        // A sync that began before the change would write the old list back over it.
+        await syncTask?.value
+        var made: String?
+        let result: Result<Void, Error>
+        do {
+            made = try await change(client)
+            result = .success(())
+        } catch {
+            result = .failure(error)
+        }
+        await refreshPlaylists(client, changed: made ?? id)
+        try result.get()
+        return made ?? id
+    }
+
+    private func refreshPlaylists(_ client: ServerClient, changed: String?) async {
+        do {
+            try await LibrarySync.playlists(client: client, store: store, changed: changed)
+        } catch {
+            return AppLog.shared.add("Playlists not refreshed: \(error.localizedDescription)")
+        }
+        guard !needsSignIn, self.client?.identity == client.identity else { return }
+        library = Self.load(store)
+        downloads.librarySynced(edited: changed)
+    }
+
     /// The library stays on the phone, so signing back into the same account shows it straight away.
     func signOut() {
         defaults.set(true, forKey: "signedOut")
