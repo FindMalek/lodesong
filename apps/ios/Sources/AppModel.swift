@@ -1,39 +1,84 @@
-import AVFoundation
+import Foundation
 import SwiftUI
 
-/// What the app itself remembers: which lodesong to open, and the audio session that lets music play with the
-/// silent switch on and keep going with the screen locked.
-final class AppModel: ObservableObject {
-    @Published var server: URL? {
-        didSet { UserDefaults.standard.set(server, forKey: "server") }
+struct Library {
+    var artists: [Artist] = []
+    var albums: [Album] = []
+    var songs: [Song] = []
+    var playlists: [Playlist] = []
+
+    func songs(album id: String) -> [Song] {
+        songs.filter { $0.albumId == id }.sorted { ($0.discNumber ?? 1, $0.track ?? 0) < ($1.discNumber ?? 1, $1.track ?? 0) }
     }
 
-    init() {
-        server = UserDefaults.standard.url(forKey: "server")
-        AudioSession.prepare()
-    }
-
-    /// "music.example.com" becomes https; an address on your own network (an IP, a port, `.local`) stays http.
-    static func normalize(_ raw: String) -> URL? {
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return nil }
-        if !text.contains("://") {
-            let local = text.hasSuffix(".local") || text.contains(":") || text.range(of: #"^\d{1,3}(\.\d{1,3}){3}"#, options: .regularExpression) != nil
-            text = (local ? "http://" : "https://") + text
-        }
-        while text.hasSuffix("/") { text.removeLast() }
-        guard let url = URL(string: text), let host = url.host, !host.isEmpty, url.scheme == "http" || url.scheme == "https" else { return nil }
-        return url
+    func albums(artist id: String) -> [Album] {
+        albums.filter { $0.artistId == id }.sorted { ($0.year ?? 0) < ($1.year ?? 0) }
     }
 }
 
-enum AudioSession {
-    /// The playback category is what makes the silent switch not matter; the session itself is only taken once music plays.
-    static func prepare() {
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+@MainActor
+final class AppModel: ObservableObject {
+    @Published private(set) var client: ServerClient?
+    @Published private(set) var library = Library()
+    @Published private(set) var syncing = false
+    @Published var syncError: String?
+    @Published var needsSignIn: Bool
+
+    private let store: LibraryStore
+    private let defaults = UserDefaults.standard
+
+    var user: String { defaults.string(forKey: "user") ?? "" }
+
+    init() {
+        let folder = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        // Without a database there is no app to show; a crash here is a full disk or a broken install.
+        store = try! LibraryStore(path: folder.appending(path: "library.sqlite").path)
+        client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
+        needsSignIn = defaults.string(forKey: "user") == nil
+        library = Self.load(store)
     }
 
-    static func activate() {
-        try? AVAudioSession.sharedInstance().setActive(true)
+    func signIn(server: URL, user: String, password: String) async throws {
+        let client = ServerClient(server: server)
+        try await client.signIn(user: user, password: password)
+        if server != defaults.url(forKey: "server") || user != self.user {
+            try store.clear()
+            library = Library()
+        }
+        defaults.set(server, forKey: "server")
+        defaults.set(user, forKey: "user")
+        self.client = client
+        syncError = nil
+        needsSignIn = false
+        await sync()
+    }
+
+    func sync() async {
+        guard let client, !needsSignIn, !syncing else { return }
+        syncing = true
+        defer { syncing = false }
+        do {
+            try await LibrarySync.run(client: client, store: store)
+            let store = store
+            library = await Task.detached { Self.load(store) }.value
+            syncError = nil
+        } catch ServerError.signedOut {
+            needsSignIn = true
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    func entries(playlist id: String) -> [Song] { store.entries(playlist: id) }
+
+    /// The library stays on the phone, so signing back into the same account shows it straight away.
+    func signOut() {
+        HTTPCookieStorage.shared.removeCookies(since: .distantPast)
+        needsSignIn = true
+    }
+
+    private nonisolated static func load(_ store: LibraryStore) -> Library {
+        Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists())
     }
 }
