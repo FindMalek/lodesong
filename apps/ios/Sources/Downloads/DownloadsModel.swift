@@ -106,6 +106,12 @@ final class DownloadsModel: ObservableObject {
     /// Waits for the latest changes to reach the system's queue.
     func queued() async { await scheduling?.value }
 
+    /// Downloads made before an update never went through `keep`, so a foreground launch asks for them.
+    func askForNoticesIfKept() async {
+        guard library?.collections.isEmpty == false else { return }
+        if UserDefaults.standard.bool(Pref.notifyNewTracks, or: true) || Notices.expiry != nil { await Notices.askPermission() }
+    }
+
     private func keep(_ ref: DownloadRef) {
         guard let store, let library else { return }
         library.keep(ref, from: store)

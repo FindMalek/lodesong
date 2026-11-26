@@ -38,6 +38,7 @@ struct LodesongApp: App {
         .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active {
                 Notices.scheduleExpiryWarnings()
+                Task { await model.downloads.askForNoticesIfKept() }
                 Task { await model.sync() }
             }
             if phase == .background { model.downloads.scheduleRefresh() }
