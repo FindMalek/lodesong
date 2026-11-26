@@ -19,7 +19,11 @@ struct Library {
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var client: ServerClient?
-    @Published private(set) var library = Library()
+    @Published private(set) var library = Library() {
+        didSet { libraryRevision += 1 }
+    }
+    /// Counts alone miss a sync that only renames or swaps songs.
+    private(set) var libraryRevision = 0
     @Published private(set) var syncing = false
     @Published var syncError: String?
     @Published var needsSignIn: Bool
