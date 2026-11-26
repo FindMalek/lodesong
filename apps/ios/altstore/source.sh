@@ -41,7 +41,7 @@ jq -n \
       size: $size,
       downloadURL: ("https://" + "github.com/" + $repo + "/releases/download/" + $tag + "/lodesong-ios.ipa"),
       localizedDescription: $notes,
-      minOSVersion: "16.0"
+      minOSVersion: "26.0"
     }],
     appPermissions: { entitlements: [], privacy: { NSLocalNetworkUsageDescription: "lodesong talks to your server on your home network." } }
   }],

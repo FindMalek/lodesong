@@ -25,6 +25,8 @@ final class AppModel: ObservableObject {
     @Published var needsSignIn: Bool
 
     let downloads = DownloadsModel()
+    private var syncTask: Task<Void, Never>?
+    private var signOutTask: Task<Void, Never>?
     private let store: LibraryStore
     private let defaults = UserDefaults.standard
 
@@ -36,12 +38,16 @@ final class AppModel: ObservableObject {
         // Without a database there is no app to show; a crash here is a full disk or a broken install.
         store = try! LibraryStore(path: folder.appending(path: "library.sqlite").path)
         client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
-        needsSignIn = defaults.string(forKey: "user") == nil
+        needsSignIn = defaults.string(forKey: "user") == nil || defaults.bool(forKey: "signedOut")
         library = Self.load(store)
         downloads.connect(client: needsSignIn ? nil : client, store: store)
     }
 
     func signIn(server: URL, user: String, password: String) async throws {
+        // A sync still running for the last account would use the new cookie and write into the new library.
+        await stopSync()
+        // Sign out drops every cookie when it finishes, which must not be the new one.
+        await signOutTask?.value
         let client = ServerClient(server: server)
         try await client.signIn(user: user, password: password)
         if server != defaults.url(forKey: "server") || user != self.user {
@@ -50,6 +56,7 @@ final class AppModel: ObservableObject {
         }
         defaults.set(server, forKey: "server")
         defaults.set(user, forKey: "user")
+        defaults.set(false, forKey: "signedOut")
         self.client = client
         syncError = nil
         needsSignIn = false
@@ -58,7 +65,15 @@ final class AppModel: ObservableObject {
     }
 
     func sync() async {
-        guard let client, !needsSignIn, !syncing else { return }
+        if let syncTask { return await syncTask.value }
+        guard let client, !needsSignIn else { return }
+        let task = Task { await run(client) }
+        syncTask = task
+        await task.value
+        if syncTask == task { syncTask = nil }
+    }
+
+    private func run(_ client: ServerClient) async {
         syncing = true
         defer { syncing = false }
         do {
@@ -68,19 +83,31 @@ final class AppModel: ObservableObject {
             syncError = nil
             downloads.librarySynced()
         } catch ServerError.signedOut {
-            needsSignIn = true
+            if !Task.isCancelled { needsSignIn = true }
         } catch {
-            syncError = error.localizedDescription
+            if !Task.isCancelled { syncError = error.localizedDescription }
         }
+    }
+
+    private func stopSync() async {
+        let task = syncTask
+        syncTask = nil
+        task?.cancel()
+        await task?.value
     }
 
     func entries(playlist id: String) -> [Song] { store.entries(playlist: id) }
 
     /// The library stays on the phone, so signing back into the same account shows it straight away.
     func signOut() {
-        HTTPCookieStorage.shared.removeCookies(since: .distantPast)
+        defaults.set(true, forKey: "signedOut")
         needsSignIn = true
         downloads.connect(client: nil, store: store)
+        signOutTask = Task {
+            await stopSync()
+            await client?.signOut()
+            HTTPCookieStorage.shared.removeCookies(since: .distantPast)
+        }
     }
 
     #if DEBUG
