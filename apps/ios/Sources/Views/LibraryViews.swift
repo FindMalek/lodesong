@@ -60,22 +60,6 @@ struct LibraryView: View {
     }
 }
 
-struct PlaylistsView: View {
-    @EnvironmentObject private var model: AppModel
-
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 20) {
-                ForEach(model.library.playlists) { PlaylistTile(playlist: $0) }
-            }
-            .padding(20)
-        }
-        .refreshable { await model.sync() }
-        .libraryState(model.library.playlists.isEmpty, "No Playlists", "music.note.list")
-        .navigationTitle("Playlists")
-    }
-}
-
 struct AlbumsView: View {
     @EnvironmentObject private var model: AppModel
     var decade: Int?

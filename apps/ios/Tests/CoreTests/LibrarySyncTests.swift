@@ -20,7 +20,9 @@ final class StubServer: URLProtocol {
         }
         let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(#"{"subsonic-response":{"status":"ok",\#(answer)}}"#.utf8))
+        // lodesong's own API answers plain JSON, Subsonic wraps it.
+        let body = answer.hasPrefix("{") ? answer : #"{"subsonic-response":{"status":"ok",\#(answer)}}"#
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 }
