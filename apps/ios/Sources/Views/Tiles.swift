@@ -52,6 +52,7 @@ struct PlaylistTile: View {
     @Environment(\.zoom) private var zoom
     let playlist: Playlist
     var section = "grid"
+    var title: String?
 
     private var source: String { "\(section)-\(playlist.id)" }
 
@@ -61,24 +62,35 @@ struct PlaylistTile: View {
                 PlaylistCover(playlist: playlist)
                     .zoomSource(source, in: zoom)
                     .padding(.bottom, 4)
-                Text(playlist.name).font(.subheadline).lineLimit(1)
+                Text(title ?? playlist.name).font(.subheadline).lineLimit(1)
                 Text(playlist.songCount.map { "\($0) songs" } ?? " ").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Play", systemImage: "play") { player.start(model.entries(playlist: playlist.id)) }
-            Button("Shuffle", systemImage: "shuffle") { player.startShuffled(model.entries(playlist: playlist.id)) }
-            Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(model.entries(playlist: playlist.id)) }
-            Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(model.entries(playlist: playlist.id)) }
-            Divider()
-            if downloads.state(playlist: playlist.id) == .none {
-                Button("Download", systemImage: "arrow.down.circle") { downloads.keep(playlist: playlist.id) }
-            } else {
-                Button("Remove Download", systemImage: "trash", role: .destructive) { downloads.remove(playlist: playlist.id) }
-            }
+            PlaylistMenu(playlist: playlist)
         } preview: {
             PreviewCard(model: model, playlist: playlist, title: playlist.name, subtitle: playlist.songCount.map { "\($0) songs" })
+        }
+    }
+}
+
+struct PlaylistMenu: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var downloads: DownloadsModel
+    let playlist: Playlist
+
+    var body: some View {
+        Button("Play", systemImage: "play") { player.start(model.entries(playlist: playlist.id)) }
+        Button("Shuffle", systemImage: "shuffle") { player.startShuffled(model.entries(playlist: playlist.id)) }
+        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(model.entries(playlist: playlist.id)) }
+        Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(model.entries(playlist: playlist.id)) }
+        Divider()
+        if downloads.state(playlist: playlist.id) == .none {
+            Button("Download", systemImage: "arrow.down.circle") { downloads.keep(playlist: playlist.id) }
+        } else {
+            Button("Remove Download", systemImage: "trash", role: .destructive) { downloads.remove(playlist: playlist.id) }
         }
     }
 }
