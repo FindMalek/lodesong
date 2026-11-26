@@ -122,6 +122,7 @@ struct ArtistMenu: View {
     let artist: Artist
 
     var body: some View {
+        ArtistRadioItem(artist: artist)
         MarkItems(item: artist.markable)
         ShareItem(kind: "artist", id: artist.id)
         AddToPlaylistItem { model.library.albums(artist: artist.id).flatMap { model.library.songs(album: $0.id) } }

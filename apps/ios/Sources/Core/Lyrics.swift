@@ -17,6 +17,8 @@ struct Lyrics: Codable, Equatable {
 
     let status: Status
     var lines: [Line] = []
+    /// "navidrome" or "lrclib": where the server found them.
+    var source: String?
 
     /// The line being sung. `nudge` is the listener's own correction: positive shows lines later.
     func line(at ms: Double, nudge: Int = 0) -> Int? {

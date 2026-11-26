@@ -4,6 +4,27 @@ enum RepeatMode: String, CaseIterable {
     case off, all, one
 }
 
+/// When playback should stop by itself.
+enum SleepTimer: Equatable {
+    case at(Date)
+    case endOfSong
+    case endOfAlbum
+    case endOfQueue
+
+    /// Whether playback stops when the current song of `queue` ends.
+    func stops(after queue: PlayQueue) -> Bool {
+        let next = queue.index + 1
+        switch self {
+        case .at: return false
+        case .endOfSong: return true
+        case .endOfAlbum:
+            guard let album = queue.current?.albumId, queue.songs.indices.contains(next) else { return true }
+            return queue.songs[next].albumId != album
+        case .endOfQueue: return next >= queue.songs.count
+        }
+    }
+}
+
 /// The songs lined up and which one is current. Only these methods change the order, so a library sync never does.
 struct PlayQueue: Equatable {
     private(set) var songs: [Song] = []
@@ -51,6 +72,16 @@ struct PlayQueue: Equatable {
 
     mutating func append(_ added: [Song]) {
         songs.append(contentsOf: added)
+    }
+
+    /// Keeps the current song and what was played.
+    mutating func clearUpcoming() {
+        songs.removeSubrange(min(index + 1, songs.count)...)
+    }
+
+    mutating func replaceUpcoming(_ added: [Song]) {
+        clearUpcoming()
+        append(added)
     }
 
     /// Same meaning as SwiftUI's `onMove`: `target` counts positions before anything is taken out.

@@ -94,4 +94,44 @@ final class PlaybackTests: XCTestCase {
         XCTAssertTrue(Pref.pastScrobblePoint(150, duration: 200, percent: 75, minutes: 4))
         XCTAssertTrue(Pref.pastScrobblePoint(120, duration: 1000, percent: 75, minutes: 2))
     }
+
+    func testWithoutAMinimumTimeOnlyTheShareCounts() {
+        XCTAssertFalse(Pref.pastScrobblePoint(500, duration: 1000, percent: 75, minutes: nil))
+    }
+
+    func testTheSleepTimerStopsAtTheEndOfTheAlbumOrTheQueue() {
+        let songs = ["x", "x", "y"].enumerated().map { Song(id: "\($0.offset)", title: "", albumId: $0.element) }
+        XCTAssertFalse(SleepTimer.endOfAlbum.stops(after: PlayQueue(songs: songs, index: 0)))
+        XCTAssertTrue(SleepTimer.endOfAlbum.stops(after: PlayQueue(songs: songs, index: 1)))
+        XCTAssertFalse(SleepTimer.endOfQueue.stops(after: PlayQueue(songs: songs, index: 1)))
+        XCTAssertTrue(SleepTimer.endOfQueue.stops(after: PlayQueue(songs: songs, index: 2)))
+    }
+
+    func testRadioNeverRepeatsASong() {
+        let picked = Radio.pick(songs("a", "b", "a", "c", "d"), excluding: ["b"], count: 2)
+        XCTAssertEqual(picked.map(\.id), ["a", "c"])
+    }
+
+    func testSleepTimerButtonIsOffUntilAsked() {
+        XCTAssertEqual(PlayerButton.shown(order: "queue", hidden: PlayerButton.hiddenByDefault), [.queue, .airplay, .settings, .dismiss, .lyrics])
+    }
+
+    func testTheDevicesButtonCannotBeHiddenWhileAnotherDevicePlays() {
+        XCTAssertFalse(PlayerButton.shown(order: "", hidden: "airplay").contains(.airplay))
+        XCTAssertTrue(PlayerButton.shown(order: "", hidden: "airplay", remote: true).contains(.airplay))
+    }
+
+    func testInfinitePlayAddsNothingOnceRepeatOrEndOfQueueIsPicked() {
+        let queue = PlayQueue(songs: songs("a"))
+        XCTAssertTrue(Radio.wantsMore(on: true, remote: false, repeatMode: .off, sleepTimer: nil, queue: queue))
+        XCTAssertFalse(Radio.wantsMore(on: true, remote: false, repeatMode: .all, sleepTimer: nil, queue: queue))
+        XCTAssertFalse(Radio.wantsMore(on: true, remote: false, repeatMode: .off, sleepTimer: .endOfQueue, queue: queue))
+    }
+
+    func testRadioFromTheSongThatIsOnKeepsItAndReplacesWhatFollows() {
+        var queue = PlayQueue(songs: songs("a", "b", "c"), index: 1)
+        queue.replaceUpcoming(songs("r"))
+        XCTAssertEqual(queue.songs.map(\.id), ["a", "b", "r"])
+        XCTAssertEqual(queue.current?.id, "b")
+    }
 }

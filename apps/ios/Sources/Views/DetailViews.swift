@@ -185,7 +185,7 @@ struct PlaylistView: View {
     }
 }
 
-private extension Library {
+extension Library {
     /// Newest album first.
     func songs(artist id: String) -> [Song] { albums(artist: id).reversed().flatMap { songs(album: $0.id) } }
 

@@ -149,16 +149,32 @@ downloads, covers and plays are shared between the two.
 
 A second address that stops accepting your sign in is dropped, not asked for your password: remove it and add it again.
 
+## Now playing and the queue
+
+- Two styles. **Arpeggi style** is the default: names in the middle, shuffle and repeat beside the controls, no volume
+  slider. It was designed from Arpeggi's public App Store picture and release notes, not copied from the app, so
+  expect differences. **Apple Music style** has the names on the left and a volume slider.
+- **Settings → Player** (also from "..." on now playing): cover shrinking when paused, mesh or mono background,
+  scrolling titles, the cover swipe (changes song, can be reversed), the swipe on the names and controls (steps 5 to
+  30 seconds, 10 by default), the mini player swipe, which buttons sit at the bottom and in what order (the sleep timer
+  is off at first; "..." has lyrics, queue and devices
+  too, and the devices button stays while another device plays), and previous and next or skip for the lock screen, headphones and car.
+- "..." also has the song's actions, sleep timer, playback, streaming, cache and scrobbling settings.
+- The queue: **infinite play** adds similar songs when five or fewer are left (not with repeat on), **history** lists
+  the last 200 songs heard on this phone whatever queue they were in, and its menu has the sleep timer (minutes, end of
+  song, album or queue), save as playlist and clear.
+- **Start Radio** on a song or an artist plays songs like it, without the ones you banned from radio on the web.
+
 ## Settings
 
 The app works without opening them.
 
-- **Playback**: streaming quality on Wi-Fi and on cellular, ReplayGain, speed, lock screen buttons (previous and next,
-  or skip 10, 15 or 30 seconds), keep shuffle on, keep the screen awake on now playing, sync the queue across devices,
-  report playback and when a play counts, cache songs ahead, a swipe on the cover that skips, confirm before
-  replacing the queue.
-- **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, moving player
-  background, lyrics text size, what a swipe on a song does, order of the Home and Library sections.
+- **Playback**: streaming quality on Wi-Fi and on cellular, ReplayGain, speed, infinite play, keep shuffle on, sync
+  the queue across devices, report playback and when a play counts (the minimum time can be turned off), cache songs
+  ahead, confirm before replacing the queue.
+- **Player**: see [now playing](#now-playing-and-the-queue).
+- **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, lyrics text size,
+  what a swipe on a song does, order of the Home and Library sections.
 - **Storage**: downloads and the space they take, new track notifications, artwork cache.
 - **Logs**: recent syncs and failures, with the server address hidden unless you turn that off.
 - **About**: version and signing days left.
