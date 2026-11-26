@@ -12,6 +12,8 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
     private var session: URLSession!
     /// Not tried again until the next sync, so a song the server can't deliver doesn't loop.
     private var failed: Set<String> = []
+    /// The last thing asked for, so a limit can start the next song when one ends.
+    private var plan: (client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, limit: Int)?
     private var eventsDone = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
 
@@ -29,21 +31,23 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
     /// Makes the running transfers match what is pending: starts what's missing, cancels what no longer applies.
     /// With no client (signed out) everything is cancelled; the files stay.
     /// Returns once the transfers are queued with the system, so a background wake can safely end.
-    func schedule(_ library: DownloadLibrary, client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, retry: Bool) async {
+    func schedule(_ library: DownloadLibrary, client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, limit: Int, retry: Bool) async {
         await withCheckedContinuation { done in
             // In call order on the delegate queue, so a later account switch can't be overtaken by an earlier one.
             queue.addOperation { [self] in
                 if library.key != self.library.key { failed = [] }
                 self.library = library
-                reconcileTasks(client: client, quality: quality, wifiOnly: wifiOnly, retry: retry) { done.resume() }
+                plan = (client, quality, wifiOnly, limit)
+                reconcileTasks(retry: retry) { done.resume() }
             }
         }
     }
 
-    private func reconcileTasks(client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, retry: Bool, done: @escaping @Sendable () -> Void) {
+    private func reconcileTasks(retry: Bool, done: @escaping @Sendable () -> Void) {
         // `getAllTasks` answers on the delegate queue, so two calls can't start the same song twice.
         session.getAllTasks { [self] tasks in
             defer { done() }
+            guard let (client, quality, wifiOnly, limit) = plan else { return }
             if retry { failed = [] }
             var wanted: [String: URLRequest] = [:]
             let pending = client == nil ? [] : library.pending()
@@ -56,8 +60,10 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
                 task.cancel()
             }
             for song in pending where !running.contains(song.id) && !failed.contains(song.id) {
+                if limit > 0, running.count >= limit { break }
                 guard let request = wanted[song.id] else { continue }
                 start(song.id, request)
+                running.insert(song.id)
             }
             changed(failed)
         }
@@ -131,6 +137,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        defer { if song(task) != nil, plan?.limit ?? 0 > 0 { reconcileTasks(retry: false) {} } }
         guard let id = song(task), let error = error as? URLError else { return }
         let resume = error.downloadTaskResumeData
         // A cancel without resume data is our own; with it, the app was closed mid-transfer.
@@ -145,6 +152,12 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
     }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        // With a limit, the next songs have to be queued before the app is let go.
+        guard plan?.limit ?? 0 > 0 else { return finishWaiting() }
+        reconcileTasks(retry: false) { [self] in finishWaiting() }
+    }
+
+    private func finishWaiting() {
         if waiting.isEmpty {
             eventsDone = true
         } else {

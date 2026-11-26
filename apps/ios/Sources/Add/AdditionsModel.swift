@@ -78,9 +78,9 @@ final class AdditionsModel: ObservableObject {
 
     private func bringIn(_ id: String?, _ app: AppModel) {
         Task {
-            await app.sync()
+            await app.sync(.followUp)
             // A sync already under way may have started before the scan.
-            if let id, !app.library.songs.contains(where: { $0.id == id }) { await app.sync() }
+            if let id, !app.library.songs.contains(where: { $0.id == id }) { await app.sync(.followUp) }
         }
     }
 

@@ -18,6 +18,24 @@ struct DownloadsView: View {
                 Text("Quality applies to new downloads. Formats iPhone can't play are saved as MP3.")
             }
 
+            Section {
+                Picker("Downloads at Once", selection: $downloads.atOnce) {
+                    Text("Automatic").tag(0)
+                    ForEach([1, 2, 3, 5], id: \.self) { Text("\($0)").tag($0) }
+                }
+            } footer: {
+                Text("With a limit, downloads are slower while the app is closed: iOS only wakes it now and then to start the next ones.")
+            }
+
+            Section {
+                Toggle("Check When the App Opens", isOn: $downloads.autoOnOpen)
+                Toggle("Check Every 10 Minutes", isOn: $downloads.autoPeriodic)
+            } header: {
+                Text("Auto Download")
+            } footer: {
+                Text("Kept playlists and albums take new songs and drop removed ones. The 10 minute check runs while Lodesong is running, and with Download on Wi-Fi Only on it skips cellular and other metered networks; once iOS suspends or closes it, iOS decides when it wakes, if at all. Sync Now always updates them, and a playlist's menu can override this.")
+            }
+
             NewTracksToggle()
 
             Section {
@@ -65,6 +83,25 @@ struct DownloadsView: View {
 
     private func size(_ bytes: Int) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+    }
+}
+
+/// One kept playlist's own choice over the Auto Download settings.
+struct AutoDownloadPicker: View {
+    @EnvironmentObject private var downloads: DownloadsModel
+    let playlist: String
+
+    var body: some View {
+        if downloads.state(playlist: playlist) != .none {
+            Picker(selection: Binding(get: { downloads.follows(playlist: playlist) }, set: { downloads.setFollows($0, playlist: playlist) })) {
+                Text("Use Settings").tag(Bool?.none)
+                Text("Always").tag(Bool?.some(true))
+                Text("Never").tag(Bool?.some(false))
+            } label: {
+                Label("Auto Download", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .pickerStyle(.menu)
+        }
     }
 }
 

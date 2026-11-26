@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import SwiftUI
 
 struct Library {
@@ -73,6 +74,8 @@ final class AppModel: ObservableObject {
     let downloads = DownloadsModel()
     private var syncTask: Task<Void, Never>?
     private var signOutTask: Task<Void, Never>?
+    /// Everything that asked for the sync now running.
+    private var syncTriggers: Set<SyncTrigger> = []
     private let store: LibraryStore
     private let defaults = UserDefaults.standard
 
@@ -99,6 +102,27 @@ final class AppModel: ObservableObject {
         // `didSet` doesn't run in an initializer.
         browse = library.browsing()
         connectDownloads()
+        checkPeriodically()
+    }
+
+    /// Runs for as long as the app does; suspended in the background, it waits with it.
+    private func checkPeriodically() {
+        var seconds = 600
+        #if DEBUG
+        seconds = ProcessInfo.processInfo.environment["LODESONG_AUTO_SECONDS"].flatMap(Int.init) ?? seconds
+        #endif
+        let network = NWPathMonitor()
+        network.start(queue: .global(qos: .utility))
+        Task { [weak self, seconds] in
+            defer { network.cancel() }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(seconds))
+                guard let self else { return }
+                // A whole library snapshot every time, so Wi-Fi only holds for it too.
+                if downloads.wifiOnly, network.currentPath.isExpensive { continue }
+                if downloads.autoPeriodic, !downloads.collections.isEmpty || downloads.allPlaylists { await sync(.periodic) }
+            }
+        }
     }
 
     private func connectDownloads() {
@@ -183,9 +207,13 @@ final class AppModel: ObservableObject {
         move(to: next)
     }
 
-    func sync() async {
-        if let syncTask { return await syncTask.value }
+    func sync(_ trigger: SyncTrigger = .manual) async {
+        if let syncTask {
+            syncTriggers.insert(trigger)
+            return await syncTask.value
+        }
         guard live != nil else { return }
+        syncTriggers = [trigger]
         let task = Task {
             await chooseAddress()
             if let client = live, !Task.isCancelled { await run(client) }
@@ -198,7 +226,7 @@ final class AppModel: ObservableObject {
     /// The system's background wake: ends the sync when iOS takes the time back, and returns once downloads are queued.
     func backgroundRefresh() async {
         await withTaskCancellationHandler {
-            await sync()
+            await sync(.background)
         } onCancel: {
             Task { @MainActor in syncTask?.cancel() }
         }
@@ -219,7 +247,7 @@ final class AppModel: ObservableObject {
             syncError = nil
             lastSync = Date()
             defaults.set(lastSync, forKey: "lastSync")
-            downloads.librarySynced()
+            downloads.librarySynced(triggers: syncTriggers)
             AppLog.shared.add("Synced \(library.songs.count) songs")
         } catch ServerError.signedOut {
             guard !Task.isCancelled else { return }
@@ -296,7 +324,7 @@ final class AppModel: ObservableObject {
         }
         guard !needsSignIn, self.client?.identity == client.identity else { return }
         library = Self.load(store)
-        downloads.librarySynced(edited: changed)
+        downloads.librarySynced(edited: changed, triggers: [.followUp])
     }
 
     /// The library stays on the phone, so signing back into the same account shows it straight away.

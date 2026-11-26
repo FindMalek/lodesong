@@ -132,7 +132,7 @@ struct PlaylistView: View {
                 CollectionHeader(
                     title: playlist.name, description: playlist.comment, details: songs.map(summaryText) ?? "", songs: ordered,
                     download: DownloadControl(
-                        state: downloads.state(playlist: playlist.id), songs: ordered, follows: true,
+                        state: downloads.state(playlist: playlist.id), songs: ordered, follows: downloads.takesNewSongs(playlist: playlist.id),
                         keep: { downloads.keep(playlist: playlist.id) }, remove: { downloads.remove(playlist: playlist.id) }
                     )
                 ) {

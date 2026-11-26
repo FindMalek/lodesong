@@ -26,6 +26,20 @@ final class DownloadsModel: ObservableObject {
             schedule()
         }
     }
+    /// Whether kept playlists and albums take changes when the app opens, and while it runs.
+    @Published var autoOnOpen = UserDefaults.standard.bool(Pref.autoDownloadOnOpen, or: true) {
+        didSet { UserDefaults.standard.set(autoOnOpen, forKey: Pref.autoDownloadOnOpen) }
+    }
+    @Published var autoPeriodic = UserDefaults.standard.bool(Pref.autoDownloadPeriodic, or: false) {
+        didSet { UserDefaults.standard.set(autoPeriodic, forKey: Pref.autoDownloadPeriodic) }
+    }
+    /// How many songs transfer at once; zero leaves it to iOS.
+    @Published var atOnce = UserDefaults.standard.integer(forKey: Pref.concurrentDownloads) {
+        didSet {
+            UserDefaults.standard.set(atOnce, forKey: Pref.concurrentDownloads)
+            schedule()
+        }
+    }
     /// Takes every playlist, those made later too. Turning it off keeps what is already here.
     var allPlaylists: Bool {
         get { library?.allPlaylists ?? false }
@@ -91,15 +105,31 @@ final class DownloadsModel: ObservableObject {
 
     /// Call after every library sync so kept playlists follow their changes.
     /// `edited` was changed from this phone, so its new tracks are no news.
-    func librarySynced(edited: String? = nil) {
+    func librarySynced(edited: String? = nil, triggers: Set<SyncTrigger>) {
         guard let store, let library else { return }
-        if allPlaylists { library.keepPlaylists(from: store) }
         let before = library.collections
-        library.reconcile(with: store)
+        library.sync(with: store, triggers: triggers, edited: edited, onOpen: autoOnOpen, periodic: autoPeriodic)
         Notices.post(NewTracks.found(before: before, after: library.collections).filter { $0.playlist != edited })
         revision += 1
         schedule(retry: true)
     }
+
+    /// A playlist's own choice over the app's settings; nil goes by them.
+    func follows(playlist id: String) -> Bool? {
+        collections.first { $0.ref == DownloadRef(kind: .playlist, id: id) }?.follows
+    }
+
+    func setFollows(_ follows: Bool?, playlist id: String) {
+        guard let library, let store else { return }
+        library.setFollows(follows, DownloadRef(kind: .playlist, id: id))
+        // Turned on: catch up now rather than at the next sync.
+        if follows == true { library.reconcile(with: store, manual: false, auto: false) }
+        revision += 1
+        schedule(retry: true)
+    }
+
+    /// Whether songs added to this playlist later come down without a tap.
+    func takesNewSongs(playlist id: String) -> Bool { follows(playlist: id) ?? (autoOnOpen || autoPeriodic) }
 
     func remove(_ ref: DownloadRef) {
         library?.remove(ref)
@@ -148,10 +178,10 @@ final class DownloadsModel: ObservableObject {
 
     private func schedule(retry: Bool = false) {
         guard let session, let library else { return }
-        let (client, quality, wifiOnly, previous) = (client, quality, wifiOnly, scheduling)
+        let (client, quality, wifiOnly, limit, previous) = (client, quality, wifiOnly, atOnce, scheduling)
         scheduling = Task {
             await previous?.value
-            await session.schedule(library, client: client, quality: quality, wifiOnly: wifiOnly, retry: retry)
+            await session.schedule(library, client: client, quality: quality, wifiOnly: wifiOnly, limit: limit, retry: retry)
         }
     }
 }

@@ -96,6 +96,7 @@ struct PlaylistMenu: View {
         if downloads.state(playlist: playlist.id) == .none {
             Button("Download", systemImage: "arrow.down.circle") { downloads.keep(playlist: playlist.id) }
         } else {
+            AutoDownloadPicker(playlist: playlist.id)
             Button("Remove Download", systemImage: "trash", role: .destructive) { downloads.remove(playlist: playlist.id) }
         }
     }

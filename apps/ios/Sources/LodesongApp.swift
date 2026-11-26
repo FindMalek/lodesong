@@ -44,7 +44,7 @@ struct LodesongApp: App {
             if phase == .active {
                 Notices.scheduleExpiryWarnings()
                 Task { await model.downloads.askForNoticesIfKept() }
-                Task { await model.sync() }
+                Task { await model.sync(.open) }
             }
             if phase == .background { model.downloads.scheduleRefresh() }
         }
