@@ -38,6 +38,7 @@ struct WishRow: View {
             accessory
         }
         .alignmentGuide(.listRowSeparatorLeading) { _ in 78 }
+        .modifier(RemoveMenu(addition: addition))
     }
 
     @ViewBuilder private var note: some View {
@@ -65,6 +66,8 @@ struct WishRow: View {
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.circle)
                 .frame(minWidth: 44, minHeight: 44)
+            } else if addition.canCheckAgain {
+                CheckAgainButton(addition: addition)
             } else {
                 AdditionMark(addition: addition)
             }
@@ -116,6 +119,8 @@ struct MatchCard: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 12)
         .padding(.bottom, 8)
+        .contentShape(.rect)
+        .modifier(RemoveMenu(addition: addition))
     }
 
     @ViewBuilder private var action: some View {
@@ -140,6 +145,7 @@ struct MatchCard: View {
                 }
                 .frame(minHeight: 50)
                 .accessibilityElement(children: .combine)
+                if addition.canCheckAgain { CheckAgainButton(addition: addition) }
             }
         } else {
             VStack(spacing: 10) {
@@ -187,9 +193,7 @@ struct AdditionRow: View {
         }
         .contentShape(.rect)
         .alignmentGuide(.listRowSeparatorLeading) { _ in 70 }
-        .contextMenu {
-            Button("Remove from List", systemImage: "xmark") { additions.remove(addition.id) }
-        }
+        .modifier(RemoveMenu(addition: addition))
     }
 
     @ViewBuilder private var accessory: some View {
@@ -204,8 +208,8 @@ struct AdditionRow: View {
             .frame(minWidth: 44, minHeight: 44)
         } else if addition.status == .missing {
             capsule("Retry") { retry() }
-        } else if !addition.unsettled, addition.status == .placed, !addition.wish.artists.isEmpty {
-            capsule("Check Again") { additions.lookAgain(addition.id) }
+        } else if addition.canCheckAgain {
+            CheckAgainButton(addition: addition)
         } else {
             AdditionMark(addition: addition)
         }
@@ -225,6 +229,35 @@ struct AdditionRow: View {
         failure = nil
         Task {
             do { try await additions.add(addition.wish, input: addition.input, client: client) } catch { failure = error.localizedDescription }
+        }
+    }
+}
+
+/// Looks for a placed song the library didn't show in time.
+private struct CheckAgainButton: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var additions: AdditionsModel
+    let addition: Addition
+
+    var body: some View {
+        Button("Check Again") { additions.lookAgain(addition.id) }
+            .font(.subheadline.bold())
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .disabled(model.live == nil)
+            .frame(minHeight: 44)
+    }
+}
+
+private struct RemoveMenu: ViewModifier {
+    @EnvironmentObject private var additions: AdditionsModel
+    let addition: Addition?
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            if let addition {
+                Button("Remove from List", systemImage: "xmark") { additions.remove(addition.id) }
+            }
         }
     }
 }
@@ -310,6 +343,8 @@ extension Wish {
 }
 
 private extension Addition {
+    var canCheckAgain: Bool { status == .placed && song == nil && !unsettled && !wish.artists.isEmpty }
+
     var stateText: String {
         switch status {
         case .working:

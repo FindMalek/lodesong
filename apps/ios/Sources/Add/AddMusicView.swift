@@ -19,6 +19,8 @@ struct AddMusicView: View {
     @State private var owned: [Wish] = []
     @State private var adding: String?
     @State private var failure: Failure?
+    /// Kept apart from `failure`, which is about the search.
+    @State private var addFailure: String?
 
     private struct Asked: Equatable {
         var input: String
@@ -131,10 +133,10 @@ struct AddMusicView: View {
                 }
             }
         } else if let preview {
-            if let failure { banner(failure.message) }
+            if let addFailure { banner(addFailure) }
             match(preview)
         } else if let found {
-            if let failure { banner(failure.message) }
+            if let addFailure { banner(addFailure) }
             if found.candidates.isEmpty { nothing(found) } else { matches(found) }
         } else if let failure {
             placeholder {
@@ -282,6 +284,7 @@ struct AddMusicView: View {
         found = nil
         preview = nil
         failure = nil
+        addFailure = nil
         owned = []
         guard asked.input.count >= 2, let client = model.live else { return }
         do {
@@ -319,20 +322,27 @@ struct AddMusicView: View {
     private func add(_ wish: Wish, input: String) {
         guard let client = model.live else { return }
         adding = input
-        failure = nil
+        addFailure = nil
+        let search = asked
         Task {
             do {
                 try await additions.add(wish, input: input, client: client)
                 Haptic.done()
             } catch {
-                report(error)
+                checkSignIn(error)
+                // A newer search has nothing to do with this one.
+                if asked == search { addFailure = error.localizedDescription }
             }
             adding = nil
         }
     }
 
     private func report(_ error: Error) {
-        if error as? ServerError == .signedOut { model.needsSignIn = true }
+        checkSignIn(error)
         failure = Failure(message: error.localizedDescription, connection: error is URLError)
+    }
+
+    private func checkSignIn(_ error: Error) {
+        if error as? ServerError == .signedOut { model.needsSignIn = true }
     }
 }
