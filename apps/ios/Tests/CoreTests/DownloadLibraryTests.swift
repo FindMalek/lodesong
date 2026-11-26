@@ -27,10 +27,46 @@ final class DownloadLibraryTests: XCTestCase {
         ))
     }
 
-    private func finish(_ id: String, _ body: String = "ID3 pretend audio", status: Int = 200) -> Bool {
+    private func finish(_ id: String, _ body: Data = Data("ID3 pretend audio".utf8), status: Int = 200, format: String = "raw") -> Bool {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try? Data(body.utf8).write(to: file)
-        return downloads.accept(song: id, file: file, status: status)
+        try? body.write(to: file)
+        return downloads.accept(song: id, file: file, status: status, requested: URL(string: "https://music.test/rest/stream?format=\(format)&id=\(id)")!)
+    }
+
+    /// A silent 8 kHz mono WAV.
+    private func wav(seconds: Int) -> Data {
+        func le(_ value: Int, _ bytes: Int) -> [UInt8] { (0..<bytes).map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) } }
+        let size = seconds * 16000
+        var data = Data("RIFF".utf8) + le(36 + size, 4) + Data("WAVEfmt ".utf8)
+        data += le(16, 4) + le(1, 2) + le(1, 2) + le(8000, 4) + le(16000, 4) + le(2, 2) + le(16, 2)
+        data += Data("data".utf8) + le(size, 4)
+        return data + Data(count: size)
+    }
+
+    private func keepOne(suffix: String, duration: Int? = nil) throws {
+        let song = Song(id: "s1", title: "s1", duration: duration, suffix: suffix)
+        try store.apply(LibrarySnapshot(songs: [song], playlists: [Playlist(id: "gym", name: "Gym")], entries: ["gym": [song]]))
+        downloads.keep(gym, from: store)
+    }
+
+    func testATranscodedFLACIsSavedAsMP3() throws {
+        try keepOne(suffix: "flac")
+        XCTAssertTrue(finish("s1", format: "mp3"))
+        XCTAssertEqual(downloads.localURL(song: "s1")?.pathExtension, "mp3")
+    }
+
+    func testATranscodeThatStoppedEarlyIsRefused() throws {
+        try keepOne(suffix: "opus", duration: 60)
+        XCTAssertFalse(finish("s1", wav(seconds: 5), format: "mp3"))
+        XCTAssertNil(downloads.localURL(song: "s1"))
+        XCTAssertTrue(finish("s1", wav(seconds: 60), format: "mp3"))
+    }
+
+    func testEachServerAndUserHasItsOwnFolder() {
+        let folder = { DownloadLibrary.folder(server: URL(string: $0)!, user: $1) }
+        XCTAssertEqual(folder("http://music.test", "demo"), folder("https://Music.test", "Demo"))
+        XCTAssertNotEqual(folder("https://music.test", "demo"), folder("https://other.test", "demo"))
+        XCTAssertNotEqual(folder("https://music.test", "demo"), folder("https://music.test", "kim"))
     }
 
     func testSongsAddedToAKeptPlaylistAreFetchedInItsOrder() throws {
@@ -87,6 +123,9 @@ final class DownloadLibraryTests: XCTestCase {
         downloads.reconcile(with: store)
         try library(["other": ["s9"]])
         downloads.reconcile(with: store)
+        // Listed with songs, but the songs were never stored.
+        try store.apply(LibrarySnapshot(playlists: [Playlist(id: "gym", name: "gym", songCount: 1)], entries: ["gym": []]))
+        downloads.reconcile(with: store)
         // A fresh instance reads the saved list, as after an app restart.
         XCTAssertNotNil(DownloadLibrary(root: root).localURL(song: "s1"))
     }
@@ -95,8 +134,8 @@ final class DownloadLibraryTests: XCTestCase {
         try library(["gym": ["s1"]])
         downloads.keep(gym, from: store)
 
-        XCTAssertFalse(finish("s1", "<!doctype html><title>502 Bad Gateway</title>"))
-        XCTAssertFalse(finish("s1", #"{"subsonic-response":{"status":"failed"}}"#))
+        XCTAssertFalse(finish("s1", Data("<!doctype html><title>502 Bad Gateway</title>".utf8)))
+        XCTAssertFalse(finish("s1", Data(#"{"subsonic-response":{"status":"failed"}}"#.utf8)))
         XCTAssertFalse(finish("s1", status: 401))
         XCTAssertNil(downloads.localURL(song: "s1"))
         XCTAssertEqual(downloads.pending().map(\.id), ["s1"])

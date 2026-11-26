@@ -40,7 +40,7 @@ final class AppModel: ObservableObject {
         client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
         needsSignIn = defaults.string(forKey: "user") == nil || defaults.bool(forKey: "signedOut")
         library = Self.load(store)
-        downloads.connect(client: needsSignIn ? nil : client, store: store)
+        downloads.connect(client: client, user: user, store: store, signedIn: !needsSignIn)
     }
 
     func signIn(server: URL, user: String, password: String) async throws {
@@ -60,7 +60,7 @@ final class AppModel: ObservableObject {
         self.client = client
         syncError = nil
         needsSignIn = false
-        downloads.connect(client: client, store: store)
+        downloads.connect(client: client, user: user, store: store)
         await sync()
     }
 
@@ -71,6 +71,16 @@ final class AppModel: ObservableObject {
         syncTask = task
         await task.value
         if syncTask == task { syncTask = nil }
+    }
+
+    /// The system's background wake: ends the sync when iOS takes the time back, and returns once downloads are queued.
+    func backgroundRefresh() async {
+        await withTaskCancellationHandler {
+            await sync()
+        } onCancel: {
+            Task { @MainActor in syncTask?.cancel() }
+        }
+        await downloads.queued()
     }
 
     private func run(_ client: ServerClient) async {
@@ -102,7 +112,7 @@ final class AppModel: ObservableObject {
     func signOut() {
         defaults.set(true, forKey: "signedOut")
         needsSignIn = true
-        downloads.connect(client: nil, store: store)
+        downloads.connect(client: client, user: user, store: store, signedIn: false)
         signOutTask = Task {
             await stopSync()
             await client?.signOut()

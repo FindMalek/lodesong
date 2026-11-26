@@ -5,7 +5,8 @@ import Foundation
 final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     static let identifier = "engineer.findmalek.lodesong.ios.downloads"
 
-    private let library: DownloadLibrary
+    /// The account being downloaded for.
+    private var library: DownloadLibrary
     private let changed: @Sendable (_ failures: Int) -> Void
     private let queue = OperationQueue()
     private var session: URLSession!
@@ -27,9 +28,22 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
 
     /// Makes the running transfers match what is pending: starts what's missing, cancels what no longer applies.
     /// With no client (signed out) everything is cancelled; the files stay.
-    func schedule(client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, retry: Bool) {
+    /// Returns once the transfers are queued with the system, so a background wake can safely end.
+    func schedule(_ library: DownloadLibrary, client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, retry: Bool) async {
+        await withCheckedContinuation { done in
+            // In call order on the delegate queue, so a later account switch can't be overtaken by an earlier one.
+            queue.addOperation { [self] in
+                if library.key != self.library.key { failed = [] }
+                self.library = library
+                reconcileTasks(client: client, quality: quality, wifiOnly: wifiOnly, retry: retry) { done.resume() }
+            }
+        }
+    }
+
+    private func reconcileTasks(client: ServerClient?, quality: DownloadQuality, wifiOnly: Bool, retry: Bool, done: @escaping @Sendable () -> Void) {
         // `getAllTasks` answers on the delegate queue, so two calls can't start the same song twice.
         session.getAllTasks { [self] tasks in
+            defer { done() }
             if retry { failed = [] }
             var wanted: [String: URLRequest] = [:]
             let pending = client == nil ? [] : library.pending()
@@ -38,7 +52,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
             }
             var running: Set<String> = []
             for task in tasks where task.state == .running || task.state == .suspended {
-                if let id = task.taskDescription, let request = wanted[id], matches(task, request), running.insert(id).inserted { continue }
+                if let id = song(task), let request = wanted[id], matches(task, request), running.insert(id).inserted { continue }
                 task.cancel()
             }
             for song in pending where !running.contains(song.id) && !failed.contains(song.id) {
@@ -83,7 +97,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
         if let data = library.resumeData(song: id) {
             let task = session.downloadTask(withResumeData: data)
             if matches(task, request) {
-                task.taskDescription = id
+                task.taskDescription = tag(id)
                 task.resume()
                 return
             }
@@ -92,23 +106,31 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
             library.setResumeData(nil, song: id)
         }
         let task = session.downloadTask(with: request)
-        task.taskDescription = id
+        task.taskDescription = tag(id)
         task.resume()
     }
 
+    private func tag(_ id: String) -> String { "\(library.key)\n\(id)" }
+
+    /// The song a task is for, unless it belongs to another account.
+    private func song(_ task: URLSessionTask) -> String? {
+        let parts = task.taskDescription?.split(separator: "\n", maxSplits: 1).map(String.init) ?? []
+        return parts.count == 2 && parts[0] == library.key ? parts[1] : nil
+    }
+
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        guard let id = downloadTask.taskDescription else { return }
+        guard let id = song(downloadTask), let requested = downloadTask.originalRequest?.url else { return }
         // The file is gone when this returns, so it is checked and moved right here.
         let status = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 0
         library.setResumeData(nil, song: id)
-        if !library.accept(song: id, file: location, status: status), library.pending().contains(where: { $0.id == id }) {
+        if !library.accept(song: id, file: location, status: status, requested: requested), library.pending().contains(where: { $0.id == id }) {
             failed.insert(id)
         }
         changed(failed.count)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let id = task.taskDescription, let error = error as? URLError else { return }
+        guard let id = song(task), let error = error as? URLError else { return }
         let resume = error.downloadTaskResumeData
         // A cancel without resume data is our own; with it, the app was closed mid-transfer.
         if error.code == .cancelled {

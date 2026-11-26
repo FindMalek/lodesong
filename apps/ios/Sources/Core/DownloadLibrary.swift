@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 enum DownloadQuality: Int, CaseIterable {
@@ -31,10 +32,21 @@ final class DownloadLibrary: @unchecked Sendable {
     /// What iOS plays as it is. Anything else (Ogg Opus, Vorbis, WMA…) is asked for as mp3.
     private static let playable: Set<String> = ["mp3", "m4a", "m4b", "mp4", "aac", "flac", "wav", "aif", "aiff", "caf"]
 
+    /// Names this account's folder. Transfers carry it, so one account's file never lands in another's.
+    var key: String { root.lastPathComponent }
+
     private let root: URL
     private var manifest = Manifest()
     private let lock = NSRecursiveLock()
     private var manifestURL: URL { root.appendingPathComponent("manifest.json") }
+
+    /// Song and playlist ids are only unique within one server, so each server and user has its own folder.
+    /// `server` is the account's main address: another way to reach the same server (home or away) must pass the same one.
+    /// The scheme is left out, so moving to https keeps the downloads.
+    static func folder(server: URL, user: String) -> String {
+        let port = server.port.map { ":\($0)" } ?? ""
+        return fileName("\((server.host ?? "").lowercased())\(port)\(server.path)|\(user.lowercased())")
+    }
 
     init(root: URL) {
         self.root = root
@@ -123,15 +135,22 @@ final class DownloadLibrary: @unchecked Sendable {
 
     /// Takes a finished transfer. Only real audio is kept: an error page or a Subsonic error is refused.
     @discardableResult
-    func accept(song id: String, file: URL, status: Int) -> Bool {
+    func accept(song id: String, file: URL, status: Int, requested: URL) -> Bool {
         locked {
+            let raw = URLComponents(url: requested, resolvingAgainstBaseURL: false)?.queryItems?.contains { $0.name == "format" && $0.value == "raw" } ?? false
             guard status == 200 || status == 206,
                   let song = manifest.collections.lazy.flatMap(\.songs).first(where: { $0.id == id }),
-                  let kind = Self.audioKind(file, suffix: song.suffix?.lowercased()) else { return false }
+                  // A transcode is never in the source's format, whatever its first bytes leave open.
+                  let kind = Self.audioKind(file, suffix: raw ? song.suffix?.lowercased() : nil) else { return false }
             let path = "files/\(Self.fileName(id)).\(kind)"
             let target = root.appendingPathComponent(path)
             try? FileManager.default.removeItem(at: target)
             do { try FileManager.default.moveItem(at: file, to: target) } catch { return false }
+            // A transcode that stopped early can still end cleanly. A raw file is checked by its length in transit.
+            if !raw, Self.isShort(target, expected: song.duration) {
+                try? FileManager.default.removeItem(at: target)
+                return false
+            }
             manifest.files[id] = path
             save()
             return true
@@ -157,6 +176,12 @@ final class DownloadLibrary: @unchecked Sendable {
         return client.url("rest/stream", ["id": song.id, "format": "mp3", "maxBitRate": String(bitRate.rawValue)])
     }
 
+    /// Only says yes when the file's length can be read and is clearly less than the song's.
+    private static func isShort(_ file: URL, expected: Int?) -> Bool {
+        guard let expected, expected > 0, let audio = try? AVAudioFile(forReading: file) else { return false }
+        return Double(audio.length) / audio.fileFormat.sampleRate < Double(expected) * 0.9 - 2
+    }
+
     /// The extension the file should have, read from its first bytes: the player goes by the extension.
     private static func audioKind(_ file: URL, suffix: String?) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
@@ -179,7 +204,10 @@ final class DownloadLibrary: @unchecked Sendable {
         switch ref.kind {
         case .playlist:
             guard let playlist = store.playlists().first(where: { $0.id == ref.id }) else { return nil }
-            return KeptCollection(ref: ref, name: playlist.name, songs: store.entries(playlist: ref.id))
+            let entries = store.entries(playlist: ref.id)
+            // The server counts songs but none are stored: not synced yet, which is no reason to delete.
+            guard !entries.isEmpty || (playlist.songCount ?? 0) == 0 else { return nil }
+            return KeptCollection(ref: ref, name: playlist.name, songs: entries)
         case .album:
             let tracks = songs.filter { $0.albumId == ref.id }.sorted { ($0.discNumber ?? 1, $0.track ?? 0) < ($1.discNumber ?? 1, $1.track ?? 0) }
             guard !tracks.isEmpty else { return nil }

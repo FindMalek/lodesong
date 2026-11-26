@@ -24,7 +24,7 @@ struct LodesongApp: App {
         }
         .backgroundTask(.appRefresh(DownloadsModel.refreshTask)) {
             await model.downloads.scheduleRefresh()
-            await model.sync()
+            await model.backgroundRefresh()
         }
         .backgroundTask(.urlSession(DownloadSession.identifier)) {
             await model.downloads.finishBackgroundEvents()
