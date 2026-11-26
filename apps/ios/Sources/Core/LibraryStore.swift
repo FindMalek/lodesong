@@ -47,6 +47,22 @@ final class LibraryStore: @unchecked Sendable {
 
     func clear() throws { try run("delete from item") }
 
+    /// Replaces one kind of row, all or nothing.
+    func save<Item: Encodable>(_ kind: String, _ items: [Item]) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try run("begin")
+        do {
+            try replace(kind, with: items)
+            try run("commit")
+        } catch {
+            try? run("rollback")
+            throw error
+        }
+    }
+
+    func load<Item: Decodable>(_ kind: String) -> [Item] { read(kind) }
+
     private func replace<Item: Encodable>(_ kind: String, parent: String = "", with items: [Item]) throws {
         try run("delete from item where kind = ? and parent = ?", [kind, parent])
         for (index, item) in items.enumerated() {

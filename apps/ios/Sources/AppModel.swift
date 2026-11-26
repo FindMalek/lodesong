@@ -6,6 +6,7 @@ struct Library {
     var albums: [Album] = []
     var songs: [Song] = []
     var playlists: [Playlist] = []
+    var shelf = PlaylistShelf()
 
     func songs(album id: String) -> [Song] {
         songs.filter { $0.albumId == id }.sorted { ($0.discNumber ?? 1, $0.track ?? 0) < ($1.discNumber ?? 1, $1.track ?? 0) }
@@ -19,7 +20,11 @@ struct Library {
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var client: ServerClient?
-    @Published private(set) var library = Library()
+    @Published private(set) var library = Library() {
+        didSet { libraryRevision += 1 }
+    }
+    /// Counts alone miss a sync that only renames or swaps songs.
+    private(set) var libraryRevision = 0
     @Published private(set) var syncing = false
     @Published var syncError: String?
     @Published var needsSignIn: Bool
@@ -130,6 +135,6 @@ final class AppModel: ObservableObject {
     #endif
 
     private nonisolated static func load(_ store: LibraryStore) -> Library {
-        Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists())
+        Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists(), shelf: store.shelf())
     }
 }

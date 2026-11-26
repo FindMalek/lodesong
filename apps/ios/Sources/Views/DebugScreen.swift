@@ -55,13 +55,16 @@ enum DebugScreen {
             let routes: [String: Route] = ["playlists": .playlists, "artists": .artists, "albums": .albums, "songs": .songs, "downloaded": .downloaded]
             router.library = [routes[name!]!]
         case "homesection": router.home = [.homeSection(.history)]
+        case "folder":
+            router.tab = .library
+            router.library = [.playlists] + (library.shelf.folders.first { $0.coverVersion != nil }.map { [Route.folder($0.id)] } ?? [])
         case "album":
             if let album = library.albums.first { router.home = [.album(album)] }
         case "artist":
             if let artist = library.artists.first(where: { !library.albums(artist: $0.id).isEmpty }) { router.home = [.artist(artist)] }
         case "playlist":
             if let playlist = library.playlists.first { router.home = [.playlist(playlist)] }
-        case "nowplaying", "queue": router.showingPlayer = true
+        case "nowplaying", "queue", "lyrics": router.showingPlayer = true
         default: break
         }
     }

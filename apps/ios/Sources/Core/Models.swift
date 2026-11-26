@@ -13,6 +13,7 @@ struct Album: Codable, Identifiable, Hashable {
     var artistId: String?
     var coverArt: String?
     var year: Int?
+    var genre: String?
 }
 
 struct Song: Codable, Identifiable, Hashable {
@@ -50,6 +51,7 @@ struct Playlist: Codable, Identifiable, Hashable {
     let name: String
     var songCount: Int?
     var changed: String?
+    var created: String?
     var coverArt: String?
     /// Set on smart playlists, whose `changed` only moves once someone asks for their songs.
     var readonly: Bool?
