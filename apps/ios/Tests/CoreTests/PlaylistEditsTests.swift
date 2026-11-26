@@ -66,7 +66,7 @@ final class PlaylistEditsTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? PlaylistEditError, .changedElsewhere)
         }
-        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist"])
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist"])
     }
 
     func testAPlaylistWithHiddenSongsIsNotRewrittenOrRemovedFrom() async {
@@ -79,7 +79,7 @@ final class PlaylistEditsTests: XCTestCase {
                 XCTAssertEqual(error as? PlaylistEditError, .hiddenSongs)
             }
         }
-        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist", "getPlaylists", "getPlaylist", "getPlaylists"])
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist", "getPlaylists", "getPlaylist"])
     }
 
     func testAFailedRenameAfterTheSongsSavedSaysSo() async {
@@ -90,7 +90,7 @@ final class PlaylistEditsTests: XCTestCase {
         } catch {
             guard case .detailsNotSaved = error as? PlaylistEditError else { return XCTFail("\(error)") }
         }
-        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist", "getPlaylists", "createPlaylist", "updatePlaylist"])
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist", "createPlaylist", "updatePlaylist"])
     }
 
     /// Storing another playlist's new stamp without its songs would make the next sync skip it.
