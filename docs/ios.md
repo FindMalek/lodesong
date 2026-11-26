@@ -22,40 +22,84 @@ in the App Store: a tool called [SideStore](https://sidestore.io) signs the app 
 
 ## Install, step by step
 
-**The native app is in releases from 1.23.0.** Until that is out, the source in step 9 installs the earlier web view app.
-The steps follow [SideStore's own guide](https://docs.sidestore.io/docs/installation/install); check it if a screen
-looks different.
+**The native app is in releases from 2.0.0.**
 
-1. On the iPhone, get **LocalDevVPN** from the App Store, open it, tap **Connect** and allow the VPN. SideStore needs it
-   on every time it installs or refreshes.
-2. On the computer, install [iloader](https://github.com/nab138/iloader/releases/latest).
-3. Plug the phone in, unlock it and tap **Trust**.
-4. In iloader, sign in with the Apple ID, pick the phone and choose **Install SideStore (Stable)**.
-5. In iloader, open **Manage Pairing File** and press **Place** next to SideStore.
-6. On the iPhone: Settings → General → **VPN & Device Management** → your Apple ID → **Trust**, then **Allow & Restart** if it asks.
-7. Settings → Privacy & Security → **Developer Mode** → on. The phone restarts.
-8. With LocalDevVPN connected, open SideStore, sign in with the same Apple ID and under **My Apps** tap the **7 DAYS** counter
-   once.
-9. Add lodesong. In SideStore: **Sources** → **+**, paste this, then install lodesong from the source:
+You use three apps: **iloader** on the computer (installs SideStore), and **LocalDevVPN** and **SideStore** on the
+iPhone. The steps follow [SideStore's own guide](https://docs.sidestore.io/docs/installation/install).
 
-   ```
-   https://github.com/FindMalek/lodesong/releases/latest/download/altstore.json
-   ```
+### 1. Prepare the iPhone
 
-10. Open lodesong and sign in with your **lodesong** address (not Navidrome's) and your Navidrome account.
+Get **LocalDevVPN** from the App Store, open it, tap **Connect** and allow the VPN. SideStore needs it connected every
+time it signs in, installs or refreshes.
 
-   ![sign in screen](ios/light-signin.png)
+### 2. Put SideStore on the iPhone
 
-To install a build that isn't released yet: signed in to GitHub, download `lodesong-ios` from a `main` run of the
-[iOS workflow](../.github/workflows/ios.yml), unzip it, copy the `.ipa` to the phone, and in SideStore use
-**My Apps** → **+**. The source feed has not been tried in a real SideStore yet.
+1. On the computer, install [iloader](https://github.com/nab138/iloader/releases/latest). On a Mac without an
+   administrator account, drag it into the `Applications` folder inside your home folder.
+2. Plug the phone in, unlock it, tap **Trust** and enter your passcode.
+3. In iloader, sign in with the Apple ID, pick the phone and choose **Install SideStore (Stable)**.
+4. In iloader, open **Manage Pairing File** and press **Place** next to SideStore.
+
+### 3. Allow it to run
+
+1. Settings → General → **VPN & Device Management** → your Apple ID → **Trust**, then **Allow & Restart** if it asks.
+2. Settings → Privacy & Security → **Developer Mode** → on. The phone restarts.
+
+### 4. Sign in to SideStore
+
+1. Connect LocalDevVPN, open SideStore and sign in with the same Apple ID. If you see `ADI native error (-45063)`,
+   follow [the fix below](#sign-in-fails-with-adi-native-error--45063).
+2. Under **My Apps**, tap the **7 DAYS** counter once and let it finish.
+
+### 5. Add lodesong
+
+Either way works; the source is the one that shows updates.
+
+- **From the source:** SideStore → **Sources** → **+**, paste this, then install lodesong from it:
+
+  ```
+  https://github.com/FindMalek/lodesong/releases/latest/download/altstore.json
+  ```
+
+- **From a file:** get `lodesong-ios.ipa` onto the phone (AirDrop it and save it to **Files**), then SideStore →
+  **My Apps** → **+** and pick it. For a build that isn't released yet, download `lodesong-ios` from a `main` run of
+  the [iOS workflow](../.github/workflows/ios.yml), signed in to GitHub, and unzip it.
+
+### 6. Sign in to lodesong
+
+Enter your **lodesong** address (not Navidrome's) and your Navidrome account, not your Apple ID.
+
+![sign in screen](ios/light-signin.png)
 
 A free Apple ID allows **3** sideloaded apps at a time, and SideStore is one of them.
 
-## Updating
+## Updates
 
-A new release shows up as an update in SideStore. Install it over the old one: don't delete lodesong first, or its
-downloads and sign in go with it.
+A new release shows as **Update** next to lodesong in SideStore. Tap it. Updates aren't silent, and they come from
+published releases, not from every change in the code.
+
+To get them, add the source from step 5, even if you first installed from a file. Check that SideStore offers to
+update the lodesong you have; if it offers a second copy, don't install it. Moving from a file install to the source
+has not been checked on a phone yet.
+
+Install over the old app: don't delete lodesong first, or its downloads and sign in go with it.
+
+### Beta builds
+
+To get an update after every iOS change merged to `main`, add this source in SideStore and install lodesong from it,
+over the app you have (same app, so downloads and sign in should stay):
+
+```
+https://raw.githubusercontent.com/FindMalek/lodesong/ios-beta/altstore.json
+```
+
+- A beta is the next patch as a prerelease, like `2.0.1-beta.57`: newer than release 2.0.0, older than
+  2.0.1. After a release, betas move past it with the next iOS change.
+- It comes from the `ios-beta` branch: no tags or releases, one commit that each build replaces
+  (`apps/ios/altstore/beta.sh`). Don't create a tag with that name.
+- A new build can take about 5 minutes to appear (GitHub caches raw files).
+
+Add the release source or the beta source, not both.
 
 ## The 7 days
 
@@ -71,23 +115,34 @@ If the 7 days run out:
 - plays and downloads made before expiry stay on the phone until it opens again
 
 SideStore expires the same way. If **SideStore** has expired it can't refresh anything, including itself: plug into the
-computer and repeat steps 4 and 5 with iloader. Don't delete lodesong; refresh it or install over it afterwards.
+computer and repeat step 2 with iloader. Don't delete lodesong; refresh it or install over it afterwards.
 
-If refresh starts failing after an iPhone update or reset, the pairing file is probably stale: do step 5 again.
+If refresh starts failing after an iPhone update or reset, the pairing file is probably stale: press **Place** again (step 2).
 
 ### Refresh without thinking about it
 
-SideStore tries to refresh in the background on its own. iOS doesn't promise when that runs, so add a daily Shortcut:
+SideStore tries to refresh in the background on its own. iOS doesn't promise when that runs, so add a daily Shortcut.
+Open lodesong once first, so its action exists. In **Shortcuts**, tap **+** and add these in order with the search box:
 
-1. In the **Shortcuts** app make a shortcut: connect LocalDevVPN → Open URL `sidestore://` → **Refresh All Apps**
-   (SideStore's action) → **Mark lodesong as Refreshed** (lodesong's action, see below) → disconnect LocalDevVPN.
-2. **Automation** → **+** → **Time of Day**, daily, **Run Immediately**, and pick that shortcut. Choose a time when the
-   phone is on Wi-Fi and usually unlocked.
+| # | Search for | Set it to |
+|---|---|---|
+| 1 | LocalDevVPN's action | tap the first word and choose **Enable**, not Toggle. Leave **Use App Settings** on |
+| 2 | **Wait** | 3 seconds |
+| 3 | **URL** | `sidestore://` |
+| 4 | **Open URLs** | it takes the URL from step 3 |
+| 5 | **Wait** | 3 seconds |
+| 6 | **Refresh All Apps** (SideStore) | |
+| 7 | **Mark lodesong as Refreshed** (lodesong) | |
+| 8 | LocalDevVPN's action again | **Disable** |
+| 9 | Tailscale's connect action | only if you reach your server over Tailscale: iOS runs one VPN at a time |
 
-Open SideStore now and then and check the days left, and refresh by hand before a trip. iOS runs one VPN at a time, so
-if you reach your server over Tailscale, reconnect it at the end of the shortcut. If the shortcut fails on iOS 27 while a
-manual refresh works, see [this SideStore issue](https://github.com/SideStore/SideStore/issues/1596) for the fix (reset
-`adi.db` in SideStore's settings).
+Name it `refresh apps` and press play. Choose **Always Allow** when asked, then check that SideStore shows 7 days.
+
+Then: **Automation** tab → **+** → **Time of Day** → a time when the phone is usually on Wi-Fi and unlocked → **Daily**
+→ **Run Immediately** → **Next** → `refresh apps`. Keep **Notify When Run** on for the first week.
+
+Open SideStore now and then and check the days left, and refresh by hand before a trip. If the shortcut fails on
+iOS 27 while a manual refresh works, see [this SideStore issue](https://github.com/SideStore/SideStore/issues/1596).
 
 ### Expiry warnings
 
@@ -101,6 +156,22 @@ iOS asks whether lodesong may notify you the first time you download something, 
 Builds that aren't signed (the simulator) show none of this.
 
 A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
+
+## When something goes wrong
+
+### Sign in fails with ADI native error (-45063)
+
+A [known SideStore bug](https://github.com/SideStore/SideStore/issues/1765), not your password. Don't keep retrying.
+This workaround comes from that issue:
+
+1. SideStore → Settings → **User Customizations** → turn **On-Device Anisette** off.
+2. Swipe SideStore away and open it again.
+3. Settings (the main screen) → **Anisette Servers** → `https://mac-ani.jkcoxson.com`. This server is run by someone
+   else, one more reason for a spare Apple ID.
+4. **User Customizations** → **Anisette Client Configuration** → **Remote Server Sync** → **Fetch** → **Save as
+   Overrides**. Don't tap **Reset to Defaults** on that screen.
+5. **User Customizations** → **Reset adi.pb**, keep headers on → **Reset & Sign Out**.
+6. Swipe it away, reopen, connect LocalDevVPN and sign in. If SideStore offers to revoke certificates, decline.
 
 ## Other ways
 
@@ -214,7 +285,7 @@ Push isn't available on free signing, so alerts that don't wait for iOS to wake 
 
 ## What to check on your phone
 
-None of this has run on a real phone yet. [The device checklist](ios-device-checklist.md) lists what to try.
+It has had a first try on an iPhone 16 Pro. [The device checklist](ios-device-checklist.md) lists what is still to check.
 
 ## How it works
 
@@ -225,21 +296,6 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Search filters `is:`, `bpm:`, `energy:` and `mood:`, singer parts in lyrics (the server doesn't send them), adding
-music by name, CarPlay browsing. See the
+Search filters `is:`, `bpm:`, `energy:` and `mood:`, singer parts in lyrics (the server doesn't send them), CarPlay
+browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).
-
-## Beta builds
-
-To get an update after every iOS change merged to `main`, add this source in SideStore and install lodesong from it,
-over the app you have (same app, so downloads and sign in should stay):
-
-```
-https://raw.githubusercontent.com/FindMalek/lodesong/ios-beta/altstore.json
-```
-
-- A beta is the next patch as a prerelease, like `1.22.2-beta.57`: newer than release 1.22.1, older than 1.22.2 and
-  1.23.0. After a release, betas move past it with the next iOS change.
-- It comes from the `ios-beta` branch: no tags or releases, one commit that each build replaces
-  (`apps/ios/altstore/beta.sh`). Don't create a tag with that name.
-- A new build can take about 5 minutes to appear (GitHub caches raw files).
