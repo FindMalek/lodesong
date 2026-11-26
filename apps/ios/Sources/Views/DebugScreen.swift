@@ -49,7 +49,7 @@ enum DebugScreen {
     @MainActor static func open(_ library: Library, router: Router) {
         switch name {
         case "library": router.tab = .library
-        case "search": router.tab = .search
+        case "search", "addmusic": router.tab = .search
         case "playliststab": router.tab = .playlists
         case "settings": router.tab = .settings
         case "playlists", "artists", "albums", "songs", "downloaded":

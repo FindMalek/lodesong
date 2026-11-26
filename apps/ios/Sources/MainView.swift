@@ -3,6 +3,7 @@ import SwiftUI
 struct MainView: View {
     @EnvironmentObject private var model: AppModel
     @StateObject private var router = Router()
+    @StateObject private var additions = AdditionsModel()
     @Namespace private var playerZoom
     @AppStorage(Pref.minimizeTabBar) private var minimizeTabBar = true
     #if DEBUG
@@ -37,7 +38,12 @@ struct MainView: View {
                 .environmentObject(router)
         }
         .environmentObject(router)
-        .onAppear { AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)") }
+        .environmentObject(additions)
+        .onAppear {
+            AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)")
+            additions.load()
+        }
+        .task(id: additions.unsettled) { await additions.follow(model) }
         #if DEBUG
         .task(id: model.library.songs.count) {
             guard !openedDebugScreen, !model.library.songs.isEmpty else { return }

@@ -62,6 +62,7 @@ enum AccountData {
         defaults.set(account, forKey: "viewsAccount")
         defaults.removeObject(forKey: Recents.key)
         defaults.removeObject(forKey: "recentSearches")
+        defaults.removeObject(forKey: AdditionsModel.key)
         ArtworkCache.shared.clear()
     }
 }

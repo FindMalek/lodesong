@@ -8,7 +8,7 @@ folder. lodesong plays what it places and talks to it in three places.
 |---|---|
 | **import** (settings → library → import from spotify) | every Spotify playlist with how much of it is in your library, a progress bar each, and the songs still missing |
 | **library doctor** | **fix** on a problem (a low-quality file, a fake FLAC) and **fix all shown** hand the songs to Lyterion's `⇪ Upgrade` playlist; it looks for a better copy and replaces the file |
-| **add a song** | ⌘K, then paste a YouTube, SoundCloud or Deezer link, or type a song name (admins only). lodesong shows what it understood, Lyterion finds a good copy across its sources, checks and places it, and you can play it when it lands |
+| **add a song** | ⌘K, then paste a YouTube, SoundCloud or Deezer link, or type a song name (anyone signed in, not the public demo). lodesong shows what it understood, Lyterion finds a good copy across its sources, checks and places it, and you can play it when it lands. In the iOS app: search, then **find outside your library** |
 | **new releases** | **get it** on a release in the home shelf "new from artists you follow" (admins) hands that album, EP or single to Lyterion the way add a song does; `RELEASES_AUTO_GET=on` does it for every new one (at most ten a week). See [new releases](#new-releases) |
 | **follow sync** | the artists you follow on Spotify are followed in lodesong, daily and on demand (admins). See [follow from Spotify](#follow-from-spotify) |
 | **playlists** | Lyterion pushes its playlists into Navidrome as normal playlists, so you can edit them in lodesong (and every Subsonic app) |

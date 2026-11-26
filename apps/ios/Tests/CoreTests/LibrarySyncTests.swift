@@ -6,6 +6,8 @@ import XCTest
 final class StubServer: URLProtocol {
     static var answers: [String: String] = [:]
     static var asked: [String] = []
+    /// For answers that aren't a 200.
+    static var codes: [String: Int] = [:]
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -18,7 +20,7 @@ final class StubServer: URLProtocol {
             client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
             return
         }
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: Self.codes[name] ?? 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         // lodesong's own API answers plain JSON, Subsonic wraps it.
         let body = answer.hasPrefix("{") ? answer : #"{"subsonic-response":{"status":"ok",\#(answer)}}"#
@@ -37,6 +39,7 @@ final class LibrarySyncTests: XCTestCase {
         client = ServerClient(server: URL(string: "https://music.test")!, session: URLSession(configuration: configuration))
         store = try LibraryStore(path: ":memory:")
         StubServer.asked = []
+        StubServer.codes = [:]
         StubServer.answers = [
             "search3": #""searchResult3":{"song":[{"id":"s1","title":"One"}]}"#,
             "getPlaylists": #""playlists":{"playlist":[{"id":"p1","name":"Gym","changed":"t1"}]}"#,
