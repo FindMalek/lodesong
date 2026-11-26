@@ -1,8 +1,7 @@
 # lodesong on iPhone
 
-The player in its own app: your own icon, no browser bars, and music that keeps playing with the screen locked or the
-silent switch on. It's the same page the browser shows (the layout is already made for a phone), wrapped in
-`apps/ios`, like the [Mac app](../apps/macos/README.md).
+A native SwiftUI app (`apps/ios`, iOS 26 or newer) that talks to your lodesong server: your library stored on the
+phone, playback with the screen locked, and playlists you can keep downloaded.
 
 You don't need a paid Apple developer account (the 99 USD a year one) to try it. There are four ways, from least to
 most effort:
@@ -69,31 +68,24 @@ the lock screen or the silent switch.
 
 ## Using it
 
-1. On first launch it asks where your lodesong is: `https://music.example.com`, or an IP and port on your home
-   network (`192.168.1.20:8080`). Away from home it needs a route to the server: your tunnel, or Tailscale on the phone.
-2. Sign in with your Navidrome account, as in the browser. The sign-in is kept in the app.
-3. **Four quick taps** on the sign-in page's background open a small menu: reload, or change server. If the server
-   can't be reached, the app says so and offers the same.
+1. Sign in with your server's address and your Navidrome account. Away from home the address must be reachable from
+   outside: a domain with HTTPS, a tunnel, or Tailscale on the phone.
+2. The library syncs when you open the app. Pull down in the library to sync by hand.
+3. Download an album or playlist from its page. A downloaded playlist follows its additions, removals and order the
+   next time the app syncs.
 
 ## What to check on your phone
 
-This version was written and compiled without a phone in reach. The full step-by-step list, with what should happen
-and where to look when it doesn't, is [the device checklist](ios-device-checklist.md). The short version, in order:
-silent switch, screen lock, lock screen controls, AirPods, a call or alarm, then Wi-Fi off. The first three are where
-WebKit in a web view is most likely to behave differently from Safari.
+None of this has run on a real phone yet. [The device checklist](ios-device-checklist.md) lists what to try.
 
 ## How it works
 
-- `PlayerController` owns the web view and reports to the same bridge the Mac app uses
-  (`webkit.messageHandlers.keep`): it takes the audio session when a song starts playing.
-- The audio session category is *playback*, which is what ignores the silent switch and allows background audio
-  (`UIBackgroundModes: audio`).
-- After a call or alarm the app takes the audio session back and resumes if music was playing.
-- The lock screen controls come from WebKit's media session, from the page's own `navigator.mediaSession`, the same as
-  in Safari and in the Mac app.
-- `NSAllowsArbitraryLoadsInWebContent` and local networking are allowed, so a server at `http://192.168…` works.
+- The session is the same cookie sign in the web player uses (`/auth/login`), then Subsonic under `/rest`.
+- Screens read from a SQLite database on the phone. A failed sync never empties it.
+- Playback uses `AVQueuePlayer`. What streams as is and what the server transcodes: [audio formats](ios/audio.md).
+- Downloads use a background `URLSession`; every file is checked before it counts.
 
-## Later
+## Not there yet
 
-A native Now Playing and remote-command layer, offline downloads and a share extension if the web view's lock screen
-turns out to be flaky. See [the mobile app notes](design/mobile-app.md).
+Lyrics and lyric search, offline play counts, settings, adding music by name, CarPlay browsing. See the
+[iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).
