@@ -78,6 +78,15 @@ final class AppModel: ObservableObject {
         needsSignIn = true
     }
 
+    #if DEBUG
+    /// Lets a simulator run sign itself in for screenshots: pass the three values as environment variables.
+    func debugSignIn() async {
+        let env = ProcessInfo.processInfo.environment
+        guard let raw = env["LODESONG_SERVER"], let url = ServerClient.normalize(raw) else { return }
+        try? await signIn(server: url, user: env["LODESONG_USER"] ?? "", password: env["LODESONG_PASSWORD"] ?? "")
+    }
+    #endif
+
     private nonisolated static func load(_ store: LibraryStore) -> Library {
         Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists())
     }
