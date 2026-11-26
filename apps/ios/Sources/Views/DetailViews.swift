@@ -132,7 +132,7 @@ struct PlaylistView: View {
                 CollectionHeader(
                     title: playlist.name, description: playlist.comment, details: songs.map(summaryText) ?? "", songs: ordered,
                     download: DownloadControl(
-                        state: downloads.state(playlist: playlist.id), songs: ordered, follows: true,
+                        state: downloads.state(playlist: playlist.id), songs: ordered, follows: downloads.takesNewSongs(playlist: playlist.id),
                         keep: { downloads.keep(playlist: playlist.id) }, remove: { downloads.remove(playlist: playlist.id) }
                     )
                 ) {
@@ -242,42 +242,77 @@ private struct ArtistHero: View {
     }
 }
 
+/// The parts of an artist's page below the picture, in the order they were left in.
+private enum ArtistSection: String, CaseIterable {
+    case topSongs, albums, eps, singles, live, compilations, other, about
+
+    static let key = "artistSections"
+
+    var title: String { release?.title ?? (self == .topSongs ? "Top Songs" : "About") }
+
+    var release: ReleaseKind? {
+        switch self {
+        case .topSongs, .about: return nil
+        case .albums: return .album
+        case .eps: return .ep
+        case .singles: return .single
+        case .live: return .live
+        case .compilations: return .compilation
+        case .other: return .other
+        }
+    }
+}
+
+private struct ArtistSectionOrder: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(ArtistSection.key) private var order = ""
+
+    var body: some View {
+        let sections: [ArtistSection] = storedOrder(order)
+        NavigationStack {
+            List {
+                ForEach(sections, id: \.self) { Text($0.title) }
+                    .onMove { source, target in
+                        var moved = sections
+                        moved.move(fromOffsets: source, toOffset: target)
+                        order = moved.map(\.rawValue).joined(separator: ",")
+                    }
+                Button("Reset to Default") { order = "" }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reorder Sections")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Done", systemImage: "checkmark") { dismiss() } }
+        }
+    }
+}
+
 struct ArtistView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var router: Router
     let artist: Artist
     @State private var barHeight: CGFloat = 0
+    @State private var biography: String?
+    @State private var wholeBiography = false
+    @State private var reordering = false
+    @AppStorage(ArtistSection.key) private var order = ""
 
     var body: some View {
         let albums = model.library.albums(artist: artist.id)
         let top = model.library.topSongs(artist: artist.id)
+        let sections: [ArtistSection] = storedOrder(order)
         List {
             ArtistHero(artist: artist, songs: model.library.songs(artist: artist.id))
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
-            if !top.isEmpty {
-                HStack {
-                    heading("Top Songs")
-                    Spacer()
-                    if top.count > 5 {
-                        Button("See All") { router.open(.artistSongs(artist)) }.buttonStyle(.borderless)
-                    }
+            ForEach(sections, id: \.self) { section in
+                if let kind = section.release {
+                    releases(kind.title, albums.reversed().filter { $0.releaseKind == kind })
+                } else if section == .topSongs {
+                    topSongs(top)
+                } else {
+                    about
                 }
-                .padding(.top, 8)
-                .listRowSeparator(.hidden, edges: .top)
-                ForEach(Array(top.prefix(5).enumerated()), id: \.element.id) { index, _ in
-                    SongRow(songs: top, index: index, showsAlbum: true)
-                }
-            }
-            if !albums.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    heading("Albums")
-                    LazyVGrid(columns: gridColumns, spacing: 20) {
-                        ForEach(albums.reversed()) { AlbumTile(album: $0, section: "artist") }
-                    }
-                }
-                .padding(.top, 12)
-                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
@@ -294,8 +329,62 @@ struct ArtistView: View {
             ToolbarItem {
                 Menu("More", systemImage: "ellipsis") {
                     ArtistMenu(artist: model.artist(id: artist.id) ?? artist)
+                    Divider()
+                    Button("Reorder Sections", systemImage: "arrow.up.arrow.down") { reordering = true }
                 }
             }
+        }
+        .sheet(isPresented: $reordering) { ArtistSectionOrder() }
+        // Asked each time and not kept: with no network the page does without it.
+        .task(id: model.live?.server) {
+            if let text = try? await model.live?.biography(artist: artist.id) { biography = text }
+        }
+    }
+
+    @ViewBuilder private func topSongs(_ top: [Song]) -> some View {
+        if !top.isEmpty {
+            HStack {
+                heading("Top Songs")
+                Spacer()
+                if top.count > 5 {
+                    Button("See All") { router.open(.artistSongs(artist)) }.buttonStyle(.borderless)
+                }
+            }
+            .padding(.top, 8)
+            .listRowSeparator(.hidden, edges: .top)
+            ForEach(Array(top.prefix(5).enumerated()), id: \.element.id) { index, _ in
+                SongRow(songs: top, index: index, showsAlbum: true)
+            }
+        }
+    }
+
+    @ViewBuilder private func releases(_ title: String, _ albums: [Album]) -> some View {
+        if !albums.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                heading(title)
+                LazyVGrid(columns: gridColumns, spacing: 20) {
+                    ForEach(albums) { AlbumTile(album: $0, section: "artist") }
+                }
+            }
+            .padding(.top, 12)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder private var about: some View {
+        if let biography {
+            VStack(alignment: .leading, spacing: 8) {
+                heading("About")
+                Button {
+                    withAnimation { wholeBiography.toggle() }
+                } label: {
+                    Text(biography).foregroundStyle(.secondary).lineLimit(wholeBiography ? nil : 4).multilineTextAlignment(.leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(wholeBiography ? "Shows less" : "Shows all of it")
+            }
+            .padding(.vertical, 12)
+            .listRowSeparator(.hidden)
         }
     }
 

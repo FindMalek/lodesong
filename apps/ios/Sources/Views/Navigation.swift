@@ -6,6 +6,8 @@ enum Route: Hashable {
     case artistSongs(Artist)
     case playlist(Playlist, source: String? = nil)
     case playlists, artists, albums, songs, downloaded
+    case genres, favoriteSongs, favoriteAlbums, favoriteArtists
+    case genre(String)
     case decade(Int)
     case homeSection(HomeSection)
     case folder(String)
@@ -86,6 +88,11 @@ struct TabStack<Root: View>: View {
                 case .albums: AlbumsView()
                 case .songs: SongsView()
                 case .downloaded: DownloadedView()
+                case .genres: GenresView()
+                case .genre(let name): GenreView(name: name)
+                case .favoriteSongs: FavoriteSongsView()
+                case .favoriteAlbums: FavoriteAlbumsView()
+                case .favoriteArtists: FavoriteArtistsView()
                 case .decade(let decade): AlbumsView(decade: decade)
                 case .homeSection(let section): HomeSectionPage(section: section)
                 case .folder(let id): PlaylistsView(folder: id)

@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct PlaybackSettings: View {
-    @AppStorage(Pref.wifiBitRate) private var wifiBitRate = 0
-    @AppStorage(Pref.cellularBitRate) private var cellularBitRate = 0
     @AppStorage(Pref.replayGain) private var replayGain = "auto"
     @AppStorage(Pref.speed) private var speed = 1.0
     @AppStorage(Pref.keepShuffle) private var keepShuffle = false
@@ -13,17 +11,18 @@ struct PlaybackSettings: View {
     var body: some View {
         Form {
             Section {
-                QualityPicker(title: "On Wi-Fi", value: $wifiBitRate)
-                QualityPicker(title: "On Cellular", value: $cellularBitRate)
+                StreamingRows()
             } header: {
                 Text("Streaming Quality")
             } footer: {
-                Text("Applies from the next song. A converted stream can't always be scrubbed. Downloads play as they are.")
+                Text("Applies from the next song. A converted stream can't always be scrubbed. The format is used when a song has to be converted; your server must offer it. Downloads play as they are.")
             }
             Section {
-                CacheAheadPicker()
+                SongCacheRows()
+            } header: {
+                Text("Song Cache")
             } footer: {
-                Text("Fetches what comes next in full, in the quality above, so a bad connection doesn't stop it. Temporary: a song goes once the queue moves past it.")
+                Text("Fetched in the quality above, so a bad connection doesn't stop what comes next. Keeping the streamed song fetches it a second time, which uses more data. Temporary: a song goes once the queue moves past it, and iOS may clear it. Download: songs stay until the size limit removes the oldest. Changing the type empties the cache. Neither touches your downloads.")
             }
             Section {
                 Picker("ReplayGain", selection: $replayGain) {
@@ -55,13 +54,63 @@ struct PlaybackSettings: View {
 }
 
 struct QualityPicker: View {
+    @AppStorage(Pref.streamFormat) private var format = StreamFormat.mp3
     let title: String
     @Binding var value: Int
 
     var body: some View {
         Picker(title, selection: $value) {
             Text("Original").tag(0)
-            ForEach([320, 192, 128], id: \.self) { Text("MP3 \($0) kbps").tag($0) }
+            ForEach([320, 192, 128], id: \.self) { Text("\(format.title) \($0) kbps").tag($0) }
+        }
+    }
+}
+
+/// Bit rates and formats, here and in now playing's quick settings.
+struct StreamingRows: View {
+    @AppStorage(Pref.wifiBitRate) private var wifiBitRate = 0
+    @AppStorage(Pref.cellularBitRate) private var cellularBitRate = 0
+    @AppStorage(Pref.streamFormat) private var streamFormat = StreamFormat.mp3
+    @AppStorage(Pref.fallbackFormat) private var fallbackFormat = StreamFormat.mp3
+
+    var body: some View {
+        QualityPicker(title: "On Wi-Fi", value: $wifiBitRate)
+        QualityPicker(title: "On Cellular", value: $cellularBitRate)
+        format("Convert To", $streamFormat)
+        format("If That Fails", $fallbackFormat)
+    }
+
+    private func format(_ title: String, _ value: Binding<StreamFormat>) -> some View {
+        Picker(title, selection: value) {
+            ForEach(StreamFormat.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+    }
+}
+
+struct SongCacheRows: View {
+    @AppStorage(Pref.cacheKeeps) private var cacheKeeps = false
+    @AppStorage(Pref.cacheLimit) private var cacheLimit = 1000
+    @AppStorage(Pref.keepStreamed) private var keepStreamed = false
+
+    var body: some View {
+        CacheAheadPicker()
+        Toggle("Keep the Streamed Song", isOn: $keepStreamed)
+        Picker("Cache Type", selection: type) {
+            Text("Temporary").tag(false)
+            Text("Download").tag(true)
+        }
+        Picker("Size Limit", selection: $cacheLimit) {
+            ForEach([250, 500, 1000, 2000, 5000, 10000], id: \.self) { Text(ByteCountFormatter.string(fromByteCount: Int64($0) * 1_000_000, countStyle: .file)).tag($0) }
+            Text("No Limit").tag(0)
+        }
+    }
+
+    /// The size limit only watches the type in use, so the other is not left behind.
+    private var type: Binding<Bool> {
+        Binding { cacheKeeps } set: { keeps in
+            guard keeps != cacheKeeps else { return }
+            cacheKeeps = keeps
+            SongCache.clear(keeps ? SongCache.temporary : SongCache.kept)
         }
     }
 }
@@ -196,6 +245,9 @@ private struct LibrarySectionsList: View {
 struct StorageSettings: View {
     @EnvironmentObject private var downloads: DownloadsModel
     @State private var covers = 0
+    @State private var downloadCovers = 0
+    @State private var temporary = 0
+    @State private var kept = 0
 
     var body: some View {
         Form {
@@ -205,10 +257,23 @@ struct StorageSettings: View {
                 }
             }
             Section {
+                LabeledContent("Temporary Cache", value: size(temporary))
+                LabeledContent("Downloaded Cache", value: size(kept))
+                Button("Clear Song Cache", role: .destructive) {
+                    SongCache.clear(SongCache.temporary)
+                    SongCache.clear(SongCache.kept)
+                    measure()
+                }
+                .disabled(temporary + kept == 0)
+            } footer: {
+                Text("Songs the player fetched. Your downloads are not touched.")
+            }
+            Section {
+                LabeledContent("Covers of Downloads", value: size(downloadCovers))
                 LabeledContent("Artwork Cache", value: size(covers))
                 Button("Clear Artwork Cache", role: .destructive) {
                     ArtworkCache.shared.clear()
-                    covers = ArtworkCache.shared.diskSize()
+                    measure()
                 }
                 .disabled(covers == 0)
             } footer: {
@@ -217,7 +282,14 @@ struct StorageSettings: View {
         }
         .navigationTitle("Storage")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { covers = ArtworkCache.shared.diskSize() }
+        .onAppear(perform: measure)
+    }
+
+    private func measure() {
+        covers = ArtworkCache.shared.diskSize()
+        downloadCovers = SongCache.size(of: URL.applicationSupportDirectory.appending(path: "covers"))
+        temporary = SongCache.size(of: SongCache.temporary)
+        kept = SongCache.size(of: SongCache.kept)
     }
 
     private func size(_ bytes: Int) -> String {

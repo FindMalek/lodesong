@@ -111,6 +111,20 @@ struct ServerClient {
         return snapshot
     }
 
+    func musicFolders() async throws -> [MusicFolder] {
+        (try await rest("getMusicFolders").musicFolders?.musicFolder ?? []).map { MusicFolder(id: $0.id.text, name: $0.name ?? "Folder \($0.id.text)") }
+    }
+
+    func songIDs(folder: String) async throws -> [String] {
+        try await all("song", ["musicFolderId": folder]) { $0.searchResult3?.song }.map(\.id)
+    }
+
+    /// What the server knows about an artist, as plain text. Nil when it has nothing.
+    func biography(artist id: String) async throws -> String? {
+        let text = plainBiography(try await rest("getArtistInfo2", ["id": id]).artistInfo2?.biography ?? "")
+        return text.isEmpty ? nil : text
+    }
+
     func playlists() async throws -> [Playlist] {
         try await rest("getPlaylists").playlists?.playlist ?? []
     }
@@ -120,11 +134,11 @@ struct ServerClient {
     }
 
     /// Navidrome answers an empty `search3` with everything, a page at a time.
-    private func all<Item>(_ kind: String, _ pick: (Body) -> [Item]?) async throws -> [Item] {
+    private func all<Item>(_ kind: String, _ extra: [String: String] = [:], _ pick: (Body) -> [Item]?) async throws -> [Item] {
         let page = 500
         var items: [Item] = []
         while true {
-            var query = ["query": "", "artistCount": "0", "albumCount": "0", "songCount": "0"]
+            var query = ["query": "", "artistCount": "0", "albumCount": "0", "songCount": "0"].merging(extra) { first, _ in first }
             query["\(kind)Count"] = String(page)
             query["\(kind)Offset"] = String(items.count)
             let batch = pick(try await rest("search3", query)) ?? []
@@ -147,12 +161,30 @@ struct ServerClient {
         }
         struct Playlists: Decodable { var playlist: [Playlist]? }
         struct Entries: Decodable { var entry: [Song]? }
+        /// Navidrome numbers its folders; others may name them with text.
+        struct FolderID: Decodable {
+            let text: String
+            init(from decoder: Decoder) throws {
+                let value = try decoder.singleValueContainer()
+                text = try (try? value.decode(Int.self)).map(String.init) ?? value.decode(String.self)
+            }
+        }
+        struct Folders: Decodable {
+            struct Folder: Decodable {
+                let id: FolderID
+                var name: String?
+            }
+            var musicFolder: [Folder]?
+        }
+        struct ArtistInfo: Decodable { var biography: String? }
 
         let status: String
         var error: Failure?
         var searchResult3: Search?
         var playlists: Playlists?
         var playlist: Entries?
+        var musicFolders: Folders?
+        var artistInfo2: ArtistInfo?
     }
 
     private func rest(_ endpoint: String, _ query: [String: String] = [:]) async throws -> Body {

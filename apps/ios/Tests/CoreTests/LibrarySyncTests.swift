@@ -59,6 +59,27 @@ final class LibrarySyncTests: XCTestCase {
         XCTAssertEqual(store.entries(playlist: "p1").map(\.id), ["s2"])
     }
 
+    func testSyncRefreshesTheChosenFolderAndDropsOneThatIsGone() async throws {
+        StubServer.answers["getMusicFolders"] = #""musicFolders":{"musicFolder":[{"id":2,"name":"Live"}]}"#
+        try store.saveFolder(FolderChoice(id: "2", name: "Live", songs: []))
+        try await LibrarySync.run(client: client, store: store)
+        // Playlist folders are saved by the same sync and must not share its rows.
+        try store.save("folder", [String]())
+        XCTAssertEqual(store.folder()?.songs, ["s1"])
+
+        StubServer.answers["getMusicFolders"] = #""musicFolders":{"musicFolder":[{"id":1,"name":"Music"}]}"#
+        try await LibrarySync.run(client: client, store: store)
+        XCTAssertNil(store.folder())
+    }
+
+    func testAFailedFolderRequestKeepsTheOldChoiceAndTheSync() async throws {
+        let choice = FolderChoice(id: "2", name: "Live", songs: ["old"])
+        try store.saveFolder(choice)
+        try await LibrarySync.run(client: client, store: store)
+        XCTAssertEqual(store.folder(), choice)
+        XCTAssertEqual(store.songs().map(\.id), ["s1"])
+    }
+
     func testSmartPlaylistsAreAskedEveryTime() async throws {
         StubServer.answers["getPlaylists"] = #""playlists":{"playlist":[{"id":"p1","name":"Smart","changed":"t1","readonly":true}]}"#
         try await LibrarySync.run(client: client, store: store)

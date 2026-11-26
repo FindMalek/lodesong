@@ -19,6 +19,11 @@ final class LibraryStore: @unchecked Sendable {
     func songs() -> [Song] { read("song") }
     func playlists() -> [Playlist] { read("playlist") }
     func entries(playlist id: String) -> [Song] { read("entry", parent: id) }
+    func folder() -> FolderChoice? { read("musicFolder").first }
+
+    func saveFolder(_ choice: FolderChoice?) throws {
+        try save("musicFolder", choice.map { [$0] } ?? [])
+    }
 
     /// The `changed` stamp of every playlist whose songs are stored, so a sync only refetches the others.
     func playlistStamps() -> [String: String] {

@@ -52,9 +52,12 @@ enum DebugScreen {
         case "search", "addmusic": router.tab = .search
         case "playliststab": router.tab = .playlists
         case "settings": router.tab = .settings
-        case "playlists", "artists", "albums", "songs", "downloaded":
+        case "playlists", "artists", "albums", "songs", "downloaded", "genres", "genre", "favoritesongs", "favoritealbums", "favoriteartists":
             router.tab = .library
-            let routes: [String: Route] = ["playlists": .playlists, "artists": .artists, "albums": .albums, "songs": .songs, "downloaded": .downloaded]
+            let routes: [String: Route] = [
+                "playlists": .playlists, "artists": .artists, "albums": .albums, "songs": .songs, "downloaded": .downloaded,
+                "genres": .genres, "genre": .genre("Jazz"), "favoritesongs": .favoriteSongs, "favoritealbums": .favoriteAlbums, "favoriteartists": .favoriteArtists,
+            ]
             router.library = [routes[name!]!]
         case "homesection": router.home = [.homeSection(.history)]
         case "folder":
@@ -63,7 +66,8 @@ enum DebugScreen {
         case "album":
             if let album = library.albums.first { router.home = [.album(album)] }
         case "artist":
-            if let artist = library.artists.first(where: { !library.albums(artist: $0.id).isEmpty }) { router.home = [.artist(artist)] }
+            let wanted = ProcessInfo.processInfo.environment["LODESONG_ARTIST"]
+            if let artist = library.artists.first(where: { wanted.map($0.id.elementsEqual) ?? !library.albums(artist: $0.id).isEmpty }) { router.home = [.artist(artist)] }
         case "playlist":
             if let playlist = library.playlists.first { router.home = [.playlist(playlist)] }
         case "nowplaying", "queue", "history", "lyrics", "more", "devices", "playersettings": router.showingPlayer = true

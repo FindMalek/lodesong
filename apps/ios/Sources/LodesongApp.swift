@@ -29,6 +29,8 @@ struct LodesongApp: App {
                 #if DEBUG
                 await model.debugSignIn()
                 player.accountChanged()
+                // Picks a music folder by id, for simulator runs that can't tap.
+                if let folder = ProcessInfo.processInfo.environment["LODESONG_FOLDER"] { try? await model.chooseFolder(MusicFolder(id: folder, name: "Folder \(folder)")) }
                 // Starts the n-th song of the library, for simulator runs that can't tap.
                 if let start = ProcessInfo.processInfo.environment["LODESONG_PLAY"].flatMap(Int.init) { player.play(model.library.songs, at: start) }
                 #endif
@@ -42,7 +44,7 @@ struct LodesongApp: App {
             if phase == .active {
                 Notices.scheduleExpiryWarnings()
                 Task { await model.downloads.askForNoticesIfKept() }
-                Task { await model.sync() }
+                Task { await model.sync(.open) }
             }
             if phase == .background { model.downloads.scheduleRefresh() }
         }

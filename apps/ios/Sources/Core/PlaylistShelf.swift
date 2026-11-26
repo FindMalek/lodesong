@@ -136,9 +136,17 @@ enum PlaylistSort: String, CaseIterable {
 
 /// The order a playlist's songs are shown and played in. `server` is the playlist's own.
 enum SongSort: String, CaseIterable {
-    case server, title, artist, album, duration
+    case server, title, artist, album, added, year, plays, duration
 
-    var label: String { self == .server ? "Playlist Order" : rawValue.capitalized }
+    var label: String {
+        switch self {
+        case .server: return "Playlist Order"
+        case .added: return "Date Added"
+        case .year: return "Release Year"
+        case .plays: return "Most Played"
+        default: return rawValue.capitalized
+        }
+    }
 
     /// Equal songs keep the playlist's order.
     func sorted(_ songs: [Song]) -> [Song] {
@@ -163,6 +171,10 @@ enum SongSort: String, CaseIterable {
             let order = text(a.artist, b.artist)
             return order == .orderedSame ? album() : order
         case .album: return album()
+        // Newest and most played first; what the server didn't say goes last.
+        case .added: return text(b.created, a.created)
+        case .year: return number(b.year ?? 0, a.year ?? 0)
+        case .plays: return number(b.playCount ?? 0, a.playCount ?? 0)
         case .duration: return number(a.duration ?? 0, b.duration ?? 0)
         }
     }

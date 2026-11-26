@@ -11,8 +11,6 @@ struct QuickSettings: View {
     @AppStorage(Pref.replayGain) private var replayGain = "auto"
     @AppStorage(Pref.infinitePlay) private var infinitePlay = false
     @AppStorage(Pref.queueSync) private var queueSync = true
-    @AppStorage(Pref.wifiBitRate) private var wifiBitRate = 0
-    @AppStorage(Pref.cellularBitRate) private var cellularBitRate = 0
     @State private var showingPlayerSettings = QuickSettings.startsInPlayerSettings
     let song: Song
     /// Lyrics, queue or devices, which stay reachable here when their bottom button is hidden.
@@ -73,10 +71,13 @@ struct QuickSettings: View {
                         Text("Playing on \(device.name). These apply when this iPhone plays.")
                     }
                 }
-                Section("Streaming and Cache") {
-                    QualityPicker(title: "On Wi-Fi", value: $wifiBitRate)
-                    QualityPicker(title: "On Cellular", value: $cellularBitRate)
-                    CacheAheadPicker()
+                Section("Streaming Quality") { StreamingRows() }
+                Section {
+                    SongCacheRows()
+                } header: {
+                    Text("Song Cache")
+                } footer: {
+                    Text("Changing the type empties the cache. Your downloads are not touched.")
                 }
                 Section("Scrobbling") { ScrobbleRows() }
                 if let source = lyrics.saved(song.id)?.lyrics.source {

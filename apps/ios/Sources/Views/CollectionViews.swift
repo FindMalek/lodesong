@@ -265,6 +265,7 @@ struct CollectionMenu: ViewModifier {
                                 .pickerStyle(.menu)
                             }
                             ShareItem(kind: kind, id: id)
+                            if kind == "playlist" { AutoDownloadPicker(playlist: id) }
                             Button("Download Settings", systemImage: "arrow.down.circle") { showingDownloads = true }
                         }
                     }

@@ -5,6 +5,7 @@ import XCTest
 /// Answers every stream with audio, and notes what was asked for.
 private final class AudioServer: URLProtocol {
     static var asked: [String] = []
+    static var body = Data("ID3 pretend audio".utf8)
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -14,7 +15,7 @@ private final class AudioServer: URLProtocol {
         Self.asked.append(request.url!.query ?? "")
         let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data("ID3 pretend audio".utf8))
+        client?.urlProtocol(self, didLoad: Self.body)
         client?.urlProtocolDidFinishLoading(self)
     }
 }
@@ -72,13 +73,32 @@ final class OfflineTests: XCTestCase {
         await cache.fill(songs("s-1", "s.2"), limit: 128, client: client) {}
         await cache.fill(songs("s-1"), limit: 128, client: client) {}
         XCTAssertEqual(AudioServer.asked, ["format=mp3&id=s-1&maxBitRate=128", "format=mp3&id=s.2&maxBitRate=128"])
-        // A copy at another bit rate still counts.
-        await cache.fill(songs("s-1"), limit: 0, client: client) {}
+        // A better copy than asked for counts; a smaller one is fetched again.
+        await cache.fill(songs("s-1"), limit: 64, client: client) {}
         XCTAssertEqual(AudioServer.asked.count, 2)
+        await cache.fill(songs("s-1"), limit: 320, client: client) {}
+        XCTAssertEqual(AudioServer.asked.count, 3)
 
         cache.prune(keeping: ["s.2"])
         XCTAssertNil(cache.file("s-1"))
         XCTAssertNotNil(cache.file("s.2"))
+    }
+
+    func testASmallerCopyStaysWhenTheBetterOneArrivesCutShort() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AudioServer.self]
+        // A WAV header with one second of silence, for a song that lasts a minute.
+        let header: [UInt8] = Array("RIFF".utf8) + [164, 62, 0, 0] + Array("WAVEfmt ".utf8)
+            + [16, 0, 0, 0, 1, 0, 1, 0, 64, 31, 0, 0, 128, 62, 0, 0, 2, 0, 16, 0] + Array("data".utf8) + [128, 62, 0, 0]
+        let usual = AudioServer.body
+        AudioServer.body = Data(header) + Data(count: 16000)
+        defer { AudioServer.body = usual }
+        let client = ServerClient(server: URL(string: "https://music.test")!, session: URLSession(configuration: configuration))
+        let cache = SongCache(folder: root)
+        try Data().write(to: root.appendingPathComponent("s.128.mp3"))
+
+        await cache.fill([Song(id: "s", title: "s", duration: 60, suffix: "mp3")], limit: 320, client: client) {}
+        XCTAssertEqual(cache.file("s")?.lastPathComponent, "s.128.mp3")
     }
 
     func testTheMainAddressWinsWhenItAnswersElseTheSecond() async {
@@ -120,7 +140,7 @@ final class OfflineTests: XCTestCase {
     }
 
     func testLibrarySectionsKeepTheirStoredOrderAndNewOnesGoLast() {
-        XCTAssertEqual(LibrarySection.ordered("songs,albums,gone,songs"), [.songs, .albums, .playlists, .artists, .downloaded, .recentlyAdded])
+        XCTAssertEqual(LibrarySection.ordered("songs,albums,gone,songs"), [.songs, .albums, .playlists, .artists, .genres, .favoriteSongs, .favoriteAlbums, .favoriteArtists, .downloaded, .recentlyAdded])
     }
 
     func testSharedLogsCanHideTheServer() {
