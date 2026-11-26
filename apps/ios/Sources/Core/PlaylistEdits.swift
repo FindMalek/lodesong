@@ -9,8 +9,15 @@ extension Playlist {
 
 enum PlaylistEditError: LocalizedError, Equatable {
     case changedElsewhere
+    /// The songs went through and the name, description or visibility didn't.
+    case detailsNotSaved(String)
 
-    var errorDescription: String? { "This playlist changed on the server. Nothing was saved, so check it and try again." }
+    var errorDescription: String? {
+        switch self {
+        case .changedElsewhere: return "This playlist changed on the server. Nothing was saved, so check it and try again."
+        case .detailsNotSaved(let reason): return "The songs were saved, but the rest wasn't: \(reason)"
+        }
+    }
 }
 
 /// What it takes to turn one list of songs into another.
@@ -73,6 +80,18 @@ extension ServerClient {
         if let comment { fields.append(("comment", comment)) }
         if let isPublic { fields.append(("public", String(isPublic))) }
         try await playlistCall("updatePlaylist", fields)
+    }
+
+    /// Songs first, then whatever else changed. A failure after the songs were saved says so, or the next save
+    /// would start from the old list and find the server's different.
+    func savePlaylist(_ id: String, from old: [String], to new: [String], name: String?, comment: String?, isPublic: Bool?) async throws {
+        try await changeSongs(playlist: id, from: old, to: new)
+        guard name != nil || comment != nil || isPublic != nil else { return }
+        do {
+            try await updatePlaylist(id, name: name, comment: comment, isPublic: isPublic)
+        } catch where old != new {
+            throw PlaylistEditError.detailsNotSaved(error.localizedDescription)
+        }
     }
 
     func deletePlaylist(_ id: String) async throws {

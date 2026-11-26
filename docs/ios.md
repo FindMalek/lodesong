@@ -121,13 +121,30 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 4. Plays count offline too. They are kept on the phone with their own time and sent to lodesong's history and
    Navidrome the next time the app is open and reaches the server.
 5. The quote button in now playing opens the [lyrics](lyrics.md): tap a line to jump there, the timer button shifts
-   them. [Search](search.md) finds songs by their words too, and takes `artist:`, `album:`, `genre:`, `year:`,
+   them. When your files carry lyrics in more than one language the translation shows under each line, and the button
+   beside the timer picks the language or turns it off. **Settings → Appearance → Lyrics Source** is what the server
+   found (your files, then LRCLIB) or your files only. [Search](search.md) finds songs by their words too, and takes `artist:`, `album:`, `genre:`, `year:`,
    `format:` and `lyrics:`. Offline it searches the lyrics saved on the phone.
 
    lodesong notifies you when a sync finds new tracks in a downloaded playlist; **Notify About New Tracks** under
    Storage → Downloads turns that off. With the app closed this waits for iOS to wake it, which it may not do for hours.
 
 ![download settings](ios/download-settings.png)
+
+## Shortcuts, Spotlight and links
+
+All of these work with a free Apple ID.
+
+- **Shortcuts**: Play Playlist, Play Song, Like Current Song, Unlike Current Song and Mark lodesong as Refreshed. All
+  but the last are also listed under lodesong in Shortcuts without setting anything up. While another device plays,
+  they act on that device. Offline only downloaded songs play, and a like is sent later. Signed out they say so.
+- **Spotlight**: your playlists are indexed, and signing out removes them.
+- **Links**: `lodesong://album/<id>` and `lodesong://playlist/<id>` open that page, with the ids the web player has
+  in its addresses. A link only opens a page, and does nothing while signed out.
+
+Not possible with free signing: "play something on lodesong" through Siri's own music commands (needs the Siri
+entitlement) and `https` links that open the app (needs Associated Domains). CarPlay is
+[#682](https://github.com/FindMalek/lodesong/issues/682).
 
 ## Offline and downloads
 
@@ -208,8 +225,8 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, adding music by name, CarPlay
-browsing. See the
+Search filters `is:`, `bpm:`, `energy:` and `mood:`, singer parts in lyrics (the server doesn't send them), adding
+music by name, CarPlay browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).
 
 ## Beta builds

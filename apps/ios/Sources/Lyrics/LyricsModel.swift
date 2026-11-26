@@ -45,7 +45,9 @@ final class LyricsModel: ObservableObject {
         guard let store else { return nil }
         guard let client else { return store.load(song) }
         var saved = store.load(song)
-        if saved == nil || saved?.lyrics.status == .missing, let lyrics = try? await client.lyrics(song: song) {
+        // Lyrics from the files saved before translations were kept are asked for once more.
+        let untranslated = saved?.lyrics.source == "navidrome" && saved?.lyrics.translations == nil
+        if saved == nil || saved?.lyrics.status == .missing || untranslated, let lyrics = try? await client.lyrics(song: song) {
             saved = store.save(lyrics, song: song)
             if !lyrics.lines.isEmpty { revision += 1 }
         }

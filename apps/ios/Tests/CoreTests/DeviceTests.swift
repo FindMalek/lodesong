@@ -69,4 +69,15 @@ final class DeviceTests: XCTestCase {
         XCTAssertEqual(list[try XCTUnwrap(command["start"] as? Int)]["id"] as? String, "s600")
         XCTAssertNil(list[0]["playCount"])
     }
+
+    func testAShortcutDoesNotActOnWhatItNeverHeard() {
+        func knows(heard: Bool = false, remote: Bool = false, oneSession: Bool?) -> Bool {
+            DeviceMirror.knowsWhoPlays(heard: heard, remote: remote, oneSession: oneSession)
+        }
+        XCTAssertTrue(knows(heard: true, remote: true, oneSession: true))
+        XCTAssertFalse(knows(oneSession: true))
+        XCTAssertFalse(knows(remote: true, oneSession: nil))
+        XCTAssertTrue(knows(oneSession: nil))
+        XCTAssertTrue(knows(oneSession: false))
+    }
 }

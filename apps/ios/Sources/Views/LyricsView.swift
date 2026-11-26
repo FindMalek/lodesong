@@ -10,23 +10,27 @@ struct LyricsView: View {
     @State private var loading = true
     @AppStorage(Pref.movingBackground) private var movingBackground = true
     @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
+    @AppStorage(Pref.lyricsSource) private var lyricsSource = "server"
+    @AppStorage(Pref.lyricsTranslation) private var translationChoice = ""
 
     var body: some View {
         let playback = player.playback(model.library)
         let song = playback.current
-        let saved = shown?.song == song?.id ? shown?.saved : nil
+        let found = shown?.song == song?.id ? shown?.saved : nil
+        let hidden = found?.lyrics.allowed(filesOnly: lyricsSource == "files") == false
+        let saved = hidden ? nil : found
         VStack(spacing: 0) {
             header(song, saved)
             Group {
                 if let saved, saved.lyrics.status == .synced {
-                    SyncedLines(player: player, lyrics: saved.lyrics, nudge: saved.nudge, isPlaying: playback.isPlaying)
+                    SyncedLines(player: player, lyrics: saved.lyrics, translation: saved.lyrics.translation(translationChoice), nudge: saved.nudge, isPlaying: playback.isPlaying)
                         .id(song?.id)
                 } else if let saved, saved.lyrics.status == .plain {
                     plain(saved.lyrics)
                 } else if loading {
                     ProgressView().controlSize(.large).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    nothing(saved)
+                    nothing(saved, hidden: hidden)
                 }
             }
             controls(playback.isPlaying)
@@ -76,6 +80,17 @@ struct LyricsView: View {
                 .menuActionDismissBehavior(.disabled)
                 .accessibilityLabel("Lyrics timing")
             }
+            if let translations = saved?.lyrics.translations, !translations.isEmpty {
+                Menu {
+                    Picker("Translation", selection: Binding { saved?.lyrics.translation(translationChoice)?.lang ?? "off" } set: { translationChoice = $0 }) {
+                        Text("Off").tag("off")
+                        ForEach(translations, id: \.lang) { Text(Locale.current.localizedString(forLanguageCode: $0.lang) ?? $0.lang).tag($0.lang) }
+                    }
+                } label: {
+                    circle("translate")
+                }
+                .accessibilityLabel("Translation")
+            }
             if let song { LikeButton(song: song) }
             Button { dismiss() } label: { circle("chevron.down") }
                 .accessibilityLabel("Close lyrics")
@@ -99,8 +114,14 @@ struct LyricsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("These lyrics have no timing.").font(.footnote).foregroundStyle(.white.opacity(0.6))
-                ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { _, line in
-                    Text(line.text.isEmpty ? " " : line.text).font(lyricSize.plain.bold())
+                let translation = lyrics.translation(translationChoice)
+                ForEach(Array(lyrics.lines.enumerated()), id: \.offset) { index, line in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(line.text.isEmpty ? " " : line.text).font(lyricSize.plain.bold()).readingDirection(line.text)
+                        if let other = translation?.line(index, under: line.text) {
+                            Text(other).font(lyricSize.translation).foregroundStyle(.white.opacity(0.65)).readingDirection(other)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,9 +129,11 @@ struct LyricsView: View {
         }
     }
 
-    @ViewBuilder private func nothing(_ saved: SavedLyrics?) -> some View {
+    @ViewBuilder private func nothing(_ saved: SavedLyrics?, hidden: Bool) -> some View {
         Group {
-            if saved?.lyrics.status == .instrumental {
+            if hidden {
+                ContentUnavailableView("No Lyrics in the File", systemImage: "quote.bubble", description: Text("Lyrics Source in Appearance settings is set to Files Only."))
+            } else if saved?.lyrics.status == .instrumental {
                 ContentUnavailableView("Instrumental", systemImage: "pianokeys", description: Text("This one has no words."))
             } else if saved != nil {
                 ContentUnavailableView("No Lyrics", systemImage: "quote.bubble", description: Text("None were found for this song."))
@@ -156,6 +179,7 @@ private struct SyncedLines: View {
     @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
     let player: PlayerModel
     let lyrics: Lyrics
+    let translation: Lyrics.Translation?
     let nudge: Int
     let isPlaying: Bool
 
@@ -241,17 +265,21 @@ private struct SyncedLines: View {
             // A hair past the start, so rounding never lands on the line before.
             player.seek(to: max(0, (line.start + Double(nudge)) / 1000 + 0.01))
         } label: {
-            text(line, current: current)
-                .font(lyricSize.synced.bold())
-                .foregroundStyle(current ? Theme.tint(tint, custom: tintCustom) : .white)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(.rect)
+            VStack(alignment: .leading, spacing: 4) {
+                text(line, current: current)
+                    .font(lyricSize.synced.bold())
+                    .foregroundStyle(current ? Theme.tint(tint, custom: tintCustom) : .white)
+                    .readingDirection(line.text)
+                if let other = translation?.line(index, under: line.text) {
+                    Text(other).font(lyricSize.translation.weight(.semibold)).foregroundStyle(.white.opacity(0.7)).readingDirection(other)
+                }
+            }
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .opacity(current || browsing ? 1 : 0.35)
         .animation(.easeInOut(duration: 0.25), value: current)
-        .accessibilityLabel(line.text.isEmpty ? "Pause in the lyrics" : line.text)
+        .accessibilityLabel(line.text.isEmpty ? "Pause in the lyrics" : [line.text, translation?.line(index, under: line.text)].compactMap { $0 }.joined(separator: ", "))
         .accessibilityHint("Plays from here")
         .accessibilityAddTraits(current ? .isSelected : [])
     }
@@ -268,6 +296,23 @@ private struct SyncedLines: View {
     }
 }
 
+private extension View {
+    /// Arabic and Hebrew start on the right, whatever the phone's own language.
+    func readingDirection(_ text: String) -> some View {
+        multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .environment(\.layoutDirection, Lyrics.isRightToLeft(text) ? .rightToLeft : .leftToRight)
+    }
+}
+
+private extension Lyrics.Translation {
+    /// Nothing when it is missing or only says the same again.
+    func line(_ index: Int, under original: String) -> String? {
+        guard lines.indices.contains(index), !lines[index].isEmpty, lines[index] != original else { return nil }
+        return lines[index]
+    }
+}
+
 /// How big the words are, on top of the system's own text size.
 enum LyricSize: String, CaseIterable {
     case small, medium, large, extraLarge
@@ -279,6 +324,14 @@ enum LyricSize: String, CaseIterable {
         case .medium: return .title
         case .large: return .largeTitle
         case .extraLarge: return .system(size: 42)
+        }
+    }
+    var translation: Font {
+        switch self {
+        case .small: return .footnote
+        case .medium: return .body
+        case .large: return .title3
+        case .extraLarge: return .title2
         }
     }
     var plain: Font {

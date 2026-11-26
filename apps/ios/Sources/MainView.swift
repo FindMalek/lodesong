@@ -38,6 +38,7 @@ struct MainView: View {
                 .navigationTransition(.zoom(sourceID: "player", in: playerZoom))
                 .environmentObject(router)
         }
+        .modifier(OpensLinks(router: router))
         .environmentObject(router)
         .environmentObject(additions)
         .onAppear {

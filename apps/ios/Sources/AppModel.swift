@@ -39,6 +39,7 @@ final class AppModel: ObservableObject {
         didSet {
             browse = library.browsing()
             libraryRevision += 1
+            showInSpotlight()
         }
     }
     /// The library as the browsing pages see it. Album, artist and playlist pages and search use all of it.
@@ -51,7 +52,9 @@ final class AppModel: ObservableObject {
     private(set) var syncStarted = Date.distantPast
     /// When the library last came in whole.
     @Published private(set) var lastSync = UserDefaults.standard.object(forKey: "lastSync") as? Date
-    @Published var needsSignIn: Bool
+    @Published var needsSignIn: Bool {
+        didSet { showInSpotlight() }
+    }
 
     /// Nothing goes to the server: downloaded music plays, the rest waits.
     @Published var offlineMode = UserDefaults.standard.bool(forKey: Pref.offlineMode) {
@@ -101,8 +104,13 @@ final class AppModel: ObservableObject {
         library = Self.load(store)
         // `didSet` doesn't run in an initializer.
         browse = library.browsing()
+        showInSpotlight()
         connectDownloads()
         checkPeriodically()
+    }
+
+    private func showInSpotlight() {
+        Spotlight.show(needsSignIn ? [] : library.playlists)
     }
 
     /// Runs for as long as the app does; suspended in the background, it waits with it.

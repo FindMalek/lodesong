@@ -225,6 +225,10 @@ private struct PlaylistForm: View {
                 entries = fresh.map { Entry(song: $0) }
                 original = fresh.map(\.id)
                 Popup.show("Can't Save", message: PlaylistEditError.changedElsewhere.localizedDescription)
+            } catch let error as PlaylistEditError {
+                // The server has these songs now, so the next save starts from them.
+                original = ids
+                Popup.show("Songs Saved", message: error.localizedDescription)
             } catch {
                 Popup.show("Can't Save", message: error.localizedDescription)
             }
@@ -237,10 +241,7 @@ private struct PlaylistForm: View {
         let description = comment == playlist.comment ?? "" ? nil : comment
         let visibility = isPublic == playlist.public ?? false ? nil : isPublic
         try await model.editPlaylists(playlist.id) { client in
-            try await client.changeSongs(playlist: playlist.id, from: old, to: new)
-            if rename != nil || description != nil || visibility != nil {
-                try await client.updatePlaylist(playlist.id, name: rename, comment: description, isPublic: visibility)
-            }
+            try await client.savePlaylist(playlist.id, from: old, to: new, name: rename, comment: description, isPublic: visibility)
             return nil
         }
     }

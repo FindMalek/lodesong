@@ -6,6 +6,7 @@ import XCTest
 private final class PlaylistServer: URLProtocol {
     static var songs: [String] = []
     static var calls: [String] = []
+    static var refused: String?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -21,7 +22,7 @@ private final class PlaylistServer: URLProtocol {
         if endpoint == "getPlaylists" {
             playlist = #","playlists":{"playlist":[{"id":"gym","name":"Gym","changed":"2"},{"id":"run","name":"Run","changed":"2"}]}"#
         }
-        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let response = HTTPURLResponse(url: request.url!, statusCode: endpoint == Self.refused ? 500 : 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(#"{"subsonic-response":{"status":"ok"\#(playlist)}}"#.utf8))
         client?.urlProtocolDidFinishLoading(self)
@@ -37,6 +38,7 @@ final class PlaylistEditsTests: XCTestCase {
 
     override func setUp() {
         PlaylistServer.calls = []
+        PlaylistServer.refused = nil
         PlaylistServer.songs = ["a", "b", "c"]
     }
 
@@ -63,6 +65,17 @@ final class PlaylistEditsTests: XCTestCase {
             XCTAssertEqual(error as? PlaylistEditError, .changedElsewhere)
         }
         XCTAssertEqual(PlaylistServer.calls, ["getPlaylist"])
+    }
+
+    func testAFailedRenameAfterTheSongsSavedSaysSo() async {
+        PlaylistServer.refused = "updatePlaylist"
+        do {
+            try await client.savePlaylist("gym", from: ["a", "b", "c"], to: ["c", "b", "a"], name: "Legs", comment: nil, isPublic: nil)
+            XCTFail("renamed")
+        } catch {
+            guard case .detailsNotSaved = error as? PlaylistEditError else { return XCTFail("\(error)") }
+        }
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist", "createPlaylist", "updatePlaylist"])
     }
 
     /// Storing another playlist's new stamp without its songs would make the next sync skip it.
