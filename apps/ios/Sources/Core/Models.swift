@@ -27,6 +27,15 @@ struct Song: Codable, Identifiable, Hashable {
     var duration: Int?
     var suffix: String?
     var replayGain: ReplayGain?
+    /// Only history and stats read these: they are kept as the song was when it was played.
+    var artistId: String?
+    var year: Int?
+    var genre: String?
+    var genres: [Genre]?
+}
+
+struct Genre: Codable, Hashable {
+    let name: String
 }
 
 struct ReplayGain: Codable, Hashable {

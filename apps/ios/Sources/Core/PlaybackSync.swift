@@ -29,9 +29,35 @@ struct QueueMark: Equatable {
 
 /// Scrobbles and the shared play queue, the same calls the web player makes (docs/sync.md).
 extension ServerClient {
-    func scrobble(song id: String, submission: Bool, client: String) async {
-        let query = ["id": id, "submission": String(submission), "time": String(Int(Date().timeIntervalSince1970 * 1000)), "f": "json"]
-        _ = try? await session.data(for: request(url("rest/scrobble", query), client: client))
+    /// `time` is when the song started playing, in ms: a play sent later keeps its own time.
+    @discardableResult
+    func scrobble(song id: String, submission: Bool, time: Int = Int(Date().timeIntervalSince1970 * 1000), client: String) async -> Delivery {
+        let query = ["id": id, "submission": String(submission), "time": String(time), "f": "json"]
+        guard let (data, response) = try? await session.data(for: request(url("rest/scrobble", query), client: client)),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let body = try? JSONDecoder().decode(Reply.self, from: data).body else { return .later }
+        if body.status == "ok" { return .done }
+        // The song is gone from the server: asking again will never work.
+        return body.error?.code == 70 ? .refused : .later
+    }
+
+    /// One play for lodesong's history. The server records a `key` once, so sending it again is safe.
+    func addPlay(_ play: LoggedPlay, client: String) async -> Delivery {
+        struct Body: Encodable {
+            let song: Song
+            let started: Int
+            let listened: Double
+            let finished: Bool
+            let key: String
+        }
+        var request = request(url("api/history"), client: client)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try? JSONEncoder().encode(Body(song: play.song, started: play.started, listened: min(play.listened, 86_399),
+                                                          finished: play.finished, key: play.key))
+        let status = (try? await session.data(for: request).1 as? HTTPURLResponse)?.statusCode
+        if status == 200 { return .done }
+        return status == 400 || status == 413 || status == 422 ? .refused : .later
     }
 
     /// The current song goes first, then what follows it. A form POST, so a long queue has no URL limit.
@@ -67,6 +93,7 @@ extension ServerClient {
 
     private struct Reply: Decodable {
         struct Body: Decodable {
+            struct Failure: Decodable { let code: Int? }
             struct Extension: Decodable { let name: String }
             struct Queue: Decodable {
                 var entry: [Song]?
@@ -77,6 +104,8 @@ extension ServerClient {
                 var changedBy: String?
             }
 
+            var status: String?
+            var error: Failure?
             var openSubsonicExtensions: [Extension]?
             var playQueue: Queue?
             var playQueueByIndex: Queue?
