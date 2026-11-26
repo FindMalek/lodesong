@@ -225,7 +225,7 @@ private struct PlaylistForm: View {
                 entries = fresh.map { Entry(song: $0) }
                 original = fresh.map(\.id)
                 Popup.show("Can't Save", message: PlaylistEditError.changedElsewhere.localizedDescription)
-            } catch let error as PlaylistEditError {
+            } catch let error as PlaylistEditError where error != .hiddenSongs {
                 // The server has these songs now, so the next save starts from them.
                 original = ids
                 Popup.show("Songs Saved", message: error.localizedDescription)

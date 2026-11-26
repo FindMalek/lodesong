@@ -7,6 +7,7 @@ private final class PlaylistServer: URLProtocol {
     static var songs: [String] = []
     static var calls: [String] = []
     static var refused: String?
+    static var stored = 3
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -20,7 +21,7 @@ private final class PlaylistServer: URLProtocol {
             playlist = #","playlist":{"entry":["# + Self.songs.map { #"{"id":"\#($0)","title":"t"}"# }.joined(separator: ",") + "]}"
         }
         if endpoint == "getPlaylists" {
-            playlist = #","playlists":{"playlist":[{"id":"gym","name":"Gym","changed":"2"},{"id":"run","name":"Run","changed":"2"}]}"#
+            playlist = #","playlists":{"playlist":[{"id":"gym","name":"Gym","changed":"2","songCount":\#(Self.stored)},{"id":"run","name":"Run","changed":"2"}]}"#
         }
         let response = HTTPURLResponse(url: request.url!, statusCode: endpoint == Self.refused ? 500 : 200, httpVersion: nil, headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -39,6 +40,7 @@ final class PlaylistEditsTests: XCTestCase {
     override func setUp() {
         PlaylistServer.calls = []
         PlaylistServer.refused = nil
+        PlaylistServer.stored = 3
         PlaylistServer.songs = ["a", "b", "c"]
     }
 
@@ -64,7 +66,20 @@ final class PlaylistEditsTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? PlaylistEditError, .changedElsewhere)
         }
-        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist"])
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist"])
+    }
+
+    func testAPlaylistWithHiddenSongsIsNotRewrittenOrRemovedFrom() async {
+        PlaylistServer.stored = 4
+        for new in [["c", "b", "a"], ["a", "b"]] {
+            do {
+                try await client.changeSongs(playlist: "gym", from: ["a", "b", "c"], to: new)
+                XCTFail("changed")
+            } catch {
+                XCTAssertEqual(error as? PlaylistEditError, .hiddenSongs)
+            }
+        }
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist", "getPlaylists", "getPlaylist"])
     }
 
     func testAFailedRenameAfterTheSongsSavedSaysSo() async {
@@ -75,7 +90,7 @@ final class PlaylistEditsTests: XCTestCase {
         } catch {
             guard case .detailsNotSaved = error as? PlaylistEditError else { return XCTFail("\(error)") }
         }
-        XCTAssertEqual(PlaylistServer.calls, ["getPlaylist", "createPlaylist", "updatePlaylist"])
+        XCTAssertEqual(PlaylistServer.calls, ["getPlaylists", "getPlaylist", "createPlaylist", "updatePlaylist"])
     }
 
     /// Storing another playlist's new stamp without its songs would make the next sync skip it.
