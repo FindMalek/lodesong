@@ -57,6 +57,7 @@ struct ServerClient {
     func signOut() async {
         var request = URLRequest(url: url("auth/logout"))
         request.httpMethod = "POST"
+        request.timeoutInterval = 5
         _ = try? await send(request)
     }
 

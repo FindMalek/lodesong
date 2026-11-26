@@ -25,6 +25,7 @@ final class AppModel: ObservableObject {
     @Published var needsSignIn: Bool
 
     private var syncTask: Task<Void, Never>?
+    private var signOutTask: Task<Void, Never>?
     private let store: LibraryStore
     private let defaults = UserDefaults.standard
 
@@ -43,6 +44,8 @@ final class AppModel: ObservableObject {
     func signIn(server: URL, user: String, password: String) async throws {
         // A sync still running for the last account would use the new cookie and write into the new library.
         await stopSync()
+        // Sign out drops every cookie when it finishes, which must not be the new one.
+        await signOutTask?.value
         let client = ServerClient(server: server)
         try await client.signIn(user: user, password: password)
         if server != defaults.url(forKey: "server") || user != self.user {
@@ -95,7 +98,7 @@ final class AppModel: ObservableObject {
     func signOut() {
         defaults.set(true, forKey: "signedOut")
         needsSignIn = true
-        Task {
+        signOutTask = Task {
             await stopSync()
             await client?.signOut()
             HTTPCookieStorage.shared.removeCookies(since: .distantPast)
