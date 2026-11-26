@@ -18,7 +18,7 @@ extension PlayerModel {
 }
 
 /// The only view that follows the position, so a tick redraws it and nothing else.
-private struct PlayerScrubber: View {
+struct PlayerScrubber: View {
     @EnvironmentObject private var model: AppModel
     let player: PlayerModel
     @ObservedObject var clock: PlayerClock
@@ -177,6 +177,15 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
     @Namespace private var cover
+    @State private var showingLyrics = NowPlayingView.startsInLyrics
+
+    private static var startsInLyrics: Bool {
+        #if DEBUG
+        DebugScreen.name == "lyrics"
+        #else
+        false
+        #endif
+    }
 
     private static var startsInQueue: Bool {
         #if DEBUG
@@ -215,6 +224,13 @@ struct NowPlayingView: View {
                     VolumeSlider()
                     HStack {
                         Spacer()
+                        Button { showingLyrics = true } label: {
+                            Image(systemName: "quote.bubble").font(.title3).frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Lyrics")
+                        .foregroundStyle(.white.opacity(0.7))
+                        .disabled(song == nil)
+                        Spacer()
                         RoutePicker().frame(width: 44, height: 44).accessibilityLabel("AirPlay")
                         Spacer()
                         Button {
@@ -238,6 +254,7 @@ struct NowPlayingView: View {
         .background { ArtworkBackground(id: song?.coverArt) }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .fullScreenCover(isPresented: $showingLyrics) { LyricsView() }
         // A drag in the queue reorders or scrolls it, so it must not pull the player closed.
         .interactiveDismissDisabled(showingQueue)
     }

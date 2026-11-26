@@ -15,6 +15,7 @@ struct Album: Codable, Identifiable, Hashable {
     var year: Int?
     /// When the server first saw it, ISO 8601, so it sorts as text.
     var created: String?
+    var genre: String?
 }
 
 struct Song: Codable, Identifiable, Hashable {
