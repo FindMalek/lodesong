@@ -35,5 +35,5 @@ Without byte ranges (what a live transcode looks like) MP3 and Ogg Opus start; F
 3. `/rest/stream?format=mp3&maxBitRate=320` for every other suffix, and for any song whose file or original failed
    to open (an `.ogg` that turns out to be Vorbis).
 
-A download of a format outside the list in 2 has to be a transcode, or it will not play offline. `ogg` and `oga`
-may hold Vorbis, which only streams.
+Downloads at original quality keep the file for the same list except `ogg` and `oga`, which may hold Vorbis and
+are saved as mp3. An Ogg file is only accepted when it holds Opus.
