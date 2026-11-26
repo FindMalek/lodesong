@@ -54,6 +54,14 @@ final class LibrarySyncTests: XCTestCase {
         XCTAssertEqual(store.entries(playlist: "p1").map(\.id), ["s2"])
     }
 
+    func testSigningInToAPageThatIsntLodesongFails() async {
+        StubServer.answers["login"] = #""hello":true"#
+        do {
+            try await client.signIn(user: "a", password: "b")
+            XCTFail("sign in should have failed")
+        } catch {}
+    }
+
     func testLosingTheNetworkMidSyncKeepsTheLibrary() async throws {
         try await LibrarySync.run(client: client, store: store)
         StubServer.answers["getPlaylists"] = nil
