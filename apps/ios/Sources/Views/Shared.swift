@@ -142,6 +142,7 @@ struct SongMenu: View {
         Button("Play", systemImage: "play") { player.start([song]) }
         Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }
         Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }
+        RadioItem(song: song)
         Divider()
         AddToPlaylistItem { [song] }
         if let remove {

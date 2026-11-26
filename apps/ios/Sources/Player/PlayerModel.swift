@@ -8,12 +8,6 @@ final class PlayerClock: ObservableObject {
     @Published fileprivate(set) var position: TimeInterval = 0
 }
 
-/// When playback should stop by itself.
-enum SleepTimer: Equatable {
-    case at(Date)
-    case endOfSong
-}
-
 /// What every screen uses to control playback. An `AVQueuePlayer` holding the current song and the one after it,
 /// so the next song starts without a gap.
 @MainActor
@@ -40,6 +34,8 @@ final class PlayerModel: ObservableObject {
     /// Format and bit rate of what is loaded.
     @Published private(set) var streamDetail: String?
     @Published private(set) var sleepTimer: SleepTimer?
+    /// Newest first.
+    @Published private(set) var history: [Song] = []
     /// Moves whenever a like or a rating, or whether it reached the server, may have changed.
     @Published private var marksRevision = 0
 
@@ -193,6 +189,52 @@ final class PlayerModel: ObservableObject {
         }
     }
 
+    func clearUpcoming() {
+        guard !isRemote else { return }
+        edit { $0.clearUpcoming() }
+    }
+
+    /// Plays `song` now without dropping the queue.
+    func playNow(_ song: Song) {
+        if isRemote {
+            command(.add([song], next: true))
+            return command(.next)
+        }
+        let target = queue.isEmpty ? 0 : index + 1
+        edit { $0.insertNext([song]) }
+        jump(to: target)
+    }
+
+    func clearHistory() {
+        history = []
+        heard.save(history, account: account)
+    }
+
+    /// Keeps infinite play ahead: with few songs left, ones like the current song go on the end.
+    private func topUp() {
+        guard defaults.bool(Pref.infinitePlay, or: false), !isRemote, repeatMode == .off, sleepTimer != .endOfQueue,
+              toppingUp == nil, loaded != nil, let song = current, queue.count - index <= 5, let client else { return }
+        // Once for each song and queue, so a server with nothing to give isn't asked over and over.
+        let key = "\(queueNumber) \(song.id) \(queue.count)"
+        guard key != toppedUp else { return }
+        toppedUp = key
+        let number = queueNumber
+        let account = account
+        let excluding = Set(queue.map(\.id) + history.map(\.id))
+        let seed = fresh(song)
+        toppingUp = Task { [weak self] in
+            let more = await client.radio(from: seed, excluding: excluding, count: 20)
+            guard let self else { return }
+            self.toppingUp = nil
+            // Another queue started meanwhile, or it was turned off: these belong to neither.
+            guard number == self.queueNumber, account == self.account else { return self.topUp() }
+            guard self.defaults.bool(Pref.infinitePlay, or: false), !self.isRemote, !more.isEmpty else { return }
+            // Anything queued by hand while the server answered is not added a second time.
+            let queued = Set(self.queue.map(\.id))
+            self.edit { $0.append(more.filter { !queued.contains($0.id) }) }
+        }
+    }
+
     // MARK: - Likes and ratings
 
     func isLiked(_ song: Song) -> Bool { marks.liked(fresh(song), account: account) }
@@ -237,8 +279,13 @@ final class PlayerModel: ObservableObject {
 
     func setSleepTimer(_ timer: SleepTimer?) {
         sleepTimer = timer
-        // The engine would otherwise start the lined up song by itself.
-        engine.actionAtItemEnd = timer == .endOfSong ? .pause : .advance
+        holdAtEnd()
+        topUp()
+    }
+
+    /// The engine would otherwise start the lined up song by itself.
+    private func holdAtEnd() {
+        engine.actionAtItemEnd = sleepTimer?.stops(after: line) == true ? .pause : .advance
     }
 
     /// The end of a call is not someone pressing play: a timer that ran out during it still holds.
@@ -300,6 +347,11 @@ final class PlayerModel: ObservableObject {
     private let store = PlaybackStore(folder: .applicationSupportDirectory)
     private let log = PlayLog(folder: .applicationSupportDirectory)
     private let marks = SongMarks(folder: .applicationSupportDirectory)
+    private let heard = ListenHistory(folder: .applicationSupportDirectory)
+    /// Goes up each time a queue replaces another.
+    private var queueNumber = 0
+    private var toppingUp: Task<Void, Never>?
+    private var toppedUp = ""
     private var lastSend = Date.distantPast
     private var link: DeviceLink?
     /// This phone holds the shared session (docs/devices.md).
@@ -409,6 +461,7 @@ final class PlayerModel: ObservableObject {
             log.end()
             leaveSession()
             account = ""
+            history = []
             unload()
             return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, speed: 1, client: nil)
         }
@@ -423,6 +476,8 @@ final class PlayerModel: ObservableObject {
         isPlaying = false
         offer = nil
         let saved = store.load(account: account)
+        history = heard.load(account: account)
+        queueNumber += 1
         line = saved?.queue ?? PlayQueue()
         position = saved?.position ?? 0
         duration = Double(current?.duration ?? 0)
@@ -472,6 +527,7 @@ final class PlayerModel: ObservableObject {
     private func replace(with queue: PlayQueue) {
         if sleepIsDue { setSleepTimer(nil) }
         line = queue
+        queueNumber += 1
         failed = [:]
         retries = 0
         skips = 0
@@ -607,6 +663,7 @@ final class PlayerModel: ObservableObject {
         }
         if let song = loaded?.song { engine.volume = volume(for: song) }
         refreshAhead()
+        topUp()
         // Whatever is heard while reporting is off must not be added to the play when it comes back on.
         if reporting != reportsPlayback {
             reporting = reportsPlayback
@@ -642,8 +699,12 @@ final class PlayerModel: ObservableObject {
 
     /// Keeps the engine's second item matching the queue, so it is already buffered when the first ends.
     private func lineUp() {
+        holdAtEnd()
         guard let loaded else { return }
-        defer { cacheAhead() }
+        defer {
+            cacheAhead()
+            topUp()
+        }
         let upcoming = line.following(repeatMode).map { line.songs[$0] }
         if let lined, let upcoming, lined.key == key(upcoming), engine.items().contains(lined.item) { return }
         for item in engine.items() where item !== loaded.item { engine.remove(item) }
@@ -672,7 +733,7 @@ final class PlayerModel: ObservableObject {
 
     private func ended(_ item: AVPlayerItem?) {
         guard let item, item === loaded?.item else { return }
-        if sleepTimer == .endOfSong {
+        if sleepTimer?.stops(after: line) == true {
             setSleepTimer(nil)
             guard let target = line.following(repeatMode), line.jump(to: target) else { return finish() }
             load(at: 0, play: false)
@@ -799,7 +860,13 @@ final class PlayerModel: ObservableObject {
         position = seconds
         retries = 0
         skips = 0
-        if reportsPlayback, let song = loaded?.song { log.hear(song, account: account, position: seconds, duration: duration) }
+        if reportsPlayback, let song = loaded?.song {
+            log.hear(song, account: account, position: seconds, duration: duration)
+            if history.first?.id != song.id {
+                history = ListenHistory.adding(song, to: history)
+                heard.save(history, account: account)
+            }
+        }
         if reportsPlayback, !scrobbled, pastScrobblePoint(seconds) {
             scrobbled = true
             log.count()
@@ -815,7 +882,8 @@ final class PlayerModel: ObservableObject {
 
     private func pastScrobblePoint(_ seconds: TimeInterval) -> Bool {
         Pref.pastScrobblePoint(seconds, duration: duration,
-                               percent: defaults.int(Pref.scrobblePercent, or: 50), minutes: defaults.int(Pref.scrobbleMinutes, or: 4))
+                               percent: defaults.int(Pref.scrobblePercent, or: 50),
+                               minutes: defaults.bool(Pref.scrobbleUseTime, or: true) ? defaults.int(Pref.scrobbleMinutes, or: 4) : nil)
     }
 
     /// "Now playing" and the new queue go to the server the first time a song actually plays.

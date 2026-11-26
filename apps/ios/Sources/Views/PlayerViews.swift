@@ -110,7 +110,7 @@ struct RepeatButton: View {
 }
 
 /// The filled look a player button takes while its mode is on.
-private struct Toggled: ViewModifier {
+struct Toggled: ViewModifier {
     let on: Bool
     @Environment(\.isEnabled) private var isEnabled
 
@@ -131,6 +131,7 @@ struct MiniPlayer: View {
     @EnvironmentObject private var player: PlayerModel
     @EnvironmentObject private var router: Router
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @AppStorage(Pref.miniPlayerSwipe) private var swipes = true
 
     var body: some View {
         let playback = player.playback(model.library)
@@ -156,6 +157,10 @@ struct MiniPlayer: View {
             // A remote with nothing on yet still opens, to move playback.
             .disabled(song == nil && playback.playingOn == nil)
             .accessibilityHint("Opens now playing")
+            .gesture(SidewaysSwipe(enabled: swipes && song != nil) { across in
+                Haptic.tap()
+                across < 0 ? player.next() : player.previous()
+            })
             Button {
                 Haptic.tap()
                 player.toggle()
@@ -192,12 +197,18 @@ struct NowPlayingView: View {
     @State private var showingQueue = NowPlayingView.startsInQueue
     @State private var showingMore = NowPlayingView.startsInMore
     @State private var showingDevices = NowPlayingView.startsInDevices
+    @AppStorage(Pref.playerStyle) private var style = "arpeggi"
+    @AppStorage(Pref.coverSwipe) private var coverSwipe = true
+    @AppStorage(Pref.reverseCoverSwipe) private var reverseCoverSwipe = false
+    @AppStorage(Pref.controlSwipe) private var controlSwipe = true
+    @AppStorage(Pref.playerButtonOrder) private var buttonOrder = ""
+    @AppStorage(Pref.hiddenPlayerButtons) private var hiddenButtons = PlayerButton.hiddenByDefault
     @AppStorage(Pref.showAlbum) private var showAlbum = true
     @AppStorage(Pref.coverShrinks) private var coverShrinks = true
     @AppStorage(Pref.streamInfo) private var streamInfo = true
     @AppStorage(Pref.movingBackground) private var movingBackground = true
     @AppStorage(Pref.keepAwake) private var keepAwake = false
-    @AppStorage(Pref.coverSkipSeconds) private var coverSkipSeconds = 0
+    @AppStorage(Pref.coverSkipSeconds) private var stepSetting = 10
     @Namespace private var cover
     @State private var showingLyrics = NowPlayingView.startsInLyrics
 
@@ -219,7 +230,7 @@ struct NowPlayingView: View {
 
     private static var startsInMore: Bool {
         #if DEBUG
-        DebugScreen.name == "more"
+        DebugScreen.name == "more" || DebugScreen.name == "playersettings"
         #else
         false
         #endif
@@ -236,6 +247,7 @@ struct NowPlayingView: View {
     var body: some View {
         let playback = player.playback(model.library)
         let song = playback.current
+        let arpeggi = style != "apple"
         GeometryReader { proxy in
             VStack(spacing: 0) {
                 Button { dismiss() } label: {
@@ -252,9 +264,10 @@ struct NowPlayingView: View {
                         .scaleEffect(playback.isPlaying || !coverShrinks ? 1 : 0.8)
                         .shadow(color: .black.opacity(0.4), radius: 24, y: 14)
                         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: playback.isPlaying)
-                        .gesture(SidewaysSwipe(enabled: coverSkipSeconds > 0) { across in
+                        // As turning a page: left for the next song, unless reversed.
+                        .gesture(SidewaysSwipe(enabled: coverSwipe && song != nil) { across in
                             Haptic.tap()
-                            player.skip(by: Double(across > 0 ? coverSkipSeconds : -coverSkipSeconds))
+                            (across < 0) != reverseCoverSwipe ? player.next() : player.previous()
                         })
                         .frame(maxWidth: 560, maxHeight: .infinity)
                         .padding(.horizontal, 22)
@@ -263,10 +276,17 @@ struct NowPlayingView: View {
                 }
                 VStack(spacing: proxy.size.height < 700 || showingQueue ? 8 : 18) {
                     if !showingQueue {
-                        VStack(alignment: .leading, spacing: 4) {
-                            titles(song, album: showAlbum)
-                            if let song { RatingStars(song: song) }
+                        Group {
+                            if arpeggi {
+                                centredTitles(song)
+                            } else {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    titles(song, album: showAlbum)
+                                    if let song { RatingStars(song: song) }
+                                }
+                            }
                         }
+                        .gesture(stepSwipe(song))
                     }
                     PlayerScrubber(player: player, clock: player.clock)
                         // Between the two times.
@@ -277,29 +297,13 @@ struct NowPlayingView: View {
                                 StreamInfo(song: song, detailed: streamInfo).padding(.horizontal, 52)
                             }
                         }
-                    transport(playback.isPlaying)
-                    if playback.playingOn == nil { VolumeSlider() } else { RemoteVolumeSlider() }
-                    HStack {
-                        Spacer()
-                        Button { showingLyrics = true } label: {
-                            Image(systemName: "quote.bubble").font(.title3).frame(width: 44, height: 44)
-                        }
-                        .accessibilityLabel("Lyrics")
-                        .foregroundStyle(.white.opacity(0.7))
-                        .disabled(song == nil)
-                        Spacer()
-                        DeviceButton(showing: $showingDevices)
-                        Spacer()
-                        Button {
-                            Haptic.tap()
-                            withAnimation(.spring(duration: 0.35)) { showingQueue.toggle() }
-                        } label: {
-                            Image(systemName: "list.bullet").modifier(Toggled(on: showingQueue))
-                        }
-                        .accessibilityLabel("Queue")
-                        .accessibilityAddTraits(showingQueue ? .isSelected : [])
-                        Spacer()
-                    }
+                    transport(playback.isPlaying, modes: arpeggi && !showingQueue)
+                        .gesture(stepSwipe(song))
+                        .accessibilityAction(named: "Skip Forward") { step(1) }
+                        .accessibilityAction(named: "Skip Back") { step(-1) }
+                    // The arpeggi style leaves volume to the phone's own buttons; another device's has no other way.
+                    if playback.playingOn != nil { RemoteVolumeSlider() } else if !arpeggi { VolumeSlider() }
+                    bottomButtons(song)
                 }
                 .frame(maxWidth: 480)
                 .padding(.horizontal, 28)
@@ -346,15 +350,7 @@ struct NowPlayingView: View {
 
     private func titles(_ song: Song?, album: Bool, compact: Bool = false) -> some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(song?.title ?? "Not Playing").font(compact ? .headline : .title2.bold()).lineLimit(1)
-                Text(song?.artist ?? " ").font(compact ? .subheadline : .title3).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
-                if album, let name = song?.album, !name.isEmpty {
-                    Text(name).font(.subheadline).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
-                }
-            }
-            .accessibilityElement(children: .combine)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            names(song, album: album, compact: compact, alignment: .leading)
             if let song {
                 LikeButton(song: song)
                 Button { showingMore = true } label: { CircleIcon(symbol: "ellipsis") }
@@ -363,16 +359,48 @@ struct NowPlayingView: View {
         }
     }
 
-    private func transport(_ isPlaying: Bool) -> some View {
-        HStack {
-            Spacer()
-            control("backward.fill", "Previous", size: 30) { player.previous() }
-            Spacer()
-            control(isPlaying ? "pause.fill" : "play.fill", isPlaying ? "Pause" : "Play", size: 44) { player.toggle() }
-            Spacer()
-            control("forward.fill", "Next", size: 30) { player.next() }
-            Spacer()
+    private func names(_ song: Song?, album: Bool, compact: Bool, alignment: Alignment) -> some View {
+        VStack(spacing: 1) {
+            ScrollingText(text: song?.title ?? "Not Playing", font: compact ? .headline : .title2.bold(), alignment: alignment)
+            ScrollingText(text: song?.artist ?? " ", font: compact ? .subheadline : .title3, alignment: alignment)
+                .foregroundStyle(.white.opacity(0.7))
+            if album, let name = song?.album, !name.isEmpty {
+                ScrollingText(text: name, font: .subheadline, alignment: alignment).foregroundStyle(.white.opacity(0.5))
+            }
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The arpeggi style: names in the middle, then like, stars and "..." in one row.
+    private func centredTitles(_ song: Song?) -> some View {
+        VStack(spacing: 10) {
+            names(song, album: showAlbum, compact: false, alignment: .center)
+            if let song {
+                HStack(spacing: 0) {
+                    LikeButton(song: song)
+                    Spacer(minLength: 8)
+                    RatingStars(song: song).fixedSize()
+                    Spacer(minLength: 8)
+                    Button { showingMore = true } label: { CircleIcon(symbol: "ellipsis") }
+                        .accessibilityLabel("More")
+                }
+            }
+        }
+    }
+
+    private func transport(_ isPlaying: Bool, modes: Bool) -> some View {
+        HStack(spacing: 0) {
+            if modes { ShuffleButton() }
+            Spacer(minLength: 0)
+            control("backward.fill", "Previous", size: 30) { player.previous() }
+            Spacer(minLength: 0)
+            control(isPlaying ? "pause.fill" : "play.fill", isPlaying ? "Pause" : "Play", size: 44) { player.toggle() }
+            Spacer(minLength: 0)
+            control("forward.fill", "Next", size: 30) { player.next() }
+            Spacer(minLength: 0)
+            if modes { RepeatButton() }
+        }
+        .contentShape(.rect)
     }
 
     private func control(_ symbol: String, _ label: String, size: CGFloat, action: @escaping () -> Void) -> some View {
@@ -388,11 +416,63 @@ struct NowPlayingView: View {
         }
         .accessibilityLabel(label)
     }
+
+    private func step(_ direction: Int) {
+        Haptic.tap()
+        player.skip(by: Double(direction * Pref.stepSeconds(stepSetting)))
+    }
+
+    private func stepSwipe(_ song: Song?) -> SidewaysSwipe {
+        SidewaysSwipe(enabled: controlSwipe && song != nil) { across in step(across > 0 ? 1 : -1) }
+    }
+
+    private func bottomButtons(_ song: Song?) -> some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            ForEach(PlayerButton.shown(order: buttonOrder, hidden: hiddenButtons), id: \.self) { button in
+                bottomButton(button, song)
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(minHeight: 44)
+    }
+
+    @ViewBuilder private func bottomButton(_ button: PlayerButton, _ song: Song?) -> some View {
+        switch button {
+        case .airplay:
+            DeviceButton(showing: $showingDevices)
+        case .settings:
+            plainButton("gearshape", "Player settings") { showingMore = true }.disabled(song == nil)
+        case .dismiss:
+            plainButton("chevron.down", "Dismiss") { dismiss() }
+        case .lyrics:
+            plainButton("quote.bubble", "Lyrics") { showingLyrics = true }.disabled(song == nil)
+        case .queue:
+            Button {
+                Haptic.tap()
+                withAnimation(.spring(duration: 0.35)) { showingQueue.toggle() }
+            } label: {
+                Image(systemName: "list.bullet").modifier(Toggled(on: showingQueue))
+            }
+            .accessibilityLabel("Queue")
+            .accessibilityAddTraits(showingQueue ? .isSelected : [])
+        case .sleep:
+            SleepTimerButton()
+        }
+    }
+
+    private func plainButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.title3).frame(width: 44, height: 44).contentShape(.rect)
+        }
+        .foregroundStyle(.white.opacity(0.7))
+        .accessibilityLabel(label)
+    }
 }
 
 /// A swipe left or right that wins over the player's own swipe to close, which goes sideways too.
 /// A drag up or down never starts it, so that still closes the player. SwiftUI's gestures lose to that swipe.
-private struct SidewaysSwipe: UIGestureRecognizerRepresentable {
+struct SidewaysSwipe: UIGestureRecognizerRepresentable {
     let enabled: Bool
     let swiped: (CGFloat) -> Void
 
@@ -443,6 +523,8 @@ struct QueueView: View {
     private static let end = "end"
 
     @State private var showingHistory = QueueView.startsInHistory
+    @AppStorage(Pref.infinitePlay) private var infinitePlay = false
+    @AppStorage(Pref.reportPlayback) private var reportPlayback = true
 
     private static var startsInHistory: Bool {
         #if DEBUG
@@ -458,9 +540,14 @@ struct QueueView: View {
         let base = min(playback.index + 1, entries.count)
         let top = base < entries.count ? entries[base].id : Self.end
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 Text(showingHistory ? "History" : "Playing Next").font(.headline).lineLimit(1)
                 Spacer(minLength: 4)
+                QueueMoreButton(playback: playback, showingHistory: showingHistory)
+            }
+            .frame(maxWidth: 480)
+            .padding(.horizontal, 28)
+            HStack(spacing: 0) {
                 Button {
                     Haptic.tap()
                     showingHistory.toggle()
@@ -469,14 +556,27 @@ struct QueueView: View {
                 }
                 .accessibilityLabel("History")
                 .accessibilityAddTraits(showingHistory ? .isSelected : [])
+                Spacer(minLength: 0)
                 ShuffleButton()
+                Spacer(minLength: 0)
                 RepeatButton()
+                Spacer(minLength: 0)
+                Button {
+                    Haptic.tap()
+                    infinitePlay.toggle()
+                } label: {
+                    Image(systemName: "infinity").modifier(Toggled(on: infinitePlay))
+                }
+                .accessibilityLabel("Infinite play")
+                .accessibilityValue(infinitePlay ? "On" : "Off")
+                .disabled(player.isRemote)
+                Spacer(minLength: 0)
                 AddPlaylistButton()
             }
             .frame(maxWidth: 480)
             .padding(.horizontal, 28)
             if showingHistory {
-                played(playback, Array(entries[..<min(playback.index, entries.count)]))
+                listened(playback)
             } else {
             GeometryReader { proxy in
                 ScrollViewReader { scroll in
@@ -507,17 +607,37 @@ struct QueueView: View {
         .mask { LinearGradient(stops: [.init(color: .black, location: 0.92), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom) }
     }
 
-    /// Newest first.
-    @ViewBuilder private func played(_ playback: Playback, _ entries: [Entry]) -> some View {
-        if entries.isEmpty {
-            Text("Nothing played yet")
+    /// Everything heard on this phone, newest first, whatever queue it was in.
+    private func heardSongs(_ playback: Playback) -> [Song] {
+        var songs = player.history
+        #if DEBUG
+        if songs.isEmpty, DebugScreen.sample { songs = Array(playback.queue.prefix(playback.index).reversed()) }
+        #endif
+        // What is on now is not history yet.
+        if songs.first?.id == playback.current?.id { songs.removeFirst() }
+        return songs
+    }
+
+    @ViewBuilder private func listened(_ playback: Playback) -> some View {
+        let songs = heardSongs(playback)
+        if songs.isEmpty {
+            Text(reportPlayback ? "Nothing played yet" : "Report Playback is off, so no history is kept")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
                 .padding(.top, 16)
+                .padding(.horizontal, 28)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         } else {
-            List(entries.reversed()) { entry in
-                row(playback, entry.index, dimmed: false).contextMenu { SongMenu(song: playback.queue[entry.index]) }
+            List(songs) { song in
+                Button {
+                    Haptic.tap()
+                    player.playNow(song)
+                } label: {
+                    rowLabel(song)
+                }
+                .modifier(QueueRow())
+                .contextMenu { SongMenu(song: song) }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -558,29 +678,39 @@ struct QueueView: View {
         }
     }
 
-    private func row(_ playback: Playback, _ index: Int, dimmed: Bool = true) -> some View {
-        let song = playback.queue[index]
-        return Button {
+    private func row(_ playback: Playback, _ index: Int) -> some View {
+        Button {
             Haptic.tap()
             player.jump(to: index)
         } label: {
-            HStack(spacing: 12) {
-                Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 44, height: 44)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(song.title).lineLimit(1)
-                    Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                if index > playback.index, playback.playingOn == nil {
-                    Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
-                }
-            }
-            .contentShape(.rect)
+            rowLabel(playback.queue[index], draggable: index > playback.index && playback.playingOn == nil)
         }
-        .buttonStyle(.plain)
-        .opacity(dimmed && index < playback.index ? 0.6 : 1)
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 28))
+        .opacity(index < playback.index ? 0.6 : 1)
+        .modifier(QueueRow())
+    }
+
+    private func rowLabel(_ song: Song, draggable: Bool = false) -> some View {
+        HStack(spacing: 12) {
+            Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(song.title).lineLimit(1)
+                Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if draggable {
+                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
+            }
+        }
+        .contentShape(.rect)
+    }
+}
+
+private struct QueueRow: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .buttonStyle(.plain)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 28))
     }
 }

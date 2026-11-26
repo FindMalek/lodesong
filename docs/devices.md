@@ -49,7 +49,8 @@ for the others.
   none online it is the plain AirPlay button.
 - While another device plays, now playing and the mini player show its song, position and "Playing on …". Play,
   pause, next, previous, seeking, the volume slider, picking a song, "play next" and "add to queue" go to that device.
-  Reordering or removing queued songs, shuffle and repeat are off, as no command exists for them.
+  Reordering, removing or clearing queued songs, shuffle and repeat are off, as no command exists for them. The sleep
+  timer and infinite play belong to the playing phone, so a remote has them off too.
 - As a remote it plays, scrobbles, logs and saves nothing. Its lock screen shows no song, and nothing the system does
   (the lock screen, headphones, a car, a call ending) reaches the other device or starts the phone over it. That holds
   while the app is in the background too, until you open it again. Its volume buttons stay its own.

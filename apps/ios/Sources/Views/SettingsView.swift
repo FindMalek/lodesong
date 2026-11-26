@@ -66,6 +66,7 @@ private struct SettingsList: View {
             }
             Section {
                 NavigationLink { PlaybackSettings() } label: { Label("Playback", systemImage: "play.circle") }
+                NavigationLink { PlayerSettings() } label: { Label("Player", systemImage: "music.note.house") }
                 NavigationLink { AppearanceSettings() } label: { Label("Appearance", systemImage: "paintpalette") }
                 NavigationLink { StorageSettings() } label: { Label("Storage", systemImage: "internaldrive") }
                 NavigationLink { AboutSettings() } label: { Label("About", systemImage: "info.circle") }

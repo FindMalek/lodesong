@@ -163,6 +163,7 @@ struct Artwork: View {
 struct ArtworkBackground: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(Pref.playerBackground) private var style = "mesh"
     let id: String?
     var moving = true
     @State private var colors: [Color] = ArtworkBackground.neutral
@@ -170,18 +171,24 @@ struct ArtworkBackground: View {
     private static let neutral = (0..<9).map { Color(white: 0.28 - Double($0) * 0.02) }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion || !moving)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            let wave = { (speed: Double, phase: Double) in Float(sin(time * speed + phase)) * 0.18 }
-            MeshGradient(
-                width: 3, height: 3,
-                points: [
-                    [0, 0], [0.5 + wave(0.23, 0), 0], [1, 0],
-                    [0, 0.5 + wave(0.31, 1)], [0.5 + wave(0.41, 2), 0.5 + wave(0.29, 3)], [1, 0.5 + wave(0.19, 4)],
-                    [0, 1], [0.5 + wave(0.37, 5), 1], [1, 1],
-                ],
-                colors: colors
-            )
+        Group {
+            if style == "mono" {
+                colors[4]
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion || !moving)) { timeline in
+                    let time = timeline.date.timeIntervalSinceReferenceDate
+                    let wave = { (speed: Double, phase: Double) in Float(sin(time * speed + phase)) * 0.18 }
+                    MeshGradient(
+                        width: 3, height: 3,
+                        points: [
+                            [0, 0], [0.5 + wave(0.23, 0), 0], [1, 0],
+                            [0, 0.5 + wave(0.31, 1)], [0.5 + wave(0.41, 2), 0.5 + wave(0.29, 3)], [1, 0.5 + wave(0.19, 4)],
+                            [0, 1], [0.5 + wave(0.37, 5), 1], [1, 1],
+                        ],
+                        colors: colors
+                    )
+                }
+            }
         }
         .ignoresSafeArea()
         .task(id: id) {

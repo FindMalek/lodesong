@@ -33,10 +33,53 @@ enum Pref {
     static let showAlbum = "showAlbum"
     static let coverShrinks = "coverShrinks"
     static let streamInfo = "streamInfo"
+    /// "arpeggi" or "apple".
+    static let playerStyle = "playerStyle"
+    /// "mesh" or "mono".
+    static let playerBackground = "playerBackground"
+    static let coverSwipe = "coverSwipe"
+    static let reverseCoverSwipe = "reverseCoverSwipe"
+    static let controlSwipe = "controlSwipe"
+    static let miniPlayerSwipe = "miniPlayerSwipe"
+    static let scrollingTitles = "scrollingTitles"
+    static let playerButtonOrder = "playerButtonOrder"
+    static let hiddenPlayerButtons = "hiddenPlayerButtons"
+    static let infinitePlay = "infinitePlay"
+    static let scrobbleUseTime = "scrobbleUseTime"
 
-    /// Heard for this share of the song, or for this long, whichever comes first.
-    static func pastScrobblePoint(_ seconds: TimeInterval, duration: TimeInterval, percent: Int, minutes: Int) -> Bool {
-        seconds >= Double(minutes) * 60 || (duration > 0 && seconds >= duration * Double(percent) / 100)
+    /// How far a swipe on the player controls steps. `coverSkipSeconds` stored 0 for "off" before the swipe had its own switch.
+    static func stepSeconds(_ stored: Int) -> Int { stored > 0 ? stored : 10 }
+
+    /// Heard for this share of the song, or for this long, whichever comes first. No `minutes`, only the share counts.
+    static func pastScrobblePoint(_ seconds: TimeInterval, duration: TimeInterval, percent: Int, minutes: Int?) -> Bool {
+        minutes.map { seconds >= Double($0) * 60 } == true || (duration > 0 && seconds >= duration * Double(percent) / 100)
+    }
+}
+
+/// The buttons under the controls on now playing, each of which Settings can hide or move.
+enum PlayerButton: String, CaseIterable {
+    case airplay, settings, dismiss, lyrics, queue, sleep
+
+    static let hiddenByDefault = "sleep"
+
+    var title: String {
+        switch self {
+        case .airplay: return "AirPlay and Devices"
+        case .sleep: return "Sleep Timer"
+        default: return rawValue.capitalized
+        }
+    }
+
+    /// The stored order, with any button it doesn't name at the end.
+    static func ordered(_ raw: String) -> [PlayerButton] {
+        var seen = Set<PlayerButton>()
+        let named = raw.split(separator: ",").compactMap { PlayerButton(rawValue: String($0)) }.filter { seen.insert($0).inserted }
+        return named + allCases.filter { !seen.contains($0) }
+    }
+
+    static func shown(order: String, hidden: String) -> [PlayerButton] {
+        let hidden = Set(hidden.split(separator: ",").map(String.init))
+        return ordered(order).filter { !hidden.contains($0.rawValue) }
     }
 }
 

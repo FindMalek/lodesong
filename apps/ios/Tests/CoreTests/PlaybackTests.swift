@@ -94,4 +94,25 @@ final class PlaybackTests: XCTestCase {
         XCTAssertTrue(Pref.pastScrobblePoint(150, duration: 200, percent: 75, minutes: 4))
         XCTAssertTrue(Pref.pastScrobblePoint(120, duration: 1000, percent: 75, minutes: 2))
     }
+
+    func testWithoutAMinimumTimeOnlyTheShareCounts() {
+        XCTAssertFalse(Pref.pastScrobblePoint(500, duration: 1000, percent: 75, minutes: nil))
+    }
+
+    func testTheSleepTimerStopsAtTheEndOfTheAlbumOrTheQueue() {
+        let songs = ["x", "x", "y"].enumerated().map { Song(id: "\($0.offset)", title: "", albumId: $0.element) }
+        XCTAssertFalse(SleepTimer.endOfAlbum.stops(after: PlayQueue(songs: songs, index: 0)))
+        XCTAssertTrue(SleepTimer.endOfAlbum.stops(after: PlayQueue(songs: songs, index: 1)))
+        XCTAssertFalse(SleepTimer.endOfQueue.stops(after: PlayQueue(songs: songs, index: 1)))
+        XCTAssertTrue(SleepTimer.endOfQueue.stops(after: PlayQueue(songs: songs, index: 2)))
+    }
+
+    func testRadioNeverRepeatsASong() {
+        let picked = Radio.pick(songs("a", "b", "a", "c", "d"), excluding: ["b"], count: 2)
+        XCTAssertEqual(picked.map(\.id), ["a", "c"])
+    }
+
+    func testSleepTimerButtonIsOffUntilAsked() {
+        XCTAssertEqual(PlayerButton.shown(order: "queue", hidden: PlayerButton.hiddenByDefault), [.queue, .airplay, .settings, .dismiss, .lyrics])
+    }
 }
