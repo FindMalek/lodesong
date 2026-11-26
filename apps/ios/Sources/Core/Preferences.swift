@@ -21,10 +21,31 @@ enum Pref {
     static let swipeLeading = "swipeLeading"
     static let swipeTrailing = "swipeTrailing"
     static let hiddenLibrary = "hiddenLibrary"
+    static let libraryOrder = "libraryOrder"
+    static let offlineMode = "offlineMode"
+    static let cacheAhead = "cacheAhead"
+    static let confirmReplace = "confirmReplace"
+    static let coverSkipSeconds = "coverSkipSeconds"
+    static let lyricSize = "lyricSize"
+    static let redactHost = "redactHost"
 
     /// Heard for this share of the song, or for this long, whichever comes first.
     static func pastScrobblePoint(_ seconds: TimeInterval, duration: TimeInterval, percent: Int, minutes: Int) -> Bool {
         seconds >= Double(minutes) * 60 || (duration > 0 && seconds >= duration * Double(percent) / 100)
+    }
+}
+
+/// The rows and the grid on the Library page, each of which Settings can hide or move.
+enum LibrarySection: String, CaseIterable {
+    case playlists, artists, albums, songs, downloaded, recentlyAdded
+
+    var title: String { self == .recentlyAdded ? "Recently Added" : rawValue.capitalized }
+
+    /// The stored order, with any section it doesn't name at the end.
+    static func ordered(_ raw: String) -> [LibrarySection] {
+        var seen = Set<LibrarySection>()
+        let named = raw.split(separator: ",").compactMap { LibrarySection(rawValue: String($0)) }.filter { seen.insert($0).inserted }
+        return named + allCases.filter { !seen.contains($0) }
     }
 }
 

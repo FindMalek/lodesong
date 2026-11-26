@@ -143,7 +143,7 @@ struct AddMusicView: View {
         preview = nil
         failure = nil
         busy = false
-        guard asked.input.count >= 2, let client = model.client else { return }
+        guard asked.input.count >= 2, let client = model.live else { return }
         busy = true
         do {
             if asked.best {
@@ -170,7 +170,7 @@ struct AddMusicView: View {
     }
 
     private func add(_ wish: Wish, input: String) {
-        guard let client = model.client else { return }
+        guard let client = model.live else { return }
         adding = input
         failure = nil
         Task {
@@ -245,7 +245,7 @@ struct AdditionRow: View {
     }
 
     private func retry() {
-        guard let client = model.client else { return }
+        guard let client = model.live else { return }
         failure = nil
         Task {
             do { try await additions.add(addition.wish, input: addition.input, client: client) } catch { failure = error.localizedDescription }

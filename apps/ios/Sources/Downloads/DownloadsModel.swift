@@ -26,7 +26,16 @@ final class DownloadsModel: ObservableObject {
             schedule()
         }
     }
-    @Published private(set) var failures = 0
+    /// Takes every playlist, those made later too. Turning it off keeps what is already here.
+    var allPlaylists: Bool {
+        get { library?.allPlaylists ?? false }
+        set {
+            library?.allPlaylists = newValue
+            revision += 1
+            keepPlaylists()
+        }
+    }
+    @Published private(set) var failed: Set<String> = []
     @Published private var revision = 0
 
     private var library: DownloadLibrary?
@@ -37,6 +46,9 @@ final class DownloadsModel: ObservableObject {
     private var store: LibraryStore?
 
     var collections: [KeptCollection] { library?.collections ?? [] }
+    var failures: Int { failed.count }
+    var pending: [Song] { library?.pending() ?? [] }
+    var songs: [Song] { library?.downloaded() ?? [] }
     var totalBytes: Int { library?.totalBytes() ?? 0 }
     func bytes(_ ref: DownloadRef) -> Int { library?.bytes(ref) ?? 0 }
     func state(_ ref: DownloadRef) -> DownloadState {
@@ -59,17 +71,17 @@ final class DownloadsModel: ObservableObject {
         self.client = signedIn ? client : nil
         self.store = store
         if let client {
-            let key = DownloadLibrary.folder(server: client.server, user: user)
+            let key = DownloadLibrary.folder(server: client.identity, user: user)
             if library?.key != key {
                 library = DownloadLibrary(root: URL.applicationSupportDirectory.appending(path: "Downloads/\(key)"))
-                failures = 0
+                failed = []
                 revision += 1
             }
         }
         if session == nil, let library {
-            session = DownloadSession(library: library) { [weak self] failures in
+            session = DownloadSession(library: library) { [weak self] failed in
                 Task { @MainActor in
-                    self?.failures = failures
+                    self?.failed = failed
                     self?.revision += 1
                 }
             }
@@ -80,6 +92,7 @@ final class DownloadsModel: ObservableObject {
     /// Call after every library sync so kept playlists follow their changes.
     func librarySynced() {
         guard let store, let library else { return }
+        if allPlaylists { library.keepPlaylists(from: store) }
         let before = library.collections
         library.reconcile(with: store)
         Notices.post(NewTracks.found(before: before, after: library.collections))
@@ -110,6 +123,16 @@ final class DownloadsModel: ObservableObject {
     func askForNoticesIfKept() async {
         guard library?.collections.isEmpty == false else { return }
         if UserDefaults.standard.bool(Pref.notifyNewTracks, or: true) || Notices.expiry != nil { await Notices.askPermission() }
+    }
+
+    /// Tries the songs that failed again.
+    func retry() { schedule(retry: true) }
+
+    private func keepPlaylists() {
+        guard allPlaylists, let store, let library else { return }
+        library.keepPlaylists(from: store)
+        revision += 1
+        schedule(retry: true)
     }
 
     private func keep(_ ref: DownloadRef) {

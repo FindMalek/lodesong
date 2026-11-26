@@ -12,6 +12,9 @@ struct PlaybackSettings: View {
     @AppStorage(Pref.reportPlayback) private var reportPlayback = true
     @AppStorage(Pref.scrobblePercent) private var scrobblePercent = 50
     @AppStorage(Pref.scrobbleMinutes) private var scrobbleMinutes = 4
+    @AppStorage(Pref.cacheAhead) private var cacheAhead = 0
+    @AppStorage(Pref.confirmReplace) private var confirmReplace = false
+    @AppStorage(Pref.coverSkipSeconds) private var coverSkipSeconds = 0
 
     var body: some View {
         Form {
@@ -22,6 +25,14 @@ struct PlaybackSettings: View {
                 Text("Streaming Quality")
             } footer: {
                 Text("Applies from the next song. A converted stream can't always be scrubbed. Downloads play as they are.")
+            }
+            Section {
+                Picker("Cache Songs Ahead", selection: $cacheAhead) {
+                    Text("Off").tag(0)
+                    ForEach([1, 3, 5, 10], id: \.self) { Text($0 == 1 ? "1 Song" : "\($0) Songs").tag($0) }
+                }
+            } footer: {
+                Text("Fetches what comes next in full, in the quality above, so a bad connection doesn't stop it. Temporary: a song goes once the queue moves past it.")
             }
             Section {
                 Picker("ReplayGain", selection: $replayGain) {
@@ -37,6 +48,11 @@ struct PlaybackSettings: View {
                     Text("Previous and Next").tag(0)
                     ForEach([10, 15, 30], id: \.self) { Text("Skip \($0) Seconds").tag($0) }
                 }
+                Picker("Swipe on the Cover", selection: $coverSkipSeconds) {
+                    Text("Nothing").tag(0)
+                    ForEach([10, 15, 30], id: \.self) { Text("Skip \($0) Seconds").tag($0) }
+                }
+                Toggle("Confirm Before Replacing Queue", isOn: $confirmReplace)
                 Toggle("Keep Shuffle On", isOn: $keepShuffle)
                 Toggle("Keep Screen Awake", isOn: $keepAwake)
             } footer: {
@@ -78,7 +94,8 @@ struct AppearanceSettings: View {
     @AppStorage(Pref.movingBackground) private var movingBackground = true
     @AppStorage(Pref.swipeLeading) private var swipeLeading = SwipeAction.playNext
     @AppStorage(Pref.swipeTrailing) private var swipeTrailing = SwipeAction.addToQueue
-    @AppStorage(Pref.hiddenLibrary) private var hiddenLibrary = ""
+    @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
+    @AppStorage("homeSections") private var homeSections = ""
 
     var body: some View {
         Form {
@@ -104,15 +121,21 @@ struct AppearanceSettings: View {
             Section {
                 Toggle("Shrink Tab Bar on Scroll", isOn: $minimizeTabBar)
                 Toggle("Moving Player Background", isOn: $movingBackground)
+                Picker("Lyrics Text Size", selection: $lyricSize) {
+                    ForEach(LyricSize.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
             }
             Section("Swipe on a Song") {
                 swipe("Swipe Right", $swipeLeading)
                 swipe("Swipe Left", $swipeTrailing)
             }
-            Section("Library Shows") {
-                ForEach(LibrarySection.allCases, id: \.self) { section in
-                    Toggle(section.title, isOn: shown(section))
+            Section("Show and Reorder") {
+                NavigationLink("Home Sections") {
+                    HomeSectionsList(stored: $homeSections)
+                        .navigationTitle("Home Sections")
+                        .navigationBarTitleDisplayMode(.inline)
                 }
+                NavigationLink("Library Sections") { LibrarySectionsList() }
             }
         }
         // A menu picker would keep the tint it first had; a list shows its value in grey.
@@ -126,12 +149,35 @@ struct AppearanceSettings: View {
             ForEach(SwipeAction.allCases, id: \.self) { Text($0.title).tag($0) }
         }
     }
+}
+
+/// Which rows Library shows, and in what order.
+private struct LibrarySectionsList: View {
+    @AppStorage(Pref.hiddenLibrary) private var hidden = ""
+    @AppStorage(Pref.libraryOrder) private var order = ""
+
+    var body: some View {
+        List {
+            ForEach(LibrarySection.ordered(order), id: \.self) { section in
+                Toggle(section.title, isOn: shown(section))
+            }
+            .onMove { source, target in
+                var sections = LibrarySection.ordered(order)
+                sections.move(fromOffsets: source, toOffset: target)
+                order = sections.map(\.rawValue).joined(separator: ",")
+            }
+            Button("Reset to Default") { (hidden, order) = ("", "") }
+        }
+        .environment(\.editMode, .constant(.active))
+        .navigationTitle("Library Sections")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 
     private func shown(_ section: LibrarySection) -> Binding<Bool> {
-        let hidden = Set(hiddenLibrary.split(separator: ",").map(String.init))
+        let hidden = Set(hidden.split(separator: ",").map(String.init))
         return Binding(
             get: { !hidden.contains(section.rawValue) },
-            set: { hiddenLibrary = ($0 ? hidden.subtracting([section.rawValue]) : hidden.union([section.rawValue])).sorted().joined(separator: ",") }
+            set: { self.hidden = ($0 ? hidden.subtracting([section.rawValue]) : hidden.union([section.rawValue])).sorted().joined(separator: ",") }
         )
     }
 }

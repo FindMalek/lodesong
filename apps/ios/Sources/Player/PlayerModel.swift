@@ -30,6 +30,8 @@ final class PlayerModel: ObservableObject {
     var isShuffled: Bool { line.shuffled }
 
     func play(_ songs: [Song], at start: Int = 0) {
+        var (songs, start) = (songs, start)
+        if app?.offlineMode == true { (songs, start) = PlayQueue.available(songs, start: start) { localFile($0) != nil } }
         guard songs.indices.contains(start) else { return }
         var next = PlayQueue(songs: songs, index: start)
         if line.shuffled, defaults.bool(Pref.keepShuffle, or: false) { next.setShuffled(true) }
@@ -38,6 +40,7 @@ final class PlayerModel: ObservableObject {
     }
 
     func shuffle(_ songs: [Song]) {
+        let songs = app?.offlineMode == true ? songs.filter { localFile($0.id) != nil } : songs
         guard !songs.isEmpty else { return }
         replace(with: .shuffling(songs))
         load(at: 0, play: true)
@@ -106,13 +109,23 @@ final class PlayerModel: ObservableObject {
         isPlaying ? pause() : resume()
     }
 
+    /// Whether playing `songs` would drop what is still to come.
+    func wouldReplace(_ songs: [Song]) -> Bool { line.wouldLose(songs) }
+
+    /// A downloaded file, or one cached ahead.
+    func localFile(_ id: String) -> URL? {
+        downloads?.localURL(song: id) ?? songCache?.file(id)
+    }
+
     func next() {
         if line.jump(to: index + 1) || (repeatMode == .all && line.jump(to: 0)) { load(at: 0, play: isPlaying) } else { finish() }
     }
 
     /// Back to the start of the song first, as every player does; then to the one before.
     func previous() {
-        if position <= 3, line.jump(to: index - 1) { load(at: 0, play: isPlaying) } else { seek(to: 0) }
+        var before = index - 1
+        if app?.offlineMode == true { before = queue.prefix(index).lastIndex { localFile($0.id) != nil } ?? -1 }
+        if position <= 3, line.jump(to: before) { load(at: 0, play: isPlaying) } else { seek(to: 0) }
     }
 
     func seek(to seconds: TimeInterval) {
@@ -151,6 +164,8 @@ final class PlayerModel: ObservableObject {
         let item: AVPlayerItem
         let song: Song
         let source: AudioSource
+        /// What it was made for; a lined up item made for something else is made again.
+        let key: String
         var status: NSKeyValueObservation?
     }
 
@@ -186,7 +201,23 @@ final class PlayerModel: ObservableObject {
     private var account = ""
     private var synced: QueueMark?
 
-    private var client: ServerClient? { app?.needsSignIn == false ? app?.client : nil }
+    private var client: ServerClient? { app?.live }
+    private var cached: SongCache?
+    private var filling: Task<Void, Never>?
+    private var fillKey = ""
+
+    /// Songs fetched ahead for this account.
+    private var songCache: SongCache? {
+        guard let app, let server = app.client?.identity else { return nil }
+        let folder = URL.cachesDirectory.appending(path: "ahead/\(DownloadLibrary.folder(server: server, user: app.user))")
+        if cached?.folder != folder { cached = SongCache(folder: folder) }
+        return cached
+    }
+
+    /// In kbit/s for the network now in use, zero for the file as it is.
+    private var bitRateLimit: Int {
+        defaults.int(network.currentPath.isExpensive ? Pref.cellularBitRate : Pref.wifiBitRate, or: 0)
+    }
 
     /// This phone's name among the Subsonic clients, so its own saved queue is told apart.
     private lazy var clientID: String = {
@@ -241,6 +272,8 @@ final class PlayerModel: ObservableObject {
         network.pathUpdateHandler = { [weak self] path in
             guard path.status == .satisfied else { return }
             Task { @MainActor in
+                await self?.app?.chooseAddress()
+                self?.refreshAhead()
                 self?.reconnect()
                 self?.sendPlays()
             }
@@ -253,6 +286,8 @@ final class PlayerModel: ObservableObject {
     func accountChanged() {
         guard let app else { return }
         guard !app.needsSignIn else {
+            filling?.cancel()
+            fillKey = ""
             pause()
             log.end()
             link?.close()
@@ -261,7 +296,7 @@ final class PlayerModel: ObservableObject {
             unload()
             return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, speed: 1, client: nil)
         }
-        let now = "\(app.client?.server.absoluteString ?? "") \(app.user)"
+        let now = "\(app.client?.identity.absoluteString ?? "") \(app.user)"
         guard now != account else { return pull() }
         log.end()
         account = now
@@ -292,6 +327,7 @@ final class PlayerModel: ObservableObject {
             engine.play()
             announce()
             updateNowPlaying()
+            cacheAhead()
         } else {
             failed = [:]
             let over = duration > 0 && position > duration - 1
@@ -368,7 +404,75 @@ final class PlayerModel: ObservableObject {
         updateNowPlaying()
     }
 
-    /// Settings that act on what is already playing. Quality is read as each song is opened instead.
+    /// The app moved to the server's other address.
+    func serverChanged() {
+        guard app?.needsSignIn == false else { return }
+        join()
+        refreshAhead()
+        reconnect()
+    }
+
+    /// Offline mode went on or off.
+    func connectionChanged() {
+        guard let app, !app.needsSignIn else { return }
+        join()
+        if app.offlineMode {
+            filling?.cancel()
+            fillKey = ""
+            // What streams now must stop; the same song carries on from the phone if it is there.
+            if let loaded, loaded.source != .file {
+                if localFile(loaded.song.id) != nil {
+                    failed[loaded.song.id] = nil
+                    load(at: position, play: isPlaying, again: true)
+                } else {
+                    pause()
+                    unload()
+                }
+            }
+        } else {
+            pull(force: true)
+            sendPlays()
+        }
+        refreshAhead()
+        updateNowPlaying()
+    }
+
+    /// The next song and the ones cached ahead follow what is asked for now: quality, network, address.
+    private func refreshAhead() {
+        guard loaded != nil else { return }
+        let upcoming = line.following(repeatMode).map { line.songs[$0] }
+        if upcoming.map({ key($0) }) != lined?.key { lineUp() } else { cacheAhead() }
+    }
+
+    private func key(_ song: Song) -> String {
+        "\(song.id) \(bitRateLimit) \(client?.server.absoluteString ?? "") \(localFile(song.id)?.lastPathComponent ?? "")"
+    }
+
+    private func cacheAhead() {
+        guard let cache = songCache else { return }
+        let count = defaults.int(Pref.cacheAhead, or: 0)
+        let limit = bitRateLimit
+        let ahead = Array(queue.dropFirst(index + 1).prefix(count)).filter { downloads?.localURL(song: $0.id) == nil }
+        let wanted = "\(count) \(limit) \(client?.server.absoluteString ?? "") \(current?.id ?? "") \(ahead.map(\.id))"
+        guard wanted != fillKey else { return }
+        fillKey = wanted
+        filling?.cancel()
+        cache.prune(keeping: count > 0 ? ahead.map(\.id) + [current?.id].compactMap { $0 } : [])
+        guard isPlaying, let client, !ahead.isEmpty else {
+            // Nothing is fetched while paused; ask again once it plays.
+            if !isPlaying { fillKey = "" }
+            return
+        }
+        let before = filling
+        filling = Task { [weak self] in
+            await before?.value
+            await cache.fill(ahead, limit: limit, client: client) { [weak self] in
+                await MainActor.run { self?.refreshAhead() }
+            }
+        }
+    }
+
+    /// Settings that act on what is already playing.
     private func applySettings() {
         system.skipSeconds(defaults.int(Pref.lockSkipSeconds, or: 0))
         let stored = defaults.float(forKey: Pref.speed)
@@ -379,6 +483,7 @@ final class PlayerModel: ObservableObject {
             updateNowPlaying()
         }
         if let song = loaded?.song { engine.volume = volume(for: song) }
+        refreshAhead()
         // Whatever is heard while reporting is off must not be added to the play when it comes back on.
         if reporting != reportsPlayback {
             reporting = reportsPlayback
@@ -391,9 +496,8 @@ final class PlayerModel: ObservableObject {
     }
 
     private func make(_ song: Song) -> Loaded? {
-        let file = downloads?.localURL(song: song.id)
-        // In kbit/s, zero for the file as it is.
-        let limit = defaults.int(network.currentPath.isExpensive ? Pref.cellularBitRate : Pref.wifiBitRate, or: 0)
+        let file = localFile(song.id)
+        let limit = bitRateLimit
         guard let source = AudioSource.pick(suffix: song.suffix, hasFile: file != nil, limited: limit > 0, failed: failed[song.id] ?? []) else { return nil }
         let asset: AVURLAsset
         if source == .file, let file {
@@ -403,7 +507,7 @@ final class PlayerModel: ObservableObject {
             // The server only answers a signed-in session, and AVFoundation has to be handed its cookie.
             asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: HTTPCookieStorage.shared.cookies(for: url) ?? []])
         }
-        var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source)
+        var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source, key: key(song))
         made.status = made.item.observe(\.status) { [weak self] item, _ in
             guard item.status != .unknown else { return }
             Task { @MainActor in self?.settled(item) }
@@ -414,8 +518,9 @@ final class PlayerModel: ObservableObject {
     /// Keeps the engine's second item matching the queue, so it is already buffered when the first ends.
     private func lineUp() {
         guard let loaded else { return }
+        defer { cacheAhead() }
         let upcoming = line.following(repeatMode).map { line.songs[$0] }
-        if let lined, lined.song.id == upcoming?.id, engine.items().contains(lined.item) { return }
+        if let lined, let upcoming, lined.key == key(upcoming), engine.items().contains(lined.item) { return }
         for item in engine.items() where item !== loaded.item { engine.remove(item) }
         lined = upcoming.flatMap(make)
         if let item = lined?.item, engine.canInsert(item, after: loaded.item) { engine.insert(item, after: loaded.item) }
@@ -476,6 +581,7 @@ final class PlayerModel: ObservableObject {
             return lineUp()
         }
         guard let item, let loaded, item === loaded.item else { return }
+        AppLog.shared.add("Playback failed (\(loaded.source)): \(error?.localizedDescription ?? "unknown error")")
         // Paused: leave it, pressing play opens it again.
         if loaded.source != .file, Self.isNetwork(error) { return isPlaying ? reload() : () }
         failed[loaded.song.id, default: []].append(loaded.source)
@@ -485,7 +591,13 @@ final class PlayerModel: ObservableObject {
     /// Nothing left to try for this song. Three in a row means the trouble is not the songs.
     private func skip() {
         skips += 1
-        guard skips < 3, isPlaying, line.jump(to: index + 1) else {
+        // Offline, a song that isn't on the phone says nothing about the next one: go straight to one that is.
+        var target = index + 1
+        if app?.offlineMode == true {
+            target = queue.indices.first { $0 > index && localFile(queue[$0].id) != nil } ?? queue.count
+            skips = 0
+        }
+        guard skips < 3, isPlaying, line.jump(to: target) else {
             isPlaying = false
             updateNowPlaying()
             return
@@ -743,6 +855,6 @@ final class PlayerModel: ObservableObject {
         guard app != nil else { return }
         publish()
         followPlayback()
-        system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, speed: engine.defaultRate, client: client)
+        system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, speed: engine.defaultRate, client: app?.needsSignIn == false ? app?.client : nil)
     }
 }

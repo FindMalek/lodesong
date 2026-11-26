@@ -7,7 +7,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
 
     /// The account being downloaded for.
     private var library: DownloadLibrary
-    private let changed: @Sendable (_ failures: Int) -> Void
+    private let changed: @Sendable (_ failed: Set<String>) -> Void
     private let queue = OperationQueue()
     private var session: URLSession!
     /// Not tried again until the next sync, so a song the server can't deliver doesn't loop.
@@ -15,7 +15,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
     private var eventsDone = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
 
-    init(library: DownloadLibrary, changed: @escaping @Sendable (Int) -> Void) {
+    init(library: DownloadLibrary, changed: @escaping @Sendable (Set<String>) -> Void) {
         self.library = library
         self.changed = changed
         super.init()
@@ -59,7 +59,7 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
                 guard let request = wanted[song.id] else { continue }
                 start(song.id, request)
             }
-            changed(failed.count)
+            changed(failed)
         }
     }
 
@@ -125,8 +125,9 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
         library.setResumeData(nil, song: id)
         if !library.accept(song: id, file: location, status: status, requested: requested), library.pending().contains(where: { $0.id == id }) {
             failed.insert(id)
+            AppLog.shared.add("Download refused: song \(id), status \(status)")
         }
-        changed(failed.count)
+        changed(failed)
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
@@ -139,7 +140,8 @@ final class DownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Se
         }
         library.setResumeData(resume, song: id)
         failed.insert(id)
-        changed(failed.count)
+        AppLog.shared.add("Download failed: song \(id), \(error.localizedDescription)")
+        changed(failed)
     }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {

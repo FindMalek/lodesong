@@ -129,16 +129,38 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 
 ![download settings](ios/download-settings.png)
 
+## Offline and downloads
+
+- **Offline Mode** (Settings): nothing is sent to the server. Only songs on the phone play, plays are counted and sent
+  later, downloads wait.
+- Settings → Storage → Downloads has **Download All Playlists** (new ones too; a playlist you remove stays removed),
+  the queue of what is still to come, and the list of downloaded songs.
+- **Cache Songs Ahead** (Playback) fetches the next 1 to 10 songs in full. Temporary, separate from downloads.
+
+## Two server addresses
+
+Settings → **Server Addresses** takes a second address of the same server. It needs your password once, and
+downloads, covers and plays are shared between the two.
+
+- Both `https`: the main one is tried first on every sync and network change, the second when it doesn't answer.
+- Either one plain `http`: nothing switches by itself. The `https` one is used until you pick the other under **Use**.
+  An `http` address is trusted on whatever network you are on, so whoever holds it there receives your session:
+  pick it only on a network you trust, and prefer HTTPS for both.
+
+A second address that stops accepting your sign in is dropped, not asked for your password: remove it and add it again.
+
 ## Settings
 
 The app works without opening them.
 
 - **Playback**: streaming quality on Wi-Fi and on cellular, ReplayGain, speed, lock screen buttons (previous and next,
   or skip 10, 15 or 30 seconds), keep shuffle on, keep the screen awake on now playing, sync the queue across devices,
-  report playback and when a play counts.
+  report playback and when a play counts, cache songs ahead, a swipe on the cover that skips, confirm before
+  replacing the queue.
 - **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, moving player
-  background, what a swipe on a song does, which rows Library shows.
+  background, lyrics text size, what a swipe on a song does, order of the Home and Library sections.
 - **Storage**: downloads and the space they take, new track notifications, artwork cache.
+- **Logs**: recent syncs and failures, with the server address hidden unless you turn that off.
 - **About**: version and signing days left.
 
 ## Alerts through ntfy (not built)

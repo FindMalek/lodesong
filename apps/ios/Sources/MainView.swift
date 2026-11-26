@@ -41,7 +41,7 @@ struct MainView: View {
         .environmentObject(router)
         .environmentObject(additions)
         .onAppear {
-            AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)")
+            AccountData.adopt("\(model.client?.identity.absoluteString ?? "") \(model.user)")
             additions.load()
         }
         .task(id: [additions.unsettled ? 1 : 0, additions.round]) { await additions.follow(model) }

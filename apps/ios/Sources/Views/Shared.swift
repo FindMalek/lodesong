@@ -47,8 +47,8 @@ enum Haptic {
 }
 
 extension AppModel {
-    /// The last sync failed, so streaming probably will too.
-    var offline: Bool { syncError != nil }
+    /// Offline mode, or the last sync failed so streaming probably will too.
+    var offline: Bool { offlineMode || syncError != nil }
 
     func artist(id: String?) -> Artist? { id.flatMap { id in library.artists.first { $0.id == id } } }
     func album(id: String?) -> Album? { id.flatMap { id in library.albums.first { $0.id == id } } }
@@ -81,17 +81,29 @@ enum Recents {
 }
 
 extension PlayerModel {
-    func start(_ songs: [Song], at index: Int = 0) {
+    /// `then` runs once they play, which waits for any question asked first.
+    func start(_ songs: [Song], at index: Int = 0, then: @escaping () -> Void = {}) {
         guard songs.indices.contains(index) else { return }
-        Haptic.tap()
-        Recents.add(songs[index].albumId)
-        play(songs, at: index)
+        replacing(songs) {
+            Recents.add(songs[index].albumId)
+            self.play(songs, at: index)
+            then()
+        }
     }
 
     func startShuffled(_ songs: [Song]) {
         guard !songs.isEmpty else { return }
+        replacing(songs) { self.shuffle(songs) }
+    }
+
+    /// Asks first when Settings says so, and says why nothing plays when offline has none of it.
+    private func replacing(_ songs: [Song], _ play: @escaping () -> Void) {
         Haptic.tap()
-        shuffle(songs)
+        if UserDefaults.standard.bool(Pref.offlineMode, or: false), !songs.contains(where: { localFile($0.id) != nil }) {
+            return Popup.show("Not on This iPhone", message: "Offline Mode only plays downloaded songs.")
+        }
+        guard UserDefaults.standard.bool(Pref.confirmReplace, or: false), wouldReplace(songs) else { return play() }
+        Popup.show("Replace the Queue?", message: "The songs still to come are dropped.", action: "Replace", perform: play)
     }
 
     func queueNext(_ songs: [Song]) {
@@ -332,15 +344,19 @@ struct OfflineNotice: View {
     @EnvironmentObject private var model: AppModel
 
     var body: some View {
-        if let error = model.syncError {
+        if let error = model.offlineMode ? "Only downloaded songs play." : model.syncError {
             HStack(spacing: 12) {
                 Image(systemName: "wifi.slash").font(.title3).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Offline").font(.subheadline.bold())
+                    Text(model.offlineMode ? "Offline Mode" : "Offline").font(.subheadline.bold())
                     Text(error).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 0)
-                Button("Retry") { Task { await model.sync() } }.font(.subheadline.bold()).disabled(model.syncing)
+                Button(model.offlineMode ? "Go Online" : "Retry") {
+                    if model.offlineMode { model.offlineMode = false } else { Task { await model.sync() } }
+                }
+                .font(.subheadline.bold())
+                .disabled(model.syncing)
             }
             .padding(14)
             .background(Color(.secondarySystemFill), in: .rect(cornerRadius: 16))

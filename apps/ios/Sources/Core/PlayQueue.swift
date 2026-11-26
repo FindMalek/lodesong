@@ -15,6 +15,17 @@ struct PlayQueue: Equatable {
 
     var current: Song? { songs.indices.contains(index) ? songs[index] : nil }
 
+    /// Whether playing `new` would throw away songs still to come.
+    func wouldLose(_ new: [Song]) -> Bool {
+        current != nil && index + 1 < songs.count && new.map(\.id) != songs.map(\.id)
+    }
+
+    /// Only the songs that can play, starting at the one asked for or the first after it that can.
+    static func available(_ songs: [Song], start: Int, _ has: (String) -> Bool) -> (songs: [Song], start: Int) {
+        let kept = songs.indices.filter { has(songs[$0].id) }
+        return (kept.map { songs[$0] }, kept.firstIndex { $0 >= start } ?? 0)
+    }
+
     /// Where playback goes when the current song ends by itself.
     func following(_ mode: RepeatMode) -> Int? {
         if mode == .one { return current == nil ? nil : index }

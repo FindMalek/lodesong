@@ -247,9 +247,11 @@ struct SearchView: View {
     private func lyricsRow(_ hit: LyricsHit) -> some View {
         Button {
             remember(query)
-            player.start([hit.song])
-            if let start = hit.start {
-                player.seek(to: (start + Double(lyrics.saved(hit.song.id)?.nudge ?? 0)) / 1000)
+            // After, so a confirmation doesn't seek the song still playing.
+            player.start([hit.song]) {
+                if let start = hit.start {
+                    player.seek(to: (start + Double(lyrics.saved(hit.song.id)?.nudge ?? 0)) / 1000)
+                }
             }
         } label: {
             HStack(alignment: .top, spacing: 12) {
@@ -329,7 +331,7 @@ struct SearchView: View {
     private func searchServer() async {
         let term = term
         let parsed = SearchQuery(term)
-        guard parsed.filters.isEmpty, parsed.text.count >= 3, !model.needsSignIn, let client = model.client else { return }
+        guard parsed.filters.isEmpty, parsed.text.count >= 3, let client = model.live else { return }
         try? await Task.sleep(for: .milliseconds(350))
         guard !Task.isCancelled, let hits = try? await client.searchLyrics(parsed.text), !Task.isCancelled else { return }
         let known = Dictionary(model.library.songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })

@@ -25,7 +25,7 @@ final class AdditionsModel: ObservableObject {
 
     /// No answer keeps what was last heard.
     func check(_ app: AppModel) async {
-        guard let client = app.client, !app.needsSignIn, let answer = try? await client.canAddMusic() else { return }
+        guard let client = app.live, !app.needsSignIn, let answer = try? await client.canAddMusic() else { return }
         available = answer
     }
 
@@ -56,7 +56,7 @@ final class AdditionsModel: ObservableObject {
         // Same limit as the web player, so a stuck download can't poll all night. The next launch looks again.
         let deadline = Date.now.addingTimeInterval(30 * 60)
         var pause = 3.0
-        while !Task.isCancelled, unsettled, Date.now < deadline, let client = app.client {
+        while !Task.isCancelled, unsettled, Date.now < deadline, let client = app.live {
             var answered = false
             for item in items where item.unsettled {
                 guard let next = try? await client.advanced(item), !Task.isCancelled,

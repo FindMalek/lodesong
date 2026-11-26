@@ -23,7 +23,7 @@ struct HomeView: View {
             await refresh(reshuffle: true)
         }
         // Reads the last copy from disk before anything is asked of the server.
-        .onAppear { if let server = model.client?.server { home.use(server: server, user: model.user) } }
+        .onAppear { if let server = model.client?.identity { home.use(server: server, user: model.user) } }
         // Runs again each time Home comes back, so what was just played shows up.
         .task(id: model.syncing) { if !model.syncing { await refresh() } }
         .libraryState(model.library.songs.isEmpty, "No Music Yet", "music.note.house")
@@ -40,8 +40,8 @@ struct HomeView: View {
     }
 
     private func refresh(reshuffle: Bool = false) async {
-        guard let client = model.client else { return }
-        home.use(server: client.server, user: model.user)
+        guard let client = model.live else { return }
+        home.use(server: client.identity, user: model.user)
         await home.refresh(client, reshuffle: reshuffle)
     }
 }
@@ -223,22 +223,31 @@ struct HomeEditor: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(HomeLayout(stored).items) { item in
-                    Toggle(item.section.title, isOn: shown(item.section))
-                }
-                .onMove { source, target in
-                    var layout = HomeLayout(stored)
-                    layout.items.move(fromOffsets: source, toOffset: target)
-                    stored = layout.raw
-                }
-                Button("Reset to Default") { stored = "" }
-            }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle("Edit Home")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Done", systemImage: "checkmark") { dismiss() } }
+            HomeSectionsList(stored: $stored)
+                .navigationTitle("Edit Home")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { Button("Done", systemImage: "checkmark") { dismiss() } }
         }
+    }
+}
+
+/// The same list from Home and from Settings.
+struct HomeSectionsList: View {
+    @Binding var stored: String
+
+    var body: some View {
+        List {
+            ForEach(HomeLayout(stored).items) { item in
+                Toggle(item.section.title, isOn: shown(item.section))
+            }
+            .onMove { source, target in
+                var layout = HomeLayout(stored)
+                layout.items.move(fromOffsets: source, toOffset: target)
+                stored = layout.raw
+            }
+            Button("Reset to Default") { stored = "" }
+        }
+        .environment(\.editMode, .constant(.active))
     }
 
     private func shown(_ section: HomeSection) -> Binding<Bool> {
