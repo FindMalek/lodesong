@@ -3,68 +3,88 @@
 A native SwiftUI app (`apps/ios`, iOS 26 or newer) that talks to your lodesong server: your library stored on the
 phone, playback with the screen locked, and playlists you can keep downloaded.
 
-You don't need a paid Apple developer account (the 99 USD a year one) to try it. There are four ways, from least to
-most effort:
+Installing it is free. You don't need the paid Apple developer account (99 USD a year) and there is nothing to set up
+in the App Store: a tool called [SideStore](https://sidestore.io) signs the app with your own free Apple ID.
 
-| | what you need | lasts | background audio |
-|---|---|---|---|
-| **1. Add to Home Screen** | just Safari | until you remove it | works, with the limits below |
-| **2. Sideload the IPA** | a free Apple ID, and a computer once | 7 days, then it refreshes | yes |
-| **3. Build it in Xcode** | a Mac, Xcode and a free Apple ID | 7 days, then run it again | yes |
-| **4. The simulator** | a Mac with Xcode | forever | no real lock screen |
+## What you need
 
-## 1. Add to Home Screen (no app at all)
+- an iPhone on iOS 26 or newer
+- a computer (Mac, Windows or Linux) with a cable, for the first setup
+- a free Apple ID. The setup tool is third party and asks for the password, so a spare Apple ID is a good idea
+- a running lodesong your phone can reach, ideally on HTTPS ([self-hosting](self-hosting.md))
 
-Open your lodesong in Safari → Share → **Add to Home Screen**. It opens full screen with its own icon. iOS limits web
-apps: the silent switch can mute it, and iOS may stop audio when the screen has been locked for a while. That's what the
-app fixes.
+## Install, step by step
 
-## 2. Sideload the prebuilt app (free Apple ID)
+The steps follow [SideStore's own guide](https://docs.sidestore.io/docs/installation/install); check it if a screen
+looks different.
 
-Each release has `lodesong-ios.ipa` (also an artifact of the [iOS workflow](../.github/workflows/ios.yml)). It's
-unsigned: a sideloading tool signs it with your own free Apple ID.
+1. On the iPhone, get **LocalDevVPN** from the App Store, open it, tap **Connect** and allow the VPN. SideStore needs it
+   on every time it installs or refreshes.
+2. On the computer, install [iloader](https://github.com/nab138/iloader/releases/latest).
+3. Plug the phone in, unlock it and tap **Trust**.
+4. In iloader, sign in with the Apple ID, pick the phone and choose **Install SideStore (Stable)**.
+5. In iloader, open **Manage Pairing File** and press **Place** next to SideStore.
+6. On the iPhone: Settings → General → **VPN & Device Management** → your Apple ID → **Trust**.
+7. Settings → Privacy & Security → **Developer Mode** → on. The phone restarts.
+8. With LocalDevVPN connected, open SideStore, sign in with the same Apple ID and tap the **7 DAYS** counter once.
+9. Add lodesong. In SideStore: **Sources** → **+**, paste this, then install lodesong from the source:
 
-- **[Sideloadly](https://sideloadly.io)** (Mac or Windows): plug in the phone, drag the IPA in, enter your Apple ID,
-  press Start.
-- **[AltStore](https://altstore.io)** or **[SideStore](https://sidestore.io)**: install once, then add the IPA under My
-  Apps, or better, add the lodesong source (below). They refresh it before the 7 days run out (AltStore while your
-  computer is on the same Wi-Fi; SideStore needs no computer after setup).
+   ```
+   https://github.com/FindMalek/lodesong/releases/latest/download/altstore.json
+   ```
 
-Then: Settings → General → **VPN & Device Management** → trust your Apple ID. On iOS 16 and later also switch on
-Settings → Privacy & Security → **Developer Mode** (it asks to restart).
+10. Open lodesong and sign in with your **lodesong** address (not Navidrome's) and your Navidrome account.
 
-A free Apple ID allows 3 sideloaded apps at a time, and each one expires after 7 days; opening your sideloading tool
-renews it.
+The native app is in releases from **1.23.0**. Older releases carry the earlier web view app. To install a build that
+isn't released yet, download `lodesong-ios` from a run of the [iOS workflow](../.github/workflows/ios.yml), copy the
+`.ipa` to the phone, and in SideStore use **My Apps** → **+**.
 
-### The AltStore / SideStore source (updates itself)
+A free Apple ID allows **3** sideloaded apps at a time, and SideStore is one of them.
 
-Every release also carries `altstore.json`, a source feed the release workflow generates from the IPA
-(`apps/ios/altstore/source.sh`). Add this URL in AltStore (Browse → Sources → **+**) or SideStore (Sources → **+**):
+## Updating
 
-```
-https://github.com/FindMalek/lodesong/releases/latest/download/altstore.json
-```
+A new release shows up as an update in SideStore. Install it over the old one: don't delete lodesong first, or its
+downloads and sign in go with it.
 
-lodesong then shows up under the source, installs from there, and each new release appears as an update. The feed
-points at that release's `lodesong-ios.ipa`, so it only changes when a release is made. Not yet checked in a real
-AltStore: the first release that carries `altstore.json` is the test.
+## The 7 days
 
-## 3. Build it yourself in Xcode (free Apple ID)
+Apple signs free apps for 7 days. **Refreshing** signs the app again for another 7. It is not a reinstall you do by
+hand: you delete nothing.
 
-```sh
-brew install xcodegen
-cd apps/ios && xcodegen generate && open Lodesong.xcodeproj
-```
+If the 7 days run out:
 
-In Xcode: **Lodesong** target → Signing & Capabilities → Team: add your Apple ID (Xcode → Settings → Accounts) and pick
-the *Personal Team*. Change the bundle identifier to something unique to you (`com.yourname.lodesong`). Plug in the
-phone, choose it as the destination, press Run, then trust the developer on the phone as above. Run it again every 7
-days.
+- the icon stays on the home screen, but the app **won't open**
+- your server, music and play history are not affected
+- refreshing or installing over it brings it back. Data on the phone should still be there; we haven't verified that on
+  a real device yet. **Deleting the app does remove it**
+- plays and downloads made before expiry stay on the phone until it opens again
 
-## 4. The simulator
+SideStore expires the same way. If **SideStore** has expired it can't refresh anything, including itself: plug into the
+computer and repeat step 4 with iloader.
 
-Same project, destination *iPhone 16* (or any). Good for checking the layout and the first-run screen. It can't show
-the lock screen or the silent switch.
+### Refresh without thinking about it
+
+SideStore tries to refresh in the background on its own. iOS doesn't promise when that runs, so add a daily Shortcut:
+
+1. In the **Shortcuts** app make a shortcut: connect LocalDevVPN → Open URL `sidestore://` → **Refresh All Apps**
+   (SideStore's action) → disconnect LocalDevVPN.
+2. **Automation** → **+** → **Time of Day**, daily, **Run Immediately**, and pick that shortcut. Choose a time when the
+   phone is on Wi-Fi and usually unlocked.
+
+Open SideStore now and then and check the days left, and refresh by hand before a trip. iOS runs one VPN at a time, so
+if you reach your server over Tailscale, reconnect it at the end of the shortcut. On iOS 27 there is a
+[reported bug](https://github.com/SideStore/SideStore/issues/1596) with the Shortcut's refresh.
+
+A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
+
+## Other ways
+
+- **No app:** open your lodesong in Safari → Share → **Add to Home Screen**. Never expires, but the silent switch can
+  mute it and iOS may stop audio on a long screen lock.
+- **Xcode** (Mac): `brew install xcodegen`, then `cd apps/ios && xcodegen generate && open Lodesong.xcodeproj`. Under
+  Signing & Capabilities pick your *Personal Team* and a bundle identifier of your own, then Run. Repeat every 7 days.
+- **[Sideloadly](https://sideloadly.io)** or **[AltStore](https://altstore.io)** also install the `.ipa`. AltStore
+  refreshes only while your computer is on the same Wi-Fi.
 
 ## Using it
 
