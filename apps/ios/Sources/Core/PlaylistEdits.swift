@@ -106,8 +106,8 @@ extension ServerClient {
     func changeSongs(playlist id: String, from old: [String], to new: [String]) async throws {
         let change = PlaylistSongChange(from: old, to: new)
         guard change != .none else { return }
-        guard try await playlistSongs(id).map(\.id) == old else { throw PlaylistEditError.changedElsewhere }
         let stored = try await playlists().first { $0.id == id }?.songCount
+        guard try await playlistSongs(id).map(\.id) == old else { throw PlaylistEditError.changedElsewhere }
         guard (stored ?? 0) <= old.count else { throw PlaylistEditError.hiddenSongs }
         switch change {
         case .none: break
