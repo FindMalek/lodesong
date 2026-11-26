@@ -177,6 +177,10 @@ struct NowPlayingView: View {
     @EnvironmentObject private var player: PlayerModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
+    @State private var showingMore = NowPlayingView.startsInMore
+    @AppStorage(Pref.showAlbum) private var showAlbum = true
+    @AppStorage(Pref.coverShrinks) private var coverShrinks = true
+    @AppStorage(Pref.streamInfo) private var streamInfo = true
     @AppStorage(Pref.movingBackground) private var movingBackground = true
     @AppStorage(Pref.keepAwake) private var keepAwake = false
     @AppStorage(Pref.coverSkipSeconds) private var coverSkipSeconds = 0
@@ -193,7 +197,15 @@ struct NowPlayingView: View {
 
     private static var startsInQueue: Bool {
         #if DEBUG
-        DebugScreen.name == "queue"
+        DebugScreen.name == "queue" || DebugScreen.name == "history"
+        #else
+        false
+        #endif
+    }
+
+    private static var startsInMore: Bool {
+        #if DEBUG
+        DebugScreen.name == "more"
         #else
         false
         #endif
@@ -212,22 +224,33 @@ struct NowPlayingView: View {
                     queueHeader(song)
                     QueueView()
                 } else {
-                    Spacer(minLength: 8)
+                    // Takes whatever the controls leave, up to nearly the full width.
                     Artwork(id: song?.coverArt, size: 800, radius: 14)
                         .matchedGeometryEffect(id: "cover", in: cover)
-                        .frame(maxWidth: min(proxy.size.width - 56, proxy.size.height * 0.46))
-                        .scaleEffect(playback.isPlaying ? 1 : 0.82)
+                        .scaleEffect(playback.isPlaying || !coverShrinks ? 1 : 0.8)
                         .shadow(color: .black.opacity(0.4), radius: 24, y: 14)
                         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: playback.isPlaying)
                         .gesture(SidewaysSwipe(enabled: coverSkipSeconds > 0) { across in
                             Haptic.tap()
                             player.skip(by: Double(across > 0 ? coverSkipSeconds : -coverSkipSeconds))
                         })
-                    Spacer(minLength: 12)
+                        .frame(maxWidth: 560, maxHeight: .infinity)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 4)
+                        .padding(.bottom, proxy.size.height < 700 ? 8 : 20)
                 }
-                VStack(spacing: proxy.size.height < 700 || showingQueue ? 8 : 20) {
-                    if !showingQueue { titles(song) }
+                VStack(spacing: proxy.size.height < 700 || showingQueue ? 8 : 18) {
+                    if !showingQueue {
+                        VStack(alignment: .leading, spacing: 4) {
+                            titles(song, album: showAlbum)
+                            if let song { RatingStars(song: song) }
+                        }
+                    }
                     PlayerScrubber(player: player, clock: player.clock)
+                        // Between the two times.
+                        .overlay(alignment: .bottom) {
+                            if let song { StreamInfo(song: song, detailed: streamInfo).padding(.horizontal, 52) }
+                        }
                     transport(playback.isPlaying)
                     VolumeSlider()
                     HStack {
@@ -261,12 +284,17 @@ struct NowPlayingView: View {
         .foregroundStyle(.white)
         .background { ArtworkBackground(id: song?.coverArt, moving: movingBackground) }
         .onAppear { UIApplication.shared.isIdleTimerDisabled = keepAwake }
+        .onChange(of: keepAwake) { UIApplication.shared.isIdleTimerDisabled = keepAwake }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .fullScreenCover(isPresented: $showingLyrics) { LyricsView() }
         // A drag in the queue reorders or scrolls it, so it must not pull the player closed.
         .interactiveDismissDisabled(showingQueue)
+        // Outside the forced dark look, so the sheet follows the app's own theme.
+        .sheet(isPresented: $showingMore) {
+            if let song { QuickSettings(song: song) }
+        }
     }
 
     /// The artwork shrunk beside the names, above the queue.
@@ -281,7 +309,7 @@ struct NowPlayingView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Show artwork")
-            titles(song)
+            titles(song, album: false, compact: true)
         }
         .frame(maxWidth: 480)
         .padding(.horizontal, 28)
@@ -289,20 +317,21 @@ struct NowPlayingView: View {
         .padding(.bottom, 8)
     }
 
-    private func titles(_ song: Song?) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(song?.title ?? "Not Playing").font(.title3.bold()).lineLimit(1)
-                Text(song?.artist ?? " ").font(.title3).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+    private func titles(_ song: Song?, album: Bool, compact: Bool = false) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(song?.title ?? "Not Playing").font(compact ? .headline : .title2.bold()).lineLimit(1)
+                Text(song?.artist ?? " ").font(compact ? .subheadline : .title3).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                if album, let name = song?.album, !name.isEmpty {
+                    Text(name).font(.subheadline).foregroundStyle(.white.opacity(0.5)).lineLimit(1)
+                }
             }
+            .accessibilityElement(children: .combine)
             .frame(maxWidth: .infinity, alignment: .leading)
             if let song {
-                Menu {
-                    SongMenu(song: song)
-                } label: {
-                    Image(systemName: "ellipsis").font(.headline).frame(width: 34, height: 34).background(.white.opacity(0.18), in: .circle)
-                }
-                .accessibilityLabel("More")
+                LikeButton(song: song)
+                Button { showingMore = true } label: { CircleIcon(symbol: "ellipsis") }
+                    .accessibilityLabel("More")
             }
         }
     }
@@ -386,20 +415,42 @@ struct QueueView: View {
 
     private static let end = "end"
 
+    @State private var showingHistory = QueueView.startsInHistory
+
+    private static var startsInHistory: Bool {
+        #if DEBUG
+        DebugScreen.name == "history"
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         let playback = player.playback(model.library)
         let entries = entries(playback.queue)
         let base = min(playback.index + 1, entries.count)
         let top = base < entries.count ? entries[base].id : Self.end
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text("Playing Next").font(.headline)
-                Spacer()
+            HStack(spacing: 4) {
+                Text(showingHistory ? "History" : "Playing Next").font(.headline).lineLimit(1)
+                Spacer(minLength: 4)
+                Button {
+                    Haptic.tap()
+                    showingHistory.toggle()
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath").modifier(Toggled(on: showingHistory))
+                }
+                .accessibilityLabel("History")
+                .accessibilityAddTraits(showingHistory ? .isSelected : [])
                 ShuffleButton()
                 RepeatButton()
+                AddPlaylistButton()
             }
             .frame(maxWidth: 480)
             .padding(.horizontal, 28)
+            if showingHistory {
+                played(playback, Array(entries[..<min(playback.index, entries.count)]))
+            } else {
             GeometryReader { proxy in
                 ScrollViewReader { scroll in
                     List {
@@ -423,8 +474,27 @@ struct QueueView: View {
                     .onChange(of: top) { _, top in scroll.scrollTo(top, anchor: .top) }
                 }
             }
-            // Rows fade out above the scrubber instead of being cut in half.
-            .mask { LinearGradient(stops: [.init(color: .black, location: 0.92), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom) }
+            }
+        }
+        // Rows fade out above the scrubber instead of being cut in half.
+        .mask { LinearGradient(stops: [.init(color: .black, location: 0.92), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom) }
+    }
+
+    /// Newest first.
+    @ViewBuilder private func played(_ playback: Playback, _ entries: [Entry]) -> some View {
+        if entries.isEmpty {
+            Text("Nothing played yet")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.top, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        } else {
+            List(entries.reversed()) { entry in
+                row(playback, entry.index, dimmed: false).contextMenu { SongMenu(song: playback.queue[entry.index]) }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
         }
     }
 
@@ -459,7 +529,7 @@ struct QueueView: View {
         }
     }
 
-    private func row(_ playback: Playback, _ index: Int) -> some View {
+    private func row(_ playback: Playback, _ index: Int, dimmed: Bool = true) -> some View {
         let song = playback.queue[index]
         return Button {
             Haptic.tap()
@@ -479,7 +549,7 @@ struct QueueView: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .opacity(index < playback.index ? 0.6 : 1)
+        .opacity(dimmed && index < playback.index ? 0.6 : 1)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 28))

@@ -125,6 +125,7 @@ struct AppearanceSettings: View {
                     ForEach(LyricSize.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
             }
+            Section("Now Playing") { NowPlayingToggles() }
             Section("Swipe on a Song") {
                 swipe("Swipe Right", $swipeLeading)
                 swipe("Swipe Left", $swipeTrailing)
@@ -148,6 +149,19 @@ struct AppearanceSettings: View {
         Picker(title, selection: value) {
             ForEach(SwipeAction.allCases, id: \.self) { Text($0.title).tag($0) }
         }
+    }
+}
+
+/// What now playing shows, here and in its own quick settings.
+struct NowPlayingToggles: View {
+    @AppStorage(Pref.showAlbum) private var showAlbum = true
+    @AppStorage(Pref.coverShrinks) private var coverShrinks = true
+    @AppStorage(Pref.streamInfo) private var streamInfo = true
+
+    var body: some View {
+        Toggle("Show Album Name", isOn: $showAlbum)
+        Toggle("Shrink Cover When Paused", isOn: $coverShrinks)
+        Toggle("Detailed Streaming Info", isOn: $streamInfo)
     }
 }
 

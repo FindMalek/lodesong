@@ -8,6 +8,12 @@ final class PlayerClock: ObservableObject {
     @Published fileprivate(set) var position: TimeInterval = 0
 }
 
+/// When playback should stop by itself.
+enum SleepTimer: Equatable {
+    case at(Date)
+    case endOfSong
+}
+
 /// What every screen uses to control playback. An `AVQueuePlayer` holding the current song and the one after it,
 /// so the next song starts without a gap.
 @MainActor
@@ -23,6 +29,11 @@ final class PlayerModel: ObservableObject {
     @Published private(set) var duration: TimeInterval = 0
     /// A newer queue saved by another device, waiting for `resumeOffer` or `dismissOffer`.
     @Published var offer: RemoteQueue?
+    /// Format and bit rate of what is loaded.
+    @Published private(set) var streamDetail: String?
+    @Published private(set) var sleepTimer: SleepTimer?
+    /// Moves whenever a like or a rating, or whether it reached the server, may have changed.
+    @Published private var marksRevision = 0
 
     var queue: [Song] { line.songs }
     var index: Int { line.index }
@@ -102,6 +113,8 @@ final class PlayerModel: ObservableObject {
 
     func jump(to index: Int) {
         guard line.jump(to: index) else { return }
+        // A timer that ran out while paused must not stop what is picked next.
+        if sleepIsDue { setSleepTimer(nil) }
         load(at: 0, play: true)
     }
 
@@ -145,6 +158,65 @@ final class PlayerModel: ObservableObject {
         }
     }
 
+    // MARK: - Likes and ratings
+
+    func isLiked(_ song: Song) -> Bool { marks.liked(fresh(song), account: account) }
+    func rating(_ song: Song) -> Int { marks.rating(fresh(song), account: account) }
+
+    /// Changed here and not on the server yet, because it can't be reached.
+    func isUnsent(_ song: Song) -> Bool {
+        marks.waiting(song: song.id, account: account, offline: app?.offlineMode == true)
+    }
+
+    func setLiked(_ song: Song, _ liked: Bool) { mark(song, .like, liked ? 1 : 0) }
+    func rate(_ song: Song, _ stars: Int) { mark(song, .rating, stars) }
+
+    private func mark(_ song: Song, _ kind: MarkChange.Kind, _ value: Int) {
+        guard !account.isEmpty else { return }
+        marks.set(kind, value, song: song.id, account: account)
+        marksRevision += 1
+        sendMarks()
+    }
+
+    /// The library's copy is newer than the one the queue was made with.
+    private func fresh(_ song: Song) -> Song { app?.library.songs.first { $0.id == song.id } ?? song }
+
+    /// The library came in again: what it already says no longer has to be remembered here.
+    func librarySynced() {
+        guard let app else { return }
+        marks.settle(account: account, sentBefore: app.syncStarted)
+        marksRevision += 1
+    }
+
+    private func sendMarks() {
+        guard let client, marks.hasUnsent(account: account) else { return }
+        let id = clientID
+        let account = account
+        keepAwake { [marks] in
+            await marks.flush(client, account: account, client: id) { account == self.account && self.client != nil }
+            self.marksRevision += 1
+        }
+    }
+
+    // MARK: - Sleep timer
+
+    func setSleepTimer(_ timer: SleepTimer?) {
+        sleepTimer = timer
+        // The engine would otherwise start the lined up song by itself.
+        engine.actionAtItemEnd = timer == .endOfSong ? .pause : .advance
+    }
+
+    /// The end of a call is not someone pressing play: a timer that ran out during it still holds.
+    func resumeAfterInterruption() {
+        if sleepIsDue { return setSleepTimer(nil) }
+        resume()
+    }
+
+    private var sleepIsDue: Bool {
+        if case .at(let time) = sleepTimer { return Date() >= time }
+        return false
+    }
+
     // MARK: - Hand-off with other devices
 
     func resumeOffer() {
@@ -166,11 +238,14 @@ final class PlayerModel: ObservableObject {
         let source: AudioSource
         /// What it was made for; a lined up item made for something else is made again.
         let key: String
+        let detail: String
         var status: NSKeyValueObservation?
     }
 
     private let engine = AVQueuePlayer()
-    private var loaded: Loaded?
+    private var loaded: Loaded? {
+        didSet { streamDetail = loaded?.detail }
+    }
     private var lined: Loaded?
     private var observers: [NSKeyValueObservation] = []
     private var seeking = 0
@@ -188,6 +263,7 @@ final class PlayerModel: ObservableObject {
     private let network = NWPathMonitor()
     private let store = PlaybackStore(folder: .applicationSupportDirectory)
     private let log = PlayLog(folder: .applicationSupportDirectory)
+    private let marks = SongMarks(folder: .applicationSupportDirectory)
     private var lastSend = Date.distantPast
     private var link: DeviceLink?
     /// This phone holds the shared session (docs/devices.md).
@@ -289,6 +365,7 @@ final class PlayerModel: ObservableObject {
             filling?.cancel()
             fillKey = ""
             pause()
+            setSleepTimer(nil)
             log.end()
             link?.close()
             link = nil
@@ -300,6 +377,7 @@ final class PlayerModel: ObservableObject {
         guard now != account else { return pull() }
         log.end()
         account = now
+        setSleepTimer(nil)
         unload()
         isPlaying = false
         offer = nil
@@ -321,6 +399,8 @@ final class PlayerModel: ObservableObject {
         guard current != nil, app?.needsSignIn == false else { return }
         skips = 0
         retries = 0
+        // It ran out while paused: pressing play means carry on.
+        if sleepIsDue { setSleepTimer(nil) }
         if let loaded, loaded.item.status != .failed {
             isPlaying = true
             system.activate()
@@ -348,6 +428,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func replace(with queue: PlayQueue) {
+        if sleepIsDue { setSleepTimer(nil) }
         line = queue
         failed = [:]
         retries = 0
@@ -507,7 +588,9 @@ final class PlayerModel: ObservableObject {
             // The server only answers a signed-in session, and AVFoundation has to be handed its cookie.
             asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: HTTPCookieStorage.shared.cookies(for: url) ?? []])
         }
-        var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source, key: key(song))
+        let fileBytes = source == .file ? (try? file?.resourceValues(forKeys: [.fileSizeKey]))?.fileSize : nil
+        let detail = StreamLine.text(song, source: source, limit: limit > 0 ? limit : 320, fileType: file?.pathExtension, fileBytes: fileBytes)
+        var made = Loaded(item: AVPlayerItem(asset: asset), song: song, source: source, key: key(song), detail: detail)
         made.status = made.item.observe(\.status) { [weak self] item, _ in
             guard item.status != .unknown else { return }
             Task { @MainActor in self?.settled(item) }
@@ -547,6 +630,12 @@ final class PlayerModel: ObservableObject {
 
     private func ended(_ item: AVPlayerItem?) {
         guard let item, item === loaded?.item else { return }
+        if sleepTimer == .endOfSong {
+            setSleepTimer(nil)
+            guard let target = line.following(repeatMode), line.jump(to: target) else { return finish() }
+            load(at: 0, play: false)
+            return push()
+        }
         // With a good item lined up the engine moves on and `advanced` takes it from there.
         if let lined, lined.item.status != .failed, engine.items().contains(lined.item) { return }
         if let target = line.following(repeatMode), line.jump(to: target) { load(at: 0, play: isPlaying) } else { finish() }
@@ -659,6 +748,10 @@ final class PlayerModel: ObservableObject {
     // MARK: - Progress, scrobbling, the saved queue
 
     private func tick(_ seconds: TimeInterval) {
+        if isPlaying, sleepIsDue {
+            setSleepTimer(nil)
+            return pause()
+        }
         guard isPlaying, seeking == 0, seconds.isFinite, let item = loaded?.item, item.status == .readyToPlay,
               engine.currentItem === item, engine.timeControlStatus == .playing else { return }
         position = seconds
@@ -698,6 +791,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func sendPlays() {
+        sendMarks()
         guard let client, !account.isEmpty else { return }
         lastSend = Date()
         let id = clientID
