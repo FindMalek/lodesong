@@ -18,7 +18,7 @@ extension PlayerModel {
 }
 
 /// The only view that follows the position, so a tick redraws it and nothing else.
-private struct PlayerScrubber: View {
+struct PlayerScrubber: View {
     @EnvironmentObject private var model: AppModel
     let player: PlayerModel
     @ObservedObject var clock: PlayerClock
@@ -176,6 +176,15 @@ struct NowPlayingView: View {
     @EnvironmentObject private var player: PlayerModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
+    @State private var showingLyrics = NowPlayingView.startsInLyrics
+
+    private static var startsInLyrics: Bool {
+        #if DEBUG
+        DebugScreen.name == "lyrics"
+        #else
+        false
+        #endif
+    }
 
     private static var startsInQueue: Bool {
         #if DEBUG
@@ -208,6 +217,13 @@ struct NowPlayingView: View {
                     VolumeSlider()
                     HStack {
                         Spacer()
+                        Button { showingLyrics = true } label: {
+                            Image(systemName: "quote.bubble").font(.title3).frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Lyrics")
+                        .foregroundStyle(.white.opacity(0.7))
+                        .disabled(song == nil)
+                        Spacer()
                         ShuffleButton()
                         Spacer()
                         RoutePicker().frame(width: 44, height: 44).accessibilityLabel("AirPlay")
@@ -232,6 +248,7 @@ struct NowPlayingView: View {
         .background { ArtworkBackground(id: song?.coverArt) }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .fullScreenCover(isPresented: $showingLyrics) { LyricsView() }
         .sheet(isPresented: $showingQueue) {
             QueueView()
                 .environment(\.colorScheme, .dark)

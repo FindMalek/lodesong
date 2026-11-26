@@ -10,16 +10,38 @@ final class ArtworkCache {
     private var palettes: [String: [Color]] = [:]
     private let folder = URL.cachesDirectory.appending(path: "artwork")
 
+    /// Covers of kept songs, somewhere iOS doesn't purge.
+    private let kept = URL.applicationSupportDirectory.appending(path: "covers")
+
     private init() {
         memory.totalCostLimit = 64 * 1024 * 1024
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for url in [folder, kept] { try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+    }
+
+    func keep(_ id: String, client: ServerClient) async {
+        let file = keptFile(id, client: client)
+        guard !FileManager.default.fileExists(atPath: file.path),
+              let (data, response) = try? await URLSession.shared.data(from: client.coverURL(id, size: 800)),
+              (response as? HTTPURLResponse)?.statusCode == 200, UIImage(data: data) != nil
+        else { return }
+        try? data.write(to: file, options: .atomic)
+    }
+
+    private func keptFile(_ id: String, client: ServerClient) -> URL {
+        kept.appending(path: Self.hash(client.coverURL(id, size: 800)))
+    }
+
+    private static func hash(_ url: URL) -> String {
+        SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     func clear() {
         memory.removeAllObjects()
         palettes = [:]
-        try? FileManager.default.removeItem(at: folder)
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for url in [folder, kept] {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        }
     }
 
     func cached(_ id: String, size: Int) -> UIImage? { memory.object(forKey: "\(id)@\(size)" as NSString) }
@@ -29,16 +51,19 @@ final class ArtworkCache {
         #if DEBUG
         if DebugScreen.sample { return store(DebugScreen.art(id), id: id, size: size) }
         #endif
-        guard let url = client?.coverURL(id, size: size) else { return nil }
-        let name = SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
-        let file = folder.appending(path: name)
+        guard let client else { return nil }
+        let url = client.coverURL(id, size: size)
+        let file = folder.appending(path: Self.hash(url))
         if let data = await Task.detached(operation: { try? Data(contentsOf: file) }).value, let image = UIImage(data: data) {
             return store(image, id: id, size: size)
         }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let image = UIImage(data: data)
-        else { return nil }
+        else {
+            // No network and never seen at this size: the cover kept with the download does.
+            return UIImage(contentsOfFile: keptFile(id, client: client).path).map { store($0, id: id, size: size) }
+        }
         try? data.write(to: file, options: .atomic)
         return store(image, id: id, size: size)
     }

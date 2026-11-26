@@ -3,9 +3,14 @@ import SwiftUI
 struct SearchView: View {
     @EnvironmentObject private var model: AppModel
     @State private var query = SearchView.initialQuery
-    @State private var results: Results?
+    @State private var results: SearchIndex.Results?
     @AppStorage("recentSearches") private var recentSearches = ""
-
+    @State private var answered = ""
+    @State private var index: SearchIndex?
+    @State private var built: [Int] = []
+    @State private var fromServer: (query: String, hits: [LyricsHit]) = ("", [])
+    @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var lyrics: LyricsModel
     private static var initialQuery: String {
         #if DEBUG
         ProcessInfo.processInfo.environment["LODESONG_QUERY"] ?? ""
@@ -14,13 +19,10 @@ struct SearchView: View {
         #endif
     }
 
-    struct Results {
-        var query = ""
-        var artists: [Artist] = []
-        var albums: [Album] = []
-        var playlists: [Playlist] = []
-        var songs: [Song] = []
-        var isEmpty: Bool { artists.isEmpty && albums.isEmpty && playlists.isEmpty && songs.isEmpty }
+    private var term: String { query.trimmingCharacters(in: .whitespaces) }
+
+    private var version: [Int] {
+        [model.library.songs.count, model.library.albums.count, model.library.playlists.count, model.syncing ? 1 : 0, lyrics.revision]
     }
 
     private var recents: [String] { recentSearches.split(separator: "\n").map(String.init) }
@@ -35,10 +37,44 @@ struct SearchView: View {
         }
         .navigationTitle("Search")
         .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artists, Songs, Albums and More")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artists, Songs, Lyrics and More")
         .autocorrectionDisabled()
         .onSubmit(of: .search) { remember(query) }
-        .task(id: [query, String(model.library.songs.count), String(model.syncing)]) { search(query.trimmingCharacters(in: .whitespaces)) }
+        .safeAreaInset(edge: .top, spacing: 0) { chips }
+        .task(id: Request(query: term, version: version)) { await search() }
+        .task(id: term) { await searchServer() }
+    }
+
+    private struct Request: Equatable {
+        let query: String
+        let version: [Int]
+    }
+
+    @ViewBuilder private var chips: some View {
+        let parsed = SearchQuery(query)
+        if !parsed.filters.isEmpty || parsed.lyricsOnly {
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    if parsed.lyricsOnly { chip("lyrics only", removing: "lyrics:") }
+                    ForEach(parsed.filters, id: \.self) { filter in
+                        chip("\(filter.key): \(filter.value)", removing: filter.raw)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 6)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func chip(_ title: String, removing raw: String) -> some View {
+        Button {
+            query = query.replacingOccurrences(of: raw, with: "", options: .caseInsensitive).trimmingCharacters(in: .whitespaces)
+        } label: {
+            Label(title, systemImage: "xmark").font(.subheadline)
+        }
+        .buttonStyle(.glass)
+        .accessibilityLabel("Remove filter \(title)")
     }
 
     private var browse: some View {
@@ -96,7 +132,7 @@ struct SearchView: View {
     }
 
     @ViewBuilder private var matches: some View {
-        if let results, !results.isEmpty {
+        if let results, !results.isEmpty || !lyricsHits.isEmpty {
             List {
                 if !results.artists.isEmpty {
                     Section("Artists") {
@@ -135,13 +171,75 @@ struct SearchView: View {
                         }
                     }
                 }
+                if !lyricsHits.isEmpty {
+                    Section {
+                        ForEach(lyricsHits, id: \.song.id) { lyricsRow($0) }
+                    } header: {
+                        Text("Lyrics")
+                    } footer: {
+                        if model.offline { Text("Offline: only lyrics saved on this iPhone are searched.") }
+                    }
+                }
             }
             .listStyle(.plain)
-        } else if results?.query == query.trimmingCharacters(in: .whitespaces) {
+        } else if answered == term {
             ContentUnavailableView.search(text: query)
         } else {
             ProgressView()
         }
+    }
+
+    /// What the phone found first, then what only the server knows.
+    private var lyricsHits: [LyricsHit] {
+        let local = results?.lyrics ?? []
+        guard fromServer.query == term else { return local }
+        var seen = Set(local.map(\.song.id))
+        return Array((local + fromServer.hits.filter { seen.insert($0.song.id).inserted }).prefix(8))
+    }
+
+    private func lyricsRow(_ hit: LyricsHit) -> some View {
+        Button {
+            remember(query)
+            player.start([hit.song])
+            if let start = hit.start {
+                player.seek(to: (start + Double(lyrics.saved(hit.song.id)?.nudge ?? 0)) / 1000)
+            }
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Artwork(id: hit.song.coverArt, size: 120, radius: 6).frame(width: 48, height: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(highlighted(hit.text)).lineLimit(2)
+                    Text([hit.song.title, hit.song.artist].compactMap { $0 }.joined(separator: " · "))
+                        .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if let start = hit.start {
+                    Text(timeText(start / 1000)).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Plays from this line")
+        .contextMenu { SongMenu(song: hit.song) }
+    }
+
+    /// The line with the typed words in the accent colour, typos included.
+    private func highlighted(_ line: String) -> AttributedString {
+        let typed = SearchText.words(SearchQuery(query).text)
+        var out = AttributedString()
+        for (index, word) in line.split(separator: " ").enumerated() {
+            if index > 0 { out += AttributedString(" ") }
+            var part = AttributedString(String(word))
+            let plain = SearchText.normalize(String(word))
+            let vocabulary = [plain: Array(plain)]
+            if typed.contains(where: { !SearchText.candidates($0, in: vocabulary).isEmpty }) {
+                part.foregroundColor = .accent
+                part.inlinePresentationIntent = .stronglyEmphasized
+            }
+            out += part
+        }
+        return out
     }
 
     private func row(_ cover: String?, _ title: String, _ subtitle: String?, symbol: String, circle: Bool = false) -> some View {
@@ -154,20 +252,40 @@ struct SearchView: View {
         }
     }
 
-    private func search(_ term: String) {
+    private func search() async {
+        let term = term
         guard !term.isEmpty else {
             results = nil
             return
         }
-        let library = model.library
-        let hit = { (text: String?) in text?.localizedStandardContains(term) ?? false }
-        results = Results(
-            query: term,
-            artists: Array(library.artists.filter { hit($0.name) }.prefix(5)),
-            albums: Array(library.albums.filter { hit($0.name) || hit($0.artist) }.prefix(8)),
-            playlists: Array(library.playlists.filter { hit($0.name) }.prefix(5)),
-            songs: Array(library.songs.filter { hit($0.title) || hit($0.artist) }.prefix(50))
-        )
+        if index == nil || built != version {
+            let version = version
+            let library = model.library
+            let words = await lyrics.all()
+            let made = await Task.detached {
+                SearchIndex(artists: library.artists, albums: library.albums, playlists: library.playlists, songs: library.songs, lyrics: words)
+            }.value
+            // Kept even when a newer keystroke cancelled this one, so typing doesn't build it over and over.
+            index = made
+            built = version
+            guard !Task.isCancelled else { return }
+        }
+        guard let index else { return }
+        let found = await Task.detached { index.search(SearchQuery(term)) }.value
+        guard !Task.isCancelled else { return }
+        results = found
+        answered = term
+    }
+
+    /// The server has the words of songs this phone never opened. Without it, search carries on with what is here.
+    private func searchServer() async {
+        let term = term
+        let parsed = SearchQuery(term)
+        guard parsed.filters.isEmpty, parsed.text.count >= 3, !model.needsSignIn, let client = model.client else { return }
+        try? await Task.sleep(for: .milliseconds(350))
+        guard !Task.isCancelled, let hits = try? await client.searchLyrics(parsed.text), !Task.isCancelled else { return }
+        let known = Dictionary(model.library.songs.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        fromServer = (term, hits.map { LyricsHit(song: known[$0.song.id] ?? $0.song, start: $0.start, text: $0.text) })
     }
 
     private func remember(_ term: String) {

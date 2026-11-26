@@ -4,6 +4,7 @@ import SwiftUI
 struct LodesongApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var player = PlayerModel()
+    @StateObject private var lyrics = LyricsModel()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,8 +15,10 @@ struct LodesongApp: App {
             .environmentObject(model)
             .environmentObject(player)
             .environmentObject(model.downloads)
+            .environmentObject(lyrics)
             .task {
                 player.attach(app: model, downloads: model.downloads)
+                lyrics.attach(app: model)
                 #if DEBUG
                 await model.debugSignIn()
                 player.accountChanged()

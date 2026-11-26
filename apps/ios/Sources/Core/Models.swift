@@ -13,6 +13,7 @@ struct Album: Codable, Identifiable, Hashable {
     var artistId: String?
     var coverArt: String?
     var year: Int?
+    var genre: String?
 }
 
 struct Song: Codable, Identifiable, Hashable {
@@ -27,6 +28,8 @@ struct Song: Codable, Identifiable, Hashable {
     var duration: Int?
     var suffix: String?
     var replayGain: ReplayGain?
+    var year: Int?
+    var genre: String?
 }
 
 struct ReplayGain: Codable, Hashable {
