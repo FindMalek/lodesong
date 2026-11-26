@@ -57,6 +57,9 @@ struct Playlist: Codable, Identifiable, Hashable {
     var changed: String?
     var created: String?
     var coverArt: String?
+    /// The playlist's description.
+    var comment: String?
+    var owner: String?
     /// Set on smart playlists, whose `changed` only moves once someone asks for their songs.
     var readonly: Bool?
     var validUntil: String?

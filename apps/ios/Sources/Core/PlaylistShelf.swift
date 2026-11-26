@@ -133,3 +133,44 @@ enum PlaylistSort: String, CaseIterable {
         }
     }
 }
+
+/// The order a playlist's songs are shown and played in. `server` is the playlist's own.
+enum SongSort: String, CaseIterable {
+    case server, title, artist, album, duration
+
+    var label: String { self == .server ? "Playlist Order" : rawValue.capitalized }
+
+    /// Equal songs keep the playlist's order.
+    func sorted(_ songs: [Song]) -> [Song] {
+        guard self != .server else { return songs }
+        return songs.enumerated().sorted { a, b in
+            let order = compare(a.element, b.element)
+            return order == .orderedSame ? a.offset < b.offset : order == .orderedAscending
+        }.map(\.element)
+    }
+
+    private func compare(_ a: Song, _ b: Song) -> ComparisonResult {
+        func text(_ a: String?, _ b: String?) -> ComparisonResult { (a ?? "").localizedStandardCompare(b ?? "") }
+        func number(_ a: Int, _ b: Int) -> ComparisonResult { a == b ? .orderedSame : a < b ? .orderedAscending : .orderedDescending }
+        func album() -> ComparisonResult {
+            [text(a.album, b.album), number(a.discNumber ?? 1, b.discNumber ?? 1), number(a.track ?? 0, b.track ?? 0)]
+                .first { $0 != .orderedSame } ?? .orderedSame
+        }
+        switch self {
+        case .server: return .orderedSame
+        case .title: return text(a.title, b.title)
+        case .artist:
+            let order = text(a.artist, b.artist)
+            return order == .orderedSame ? album() : order
+        case .album: return album()
+        case .duration: return number(a.duration ?? 0, b.duration ?? 0)
+        }
+    }
+}
+
+extension Song {
+    /// Searching inside one album or playlist: title, artist or album, ignoring case and accents.
+    func matches(_ query: String) -> Bool {
+        [title, artist, album].contains { $0?.localizedStandardContains(query) == true }
+    }
+}

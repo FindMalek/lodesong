@@ -1,28 +1,5 @@
 import SwiftUI
 
-/// Large cover, names, Play and Shuffle: the top of an album or playlist.
-private struct DetailHeader<Cover: View, Links: View>: View {
-    let title: String
-    let caption: String?
-    let songs: [Song]
-    @ViewBuilder let cover: Cover
-    @ViewBuilder let links: Links
-
-    var body: some View {
-        VStack(spacing: 6) {
-            cover
-                .frame(maxWidth: 270)
-                .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
-                .padding(.bottom, 10)
-            Text(title).font(.title2.bold()).multilineTextAlignment(.center)
-            links
-            if let caption { Text(caption).font(.footnote).foregroundStyle(.secondary) }
-            PlayShuffleButtons(songs: songs).padding(.top, 10)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
 /// A wash of the cover's colour behind the top of the page.
 private struct TopWash: ViewModifier {
     @EnvironmentObject private var model: AppModel
@@ -71,115 +48,122 @@ private struct BarTitle: ViewModifier {
 struct AlbumView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var downloads: DownloadsModel
-    @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var router: Router
     let album: Album
+    @State private var query = ""
+    @FocusState private var searching: Bool
 
     var body: some View {
         let songs = model.library.songs(album: album.id)
-        let discs = Dictionary(grouping: Array(songs.enumerated())) { $0.element.discNumber ?? 1 }
+        let found = songs.indices.filter { query.isEmpty || songs[$0].matches(query) }
+        let discs = Dictionary(grouping: found) { songs[$0].discNumber ?? 1 }
         List {
-            DetailHeader(title: album.name, caption: album.year.map(String.init), songs: songs) {
-                Artwork(id: album.coverArt, size: 600, radius: 14)
-            } links: {
-                if let artist = model.artist(id: album.artistId) {
-                    Button(artist.name) { open(artist) }.font(.title3).buttonStyle(.borderless)
-                } else if let name = album.artist {
-                    Text(name).font(.title3).foregroundStyle(.secondary)
+            CollectionSearch(prompt: "Find in Album", query: $query, focused: $searching)
+            if !searching && query.isEmpty {
+                CollectionHeader(
+                    title: album.name, description: nil,
+                    details: [album.year.map(String.init), songs.isEmpty ? nil : summaryText(songs)].compactMap { $0 }.joined(separator: " · "),
+                    songs: songs,
+                    download: DownloadControl(
+                        state: downloads.state(album: album.id), songs: songs, follows: false,
+                        keep: { downloads.keep(album: album.id) }, remove: { downloads.remove(album: album.id) }
+                    )
+                ) {
+                    Artwork(id: album.coverArt, size: 600, radius: 14)
+                } byline: {
+                    if let artist = model.artist(id: album.artistId) {
+                        Button(artist.name) { router.open(.artist(artist)) }.buttonStyle(.borderless)
+                    } else if let name = album.artist {
+                        Text(name).foregroundStyle(.secondary)
+                    }
                 }
             }
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            // Disc headings only make sense over the whole album.
             ForEach(discs.keys.sorted(), id: \.self) { disc in
-                if discs.count > 1 {
+                if discs.count > 1 && query.isEmpty {
                     Text("Disc \(disc)").font(.headline).foregroundStyle(.secondary).listRowBackground(Color.clear)
                 }
-                ForEach(discs[disc] ?? [], id: \.element.id) { index, _ in
+                ForEach(discs[disc] ?? [], id: \.self) { index in
                     SongRow(songs: songs, index: index, numbered: true).listRowBackground(Color.clear)
                 }
             }
-            if !songs.isEmpty {
-                Text(summaryText(songs)).font(.footnote).foregroundStyle(.secondary)
-                    .listRowSeparator(.hidden, edges: .bottom)
+            if songs.isEmpty {
+                ContentUnavailableView("No Songs", systemImage: "music.note", description: Text("This album has nothing synced yet."))
+                    .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+            } else if found.isEmpty {
+                ContentUnavailableView.search(text: query).listRowSeparator(.hidden).listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
         .modifier(TopWash(cover: album.coverArt))
-        .overlay {
-            if songs.isEmpty {
-                ContentUnavailableView("No Songs", systemImage: "music.note", description: Text("This album has nothing synced yet."))
-            }
-        }
-        .modifier(BarTitle(title: album.name, after: 310))
-        .toolbar {
-            ToolbarItem {
-                DownloadButton(
-                    state: downloads.state(album: album.id),
-                    keep: { downloads.keep(album: album.id) },
-                    remove: { downloads.remove(album: album.id) }
-                )
-            }
-            ToolbarItem {
-                Menu("More", systemImage: "ellipsis") {
-                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(songs) }
-                    Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(songs) }
-                }
-            }
-        }
+        .modifier(BarTitle(title: album.name, after: 380))
+        .modifier(CollectionMenu(kind: "album", id: album.id, songs: songs, sort: nil))
     }
-
-    @EnvironmentObject private var router: Router
-    private func open(_ artist: Artist) { router.open(.artist(artist)) }
 }
 
 struct PlaylistView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var downloads: DownloadsModel
-    @EnvironmentObject private var player: PlayerModel
     let playlist: Playlist
     @State private var songs: [Song]?
+    @State private var query = ""
+    @FocusState private var searching: Bool
+    @AppStorage private var sort: SongSort
+
+    init(playlist: Playlist) {
+        self.playlist = playlist
+        _sort = AppStorage(wrappedValue: .server, Pref.playlistSongSort + playlist.id)
+    }
+
+    /// The route holds the playlist as it was when opened; a sync may have renamed it or changed its description.
+    private var current: Playlist { model.library.playlists.first { $0.id == playlist.id } ?? playlist }
 
     var body: some View {
+        let playlist = current
+        let ordered = sort.sorted(songs ?? [])
+        // A playlist may hold the same song twice, so rows are told apart by position.
+        let found = ordered.indices.filter { query.isEmpty || ordered[$0].matches(query) }
         List {
-            DetailHeader(title: playlist.name, caption: songs.map(summaryText), songs: songs ?? []) {
-                PlaylistCover(playlist: playlist, size: 600, radius: 14)
-            } links: { EmptyView() }
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            CollectionSearch(prompt: "Find in Playlist", query: $query, focused: $searching)
+            if !searching && query.isEmpty {
+                CollectionHeader(
+                    title: playlist.name, description: playlist.comment, details: songs.map(summaryText) ?? "", songs: ordered,
+                    download: DownloadControl(
+                        state: downloads.state(playlist: playlist.id), songs: ordered, follows: true,
+                        keep: { downloads.keep(playlist: playlist.id) }, remove: { downloads.remove(playlist: playlist.id) }
+                    )
+                ) {
+                    PlaylistCover(playlist: playlist, size: 600, radius: 14)
+                } byline: {
+                    if let owner = playlist.owner, !owner.isEmpty {
+                        Text("by \(owner)").foregroundStyle(.secondary)
+                    }
+                }
+            }
             if let songs {
-                // A playlist may hold the same song twice, so rows are told apart by position.
-                ForEach(Array(songs.indices), id: \.self) { index in
-                    SongRow(songs: songs, index: index).listRowBackground(Color.clear)
+                ForEach(found, id: \.self) { index in
+                    SongRow(songs: ordered, index: index).listRowBackground(Color.clear)
                 }
                 if songs.isEmpty {
                     ContentUnavailableView("Empty Playlist", systemImage: "music.note.list")
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                } else if found.isEmpty {
+                    ContentUnavailableView.search(text: query).listRowSeparator(.hidden).listRowBackground(Color.clear)
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
         .modifier(TopWash(cover: playlist.coverArt ?? songs?.first?.coverArt))
         .refreshable { await model.sync() }
         .task(id: model.syncing) { songs = model.entries(playlist: playlist.id) }
-        .modifier(BarTitle(title: playlist.name, after: 310))
-        .toolbar {
-            ToolbarItem {
-                DownloadButton(
-                    state: downloads.state(playlist: playlist.id),
-                    keep: { downloads.keep(playlist: playlist.id) },
-                    remove: { downloads.remove(playlist: playlist.id) }
-                )
-            }
-            ToolbarItem {
-                Menu("More", systemImage: "ellipsis") {
-                    Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext(songs ?? []) }
-                    Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast(songs ?? []) }
-                }
-            }
-        }
+        .modifier(BarTitle(title: playlist.name, after: 380))
+        .modifier(CollectionMenu(kind: "playlist", id: playlist.id, songs: ordered, sort: $sort))
     }
 }
 

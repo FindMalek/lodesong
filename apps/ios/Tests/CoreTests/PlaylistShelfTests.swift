@@ -40,4 +40,30 @@ final class PlaylistShelfTests: XCTestCase {
         XCTAssertEqual(tree.playlists.map(\.id), ["p3"])
         XCTAssertEqual(tree.keeping { $0.id == "p1" }.folders.map(\.name), ["Chill"])
     }
+
+    func testSongSortsKeepThePlaylistOrderForTiesAndSearchIgnoresAccents() {
+        let songs = [
+            Song(id: "1", title: "Zed", artist: "Béa", duration: 100),
+            Song(id: "2", title: "alpha", artist: "Cy", duration: 100),
+            Song(id: "3", title: "Mid", artist: "Al", duration: 50),
+        ]
+        XCTAssertEqual(SongSort.server.sorted(songs).map(\.id), ["1", "2", "3"])
+        XCTAssertEqual(SongSort.title.sorted(songs).map(\.id), ["2", "3", "1"])
+        XCTAssertEqual(SongSort.artist.sorted(songs).map(\.id), ["3", "1", "2"])
+        XCTAssertEqual(SongSort.duration.sorted(songs).map(\.id), ["3", "1", "2"])
+        XCTAssertEqual(songs.filter { $0.matches("bea") }.map(\.id), ["1"])
+    }
+
+    func testAShareLinkIsAskedHereAndMadeOnTheMainAddress() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubServer.self]
+        let client = ServerClient(
+            server: URL(string: "http://10.0.0.2:4533")!, session: URLSession(configuration: configuration),
+            home: URL(string: "https://music.test")!
+        )
+        StubServer.codes = [:]
+        StubServer.answers = ["share": #"{"share":"a","path":"/playlist/p1?s=token"}"#]
+        let link = try await client.shareLink(kind: "playlist", id: "p1")
+        XCTAssertEqual(link.absoluteString, "https://music.test/playlist/p1?s=token")
+    }
 }

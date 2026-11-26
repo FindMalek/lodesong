@@ -303,43 +303,6 @@ struct PlayShuffleButtons: View {
     }
 }
 
-/// Keeps an album or playlist on the phone.
-struct DownloadButton: View {
-    @EnvironmentObject private var model: AppModel
-    @State private var confirming = false
-    @EnvironmentObject private var downloads: DownloadsModel
-    let state: DownloadState
-    let keep: () -> Void
-    let remove: () -> Void
-
-    var body: some View {
-        switch state {
-        case .none:
-            Button("Download", systemImage: "arrow.down") { Haptic.tap(); keep() }.disabled(model.offline)
-        case .downloading(let done, let total):
-            Menu {
-                if done == 0 {
-                    Button("Cancel Download", systemImage: "xmark", role: .destructive, action: remove)
-                } else {
-                    // Files are already here (a kept playlist that grew, say), so this is not a harmless cancel.
-                    Text("\(done) of \(total) songs on this iPhone")
-                    Button("Remove Download", systemImage: "trash", role: .destructive) { confirming = true }
-                }
-            } label: {
-                ProgressView(value: Double(done), total: Double(max(total, 1))).progressViewStyle(.circular)
-            }
-            .accessibilityLabel("Downloading \(done) of \(total)")
-            .confirmationDialog("Delete the \(done) downloaded songs?", isPresented: $confirming, titleVisibility: .visible) {
-                Button("Remove Download", role: .destructive, action: remove)
-            }
-        case .downloaded:
-            Menu("Downloaded", systemImage: "checkmark.circle.fill") {
-                Button("Remove Download", systemImage: "trash", role: .destructive, action: remove)
-            }
-        }
-    }
-}
-
 struct OfflineNotice: View {
     @EnvironmentObject private var model: AppModel
 
