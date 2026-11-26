@@ -172,6 +172,8 @@ struct SongRow: View {
     let index: Int
     /// Album pages number their rows instead of repeating one cover.
     var numbered = false
+    /// Under the title: the album instead of the artist, on the artist's own page.
+    var showsAlbum = false
 
     private var song: Song { songs[index] }
     private var local: Bool { downloads.localURL(song: song.id) != nil }
@@ -186,8 +188,8 @@ struct SongRow: View {
                     leading
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title).lineLimit(1).foregroundStyle(current ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-                        if !numbered, let artist = song.artist {
-                            Text(artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        if !numbered, let subtitle = showsAlbum ? song.album : song.artist {
+                            Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 0)
@@ -261,9 +263,11 @@ struct PlayShuffleButtons: View {
             }
             .font(.headline)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .padding(.vertical, 13)
+            .background(Color(.secondarySystemFill), in: .rect(cornerRadius: 12))
+            .contentShape(.rect)
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.plain)
         .foregroundStyle(.tint)
     }
 }

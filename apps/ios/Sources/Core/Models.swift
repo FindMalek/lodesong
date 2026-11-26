@@ -13,6 +13,8 @@ struct Album: Codable, Identifiable, Hashable {
     var artistId: String?
     var coverArt: String?
     var year: Int?
+    /// When the server first saw it, ISO 8601, so it sorts as text.
+    var created: String?
 }
 
 struct Song: Codable, Identifiable, Hashable {
@@ -27,6 +29,7 @@ struct Song: Codable, Identifiable, Hashable {
     var duration: Int?
     var suffix: String?
     var replayGain: ReplayGain?
+    var playCount: Int?
 }
 
 struct ReplayGain: Codable, Hashable {

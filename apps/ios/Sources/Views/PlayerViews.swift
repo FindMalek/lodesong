@@ -176,6 +176,7 @@ struct NowPlayingView: View {
     @EnvironmentObject private var player: PlayerModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
+    @Namespace private var cover
 
     private static var startsInQueue: Bool {
         #if DEBUG
@@ -194,31 +195,36 @@ struct NowPlayingView: View {
                     Capsule().fill(.white.opacity(0.45)).frame(width: 40, height: 5).frame(width: 80, height: 28).contentShape(.rect)
                 }
                 .accessibilityLabel("Close now playing")
-                Spacer(minLength: 8)
-                Artwork(id: song?.coverArt, size: 800, radius: 14)
-                    .frame(maxWidth: min(proxy.size.width - 56, proxy.size.height * 0.46))
-                    .scaleEffect(playback.isPlaying ? 1 : 0.82)
-                    .shadow(color: .black.opacity(0.4), radius: 24, y: 14)
-                    .animation(.spring(response: 0.45, dampingFraction: 0.7), value: playback.isPlaying)
-                Spacer(minLength: 12)
-                VStack(spacing: proxy.size.height < 700 ? 8 : 20) {
-                    titles(song)
+                if showingQueue {
+                    queueHeader(song)
+                    QueueView()
+                } else {
+                    Spacer(minLength: 8)
+                    Artwork(id: song?.coverArt, size: 800, radius: 14)
+                        .matchedGeometryEffect(id: "cover", in: cover)
+                        .frame(maxWidth: min(proxy.size.width - 56, proxy.size.height * 0.46))
+                        .scaleEffect(playback.isPlaying ? 1 : 0.82)
+                        .shadow(color: .black.opacity(0.4), radius: 24, y: 14)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: playback.isPlaying)
+                    Spacer(minLength: 12)
+                }
+                VStack(spacing: proxy.size.height < 700 || showingQueue ? 8 : 20) {
+                    if !showingQueue { titles(song) }
                     PlayerScrubber(player: player, clock: player.clock)
                     transport(playback.isPlaying)
                     VolumeSlider()
                     HStack {
                         Spacer()
-                        ShuffleButton()
-                        Spacer()
                         RoutePicker().frame(width: 44, height: 44).accessibilityLabel("AirPlay")
                         Spacer()
-                        RepeatButton()
-                        Spacer()
-                        Button { showingQueue = true } label: {
-                            Image(systemName: "list.bullet").font(.title3).frame(width: 44, height: 44)
+                        Button {
+                            Haptic.tap()
+                            withAnimation(.spring(duration: 0.35)) { showingQueue.toggle() }
+                        } label: {
+                            Image(systemName: "list.bullet").modifier(Toggled(on: showingQueue))
                         }
                         .accessibilityLabel("Queue")
-                        .foregroundStyle(.white.opacity(0.7))
+                        .accessibilityAddTraits(showingQueue ? .isSelected : [])
                         Spacer()
                     }
                 }
@@ -232,13 +238,28 @@ struct NowPlayingView: View {
         .background { ArtworkBackground(id: song?.coverArt) }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .sheet(isPresented: $showingQueue) {
-            QueueView()
-                .environment(\.colorScheme, .dark)
-                .presentationBackground { ArtworkBackground(id: song?.coverArt, moving: false) }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        // A drag in the queue reorders or scrolls it, so it must not pull the player closed.
+        .interactiveDismissDisabled(showingQueue)
+    }
+
+    /// The artwork shrunk beside the names, above the queue.
+    private func queueHeader(_ song: Song?) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                withAnimation(.spring(duration: 0.35)) { showingQueue = false }
+            } label: {
+                Artwork(id: song?.coverArt, size: 800, radius: 8)
+                    .matchedGeometryEffect(id: "cover", in: cover)
+                    .frame(width: 64, height: 64)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show artwork")
+            titles(song)
         }
+        .frame(maxWidth: 480)
+        .padding(.horizontal, 28)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
     }
 
     private func titles(_ song: Song?) -> some View {
@@ -286,70 +307,89 @@ struct NowPlayingView: View {
     }
 }
 
-/// What played, what is playing and what comes next.
+/// What comes next, with what already played pulled down from above. Lives inside now playing.
 struct QueueView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: PlayerModel
 
+    /// A place in the queue that keeps its identity when rows move, even with the same song in it twice.
+    private struct Entry: Identifiable {
+        let id: String
+        let index: Int
+    }
+
+    private static let end = "end"
+
     var body: some View {
         let playback = player.playback(model.library)
+        let entries = entries(playback.queue)
+        let base = min(playback.index + 1, entries.count)
+        let top = base < entries.count ? entries[base].id : Self.end
         VStack(spacing: 0) {
-            HStack {
-                Text("Queue").font(.headline)
+            HStack(spacing: 8) {
+                Text("Playing Next").font(.headline)
                 Spacer()
                 ShuffleButton()
                 RepeatButton()
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 4)
-            ScrollViewReader { scroll in
-                List {
-                    if playback.current != nil {
-                        section("History", playback, 0..<playback.index)
-                        section("Now Playing", playback, playback.index..<playback.index + 1)
-                        upNext(playback)
+            .frame(maxWidth: 480)
+            .padding(.horizontal, 28)
+            GeometryReader { proxy in
+                ScrollViewReader { scroll in
+                    List {
+                        if playback.index > 0 { history(playback, Array(entries[..<min(playback.index, entries.count)])) }
+                        upNext(playback, Array(entries[base...]), base: base)
+                        // Room below, so the history can always be scrolled out of sight.
+                        Text(base < entries.count ? "" : "Nothing up next")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: max(0, proxy.size.height - CGFloat(entries.count - base) * 60), alignment: .top)
+                            .padding(.top, base < entries.count ? 0 : 16)
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .id(Self.end)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.defaultMinListRowHeight, 0)
+                    .onAppear { scroll.scrollTo(top, anchor: .top) }
+                    // A new song, or the top row going away: keep what is next at the top and the history out of sight.
+                    .onChange(of: top) { _, top in scroll.scrollTo(top, anchor: .top) }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                // History sits above, out of sight until pulled down.
-                .onAppear { scroll.scrollTo(playback.index, anchor: .top) }
             }
-        }
-        .overlay {
-            if playback.current == nil {
-                ContentUnavailableView("Nothing in the Queue", systemImage: "list.bullet", description: Text("Play something to fill it."))
-            }
+            // Rows fade out above the scrubber instead of being cut in half.
+            .mask { LinearGradient(stops: [.init(color: .black, location: 0.92), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom) }
         }
     }
 
-    @ViewBuilder private func section(_ title: String, _ playback: Playback, _ range: Range<Int>) -> some View {
-        if !range.isEmpty {
-            Section(title) {
-                ForEach(Array(range), id: \.self) { index in
-                    row(playback, index).contextMenu { SongMenu(song: playback.queue[index]) }
-                }
+    private func entries(_ queue: [Song]) -> [Entry] {
+        var seen: [String: Int] = [:]
+        return queue.enumerated().map { index, song in
+            let count = seen[song.id, default: 0]
+            seen[song.id] = count + 1
+            return Entry(id: "\(song.id)#\(count)", index: index)
+        }
+    }
+
+    private func history(_ playback: Playback, _ entries: [Entry]) -> some View {
+        Section("History") {
+            ForEach(entries) { entry in
+                row(playback, entry.index).contextMenu { SongMenu(song: playback.queue[entry.index]) }
             }
         }
     }
 
     /// Hold and drag to reorder, swipe to take out. A context menu here would fight the drag.
-    @ViewBuilder private func upNext(_ playback: Playback) -> some View {
-        let base = playback.index + 1
-        if base < playback.queue.count {
-            Section("Up Next") {
-                ForEach(Array(base..<playback.queue.count), id: \.self) { index in
-                    row(playback, index)
-                }
-                .onMove { source, target in
-                    Haptic.tap()
-                    player.move(from: IndexSet(source.map { $0 + base }), to: target + base)
-                }
-                .onDelete { offsets in
-                    player.remove(at: IndexSet(offsets.map { $0 + base }))
-                }
-            }
+    private func upNext(_ playback: Playback, _ entries: [Entry], base: Int) -> some View {
+        ForEach(entries) { entry in
+            row(playback, entry.index)
+        }
+        .onMove { source, target in
+            Haptic.tap()
+            player.move(from: IndexSet(source.map { $0 + base }), to: target + base)
+        }
+        .onDelete { offsets in
+            player.remove(at: IndexSet(offsets.map { $0 + base }))
         }
     }
 
@@ -366,10 +406,7 @@ struct QueueView: View {
                     Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if index == playback.index {
-                    Image(systemName: "waveform")
-                        .symbolEffect(.variableColor.iterative, isActive: playback.isPlaying)
-                } else if index > playback.index {
+                if index > playback.index {
                     Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
                 }
             }
@@ -378,6 +415,7 @@ struct QueueView: View {
         .buttonStyle(.plain)
         .opacity(index < playback.index ? 0.6 : 1)
         .listRowBackground(Color.clear)
-        .id(index)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 6, leading: 28, bottom: 6, trailing: 28))
     }
 }

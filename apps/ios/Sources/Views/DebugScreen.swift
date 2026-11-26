@@ -50,6 +50,8 @@ enum DebugScreen {
         switch name {
         case "library": router.tab = .library
         case "search": router.tab = .search
+        case "playliststab": router.tab = .playlists
+        case "settings": router.tab = .settings
         case "playlists", "artists", "albums", "songs", "downloaded":
             router.tab = .library
             let routes: [String: Route] = ["playlists": .playlists, "artists": .artists, "albums": .albums, "songs": .songs, "downloaded": .downloaded]

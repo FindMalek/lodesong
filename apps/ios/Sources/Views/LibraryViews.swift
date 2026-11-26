@@ -3,7 +3,7 @@ import SwiftUI
 struct LibraryView: View {
     @EnvironmentObject private var model: AppModel
 
-    private var latest: [Album] { Array(model.library.albums.sorted { ($0.year ?? 0) > ($1.year ?? 0) }.prefix(30)) }
+    private var added: [Album] { Array(model.library.albums.sorted { ($0.created ?? "") > ($1.created ?? "") }.prefix(30)) }
 
     var body: some View {
         List {
@@ -15,11 +15,11 @@ struct LibraryView: View {
             row("Albums", "square.stack", .albums)
             row("Songs", "music.note", .songs)
             row("Downloaded", "arrow.down.circle", .downloaded)
-            if !latest.isEmpty {
+            if !added.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Latest Releases").font(.title2.bold())
+                    Text("Recently Added").font(.title2.bold())
                     LazyVGrid(columns: gridColumns, spacing: 20) {
-                        ForEach(latest) { AlbumTile(album: $0, section: "library") }
+                        ForEach(added) { AlbumTile(album: $0, section: "library") }
                     }
                 }
                 .padding(.top, 20)
@@ -30,6 +30,7 @@ struct LibraryView: View {
         .refreshable { await model.sync() }
         .libraryState(model.library.songs.isEmpty, "No Music Yet", "music.note.list")
         .navigationTitle("Library")
+        .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
             if model.syncing {
                 ToolbarItem { ProgressView() }
@@ -109,13 +110,13 @@ struct AlbumsView: View {
     }
 }
 
-/// Splits names into A to Z groups for the index down the side.
+/// Splits names into A to Z groups for the index down the side, with everything else last.
 private func lettered<Item>(_ items: [Item], _ name: (Item) -> String) -> [(letter: String, items: [Item])] {
     let groups = Dictionary(grouping: items) { item -> String in
         let first = name(item).folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).uppercased().first
         return first.map { $0.isLetter ? String($0) : "#" } ?? "#"
     }
-    return groups.keys.sorted().map { letter in
+    return groups.keys.sorted { ($0 == "#" ? 1 : 0, $0) < ($1 == "#" ? 1 : 0, $1) }.map { letter in
         (letter, groups[letter]!.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending })
     }
 }
@@ -159,17 +160,24 @@ struct SongsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var filter = ""
     @State private var songs: [Song] = []
+    @State private var groups: [(letter: String, items: [(index: Int, song: Song)])] = []
 
     var body: some View {
         List {
             if filter.isEmpty && !songs.isEmpty {
                 PlayShuffleButtons(songs: songs).listRowSeparator(.hidden)
             }
-            ForEach(Array(songs.enumerated()), id: \.element.id) { index, _ in
-                SongRow(songs: songs, index: index)
+            ForEach(groups, id: \.letter) { group in
+                Section(group.letter) {
+                    ForEach(group.items, id: \.song.id) { item in
+                        SongRow(songs: songs, index: item.index)
+                    }
+                }
+                .sectionIndexLabel(group.letter)
             }
         }
         .listStyle(.plain)
+        .listSectionIndexVisibility(.visible)
         .refreshable { await model.sync() }
         .searchable(text: $filter, prompt: "Find in Songs")
         .overlay { if songs.isEmpty && !filter.isEmpty { ContentUnavailableView.search(text: filter) } }
@@ -180,7 +188,16 @@ struct SongsView: View {
             let matches = filter.isEmpty ? model.library.songs : model.library.songs.filter {
                 $0.title.localizedStandardContains(filter) || ($0.artist ?? "").localizedStandardContains(filter)
             }
-            songs = matches.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            let sections = lettered(matches, \.title)
+            songs = sections.flatMap(\.items)
+            var next = 0
+            groups = sections.map { section in
+                let items = section.items.map { song in
+                    defer { next += 1 }
+                    return (index: next, song: song)
+                }
+                return (section.letter, items)
+            }
         }
     }
 }
