@@ -15,7 +15,9 @@ struct PlaylistCover: View {
 
     var body: some View {
         Group {
-            if playlist.coverArt == nil && covers.count == 4 {
+            if let choice = model.library.shelf.cover(playlist: playlist.id) {
+                PictureCover(seed: "playlist:\(playlist.id)", version: choice.kind == "image" ? choice.version : nil, radius: radius)
+            } else if playlist.coverArt == nil && covers.count == 4 {
                 Grid(horizontalSpacing: 0, verticalSpacing: 0) {
                     ForEach([0, 2], id: \.self) { row in
                         GridRow {
