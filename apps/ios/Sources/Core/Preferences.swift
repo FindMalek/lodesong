@@ -28,6 +28,8 @@ enum Pref {
     static let coverSkipSeconds = "coverSkipSeconds"
     static let lyricSize = "lyricSize"
     static let redactHost = "redactHost"
+    /// Followed by a playlist id: the order its songs were last shown in.
+    static let playlistSongSort = "playlistSongSort."
     static let showAlbum = "showAlbum"
     static let coverShrinks = "coverShrinks"
     static let streamInfo = "streamInfo"
