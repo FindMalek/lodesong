@@ -17,6 +17,14 @@ export function createHistoryTables(db: Database): void {
     skipped integer not null,
     client text not null
   )`);
+  if (
+    !db
+      .query<{ name: string }, []>("pragma table_info(plays)")
+      .all()
+      .some((column) => column.name === "key")
+  )
+    db.run("alter table plays add column key text");
+  db.run("create unique index if not exists plays_by_key on plays (account, key)");
   db.run("create index if not exists plays_by_time on plays (account, started desc)");
 }
 
@@ -26,11 +34,14 @@ export interface NewPlay {
   /** Seconds actually listened (seeking ahead doesn't count). */
   listened: number;
   finished: boolean;
+  key?: string;
 }
 
 export function recordPlay(db: Database, account: string, client: string, play: NewPlay): void {
   const skipped = !play.finished && play.listened < SKIP_SECONDS;
-  db.query("insert into plays (account, song_id, song, started, listened, skipped, client) values (?, ?, ?, ?, ?, ?, ?)").run(
+  db.query(
+    "insert into plays (account, song_id, song, started, listened, skipped, client, key) values (?, ?, ?, ?, ?, ?, ?, ?) on conflict (account, key) do nothing",
+  ).run(
     account,
     play.song.id,
     JSON.stringify(play.song),
@@ -38,6 +49,7 @@ export function recordPlay(db: Database, account: string, client: string, play: 
     Math.round(play.listened),
     skipped ? 1 : 0,
     client.slice(0, 64),
+    play.key ?? null,
   );
 }
 

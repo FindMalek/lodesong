@@ -73,6 +73,8 @@ the lock screen or the silent switch.
 2. The library syncs when you open the app. Pull down in the library to sync by hand.
 3. Download an album or playlist from its page. A downloaded playlist follows its additions, removals and order the
    next time the app syncs.
+4. Plays count offline too. They are kept on the phone with their own time and sent to lodesong's history and
+   Navidrome the next time the app is open and reaches the server.
 
 ## What to check on your phone
 
@@ -87,5 +89,5 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Lyrics and lyric search, offline play counts, settings, adding music by name, CarPlay browsing. See the
+Lyrics and lyric search, settings, controlling another device from the phone, adding music by name, CarPlay browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).

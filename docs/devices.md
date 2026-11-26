@@ -42,7 +42,11 @@ A remote sends at most one `volume` command per 100 ms while its slider is dragg
 value). The playing device publishes a volume change to the other devices after 300 ms without a new one, so dragging
 its own slider doesn't resend the queue on every step.
 
-**Phones** use a Subsonic app against Navidrome directly (Arpeggi, Substreamer, Symfonium…). Those can't be remote
+**The iPhone app** ([ios](ios.md)) joins the session while it runs: it shows in the picker, plays what is moved to it and
+takes play, pause, next, previous, seek, "play" and "add to queue" (not volume, which iOS keeps to its buttons). It
+can't control another device.
+
+**Other apps** on a phone use Navidrome directly (Arpeggi, Substreamer, Symfonium…). Those can't be remote
 controlled; the queue hands off through Navidrome instead: [sync](sync.md).
 
 ## Stream quality
