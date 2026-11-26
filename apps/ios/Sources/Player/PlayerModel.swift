@@ -159,7 +159,7 @@ final class PlayerModel: ObservableObject {
 
     /// A downloaded file, or one cached ahead.
     func localFile(_ id: String) -> URL? {
-        downloads?.localURL(song: id) ?? songCache?.file(id)
+        downloads?.localURL(song: id) ?? songCache?.file(id, bitRate: app?.offlineMode == true ? nil : bitRateLimit)
     }
 
     func next() {
@@ -716,6 +716,7 @@ final class PlayerModel: ObservableObject {
         // The lined up song can fail early: line up its next source now, so the change of song stays seamless.
         if let lined, item === lined.item, !Self.isNetwork(error) {
             failed[lined.song.id, default: []].append(lined.source)
+            dropBadCopy(lined)
             self.lined = nil
             return lineUp()
         }
@@ -724,7 +725,14 @@ final class PlayerModel: ObservableObject {
         // Paused: leave it, pressing play opens it again.
         if loaded.source != .file, Self.isNetwork(error) { return isPlaying ? reload() : () }
         failed[loaded.song.id, default: []].append(loaded.source)
+        dropBadCopy(loaded)
         load(at: position, play: isPlaying, again: true)
+    }
+
+    /// A cached copy that won't open would be tried again every time. A download is never touched.
+    private func dropBadCopy(_ broken: Loaded) {
+        guard broken.source == .file, downloads?.localURL(song: broken.song.id) == nil, let url = (broken.item.asset as? AVURLAsset)?.url else { return }
+        try? FileManager.default.removeItem(at: url)
     }
 
     /// Nothing left to try for this song. Three in a row means the trouble is not the songs.

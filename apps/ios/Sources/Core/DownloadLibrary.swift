@@ -131,14 +131,23 @@ final class DownloadLibrary: @unchecked Sendable {
         }
     }
 
+    /// What a library sync does to what is kept. `edited` is the playlist just changed from this phone:
+    /// it is taken whatever its choice, and says nothing about the others.
+    func sync(with store: LibraryStore, triggers: Set<SyncTrigger>, edited: String? = nil, onOpen: Bool, periodic: Bool) {
+        let auto = triggers.contains { $0.allowed(onOpen: onOpen, periodic: periodic) }
+        if allPlaylists, auto { keepPlaylists(from: store) }
+        reconcile(with: store, manual: triggers.contains(.manual), auto: auto, edited: edited)
+    }
+
     /// Brings kept collections in line with the library: new songs, removed songs, order.
     /// `manual` takes them all; otherwise each goes by its own choice, then by `auto`.
-    func reconcile(with store: LibraryStore, manual: Bool = true, auto: Bool = true) {
+    func reconcile(with store: LibraryStore, manual: Bool = true, auto: Bool = true, edited: String? = nil) {
         locked {
             let songs = store.songs()
             guard !manifest.collections.isEmpty, !songs.isEmpty else { return }
             manifest.collections = manifest.collections.map { kept in
-                guard manual || kept.follows ?? auto else { return kept }
+                let edited = kept.ref.kind == .playlist && kept.ref.id == edited
+                guard manual || edited || kept.follows ?? auto else { return kept }
                 if var found = Self.find(kept.ref, in: store, songs: songs) {
                     found.follows = kept.follows
                     return found

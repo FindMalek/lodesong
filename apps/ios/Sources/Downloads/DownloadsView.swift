@@ -33,7 +33,7 @@ struct DownloadsView: View {
             } header: {
                 Text("Auto Download")
             } footer: {
-                Text("Kept playlists and albums take new songs and drop removed ones. The 10 minute check runs while Lodesong is running; once iOS suspends or closes it, iOS decides when it wakes, if at all. Sync Now always updates them, and a playlist's menu can override this.")
+                Text("Kept playlists and albums take new songs and drop removed ones. The 10 minute check runs while Lodesong is running, and with Download on Wi-Fi Only on it skips cellular and other metered networks; once iOS suspends or closes it, iOS decides when it wakes, if at all. Sync Now always updates them, and a playlist's menu can override this.")
             }
 
             NewTracksToggle()

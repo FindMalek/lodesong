@@ -49,10 +49,16 @@ final class SongCache: @unchecked Sendable {
         return found.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
     }
 
-    /// The copy of this song, whatever bit rate it was fetched at: playing it costs nothing.
-    func file(_ id: String) -> URL? {
+    /// A copy of this song good enough for `bitRate` (zero is full quality); nil takes any, as when offline.
+    /// A copy made under a limit is named `id.limit.kind`, a full one `id.kind`.
+    func file(_ id: String, bitRate: Int? = nil) -> URL? {
         let prefix = "\(DownloadLibrary.fileName(id))."
-        return names().first { $0.hasPrefix(prefix) }.map { folder.appendingPathComponent($0) }
+        return names().first { name in
+            guard name.hasPrefix(prefix) else { return false }
+            let parts = name.split(separator: ".")
+            guard let bitRate, parts.count == 3, let made = Int(parts[1]) else { return true }
+            return bitRate > 0 && made >= bitRate
+        }.map { folder.appendingPathComponent($0) }
     }
 
     /// Drops every song not in `ids`.
@@ -66,7 +72,7 @@ final class SongCache: @unchecked Sendable {
     /// One at a time, in queue order. Stops when the network does, or when `ids` alone fill the size limit.
     /// A conversion the server can't make in the first format is asked for in the next.
     func fill(_ songs: [Song], limit: Int, formats: [StreamFormat] = [.mp3], maxBytes: Int = 0, keeping ids: [String] = [], client: ServerClient, added: @Sendable () async -> Void) async {
-        for song in songs where file(song.id) == nil {
+        for song in songs where file(song.id, bitRate: limit) == nil {
             let suffix = song.suffix?.lowercased()
             let raw = limit == 0 && (suffix.map(AudioSource.native.contains) ?? true)
             for format in raw ? [.mp3] : formats {
@@ -78,7 +84,10 @@ final class SongCache: @unchecked Sendable {
                     if Task.isCancelled { return }
                     guard (response as? HTTPURLResponse)?.statusCode == 200,
                           let kind = DownloadLibrary.audioKind(temporary, suffix: raw ? suffix : nil) else { continue }
-                    let target = folder.appendingPathComponent("\(DownloadLibrary.fileName(song.id)).\(kind)")
+                    let name = DownloadLibrary.fileName(song.id)
+                    let target = folder.appendingPathComponent(limit > 0 ? "\(name).\(limit).\(kind)" : "\(name).\(kind)")
+                    // A copy not good enough any more gives way.
+                    while let old = file(song.id) { try FileManager.default.removeItem(at: old) }
                     try FileManager.default.moveItem(at: temporary, to: target)
                     if !raw, DownloadLibrary.isShort(target, expected: song.duration) {
                         try? FileManager.default.removeItem(at: target)

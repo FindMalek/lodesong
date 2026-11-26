@@ -50,7 +50,7 @@ struct PlaybackSettings: View {
             } header: {
                 Text("Song Cache")
             } footer: {
-                Text("Fetched in the quality above, so a bad connection doesn't stop what comes next. Keeping the streamed song fetches it a second time, which uses more data. Temporary: a song goes once the queue moves past it, and iOS may clear it. Download: songs stay until the size limit removes the oldest. Neither touches your downloads.")
+                Text("Fetched in the quality above, so a bad connection doesn't stop what comes next. Keeping the streamed song fetches it a second time, which uses more data. Temporary: a song goes once the queue moves past it, and iOS may clear it. Download: songs stay until the size limit removes the oldest. Changing the type empties the cache. Neither touches your downloads.")
             }
             Section {
                 Picker("ReplayGain", selection: $replayGain) {
@@ -92,6 +92,8 @@ struct PlaybackSettings: View {
             }
         }
         .pickerStyle(.navigationLink)
+        // The size limit only watches the type in use, so the other is not left behind.
+        .onChange(of: cacheKeeps) { SongCache.clear(cacheKeeps ? SongCache.temporary : SongCache.kept) }
         .navigationTitle("Playback")
         .navigationBarTitleDisplayMode(.inline)
     }

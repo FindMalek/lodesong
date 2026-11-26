@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import SwiftUI
 
 struct Library {
@@ -89,10 +90,15 @@ final class AppModel: ObservableObject {
         #if DEBUG
         seconds = ProcessInfo.processInfo.environment["LODESONG_AUTO_SECONDS"].flatMap(Int.init) ?? seconds
         #endif
+        let network = NWPathMonitor()
+        network.start(queue: .global(qos: .utility))
         Task { [weak self, seconds] in
+            defer { network.cancel() }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(seconds))
                 guard let self else { return }
+                // A whole library snapshot every time, so Wi-Fi only holds for it too.
+                if downloads.wifiOnly, network.currentPath.isExpensive { continue }
                 if downloads.autoPeriodic, !downloads.collections.isEmpty || downloads.allPlaylists { await sync(.periodic) }
             }
         }
@@ -275,7 +281,7 @@ final class AppModel: ObservableObject {
         }
         guard !needsSignIn, self.client?.identity == client.identity else { return }
         library = Self.load(store)
-        downloads.librarySynced(edited: changed)
+        downloads.librarySynced(edited: changed, triggers: [.followUp])
     }
 
     /// The library stays on the phone, so signing back into the same account shows it straight away.

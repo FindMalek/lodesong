@@ -54,6 +54,8 @@ enum SyncTrigger: Hashable {
     /// Something the user did.
     case manual
     case open, periodic, background
+    /// Nobody asked for it: music that was added arrived, or the other playlists after one was edited here.
+    case followUp
 
     /// A background wake counts for either setting: iOS picks the time, so it is neither.
     func allowed(onOpen: Bool, periodic: Bool) -> Bool {
@@ -61,7 +63,7 @@ enum SyncTrigger: Hashable {
         case .manual: true
         case .open: onOpen
         case .periodic: periodic
-        case .background: onOpen || periodic
+        case .background, .followUp: onOpen || periodic
         }
     }
 }

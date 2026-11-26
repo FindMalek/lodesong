@@ -72,9 +72,11 @@ final class OfflineTests: XCTestCase {
         await cache.fill(songs("s-1", "s.2"), limit: 128, client: client) {}
         await cache.fill(songs("s-1"), limit: 128, client: client) {}
         XCTAssertEqual(AudioServer.asked, ["format=mp3&id=s-1&maxBitRate=128", "format=mp3&id=s.2&maxBitRate=128"])
-        // A copy at another bit rate still counts.
-        await cache.fill(songs("s-1"), limit: 0, client: client) {}
+        // A better copy than asked for counts; a smaller one is fetched again.
+        await cache.fill(songs("s-1"), limit: 64, client: client) {}
         XCTAssertEqual(AudioServer.asked.count, 2)
+        await cache.fill(songs("s-1"), limit: 320, client: client) {}
+        XCTAssertEqual(AudioServer.asked.count, 3)
 
         cache.prune(keeping: ["s.2"])
         XCTAssertNil(cache.file("s-1"))

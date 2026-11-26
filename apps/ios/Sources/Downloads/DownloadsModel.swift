@@ -105,13 +105,10 @@ final class DownloadsModel: ObservableObject {
 
     /// Call after every library sync so kept playlists follow their changes.
     /// `edited` was changed from this phone, so its new tracks are no news.
-    func librarySynced(edited: String? = nil, triggers: Set<SyncTrigger> = [.manual]) {
+    func librarySynced(edited: String? = nil, triggers: Set<SyncTrigger>) {
         guard let store, let library else { return }
-        let manual = triggers.contains(.manual)
-        let auto = triggers.contains { $0.allowed(onOpen: autoOnOpen, periodic: autoPeriodic) }
-        if allPlaylists, auto { library.keepPlaylists(from: store) }
         let before = library.collections
-        library.reconcile(with: store, manual: manual, auto: auto)
+        library.sync(with: store, triggers: triggers, edited: edited, onOpen: autoOnOpen, periodic: autoPeriodic)
         Notices.post(NewTracks.found(before: before, after: library.collections).filter { $0.playlist != edited })
         revision += 1
         schedule(retry: true)

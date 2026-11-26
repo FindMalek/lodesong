@@ -42,6 +42,51 @@ final class StorageSettingsTests: XCTestCase {
         XCTAssertEqual(DownloadLibrary(root: root).collections.map(\.follows), [true, false, nil])
     }
 
+    /// Two kept playlists, `b` set to never follow, then the server replaces the song in both.
+    private func twoChangedPlaylists() throws -> (DownloadLibrary, LibraryStore) {
+        let store = try LibraryStore(path: ":memory:")
+        let downloads = DownloadLibrary(root: root)
+        func serve(_ id: String) throws {
+            let song = Song(id: id, title: id, suffix: "mp3")
+            try store.apply(LibrarySnapshot(songs: [song], playlists: [Playlist(id: "a", name: "a"), Playlist(id: "b", name: "b")], entries: ["a": [song], "b": [song]]))
+        }
+        try serve("old")
+        for id in ["a", "b"] { downloads.keep(DownloadRef(kind: .playlist, id: id), from: store) }
+        downloads.setFollows(false, DownloadRef(kind: .playlist, id: "b"))
+        let file = root.appendingPathComponent("incoming")
+        try Data("ID3 pretend audio".utf8).write(to: file)
+        XCTAssertTrue(downloads.accept(song: "old", file: file, status: 200, requested: URL(string: "https://music.test/rest/stream?format=raw")!))
+        try serve("new")
+        return (downloads, store)
+    }
+
+    private func songs(_ downloads: DownloadLibrary) -> [[String]] { downloads.collections.map { $0.songs.map(\.id) } }
+
+    func testEditingOnePlaylistLeavesANeverOneAndItsFilesAlone() throws {
+        let (downloads, store) = try twoChangedPlaylists()
+        downloads.sync(with: store, triggers: [.followUp], edited: "a", onOpen: true, periodic: false)
+        XCTAssertEqual(songs(downloads), [["new"], ["old"]])
+        XCTAssertNotNil(downloads.localURL(song: "old"))
+    }
+
+    func testMusicArrivingFromAnAdditionIsNotATap() throws {
+        let (downloads, store) = try twoChangedPlaylists()
+        downloads.sync(with: store, triggers: [.followUp], onOpen: false, periodic: false)
+        XCTAssertEqual(songs(downloads), [["old"], ["old"]])
+        downloads.sync(with: store, triggers: [.followUp], onOpen: true, periodic: false)
+        XCTAssertEqual(songs(downloads), [["new"], ["old"]])
+        XCTAssertNotNil(downloads.localURL(song: "old"))
+    }
+
+    func testACopyCachedUnderALowerLimitIsNotUsedAboveIt() throws {
+        let cache = SongCache(folder: root)
+        try Data().write(to: root.appendingPathComponent("s.128.mp3"))
+        XCTAssertNotNil(cache.file("s", bitRate: 128))
+        XCTAssertNotNil(cache.file("s"))
+        XCTAssertNil(cache.file("s", bitRate: 320))
+        XCTAssertNil(cache.file("s", bitRate: 0))
+    }
+
     func testTheSizeLimitDropsTheOldestSongThatIsNotNeeded() throws {
         let cache = SongCache(folder: root)
         for (age, id) in ["needed", "old", "new"].enumerated() {
