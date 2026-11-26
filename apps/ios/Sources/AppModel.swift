@@ -24,6 +24,7 @@ final class AppModel: ObservableObject {
     @Published var syncError: String?
     @Published var needsSignIn: Bool
 
+    let downloads = DownloadsModel()
     private let store: LibraryStore
     private let defaults = UserDefaults.standard
 
@@ -37,6 +38,7 @@ final class AppModel: ObservableObject {
         client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
         needsSignIn = defaults.string(forKey: "user") == nil
         library = Self.load(store)
+        downloads.connect(client: needsSignIn ? nil : client, store: store)
     }
 
     func signIn(server: URL, user: String, password: String) async throws {
@@ -51,6 +53,7 @@ final class AppModel: ObservableObject {
         self.client = client
         syncError = nil
         needsSignIn = false
+        downloads.connect(client: client, store: store)
         await sync()
     }
 
@@ -63,6 +66,7 @@ final class AppModel: ObservableObject {
             let store = store
             library = await Task.detached { Self.load(store) }.value
             syncError = nil
+            downloads.librarySynced()
         } catch ServerError.signedOut {
             needsSignIn = true
         } catch {
@@ -76,6 +80,7 @@ final class AppModel: ObservableObject {
     func signOut() {
         HTTPCookieStorage.shared.removeCookies(since: .distantPast)
         needsSignIn = true
+        downloads.connect(client: nil, store: store)
     }
 
     #if DEBUG

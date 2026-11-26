@@ -22,7 +22,8 @@ targets:
       properties:
         CFBundleDisplayName: lodesong
         UILaunchScreen: {}
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [engineer.findmalek.lodesong.ios.refresh]
         UIRequiredDeviceCapabilities: [arm64]
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
