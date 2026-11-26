@@ -73,7 +73,9 @@ the lock screen or the silent switch.
 2. The library syncs when you open the app. Pull down in the library to sync by hand.
 3. Download an album or playlist from its page. A downloaded playlist follows its additions, removals and order the
    next time the app syncs. Lyrics and covers are saved with downloaded songs.
-4. The quote button in now playing opens the [lyrics](lyrics.md): tap a line to jump there, the timer button shifts
+4. Plays count offline too. They are kept on the phone with their own time and sent to lodesong's history and
+   Navidrome the next time the app is open and reaches the server.
+5. The quote button in now playing opens the [lyrics](lyrics.md): tap a line to jump there, the timer button shifts
    them. [Search](search.md) finds songs by their words too, and takes `artist:`, `album:`, `genre:`, `year:`,
    `format:` and `lyrics:`. Offline it searches the lyrics saved on the phone.
 
@@ -90,5 +92,6 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, offline play counts, settings, adding music by name, CarPlay browsing. See the
+Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, settings, controlling another device from
+the phone, adding music by name, CarPlay browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).

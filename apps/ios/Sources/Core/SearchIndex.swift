@@ -195,7 +195,8 @@ struct SearchIndex {
             if !filtered { results.playlists = rank(playlists, 5) { _ in true } }
             results.songs = rank(songs, 50) { song in
                 let album = song.albumId.flatMap { albumsByID[$0] }
-                return passes(query.filters, artist: song.artist, album: song.album, genre: song.genre ?? album?.genre,
+                let genres = [song.genre ?? album?.genre].compactMap { $0 } + (song.genres?.map(\.name) ?? [])
+                return passes(query.filters, artist: song.artist, album: song.album, genre: genres.joined(separator: " "),
                               year: song.year ?? album?.year, format: song.suffix)
             }
         }

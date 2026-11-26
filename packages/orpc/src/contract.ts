@@ -227,6 +227,7 @@ export const contract = {
           started: z.number().describe("ms since the epoch"),
           listened: z.number().min(0).lt(86_400).describe("Seconds actually listened"),
           finished: z.boolean().default(false).describe("Whether it played to its end"),
+          key: z.string().min(1).max(64).optional().describe("Yours, one per play: sending it again records nothing"),
         }),
       )
       .output(ok),
