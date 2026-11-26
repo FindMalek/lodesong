@@ -54,6 +54,13 @@ final class LibrarySyncTests: XCTestCase {
         XCTAssertEqual(store.entries(playlist: "p1").map(\.id), ["s2"])
     }
 
+    func testSmartPlaylistsAreAskedEveryTime() async throws {
+        StubServer.answers["getPlaylists"] = #""playlists":{"playlist":[{"id":"p1","name":"Smart","changed":"t1","readonly":true}]}"#
+        try await LibrarySync.run(client: client, store: store)
+        try await LibrarySync.run(client: client, store: store)
+        XCTAssertEqual(StubServer.asked.filter { $0 == "getPlaylist" }.count, 2)
+    }
+
     func testSigningInToAPageThatIsntLodesongFails() async {
         StubServer.answers["login"] = #""hello":true"#
         do {
