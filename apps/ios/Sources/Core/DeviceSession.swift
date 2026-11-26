@@ -287,7 +287,23 @@ struct DeviceMirror: Equatable {
     }
 }
 
+extension DeviceMirror {
+    /// Whether a shortcut may act when the socket did or didn't say who plays. `oneSession` is what the server
+    /// answers about having sessions at all, nil when it can't be asked: then only this phone's own song is known.
+    static func knowsWhoPlays(heard: Bool, remote: Bool, oneSession: Bool?) -> Bool {
+        heard || oneSession == false || (oneSession == nil && !remote)
+    }
+}
+
 extension ServerClient {
+    func oneSession() async -> Bool? {
+        struct Answer: Decodable { let oneSession: Bool }
+        var request = URLRequest(url: url("auth/session"))
+        request.timeoutInterval = 3
+        guard let (data, status) = try? await send(request), status == 200 else { return nil }
+        return (try? JSONDecoder().decode(Answer.self, from: data))?.oneSession
+    }
+
     /// The server wants the session cookie, and an `Origin` of its own site in place of the CSRF header.
     func devicesRequest(id: String, name: String, cookies: [HTTPCookie]) -> URLRequest {
         var parts = URLComponents(url: url("api/devices", ["id": id, "name": name]), resolvingAgainstBaseURL: false)!

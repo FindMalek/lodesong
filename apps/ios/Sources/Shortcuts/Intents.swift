@@ -5,7 +5,7 @@ import Foundation
 // the daily refresh shortcut people already made is tied to it.
 
 enum ShortcutError: Error, CustomLocalizedStringResourceConvertible {
-    case signedOut, gone, empty, notDownloaded, unreachable, nothingPlaying
+    case signedOut, gone, empty, notDownloaded, unreachable, nothingPlaying, noSession
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
@@ -15,6 +15,7 @@ enum ShortcutError: Error, CustomLocalizedStringResourceConvertible {
         case .notDownloaded: return "You're offline, and that isn't downloaded to this iPhone."
         case .unreachable: return "lodesong can't play that right now. Check your server."
         case .nothingPlaying: return "Nothing is playing in lodesong."
+        case .noSession: return "lodesong couldn't check which device is playing. Try again."
         }
     }
 }
@@ -127,7 +128,7 @@ struct PlaySongIntent: AudioPlaybackIntent {
 @MainActor
 private func markCurrentSong(liked: Bool) async throws -> IntentDialog {
     let (model, player) = try signedIn()
-    guard let song = await player.songForShortcut() else { throw ShortcutError.nothingPlaying }
+    guard let song = try await player.songForShortcut() else { throw ShortcutError.nothingPlaying }
     player.setLiked(song, liked)
     let done = liked ? "Liked \(song.title)." : "Removed the like from \(song.title)."
     return model.offlineMode || !player.hasNetwork ? "\(done) It's sent when your server can be reached." : "\(done)"

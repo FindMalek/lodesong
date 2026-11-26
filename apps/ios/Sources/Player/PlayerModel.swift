@@ -306,8 +306,10 @@ final class PlayerModel: ObservableObject {
 
     /// Plays for a shortcut. Answers the device's name when another one plays, which then plays these.
     func playForShortcut(_ songs: [Song]) async throws -> String? {
-        await findSession()
+        let known = await findSession()
         defer { releaseSession() }
+        // Playing now could take the session from another device, or send it a command that never leaves.
+        guard known else { throw ShortcutError.noSession }
         if let device = mirror.playingOn {
             play(songs)
             // The command has to leave before a background app closes the socket again.
@@ -336,24 +338,31 @@ final class PlayerModel: ObservableObject {
     }
 
     /// What is on, here or on the device that plays.
-    func songForShortcut() async -> Song? {
-        await findSession()
+    func songForShortcut() async throws -> Song? {
+        let known = await findSession()
         defer { releaseSession() }
+        guard known else { throw ShortcutError.noSession }
         return onNow
     }
 
     /// In the background the socket is closed, so who plays is unknown or old: opens it and waits to hear.
-    private func findSession() async {
+    /// False when who plays should be known and isn't. Always paired with `releaseSession`.
+    private func findSession() async -> Bool {
         shortcuts += 1
-        guard let link else { return }
+        // Offline mode: there is no one to ask.
+        guard let link, let client else { return !isRemote }
         if link.isClosed || !link.isConnected {
             listed = false
             link.connect()
         }
         // The server lists the devices first, then says what the playing one does.
-        for _ in 0..<30 where !listed || (isRemote && !heardState) {
+        var heard: Bool { listed && (!isRemote || heardState) }
+        for _ in 0..<30 where !heard {
             try? await Task.sleep(for: .milliseconds(100))
         }
+        if heard { return true }
+        let oneSession = await client.oneSession()
+        return DeviceMirror.knowsWhoPlays(heard: heard, remote: isRemote, oneSession: oneSession)
     }
 
     private func releaseSession() {
