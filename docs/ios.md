@@ -22,7 +22,8 @@ in the App Store: a tool called [SideStore](https://sidestore.io) signs the app 
 
 ## Install, step by step
 
-**The native app is in releases from 2.0.0.**
+**The native app is in releases from 2.0.0** and needs iOS 26. Releases before it shipped a web view app (iOS 16 and
+later) under the same identifier: updating from it installs this app over it, and expect to sign in again.
 
 You use three apps: **iloader** on the computer (installs SideStore), and **LocalDevVPN** and **SideStore** on the
 iPhone. The steps follow [SideStore's own guide](https://docs.sidestore.io/docs/installation/install).
@@ -223,7 +224,8 @@ entitlement) and `https` links that open the app (needs Associated Domains). Car
   later, downloads wait.
 - Settings → Storage → Downloads has **Download All Playlists** (new ones too; a playlist you remove stays removed),
   the queue of what is still to come, and the list of downloaded songs.
-- **Cache Songs Ahead** (Playback) fetches the next 1 to 10 songs in full. Temporary, separate from downloads.
+- **Cache Songs Ahead** (Playback) fetches the next 1 to 10 songs in full, separate from downloads. They are temporary unless **Cache Type** is
+  Download, which keeps them until the size limit.
 
 ## Two server addresses
 
@@ -278,7 +280,8 @@ Push isn't available on free signing, so alerts that don't wait for iOS to wake 
   remembers their song ids and posts the playlist name and number of new tracks. The first pass only records. Accounts
   with no live sign in get nothing
 - a choice of which playlists count: the server doesn't know what is downloaded on a phone
-- a `lodesong://` URL scheme in the app, sent as the message's `Click` link, so tapping opens the app and it syncs
+- a `lodesong://` link sent as the message's `Click` link, so tapping opens the app and it syncs (the app already
+  opens [album and playlist links](#shortcuts-spotlight-and-links))
 - the ntfy app on the iPhone, subscribed to the topic. A self-hosted ntfy also needs `upstream-base-url` set to
   `https://ntfy.sh` for iOS to deliver at once
 - turning off the app's own notification, or both arrive
