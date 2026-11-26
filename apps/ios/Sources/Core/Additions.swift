@@ -12,6 +12,15 @@ struct Wish: Codable, Equatable {
     var input: String?
     /// A `data:` URI, inlined by the server.
     var cover: String?
+    /// A short audio sample. Lyterion doesn't send one yet.
+    var previewUrl: String?
+
+    /// Title and first artist both: a same-titled song by someone else is not this one.
+    func isSame(as song: Song) -> Bool {
+        guard let artist = artists.first else { return false }
+        return SearchText.normalize(song.title) == SearchText.normalize(title)
+            && SearchText.normalize(song.artist ?? "") == SearchText.normalize(artist)
+    }
 }
 
 struct Candidates: Decodable, Equatable {
@@ -88,11 +97,7 @@ extension ServerClient {
         }
         if next.status == .placed, next.song == nil, let artist = next.wish.artists.first {
             next.looks += 1
-            // Both must match: a same-titled song by someone else is not the one just added.
-            let wanted = (SearchText.normalize(next.wish.title), SearchText.normalize(artist))
-            next.song = try? await songs(matching: "\(artist) \(next.wish.title)").first {
-                (SearchText.normalize($0.title), SearchText.normalize($0.artist ?? "")) == wanted
-            }
+            next.song = try? await songs(matching: "\(artist) \(next.wish.title)").first { next.wish.isSame(as: $0) }
         }
         return next
     }
