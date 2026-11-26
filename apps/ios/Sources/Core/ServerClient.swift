@@ -121,7 +121,7 @@ struct ServerClient {
         return body
     }
 
-    private func send(_ request: URLRequest) async throws -> (Data, Int) {
+    func send(_ request: URLRequest) async throws -> (Data, Int) {
         var request = request
         request.setValue("1", forHTTPHeaderField: "x-lodesong")
         let (data, response) = try await session.data(for: request)

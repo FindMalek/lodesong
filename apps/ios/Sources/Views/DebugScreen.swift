@@ -54,6 +54,9 @@ enum DebugScreen {
             router.tab = .library
             let routes: [String: Route] = ["playlists": .playlists, "artists": .artists, "albums": .albums, "songs": .songs, "downloaded": .downloaded]
             router.library = [routes[name!]!]
+        case "folder":
+            router.tab = .library
+            router.library = [.playlists] + (library.shelf.folders.first { $0.coverVersion != nil }.map { [Route.folder($0.id)] } ?? [])
         case "album":
             if let album = library.albums.first { router.home = [.album(album)] }
         case "artist":
