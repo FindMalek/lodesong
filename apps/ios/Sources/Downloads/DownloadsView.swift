@@ -18,6 +18,8 @@ struct DownloadsView: View {
                 Text("Quality applies to new downloads. Formats iPhone can't play are saved as MP3.")
             }
 
+            NewTracksToggle()
+
             Section {
                 ForEach(downloads.collections) { kept in
                     VStack(alignment: .leading) {

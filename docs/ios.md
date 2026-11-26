@@ -80,7 +80,7 @@ If refresh starts failing after an iPhone update or reset, the pairing file is p
 SideStore tries to refresh in the background on its own. iOS doesn't promise when that runs, so add a daily Shortcut:
 
 1. In the **Shortcuts** app make a shortcut: connect LocalDevVPN → Open URL `sidestore://` → **Refresh All Apps**
-   (SideStore's action) → disconnect LocalDevVPN.
+   (SideStore's action) → **Mark lodesong as Refreshed** (lodesong's action, see below) → disconnect LocalDevVPN.
 2. **Automation** → **+** → **Time of Day**, daily, **Run Immediately**, and pick that shortcut. Choose a time when the
    phone is on Wi-Fi and usually unlocked.
 
@@ -88,6 +88,17 @@ Open SideStore now and then and check the days left, and refresh by hand before 
 if you reach your server over Tailscale, reconnect it at the end of the shortcut. If the shortcut fails on iOS 27 while a
 manual refresh works, see [this SideStore issue](https://github.com/SideStore/SideStore/issues/1596) for the fix (reset
 `adi.db` in SideStore's settings).
+
+### Expiry warnings
+
+Settings → About shows the days left, and the app notifies you 2 days and 1 day before. It reads the date from the
+signing profile inside the app, which an install or update replaces. A SideStore **refresh does not**: it adds a new
+profile to the phone and leaves the app as it was. So the app has to be told, with the shortcut action above or
+**I Refreshed Today** on the same screen; either counts 7 more days from that moment. If you refresh without telling
+it, you get warnings you can ignore, and once the old date has passed it shows the days left as unknown.
+
+iOS asks whether lodesong may notify you the first time you download something, or from the button on that screen.
+Builds that aren't signed (the simulator) show none of this.
 
 A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
 
@@ -113,6 +124,9 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
    them. [Search](search.md) finds songs by their words too, and takes `artist:`, `album:`, `genre:`, `year:`,
    `format:` and `lyrics:`. Offline it searches the lyrics saved on the phone.
 
+   lodesong notifies you when a sync finds new tracks in a downloaded playlist; **Notify About New Tracks** under
+   Storage → Downloads turns that off. With the app closed this waits for iOS to wake it, which it may not do for hours.
+
 ![download settings](ios/download-settings.png)
 
 ## Settings
@@ -124,7 +138,24 @@ The app works without opening them.
   report playback and when a play counts.
 - **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, moving player
   background, what a swipe on a song does, which rows Library shows.
-- **Storage**: downloads and the space they take, artwork cache.
+- **Storage**: downloads and the space they take, new track notifications, artwork cache.
+- **About**: version and signing days left.
+
+## Alerts through ntfy (not built)
+
+Push isn't available on free signing, so alerts that don't wait for iOS to wake the app would go through
+[ntfy](https://ntfy.sh) ([#680](https://github.com/FindMalek/lodesong/issues/680)). It would take:
+
+- server settings for the ntfy address and an optional access token, and a long random topic for each account (anyone
+  who knows a topic can read it)
+- a job on the server that reads each account's playlists every few minutes with the Subsonic token of a live sign in,
+  remembers their song ids and posts the playlist name and number of new tracks. The first pass only records. Accounts
+  with no live sign in get nothing
+- a choice of which playlists count: the server doesn't know what is downloaded on a phone
+- a `lodesong://` URL scheme in the app, sent as the message's `Click` link, so tapping opens the app and it syncs
+- the ntfy app on the iPhone, subscribed to the topic. A self-hosted ntfy also needs `upstream-base-url` set to
+  `https://ntfy.sh` for iOS to deliver at once
+- turning off the app's own notification, or both arrive
 
 ## What to check on your phone
 
