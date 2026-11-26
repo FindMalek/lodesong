@@ -26,6 +26,14 @@ struct Song: Codable, Identifiable, Hashable {
     var discNumber: Int?
     var duration: Int?
     var suffix: String?
+    var replayGain: ReplayGain?
+}
+
+struct ReplayGain: Codable, Hashable {
+    var trackGain: Double?
+    var albumGain: Double?
+    var trackPeak: Double?
+    var albumPeak: Double?
 }
 
 struct Playlist: Codable, Identifiable, Hashable {
