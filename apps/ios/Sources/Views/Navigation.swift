@@ -25,6 +25,9 @@ final class Router: ObservableObject {
     @Published var search: [Route] = []
     @Published var showingPlayer = false
 
+    /// Grows when a page is opened, so a sheet over the tabs knows to get out of the way.
+    var depth: Int { home.count + library.count + playlists.count + settings.count + search.count }
+
     func open(_ route: Route) {
         showingPlayer = false
         switch tab {

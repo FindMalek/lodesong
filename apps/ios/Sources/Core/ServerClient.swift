@@ -79,7 +79,7 @@ struct ServerClient {
     }
 
     /// A signed link that shows this item's card to someone who isn't signed in, and opens nothing else.
-    /// Asked through the address in use, and made on the main one so it works away from home.
+    /// Asked through the address in use, and made on an `https` one, the main one first, so it works away from home.
     func shareLink(kind: String, id: String) async throws -> URL {
         var request = URLRequest(url: url("api/share"))
         request.httpMethod = "POST"
@@ -88,7 +88,7 @@ struct ServerClient {
         let (data, status) = try await send(request)
         if status == 401 { throw ServerError.signedOut }
         let answer = try? JSONDecoder().decode(Shared.self, from: data)
-        if status == 200, let path = answer?.path, let link = URL(string: identity.absoluteString + path) { return link }
+        if status == 200, let path = answer?.path, let link = URL(string: ([identity, server].first { $0.scheme == "https" } ?? identity).absoluteString + path) { return link }
         throw ServerError.message(answer?.error ?? "The server answered \(status).")
     }
 

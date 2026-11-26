@@ -222,6 +222,7 @@ struct DownloadControl: View {
 
 /// The top right menu of an album or playlist.
 struct CollectionMenu: ViewModifier {
+    @EnvironmentObject private var router: Router
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: PlayerModel
     /// What the server calls it: `album` or `playlist`.
@@ -265,6 +266,7 @@ struct CollectionMenu: ViewModifier {
                     }
                 }
             }
+            .onChange(of: router.depth) { showingDownloads = false }
             .sheet(isPresented: $showingDownloads) {
                 NavigationStack {
                     DownloadsView()
