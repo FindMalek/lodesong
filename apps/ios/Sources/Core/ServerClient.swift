@@ -46,10 +46,22 @@ struct ServerClient {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.httpBody = try JSONEncoder().encode(["user": user, "password": password])
         let (data, status) = try await send(request)
-        guard status != 200 else { return }
+        // A web page that answers 200 to anything must not count: signing in somewhere new replaces the library.
+        if status == 200, (try? JSONDecoder().decode(SignedIn.self, from: data)) != nil { return }
+        if status == 200 { throw ServerError.message("That address isn't a lodesong server.") }
         let reason = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
         throw ServerError.message(reason ?? "The server answered \(status).")
     }
+
+    /// Best effort: signing out must work with no network too.
+    func signOut() async {
+        var request = URLRequest(url: url("auth/logout"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 5
+        _ = try? await send(request)
+    }
+
+    private struct SignedIn: Decodable { let user: String }
 
     func librarySnapshot(knownPlaylists: [String: String]) async throws -> LibrarySnapshot {
         var snapshot = LibrarySnapshot()
