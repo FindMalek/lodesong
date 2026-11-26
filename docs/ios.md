@@ -102,7 +102,9 @@ Builds that aren't signed (the simulator) show none of this.
 
 | Days left | The warning |
 |---|---|
-| ![signing days left](ios/signing-about.png) | ![expiry warning](ios/notify-expiry.png) |
+| 
+ | 
+ |
 
 A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
 
@@ -133,7 +135,8 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 
 | New tracks setting | The notification |
 |---|---|
-| ![download settings](ios/download-settings.png) | ![new tracks notification](ios/notify-new-tracks.png) |
+| ![download settings](ios/download-settings.png) | 
+ |
 
 ## Settings
 
