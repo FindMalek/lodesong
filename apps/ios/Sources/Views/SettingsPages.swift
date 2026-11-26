@@ -156,6 +156,7 @@ struct AppearanceSettings: View {
     @AppStorage(Pref.swipeLeading) private var swipeLeading = SwipeAction.playNext
     @AppStorage(Pref.swipeTrailing) private var swipeTrailing = SwipeAction.addToQueue
     @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
+    @AppStorage(Pref.lyricsSource) private var lyricsSource = "server"
     @AppStorage("homeSections") private var homeSections = ""
 
     var body: some View {
@@ -183,6 +184,10 @@ struct AppearanceSettings: View {
                 Toggle("Shrink Tab Bar on Scroll", isOn: $minimizeTabBar)
                 Picker("Lyrics Text Size", selection: $lyricSize) {
                     ForEach(LyricSize.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                Picker("Lyrics Source", selection: $lyricsSource) {
+                    Text("Files, Then LRCLIB").tag("server")
+                    Text("Files Only").tag("files")
                 }
             }
             Section("Swipe on a Song") {

@@ -14,6 +14,10 @@ enum Pref {
     static let lockSkipSeconds = "lockSkipSeconds"
     static let keepAwake = "keepAwake"
     static let appearance = "appearance"
+    /// "server" takes what the server found, "files" leaves out LRCLIB.
+    static let lyricsSource = "lyricsSource"
+    /// A language code, "off", or empty for the first one there is.
+    static let lyricsTranslation = "lyricsTranslation"
     static let tint = "tint"
     static let tintCustom = "tintCustom"
     static let minimizeTabBar = "minimizeTabBar"

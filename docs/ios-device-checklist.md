@@ -17,3 +17,7 @@ Run on a real phone. Write what happened next to each line.
 | 11 | refresh or reinstall over the app | sign in, library and downloads are still there | pending |
 | 12 | refresh in SideStore, then run the shortcut with Mark lodesong as Refreshed | Settings → About shows days counted from now | pending |
 | 13 | add a track to a downloaded playlist, leave the app closed for a day | a new tracks notification arrives | pending |
+| 14 | force quit the app, run Play Playlist from Shortcuts with the phone locked | music starts and keeps playing | pending |
+| 15 | play on a computer, run Like Current Song on the phone | the computer's song is liked | pending |
+| 16 | search a playlist's name in Spotlight and tap the playlist (not the Play action) | its page opens | pending |
+| 17 | say "Play a playlist in lodesong" to Siri | it asks which, then plays | pending |

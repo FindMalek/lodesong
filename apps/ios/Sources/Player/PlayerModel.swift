@@ -300,6 +300,67 @@ final class PlayerModel: ObservableObject {
         }
     }
 
+    // MARK: - Shortcuts
+
+    var hasNetwork: Bool { network.currentPath.status == .satisfied }
+
+    /// Plays for a shortcut. Answers the device's name when another one plays, which then plays these.
+    func playForShortcut(_ songs: [Song]) async throws -> String? {
+        await findSession()
+        defer { releaseSession() }
+        if let device = mirror.playingOn {
+            play(songs)
+            // The command has to leave before a background app closes the socket again.
+            try? await Task.sleep(for: .milliseconds(500))
+            return device.name
+        }
+        var songs = songs
+        // The network watch may have only just started.
+        if !hasNetwork { try? await Task.sleep(for: .milliseconds(300)) }
+        if app?.offlineMode == true || !hasNetwork {
+            songs = songs.filter { localFile($0.id) != nil }
+            guard !songs.isEmpty else { throw ShortcutError.notDownloaded }
+        }
+        play(songs)
+        Recents.add(current?.albumId)
+        // iOS may suspend the app once the shortcut returns, unless sound is already coming out.
+        for _ in 0..<60 where isPlaying && engine.timeControlStatus != .playing {
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        guard isPlaying, engine.timeControlStatus == .playing else {
+            // Nothing may start by itself later, after the shortcut said it couldn't.
+            pause()
+            throw ShortcutError.unreachable
+        }
+        return nil
+    }
+
+    /// What is on, here or on the device that plays.
+    func songForShortcut() async -> Song? {
+        await findSession()
+        defer { releaseSession() }
+        return onNow
+    }
+
+    /// In the background the socket is closed, so who plays is unknown or old: opens it and waits to hear.
+    private func findSession() async {
+        shortcuts += 1
+        guard let link else { return }
+        if link.isClosed || !link.isConnected {
+            listed = false
+            link.connect()
+        }
+        // The server lists the devices first, then says what the playing one does.
+        for _ in 0..<30 where !listed || (isRemote && !heardState) {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    private func releaseSession() {
+        shortcuts -= 1
+        if shortcuts == 0 { followPlayback() }
+    }
+
     // MARK: - Sleep timer
 
     func setSleepTimer(_ timer: SleepTimer?) {
@@ -379,6 +440,11 @@ final class PlayerModel: ObservableObject {
     private var toppedUp = ""
     private var lastSend = Date.distantPast
     private var link: DeviceLink?
+    /// What this socket has said so far.
+    private var listed = false
+    private var heardState = false
+    /// Shortcuts now running, which need the socket kept open.
+    private var shortcuts = 0
     /// This phone holds the shared session (docs/devices.md).
     private var holdsSession = false
     /// Another device took the session and the list naming it is still to come.
@@ -1069,6 +1135,8 @@ final class PlayerModel: ObservableObject {
     private func join() {
         link?.close()
         link = nil
+        listed = false
+        heardState = false
         // In the background a remote stays one across a change of address, or the lock screen would play from here.
         if client == nil || UIApplication.shared.applicationState != .background { forgetSession() }
         guard let client else { return }
@@ -1090,6 +1158,8 @@ final class PlayerModel: ObservableObject {
     }
 
     private func forgetSession() {
+        listed = false
+        heardState = false
         holdsSession = false
         awaitingDevices = false
         mirror = DeviceMirror()
@@ -1120,8 +1190,10 @@ final class PlayerModel: ObservableObject {
         guard let link else { return }
         if isPlaying {
             if link.isClosed { link.connect() }
-        } else if UIApplication.shared.applicationState == .background, !awaitingDevices {
+        } else if UIApplication.shared.applicationState == .background, !awaitingDevices, shortcuts == 0 {
             link.close()
+            listed = false
+            heardState = false
             if isRemote {
                 mirror.freeze()
                 showRemote()
@@ -1145,6 +1217,9 @@ final class PlayerModel: ObservableObject {
     private func receive(_ message: DeviceMessage) {
         switch message {
         case .devices(let devices):
+            // Empty means the connection dropped.
+            listed = !devices.isEmpty
+            if !listed { heardState = false }
             let was = isRemote
             let awaited = awaitingDevices
             awaitingDevices = false
@@ -1160,6 +1235,7 @@ final class PlayerModel: ObservableObject {
             // Moved here: `take` follows with where it was, so nothing older is published first.
             if was != isRemote || awaited, !holdsSession { updateNowPlaying() }
         case .state(let state):
+            heardState = true
             guard !isPlaying else { return }
             mirror.heard(state)
             showRemote()

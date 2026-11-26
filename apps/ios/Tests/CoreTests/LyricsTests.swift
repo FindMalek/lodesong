@@ -13,6 +13,19 @@ final class LyricsTests: XCTestCase {
         XCTAssertEqual(lyrics.lines[0].sung(at: 2100, nudge: 250), 1)
     }
 
+    func testTranslationsDirectionAndTheSource() throws {
+        let json = #"{"status":"plain","source":"navidrome","lines":[{"start":0,"text":"שלום"}],"translations":[{"lang":"eng","lines":["peace"]},{"lang":"fra","lines":["paix"]}]}"#
+        let lyrics = try JSONDecoder().decode(Lyrics.self, from: Data(json.utf8))
+        XCTAssertEqual(lyrics.translation("")?.lang, "eng")
+        XCTAssertEqual(lyrics.translation("fra")?.lines, ["paix"])
+        XCTAssertNil(lyrics.translation("off"))
+        XCTAssertTrue(Lyrics.isRightToLeft("♪ שלום"))
+        XCTAssertTrue(Lyrics.isRightToLeft("مرحبا"))
+        XCTAssertFalse(Lyrics.isRightToLeft("1999 hello مرحبا"))
+        XCTAssertTrue(lyrics.allowed(filesOnly: true))
+        XCTAssertFalse(Lyrics(status: .synced, source: "lrclib").allowed(filesOnly: true))
+    }
+
     func testSavedLyricsSurviveARestartAndAMissingAnswer() {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

@@ -38,6 +38,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         LSApplicationCategoryType: public.app-category.music
         ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: engineer.findmalek.lodesong.ios
+            CFBundleURLSchemes: [lodesong]
         NSLocalNetworkUsageDescription: lodesong talks to your server on your home network.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

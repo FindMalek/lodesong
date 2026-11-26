@@ -15,10 +15,35 @@ struct Lyrics: Codable, Equatable {
         var words: [Word]?
     }
 
+    struct Translation: Codable, Equatable {
+        let lang: String
+        /// One for each of `lines`, empty where this language has nothing.
+        let lines: [String]
+    }
+
     let status: Status
     var lines: [Line] = []
     /// "navidrome" or "lrclib": where the server found them.
     var source: String?
+    /// Other languages the files carry. Nil in lyrics saved before the phone kept them.
+    var translations: [Translation]?
+
+    /// With "files only", what the server had to get from LRCLIB counts as nothing found.
+    func allowed(filesOnly: Bool) -> Bool { !filesOnly || source != "lrclib" }
+
+    /// The chosen language, or the first one when none is chosen or this song doesn't have it. "off" shows none.
+    func translation(_ choice: String) -> Translation? {
+        choice == "off" ? nil : translations?.first { $0.lang == choice } ?? translations?.first
+    }
+
+    /// The first letter decides, as it does for the text itself.
+    static func isRightToLeft(_ text: String) -> Bool {
+        guard let letter = text.unicodeScalars.first(where: { $0.properties.isAlphabetic }) else { return false }
+        switch letter.value {
+        case 0x0590...0x08FF, 0xFB1D...0xFDFF, 0xFE70...0xFEFF, 0x10800...0x10FFF, 0x1E800...0x1EFFF: return true
+        default: return false
+        }
+    }
 
     /// The line being sung. `nudge` is the listener's own correction: positive shows lines later.
     func line(at ms: Double, nudge: Int = 0) -> Int? {
@@ -66,7 +91,10 @@ final class LyricsStore: @unchecked Sendable {
     /// A "missing" answer never replaces lyrics already here: the server says that when it can't reach its sources.
     @discardableResult
     func save(_ lyrics: Lyrics, song: String, now: Date = Date()) -> SavedLyrics {
-        update(song) { old in
+        var lyrics = lyrics
+        // The server leaves it out when there are none; empty here so they aren't asked for again.
+        if lyrics.source == "navidrome" { lyrics.translations = lyrics.translations ?? [] }
+        return update(song) { old in
             var next = old ?? SavedLyrics(lyrics: lyrics)
             if lyrics.status != .missing || next.lyrics.status == .missing { next.lyrics = lyrics }
             next.fetched = now
