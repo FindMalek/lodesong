@@ -103,7 +103,7 @@ final class PlayLogTests: XCTestCase {
 
     func testWhatAnotherDeviceSendsIsUnderstood() {
         XCTAssertEqual(DeviceMessage(#"{"t":"command","command":{"action":"seek","to":12}}"#), .command(.seek(to: 12)))
-        XCTAssertEqual(DeviceMessage(#"{"t":"devices","devices":[{"id":"a","name":"x","active":false},{"id":"b","name":"y","active":true}]}"#), .active("b"))
+        XCTAssertEqual(DeviceMessage(#"{"t":"devices","devices":[{"id":"a","name":"x","active":false},{"id":"b","name":"y","active":true}]}"#), .devices([Device(id: "a", name: "x", active: false), Device(id: "b", name: "y", active: true)]))
         let take = #"{"t":"take","state":{"songs":[{"id":"s1","title":"One"}],"position":10,"playing":true},"stamped":1000,"now":3000}"#
         XCTAssertEqual(DeviceMessage(take), .take(DeviceState(songs: [Song(id: "s1", title: "One")], position: 12, playing: true)))
     }

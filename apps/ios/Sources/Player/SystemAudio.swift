@@ -50,14 +50,20 @@ final class SystemAudio {
         for (command, direction) in [(commands.skipForwardCommand, 1.0), (commands.skipBackwardCommand, -1.0)] {
             command.addTarget { [weak self] event in
                 let seconds = (event as? MPSkipIntervalCommandEvent)?.interval ?? 15
-                Task { @MainActor in self?.player?.skip(by: seconds * direction) }
+                Task { @MainActor in
+                    guard let player = self?.player, !player.isRemote else { return }
+                    player.skip(by: seconds * direction)
+                }
                 return .success
             }
         }
         commands.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             let seconds = event.positionTime
-            Task { @MainActor in self?.player?.seek(to: seconds) }
+            Task { @MainActor in
+                guard let player = self?.player, !player.isRemote else { return }
+                player.seek(to: seconds)
+            }
             return .success
         }
     }
@@ -73,10 +79,12 @@ final class SystemAudio {
         commands.previousTrackCommand.isEnabled = seconds == 0
     }
 
+    // While another device plays, nothing the system sends (headphones, car, lock screen) reaches it.
+
     private func on(_ command: MPRemoteCommand, _ action: @escaping @MainActor (SystemAudio, PlayerModel) -> Void) {
         command.addTarget { [weak self] _ in
             Task { @MainActor in
-                guard let self, let player = self.player else { return }
+                guard let self, let player = self.player, !player.isRemote else { return }
                 action(self, player)
             }
             return .success

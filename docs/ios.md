@@ -192,8 +192,8 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, controlling another device from
-the phone, adding music by name, CarPlay browsing. See the
+Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, adding music by name, CarPlay
+browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).
 
 ## Beta builds

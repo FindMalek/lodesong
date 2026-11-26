@@ -6,11 +6,16 @@ struct Playback {
     var queue: [Song] = []
     var index = 0
     var isPlaying = false
+    /// The name of the device that plays, when it isn't this one.
+    var playingOn: String?
     var current: Song? { queue.indices.contains(index) ? queue[index] : nil }
 }
 
 extension PlayerModel {
     func playback(_ library: Library) -> Playback {
+        if let device = mirror.playingOn {
+            return Playback(queue: mirror.state?.songs ?? [], isPlaying: mirror.state?.playing == true, playingOn: device.name)
+        }
         #if DEBUG
         if queue.isEmpty, let sample = DebugScreen.playback(library) { return sample }
         #endif
@@ -30,6 +35,7 @@ struct PlayerScrubber: View {
     }
 
     private var progress: (TimeInterval, TimeInterval) {
+        if player.isRemote { return (clock.position, Double(player.mirror.state?.songs.first?.duration ?? 0)) }
         #if DEBUG
         if player.queue.isEmpty, let sample = DebugScreen.progress(model.library) { return sample }
         #endif
@@ -83,6 +89,7 @@ struct ShuffleButton: View {
         }
         .accessibilityLabel("Shuffle")
         .accessibilityValue(player.isShuffled ? "On" : "Off")
+        .disabled(player.isRemote)
     }
 }
 
@@ -98,12 +105,14 @@ struct RepeatButton: View {
         }
         .accessibilityLabel("Repeat")
         .accessibilityValue(player.repeatMode == .off ? "Off" : player.repeatMode == .all ? "All" : "One")
+        .disabled(player.isRemote)
     }
 }
 
 /// The filled look a player button takes while its mode is on.
 private struct Toggled: ViewModifier {
     let on: Bool
+    @Environment(\.isEnabled) private var isEnabled
 
     func body(content: Content) -> some View {
         content
@@ -112,6 +121,7 @@ private struct Toggled: ViewModifier {
             .frame(width: 44, height: 44)
             .background(.white.opacity(on ? 0.25 : 0), in: .rect(cornerRadius: 10))
             .contentShape(.rect)
+            .opacity(isEnabled ? 1 : 0.35)
     }
 }
 
@@ -133,7 +143,9 @@ struct MiniPlayer: View {
                     Artwork(id: song?.coverArt, size: 120, radius: 6).frame(width: 32, height: 32)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(song?.title ?? "Not Playing").font(.subheadline.weight(.semibold)).lineLimit(1)
-                        if let artist = song?.artist, placement != .inline {
+                        if let device = playback.playingOn, placement != .inline {
+                            Text("Playing on \(device)").font(.caption).foregroundStyle(.tint).lineLimit(1)
+                        } else if let artist = song?.artist, placement != .inline {
                             Text(artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
@@ -141,7 +153,8 @@ struct MiniPlayer: View {
                 }
                 .contentShape(.rect)
             }
-            .disabled(song == nil)
+            // A remote with nothing on yet still opens, to move playback.
+            .disabled(song == nil && playback.playingOn == nil)
             .accessibilityHint("Opens now playing")
             Button {
                 Haptic.tap()
@@ -178,6 +191,7 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
     @State private var showingMore = NowPlayingView.startsInMore
+    @State private var showingDevices = NowPlayingView.startsInDevices
     @AppStorage(Pref.showAlbum) private var showAlbum = true
     @AppStorage(Pref.coverShrinks) private var coverShrinks = true
     @AppStorage(Pref.streamInfo) private var streamInfo = true
@@ -206,6 +220,14 @@ struct NowPlayingView: View {
     private static var startsInMore: Bool {
         #if DEBUG
         DebugScreen.name == "more"
+        #else
+        false
+        #endif
+    }
+
+    private static var startsInDevices: Bool {
+        #if DEBUG
+        DebugScreen.name == "devices"
         #else
         false
         #endif
@@ -249,10 +271,14 @@ struct NowPlayingView: View {
                     PlayerScrubber(player: player, clock: player.clock)
                         // Between the two times.
                         .overlay(alignment: .bottom) {
-                            if let song { StreamInfo(song: song, detailed: streamInfo).padding(.horizontal, 52) }
+                            if let device = playback.playingOn {
+                                PlayingOn(device: device).padding(.horizontal, 52)
+                            } else if let song {
+                                StreamInfo(song: song, detailed: streamInfo).padding(.horizontal, 52)
+                            }
                         }
                     transport(playback.isPlaying)
-                    VolumeSlider()
+                    if playback.playingOn == nil { VolumeSlider() } else { RemoteVolumeSlider() }
                     HStack {
                         Spacer()
                         Button { showingLyrics = true } label: {
@@ -262,7 +288,7 @@ struct NowPlayingView: View {
                         .foregroundStyle(.white.opacity(0.7))
                         .disabled(song == nil)
                         Spacer()
-                        RoutePicker().frame(width: 44, height: 44).accessibilityLabel("AirPlay")
+                        DeviceButton(showing: $showingDevices)
                         Spacer()
                         Button {
                             Haptic.tap()
@@ -295,6 +321,7 @@ struct NowPlayingView: View {
         .sheet(isPresented: $showingMore) {
             if let song { QuickSettings(song: song) }
         }
+        .sheet(isPresented: $showingDevices) { DeviceList() }
     }
 
     /// The artwork shrunk beside the names, above the queue.
@@ -519,6 +546,8 @@ struct QueueView: View {
     private func upNext(_ playback: Playback, _ entries: [Entry], base: Int) -> some View {
         ForEach(entries) { entry in
             row(playback, entry.index)
+                .moveDisabled(playback.playingOn != nil)
+                .deleteDisabled(playback.playingOn != nil)
         }
         .onMove { source, target in
             Haptic.tap()
@@ -542,7 +571,7 @@ struct QueueView: View {
                     Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if index > playback.index {
+                if index > playback.index, playback.playingOn == nil {
                     Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
                 }
             }
