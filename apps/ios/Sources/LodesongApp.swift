@@ -4,7 +4,6 @@ import SwiftUI
 struct LodesongApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var player = PlayerModel()
-    @StateObject private var downloads = DownloadsModel()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -14,9 +13,9 @@ struct LodesongApp: App {
             }
             .environmentObject(model)
             .environmentObject(player)
-            .environmentObject(downloads)
+            .environmentObject(model.downloads)
             .task {
-                player.attach(app: model, downloads: downloads)
+                player.attach(app: model, downloads: model.downloads)
                 #if DEBUG
                 await model.debugSignIn()
                 player.accountChanged()
@@ -26,8 +25,16 @@ struct LodesongApp: App {
             }
             .onChange(of: model.needsSignIn) { player.accountChanged() }
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active { Task { await model.sync() } }
+            if phase == .background { model.downloads.scheduleRefresh() }
+        }
+        .backgroundTask(.appRefresh(DownloadsModel.refreshTask)) {
+            await model.downloads.scheduleRefresh()
+            await model.backgroundRefresh()
+        }
+        .backgroundTask(.urlSession(DownloadSession.identifier)) {
+            await model.downloads.finishBackgroundEvents()
         }
     }
 }

@@ -24,6 +24,7 @@ final class AppModel: ObservableObject {
     @Published var syncError: String?
     @Published var needsSignIn: Bool
 
+    let downloads = DownloadsModel()
     private var syncTask: Task<Void, Never>?
     private var signOutTask: Task<Void, Never>?
     private let store: LibraryStore
@@ -39,6 +40,7 @@ final class AppModel: ObservableObject {
         client = defaults.url(forKey: "server").map { ServerClient(server: $0) }
         needsSignIn = defaults.string(forKey: "user") == nil || defaults.bool(forKey: "signedOut")
         library = Self.load(store)
+        downloads.connect(client: client, user: user, store: store, signedIn: !needsSignIn)
     }
 
     func signIn(server: URL, user: String, password: String) async throws {
@@ -58,6 +60,7 @@ final class AppModel: ObservableObject {
         self.client = client
         syncError = nil
         needsSignIn = false
+        downloads.connect(client: client, user: user, store: store)
         await sync()
     }
 
@@ -70,6 +73,16 @@ final class AppModel: ObservableObject {
         if syncTask == task { syncTask = nil }
     }
 
+    /// The system's background wake: ends the sync when iOS takes the time back, and returns once downloads are queued.
+    func backgroundRefresh() async {
+        await withTaskCancellationHandler {
+            await sync()
+        } onCancel: {
+            Task { @MainActor in syncTask?.cancel() }
+        }
+        await downloads.queued()
+    }
+
     private func run(_ client: ServerClient) async {
         syncing = true
         defer { syncing = false }
@@ -78,6 +91,7 @@ final class AppModel: ObservableObject {
             let store = store
             library = await Task.detached { Self.load(store) }.value
             syncError = nil
+            downloads.librarySynced()
         } catch ServerError.signedOut {
             if !Task.isCancelled { needsSignIn = true }
         } catch {
@@ -98,6 +112,7 @@ final class AppModel: ObservableObject {
     func signOut() {
         defaults.set(true, forKey: "signedOut")
         needsSignIn = true
+        downloads.connect(client: client, user: user, store: store, signedIn: false)
         signOutTask = Task {
             await stopSync()
             await client?.signOut()
