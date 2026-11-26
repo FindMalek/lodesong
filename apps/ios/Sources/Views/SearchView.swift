@@ -23,7 +23,7 @@ struct SearchView: View {
     private var term: String { query.trimmingCharacters(in: .whitespaces) }
 
     private var version: [Int] {
-        [model.library.songs.count, model.library.albums.count, model.library.playlists.count, model.syncing ? 1 : 0, lyricsSeen ?? lyrics.revision]
+        [model.libraryRevision, model.syncing ? 1 : 0, lyricsSeen ?? lyrics.revision]
     }
 
     private var recents: [String] { recentSearches.split(separator: "\n").map(String.init) }
