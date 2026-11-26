@@ -10,6 +10,8 @@ struct LodesongApp: App {
     @AppStorage(Pref.tint) private var tint = "red"
     @AppStorage(Pref.tintCustom) private var tintCustom = ""
 
+    init() { Notices.start() }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -34,11 +36,16 @@ struct LodesongApp: App {
             .onChange(of: model.needsSignIn) { player.accountChanged() }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
-            if phase == .active { Task { await model.sync() } }
+            if phase == .active {
+                Notices.scheduleExpiryWarnings()
+                Task { await model.downloads.askForNoticesIfKept() }
+                Task { await model.sync() }
+            }
             if phase == .background { model.downloads.scheduleRefresh() }
         }
         .backgroundTask(.appRefresh(DownloadsModel.refreshTask)) {
             await model.downloads.scheduleRefresh()
+            Notices.scheduleExpiryWarnings()
             await model.backgroundRefresh()
         }
         .backgroundTask(.urlSession(DownloadSession.identifier)) {

@@ -15,3 +15,5 @@ Run on a real phone. Write what happened next to each line.
 | 9 | turn on Wi-Fi only downloads and use mobile data | nothing downloads | pending |
 | 10 | connect to the car | song and controls show, nothing starts on its own | pending |
 | 11 | refresh or reinstall over the app | sign in, library and downloads are still there | pending |
+| 12 | refresh in SideStore, then run the shortcut with Mark lodesong as Refreshed | Settings → About shows days counted from now | pending |
+| 13 | add a track to a downloaded playlist, leave the app closed for a day | a new tracks notification arrives | pending |
