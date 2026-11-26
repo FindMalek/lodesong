@@ -3,6 +3,10 @@
 A native SwiftUI app (`apps/ios`, iOS 26 or newer) that talks to your lodesong server: your library stored on the
 phone, playback with the screen locked, and playlists you can keep downloaded.
 
+| Home | Album | Now playing | Library |
+|---|---|---|---|
+| ![home screen](ios/light-home.png) | ![album page](ios/light-album.png) | ![now playing](ios/live-nowplaying.png) | ![library](ios/light-library.png) |
+
 Installing it is free. You don't need the paid Apple developer account (99 USD a year) and there is nothing to set up
 in the App Store: a tool called [SideStore](https://sidestore.io) signs the app with your own free Apple ID.
 
@@ -10,11 +14,15 @@ in the App Store: a tool called [SideStore](https://sidestore.io) signs the app 
 
 - an iPhone on iOS 26 or newer
 - a computer (Mac, Windows or Linux) with a cable, for the first setup
-- a free Apple ID. The setup tool is third party and asks for the password, so a spare Apple ID is a good idea
+- a free Apple ID. The setup tool is third party and asks for the password, so a spare Apple ID is a good idea.
+  **Use that same Apple ID every time** you install, refresh or recover: another one installs a second, empty copy
+- on Windows, iTunes; on Linux, `usbmuxd`
+- Wi-Fi on the phone while installing and refreshing
 - a running lodesong your phone can reach, ideally on HTTPS ([self-hosting](self-hosting.md))
 
 ## Install, step by step
 
+**The native app is in releases from 1.23.0.** Until that is out, the source in step 9 installs the earlier web view app.
 The steps follow [SideStore's own guide](https://docs.sidestore.io/docs/installation/install); check it if a screen
 looks different.
 
@@ -24,9 +32,10 @@ looks different.
 3. Plug the phone in, unlock it and tap **Trust**.
 4. In iloader, sign in with the Apple ID, pick the phone and choose **Install SideStore (Stable)**.
 5. In iloader, open **Manage Pairing File** and press **Place** next to SideStore.
-6. On the iPhone: Settings → General → **VPN & Device Management** → your Apple ID → **Trust**.
+6. On the iPhone: Settings → General → **VPN & Device Management** → your Apple ID → **Trust**, then **Allow & Restart** if it asks.
 7. Settings → Privacy & Security → **Developer Mode** → on. The phone restarts.
-8. With LocalDevVPN connected, open SideStore, sign in with the same Apple ID and tap the **7 DAYS** counter once.
+8. With LocalDevVPN connected, open SideStore, sign in with the same Apple ID and under **My Apps** tap the **7 DAYS** counter
+   once.
 9. Add lodesong. In SideStore: **Sources** → **+**, paste this, then install lodesong from the source:
 
    ```
@@ -35,9 +44,11 @@ looks different.
 
 10. Open lodesong and sign in with your **lodesong** address (not Navidrome's) and your Navidrome account.
 
-The native app is in releases from **1.23.0**. Older releases carry the earlier web view app. To install a build that
-isn't released yet, download `lodesong-ios` from a run of the [iOS workflow](../.github/workflows/ios.yml), copy the
-`.ipa` to the phone, and in SideStore use **My Apps** → **+**.
+   ![sign in screen](ios/light-signin.png)
+
+To install a build that isn't released yet: signed in to GitHub, download `lodesong-ios` from a `main` run of the
+[iOS workflow](../.github/workflows/ios.yml), unzip it, copy the `.ipa` to the phone, and in SideStore use
+**My Apps** → **+**. The source feed has not been tried in a real SideStore yet.
 
 A free Apple ID allows **3** sideloaded apps at a time, and SideStore is one of them.
 
@@ -60,7 +71,9 @@ If the 7 days run out:
 - plays and downloads made before expiry stay on the phone until it opens again
 
 SideStore expires the same way. If **SideStore** has expired it can't refresh anything, including itself: plug into the
-computer and repeat step 4 with iloader.
+computer and repeat steps 4 and 5 with iloader. Don't delete lodesong; refresh it or install over it afterwards.
+
+If refresh starts failing after an iPhone update or reset, the pairing file is probably stale: do step 5 again.
 
 ### Refresh without thinking about it
 
@@ -72,8 +85,9 @@ SideStore tries to refresh in the background on its own. iOS doesn't promise whe
    phone is on Wi-Fi and usually unlocked.
 
 Open SideStore now and then and check the days left, and refresh by hand before a trip. iOS runs one VPN at a time, so
-if you reach your server over Tailscale, reconnect it at the end of the shortcut. On iOS 27 there is a
-[reported bug](https://github.com/SideStore/SideStore/issues/1596) with the Shortcut's refresh.
+if you reach your server over Tailscale, reconnect it at the end of the shortcut. If the shortcut fails on iOS 27 while a
+manual refresh works, see [this SideStore issue](https://github.com/SideStore/SideStore/issues/1596) for the fix (reset
+`adi.db` in SideStore's settings).
 
 A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
 
@@ -98,6 +112,8 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 5. The quote button in now playing opens the [lyrics](lyrics.md): tap a line to jump there, the timer button shifts
    them. [Search](search.md) finds songs by their words too, and takes `artist:`, `album:`, `genre:`, `year:`,
    `format:` and `lyrics:`. Offline it searches the lyrics saved on the phone.
+
+![download settings](ios/download-settings.png)
 
 ## What to check on your phone
 
