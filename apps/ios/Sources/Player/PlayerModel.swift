@@ -206,6 +206,12 @@ final class PlayerModel: ObservableObject {
         engine.actionAtItemEnd = timer == .endOfSong ? .pause : .advance
     }
 
+    /// The end of a call is not someone pressing play: a timer that ran out during it still holds.
+    func resumeAfterInterruption() {
+        if sleepIsDue { return setSleepTimer(nil) }
+        resume()
+    }
+
     private var sleepIsDue: Bool {
         if case .at(let time) = sleepTimer { return Date() >= time }
         return false

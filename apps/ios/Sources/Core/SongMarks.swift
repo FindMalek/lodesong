@@ -68,7 +68,8 @@ final class SongMarks {
             case .done: changes[at].sent = now()
             case .refused: changes.remove(at: at)
             case .later:
-                changes[at].failed = true
+                // Everything behind it waits too.
+                for i in changes.indices where changes[i].account == account && changes[i].sent == nil { changes[i].failed = true }
                 return save()
             }
             save()
