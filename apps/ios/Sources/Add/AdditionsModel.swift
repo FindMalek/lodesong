@@ -47,10 +47,15 @@ final class AdditionsModel: ObservableObject {
 
     /// Polls until nothing is left to wait for. A server that can't answer is asked again.
     func follow(_ app: AppModel) async {
-        while !Task.isCancelled, unsettled, let client = app.client {
+        // Same limit as the web player, so a stuck download can't poll all night. The next launch looks again.
+        let deadline = Date.now.addingTimeInterval(30 * 60)
+        var pause = 3.0
+        while !Task.isCancelled, unsettled, Date.now < deadline, let client = app.client {
+            var answered = false
             for item in items where item.unsettled {
                 guard let next = try? await client.advanced(item), !Task.isCancelled,
                       let index = items.firstIndex(where: { $0.id == item.id }) else { continue }
+                answered = true
                 items[index] = next
                 save()
                 let found = next.song != nil && item.song == nil
@@ -59,7 +64,9 @@ final class AdditionsModel: ObservableObject {
                     bringIn(next.song?.id, app)
                 }
             }
-            try? await Task.sleep(for: .seconds(3))
+            // A server that doesn't answer is asked less and less often.
+            pause = answered ? 3 : min(pause * 2, 60)
+            try? await Task.sleep(for: .seconds(pause))
         }
     }
 
