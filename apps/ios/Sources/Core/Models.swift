@@ -32,6 +32,13 @@ struct Song: Codable, Identifiable, Hashable {
     var replayGain: ReplayGain?
     /// The server's count for this account, for an artist's top songs.
     var playCount: Int?
+    /// kbit/s, Hz and bits per sample of the file on the server.
+    var bitRate: Int?
+    var samplingRate: Int?
+    var bitDepth: Int?
+    /// When this account liked it, and its 1 to 5 star rating.
+    var starred: String?
+    var userRating: Int?
     /// Only history and stats read these: they are kept as the song was when it was played.
     var artistId: String?
     var year: Int?

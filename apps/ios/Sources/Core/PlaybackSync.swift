@@ -32,8 +32,21 @@ extension ServerClient {
     /// `time` is when the song started playing, in ms: a play sent later keeps its own time.
     @discardableResult
     func scrobble(song id: String, submission: Bool, time: Int = Int(Date().timeIntervalSince1970 * 1000), client: String) async -> Delivery {
-        let query = ["id": id, "submission": String(submission), "time": String(time), "f": "json"]
-        guard let (data, response) = try? await session.data(for: request(url("rest/scrobble", query), client: client)),
+        await deliver("scrobble", ["id": id, "submission": String(submission), "time": String(time)], client: client)
+    }
+
+    func setLiked(song id: String, _ liked: Bool, client: String) async -> Delivery {
+        await deliver(liked ? "star" : "unstar", ["id": id], client: client)
+    }
+
+    /// Zero takes the rating away.
+    func setRating(song id: String, _ stars: Int, client: String) async -> Delivery {
+        await deliver("setRating", ["id": id, "rating": String(stars)], client: client)
+    }
+
+    private func deliver(_ endpoint: String, _ query: [String: String], client: String) async -> Delivery {
+        let query = query.merging(["f": "json"]) { first, _ in first }
+        guard let (data, response) = try? await session.data(for: request(url("rest/\(endpoint)", query), client: client)),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let body = try? JSONDecoder().decode(Reply.self, from: data).body else { return .later }
         if body.status == "ok" { return .done }

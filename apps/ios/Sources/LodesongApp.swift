@@ -36,6 +36,7 @@ struct LodesongApp: App {
             .onChange(of: model.needsSignIn) { player.accountChanged() }
             .onChange(of: model.client?.server) { player.serverChanged() }
             .onChange(of: model.offlineMode) { player.connectionChanged() }
+            .onChange(of: model.lastSync) { player.librarySynced() }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active {

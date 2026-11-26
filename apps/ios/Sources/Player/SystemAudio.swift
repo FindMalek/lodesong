@@ -89,7 +89,7 @@ final class SystemAudio {
             interrupted = player.isPlaying
             player.pause()
         } else if type == .ended {
-            if interrupted && resume { player.resume() }
+            if interrupted && resume { player.resumeAfterInterruption() }
             interrupted = false
         }
     }

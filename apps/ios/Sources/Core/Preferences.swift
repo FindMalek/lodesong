@@ -30,6 +30,9 @@ enum Pref {
     static let redactHost = "redactHost"
     /// Followed by a playlist id: the order its songs were last shown in.
     static let playlistSongSort = "playlistSongSort."
+    static let showAlbum = "showAlbum"
+    static let coverShrinks = "coverShrinks"
+    static let streamInfo = "streamInfo"
 
     /// Heard for this share of the song, or for this long, whichever comes first.
     static func pastScrobblePoint(_ seconds: TimeInterval, duration: TimeInterval, percent: Int, minutes: Int) -> Bool {
