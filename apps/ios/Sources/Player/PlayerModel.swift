@@ -20,11 +20,19 @@ enum SleepTimer: Equatable {
 final class PlayerModel: ObservableObject {
     @Published private var line = PlayQueue()
     @Published private(set) var isPlaying = false
-    let clock = PlayerClock()
+    /// What the screens follow: this phone's position, or the playing device's while it is a remote.
+    var clock: PlayerClock { isRemote ? remoteClock : ownClock }
+    private let ownClock = PlayerClock()
+    private let remoteClock = PlayerClock()
     private(set) var position: TimeInterval {
-        get { clock.position }
-        set { clock.position = newValue }
+        get { ownClock.position }
+        set { ownClock.position = newValue }
     }
+    /// The devices of the account, and what plays when it isn't this phone (docs/devices.md).
+    @Published private(set) var mirror = DeviceMirror()
+    var isRemote: Bool { mirror.playingOn != nil }
+    /// This phone's id in `mirror.devices`.
+    var deviceID: String { clientID }
     @Published private(set) var repeatMode = RepeatMode(rawValue: UserDefaults.standard.string(forKey: "repeatMode") ?? "") ?? .off
     @Published private(set) var duration: TimeInterval = 0
     /// A newer queue saved by another device, waiting for `resumeOffer` or `dismissOffer`.
@@ -41,6 +49,10 @@ final class PlayerModel: ObservableObject {
     var isShuffled: Bool { line.shuffled }
 
     func play(_ songs: [Song], at start: Int = 0) {
+        if isRemote {
+            guard songs.indices.contains(start) else { return }
+            return command(.play(songs, start: start, shuffle: false))
+        }
         var (songs, start) = (songs, start)
         if app?.offlineMode == true { (songs, start) = PlayQueue.available(songs, start: start) { localFile($0) != nil } }
         guard songs.indices.contains(start) else { return }
@@ -51,6 +63,10 @@ final class PlayerModel: ObservableObject {
     }
 
     func shuffle(_ songs: [Song]) {
+        if isRemote {
+            guard !songs.isEmpty else { return }
+            return command(.play(songs, start: .random(in: songs.indices), shuffle: true))
+        }
         let songs = app?.offlineMode == true ? songs.filter { localFile($0.id) != nil } : songs
         guard !songs.isEmpty else { return }
         replace(with: .shuffling(songs))
@@ -68,19 +84,25 @@ final class PlayerModel: ObservableObject {
     /// Keeps the order given, and writes the queue once however many there are.
     func playNext(_ songs: [Song]) {
         guard !songs.isEmpty else { return }
+        if isRemote { return command(.add(songs, next: true)) }
         edit { $0.insertNext(songs) }
     }
 
     func addToQueue(_ songs: [Song]) {
         guard !songs.isEmpty else { return }
+        if isRemote { return command(.add(songs, next: false)) }
         edit { $0.append(songs) }
     }
 
+    // Nothing in the protocol reorders, removes, shuffles or repeats on another device, so a remote leaves them be.
+
     func move(from source: IndexSet, to target: Int) {
+        guard !isRemote else { return }
         edit { $0.move(from: source, to: target) }
     }
 
     func remove(at offsets: IndexSet) {
+        guard !isRemote else { return }
         var changed = line
         guard changed.remove(at: offsets) else { return edit { $0 = changed } }
         // The current song went. Carry on with what followed it, if anything is left to follow.
@@ -100,11 +122,13 @@ final class PlayerModel: ObservableObject {
     }
 
     func toggleShuffle() {
+        guard !isRemote else { return }
         edit { $0.setShuffled(!$0.shuffled) }
     }
 
     /// Off, the whole queue, then the one song.
     func cycleRepeat() {
+        guard !isRemote else { return }
         let modes = RepeatMode.allCases
         repeatMode = modes[(modes.firstIndex(of: repeatMode)! + 1) % modes.count]
         defaults.set(repeatMode.rawValue, forKey: "repeatMode")
@@ -112,6 +136,11 @@ final class PlayerModel: ObservableObject {
     }
 
     func jump(to index: Int) {
+        if isRemote {
+            let songs = mirror.state?.songs ?? []
+            guard songs.indices.contains(index) else { return }
+            return command(.play(songs, start: index, shuffle: false))
+        }
         guard line.jump(to: index) else { return }
         // A timer that ran out while paused must not stop what is picked next.
         if sleepIsDue { setSleepTimer(nil) }
@@ -119,11 +148,14 @@ final class PlayerModel: ObservableObject {
     }
 
     func toggle() {
+        if isRemote { return command(.toggle(playing: mirror.state?.playing != true)) }
         isPlaying ? pause() : resume()
     }
 
     /// Whether playing `songs` would drop what is still to come.
-    func wouldReplace(_ songs: [Song]) -> Bool { line.wouldLose(songs) }
+    func wouldReplace(_ songs: [Song]) -> Bool {
+        isRemote ? PlayQueue(songs: mirror.state?.songs ?? []).wouldLose(songs) : line.wouldLose(songs)
+    }
 
     /// A downloaded file, or one cached ahead.
     func localFile(_ id: String) -> URL? {
@@ -131,17 +163,20 @@ final class PlayerModel: ObservableObject {
     }
 
     func next() {
+        if isRemote { return command(.next) }
         if line.jump(to: index + 1) || (repeatMode == .all && line.jump(to: 0)) { load(at: 0, play: isPlaying) } else { finish() }
     }
 
     /// Back to the start of the song first, as every player does; then to the one before.
     func previous() {
+        if isRemote { return command(.previous) }
         var before = index - 1
         if app?.offlineMode == true { before = queue.prefix(index).lastIndex { localFile($0.id) != nil } ?? -1 }
         if position <= 3, line.jump(to: before) { load(at: 0, play: isPlaying) } else { seek(to: 0) }
     }
 
     func seek(to seconds: TimeInterval) {
+        if isRemote { return command(.seek(to: max(0, seconds))) }
         guard current != nil else { return }
         position = max(0, duration > 0 ? min(seconds, duration) : seconds)
         log.jumped(to: position)
@@ -269,6 +304,8 @@ final class PlayerModel: ObservableObject {
     /// This phone holds the shared session (docs/devices.md).
     private var holdsSession = false
     private var published = ""
+    private var remoteTick: Task<Void, Never>?
+    private var volumeSend: Task<Void, Never>?
     private var lastPublish = Date.distantPast
     private let defaults = UserDefaults.standard
     private lazy var system = SystemAudio(player: self)
@@ -335,7 +372,7 @@ final class PlayerModel: ObservableObject {
                 self?.save()
                 self?.push()
                 self?.sendPlays()
-                self?.followPlayback()
+                self?.updateNowPlaying()
             }
         }
         center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
@@ -367,14 +404,15 @@ final class PlayerModel: ObservableObject {
             pause()
             setSleepTimer(nil)
             log.end()
-            link?.close()
-            link = nil
+            leaveSession()
             account = ""
             unload()
             return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, speed: 1, client: nil)
         }
         let now = "\(app.client?.identity.absoluteString ?? "") \(app.user)"
         guard now != account else { return pull() }
+        // Before the queue changes: nothing of the last account's session may reach this one.
+        leaveSession()
         log.end()
         account = now
         setSleepTimer(nil)
@@ -395,8 +433,9 @@ final class PlayerModel: ObservableObject {
 
     // MARK: - Playing
 
+    /// Also what the system calls (a call ending, a car connecting), so it never reaches another device.
     func resume() {
-        guard current != nil, app?.needsSignIn == false else { return }
+        guard !isRemote, current != nil, app?.needsSignIn == false else { return }
         skips = 0
         retries = 0
         // It ran out while paused: pressing play means carry on.
@@ -573,7 +612,7 @@ final class PlayerModel: ObservableObject {
     }
 
     func skip(by seconds: TimeInterval) {
-        seek(to: position + seconds)
+        seek(to: clock.position + seconds)
     }
 
     private func make(_ song: Song) -> Loaded? {
@@ -829,7 +868,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func push() {
-        guard let client, current != nil, defaults.bool(Pref.queueSync, or: true) else { return }
+        guard !isRemote, let client, current != nil, defaults.bool(Pref.queueSync, or: true) else { return }
         let mark = QueueMark(line, position: position)
         guard mark != synced else { return }
         lastPush = Date()
@@ -850,7 +889,7 @@ final class PlayerModel: ObservableObject {
         let id = clientID
         let account = account
         Task {
-            guard let remote = await client.savedPlayQueue(client: id), account == self.account, self.client != nil,
+            guard let remote = await client.savedPlayQueue(client: id), account == self.account, self.client != nil, !isRemote,
                   remote.changedBy != "lodesong@\(id)",
                   remote.changed != defaults.string(forKey: "queueDismissed") else { return }
             if queue.isEmpty { return adopt(remote) }
@@ -877,10 +916,37 @@ final class PlayerModel: ObservableObject {
 
     // MARK: - The session across devices
 
+    /// Moves playback to a device of the list, this phone included.
+    func transfer(to device: String) {
+        guard let link else { return }
+        // So the other device picks up from here, not from the last heartbeat.
+        // Shown until the device that takes over says something itself.
+        if device != clientID, let state = publish(force: true) { mirror.heard(state) }
+        link.send(.transfer(to: device))
+    }
+
+    /// The playing device's volume, at most ten times a second while the slider moves.
+    func setRemoteVolume(_ level: Double) {
+        guard isRemote else { return }
+        mirror.expect(.volume(level))
+        guard volumeSend == nil else { return }
+        link?.send(.command(.volume(level)))
+        volumeSend = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard !Task.isCancelled, let self else { return }
+            self.volumeSend = nil
+            if let latest = self.mirror.state?.volume, latest != level { self.setRemoteVolume(latest) }
+        }
+    }
+
+    private func command(_ command: DeviceCommand) {
+        link?.send(.command(command))
+        mirror.expect(command)
+        showRemote()
+    }
+
     private func join() {
-        link?.close()
-        link = nil
-        holdsSession = false
+        leaveSession()
         guard let client else { return }
         let id = clientID
         let name = UIDevice.current.userInterfaceIdiom == .pad ? "the ipad app" : "the iphone app"
@@ -893,50 +959,96 @@ final class PlayerModel: ObservableObject {
             received: { [weak self] in self?.receive($0) })
     }
 
+    private func leaveSession() {
+        link?.close()
+        link = nil
+        forgetSession()
+    }
+
+    private func forgetSession() {
+        holdsSession = false
+        mirror = DeviceMirror()
+        volumeSend?.cancel()
+        volumeSend = nil
+        showRemote()
+    }
+
+    private func showRemote() {
+        if isRemote { remoteClock.position = mirror.position() }
+        guard isRemote, mirror.state?.playing == true else {
+            remoteTick?.cancel()
+            remoteTick = nil
+            return
+        }
+        guard remoteTick == nil else { return }
+        remoteTick = Task { [weak self] in
+            while !Task.isCancelled, let self {
+                self.remoteClock.position = self.mirror.position()
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
     /// Paused in the background the app is soon suspended: it leaves the picker, or picking it would stop the music.
     private func followPlayback() {
         guard let link else { return }
         if isPlaying {
             if link.isClosed { link.connect() }
         } else if UIApplication.shared.applicationState == .background {
-            holdsSession = false
             link.close()
+            forgetSession()
         }
     }
 
     /// Playing takes the session. Paused, only the device that holds it has anything to say.
-    private func publish(force: Bool = false) {
-        guard let link, current != nil, isPlaying || holdsSession else { return }
+    @discardableResult
+    private func publish(force: Bool = false) -> DeviceState? {
+        guard let link, !isRemote, current != nil, isPlaying || holdsSession else { return nil }
         let songs = Array(queue.dropFirst(index).prefix(DeviceState.maxSongs))
         let key = "\(songs.map(\.id).joined(separator: ","))|\(isPlaying)"
-        guard force || key != published else { return }
+        guard force || key != published else { return nil }
         published = key
         lastPublish = Date()
-        link.send(DeviceState(songs: songs, position: position, playing: isPlaying))
+        let state = DeviceState(songs: songs, position: position, playing: isPlaying)
+        link.send(.state(state))
+        return state
     }
 
     private func receive(_ message: DeviceMessage) {
         switch message {
-        case .active(let id): holdsSession = id == clientID
+        case .devices(let devices):
+            let was = isRemote
+            holdsSession = devices.contains { $0.active && $0.id == clientID }
+            let left = mirror.list(devices, me: clientID, playingHere: isPlaying)
+            if isRemote, !was {
+                offer = nil
+                // What was heard here is a play of its own; nothing the other device does adds to it.
+                finishPlay()
+            }
+            showRemote()
+            if let left { keep(left) }
+            // Moved here: `take` follows with where it was, so nothing older is published first.
+            if was != isRemote, !holdsSession { updateNowPlaying() }
+        case .state(let state):
+            guard !isPlaying else { return }
+            mirror.heard(state)
+            showRemote()
         case .yield:
             holdsSession = false
             pause()
         case .take(let state):
             holdsSession = true
-            if queue.dropFirst(index).prefix(DeviceState.maxSongs).map(\.id) == state.songs.map(\.id) {
-                seek(to: state.position)
-                // The device that had it already scrobbled anything past the point.
-                if pastScrobblePoint(position) { scrobbled = true }
-            } else {
-                adopt(RemoteQueue(songs: state.songs, index: 0, position: state.position, changed: "", changedBy: ""))
-            }
+            keep(state)
             if state.playing { resume() }
         case .command(let command):
+            // Only the playing device is sent these.
+            guard !isRemote else { return }
             switch command {
             case .toggle(let playing): playing ? resume() : pause()
             case .next: next()
             case .previous: previous()
             case .seek(let seconds): seek(to: seconds)
+            case .volume: break
             case .play(let songs, let start, let shuffle):
                 play(songs, at: start)
                 if shuffle { toggleShuffle() }
@@ -945,10 +1057,22 @@ final class PlayerModel: ObservableObject {
         }
     }
 
+    /// The session's queue and spot become this phone's, paused.
+    private func keep(_ state: DeviceState) {
+        if queue.dropFirst(index).prefix(DeviceState.maxSongs).map(\.id) == state.songs.map(\.id) {
+            seek(to: state.position)
+            // The device that had it already scrobbled anything past the point.
+            scrobbled = pastScrobblePoint(position)
+        } else {
+            adopt(RemoteQueue(songs: state.songs, index: 0, position: state.position, changed: "", changedBy: ""))
+        }
+    }
+
     private func updateNowPlaying() {
         guard app != nil else { return }
         publish()
         followPlayback()
-        system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, speed: engine.defaultRate, client: app?.needsSignIn == false ? app?.client : nil)
+        // The lock screen is for what this phone plays; as a remote it plays nothing.
+        system.show(isRemote ? nil : current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, speed: engine.defaultRate, client: app?.needsSignIn == false ? app?.client : nil)
     }
 }

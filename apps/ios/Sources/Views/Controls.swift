@@ -131,10 +131,13 @@ struct VolumeSlider: View {
 }
 
 struct RoutePicker: UIViewRepresentable {
+    var tint = UIColor.white.withAlphaComponent(0.7)
+    var activeTint = UIColor.white
+
     func makeUIView(context: Context) -> AVRoutePickerView {
         let picker = AVRoutePickerView()
-        picker.tintColor = UIColor.white.withAlphaComponent(0.7)
-        picker.activeTintColor = .white
+        picker.tintColor = tint
+        picker.activeTintColor = activeTint
         picker.prioritizesVideoDevices = false
         return picker
     }
