@@ -42,9 +42,23 @@ A remote sends at most one `volume` command per 100 ms while its slider is dragg
 value). The playing device publishes a volume change to the other devices after 300 ms without a new one, so dragging
 its own slider doesn't resend the queue on every step.
 
-**The iPhone app** ([ios](ios.md)) joins the session while it runs: it shows in the picker, plays what is moved to it and
-takes play, pause, next, previous, seek, "play" and "add to queue" (not volume, which iOS keeps to its buttons). It
-can't control another device.
+**The iPhone app** ([ios](ios.md)) is a full member while it runs: it plays what is moved to it, and it can be a remote
+for the others.
+
+- The device button on now playing lists the other lodesong devices that are online, plus AirPlay and Bluetooth. With
+  none online it is the plain AirPlay button.
+- While another device plays, now playing and the mini player show its song, position and "Playing on …". Play,
+  pause, next, previous, seeking, the volume slider, picking a song, "play next" and "add to queue" go to that device.
+  Reordering or removing queued songs, shuffle and repeat are off, as no command exists for them.
+- As a remote it plays, scrobbles, logs and saves nothing. Its lock screen shows no song, and nothing the system does
+  (the lock screen, headphones, a car, a call ending) reaches the other device or starts the phone over it. That holds
+  while the app is in the background too, until you open it again. Its volume buttons stay its own.
+- If the playing device disappears, or the phone loses the connection, the phone's own queue and history stay. The
+  other device's queue is offered ("On another device"); with the same queue only the spot moves, and a phone with
+  nothing queued takes it, paused.
+- Signing out, switching account or server and offline mode leave the session at once. So does going to the background
+  while not playing (a remote stays one, without the connection); opening the app joins again.
+- As a target it takes everything but volume, which iOS keeps to its buttons, so other devices can't move its slider.
 
 **Other apps** on a phone use Navidrome directly (Arpeggi, Substreamer, Symfonium…). Those can't be remote
 controlled; the queue hands off through Navidrome instead: [sync](sync.md).

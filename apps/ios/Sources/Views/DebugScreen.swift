@@ -70,7 +70,7 @@ enum DebugScreen {
             if let artist = library.artists.first(where: { wanted.map($0.id.elementsEqual) ?? !library.albums(artist: $0.id).isEmpty }) { router.home = [.artist(artist)] }
         case "playlist":
             if let playlist = library.playlists.first { router.home = [.playlist(playlist)] }
-        case "nowplaying", "queue", "history", "lyrics", "more": router.showingPlayer = true
+        case "nowplaying", "queue", "history", "lyrics", "more", "devices": router.showingPlayer = true
         default: break
         }
     }
