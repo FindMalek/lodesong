@@ -42,15 +42,27 @@ enum Pref {
 
 /// The rows and the grid on the Library page, each of which Settings can hide or move.
 enum LibrarySection: String, CaseIterable {
-    case playlists, artists, albums, songs, downloaded, recentlyAdded
+    case playlists, artists, albums, songs, genres, favoriteSongs, favoriteAlbums, favoriteArtists, downloaded, recentlyAdded
 
-    var title: String { self == .recentlyAdded ? "Recently Added" : rawValue.capitalized }
+    var title: String {
+        switch self {
+        case .favoriteSongs: return "Favorite Songs"
+        case .favoriteAlbums: return "Favorite Albums"
+        case .favoriteArtists: return "Favorite Artists"
+        case .recentlyAdded: return "Recently Added"
+        default: return rawValue.capitalized
+        }
+    }
 
-    /// The stored order, with any section it doesn't name at the end.
+    /// The stored order. A row it doesn't name yet goes above the grid, where it isn't buried.
     static func ordered(_ raw: String) -> [LibrarySection] {
-        var seen = Set<LibrarySection>()
-        let named = raw.split(separator: ",").compactMap { LibrarySection(rawValue: String($0)) }.filter { seen.insert($0).inserted }
-        return named + allCases.filter { !seen.contains($0) }
+        let named = Set(raw.split(separator: ",").map(String.init))
+        var sections: [LibrarySection] = storedOrder(raw)
+        guard let grid = sections.firstIndex(of: .recentlyAdded), named.contains(LibrarySection.recentlyAdded.rawValue) else { return sections }
+        let new = sections[grid...].filter { !named.contains($0.rawValue) }
+        sections.removeAll { new.contains($0) }
+        sections.insert(contentsOf: new, at: grid)
+        return sections
     }
 }
 

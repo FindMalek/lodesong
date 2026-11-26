@@ -120,7 +120,7 @@ final class OfflineTests: XCTestCase {
     }
 
     func testLibrarySectionsKeepTheirStoredOrderAndNewOnesGoLast() {
-        XCTAssertEqual(LibrarySection.ordered("songs,albums,gone,songs"), [.songs, .albums, .playlists, .artists, .downloaded, .recentlyAdded])
+        XCTAssertEqual(LibrarySection.ordered("songs,albums,gone,songs"), [.songs, .albums, .playlists, .artists, .genres, .favoriteSongs, .favoriteAlbums, .favoriteArtists, .downloaded, .recentlyAdded])
     }
 
     func testSharedLogsCanHideTheServer() {
