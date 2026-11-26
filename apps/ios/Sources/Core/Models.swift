@@ -13,6 +13,8 @@ struct Album: Codable, Identifiable, Hashable {
     var artistId: String?
     var coverArt: String?
     var year: Int?
+    /// When the server first saw it, ISO 8601, so it sorts as text.
+    var created: String?
     var genre: String?
 }
 
@@ -28,6 +30,8 @@ struct Song: Codable, Identifiable, Hashable {
     var duration: Int?
     var suffix: String?
     var replayGain: ReplayGain?
+    /// The server's count for this account, for an artist's top songs.
+    var playCount: Int?
     /// Only history and stats read these: they are kept as the song was when it was played.
     var artistId: String?
     var year: Int?

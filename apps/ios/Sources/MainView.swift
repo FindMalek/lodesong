@@ -16,6 +16,12 @@ struct MainView: View {
             Tab("Library", systemImage: "music.note.square.stack.fill", value: AppTab.library) {
                 TabStack(path: $router.library) { LibraryView() }
             }
+            Tab("Playlists", systemImage: "music.note.list", value: AppTab.playlists) {
+                TabStack(path: $router.playlists) { PlaylistsTab() }
+            }
+            Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+                TabStack(path: $router.settings) { SettingsView() }
+            }
             Tab("Search", systemImage: "magnifyingglass", value: AppTab.search, role: searchRole) {
                 TabStack(path: $router.search) { SearchView() }
             }

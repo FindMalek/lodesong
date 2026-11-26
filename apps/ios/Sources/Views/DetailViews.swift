@@ -44,6 +44,30 @@ private struct TopWash: ViewModifier {
     }
 }
 
+/// An empty bar until the page's own title has scrolled away under it.
+private struct BarTitle: ViewModifier {
+    let title: String
+    /// How far the page scrolls before its title is gone.
+    let after: CGFloat
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > after } action: { _, past in
+                withAnimation(.easeInOut(duration: 0.2)) { shown = past }
+            }
+            // At the top there is nothing to blur, and the blur would draw a band across the artist's picture.
+            .scrollEdgeEffectHidden(!shown, for: .top)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title).font(.headline).lineLimit(1).opacity(shown ? 1 : 0).accessibilityHidden(!shown)
+                }
+            }
+    }
+}
+
 struct AlbumView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var downloads: DownloadsModel
@@ -86,10 +110,8 @@ struct AlbumView: View {
                 ContentUnavailableView("No Songs", systemImage: "music.note", description: Text("This album has nothing synced yet."))
             }
         }
-        .navigationTitle(album.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .modifier(BarTitle(title: album.name, after: 310))
         .toolbar {
-            ToolbarItem(placement: .principal) { Text("") }
             ToolbarItem {
                 DownloadButton(
                     state: downloads.state(album: album.id),
@@ -142,10 +164,8 @@ struct PlaylistView: View {
         .modifier(TopWash(cover: playlist.coverArt ?? songs?.first?.coverArt))
         .refreshable { await model.sync() }
         .task(id: model.syncing) { songs = model.entries(playlist: playlist.id) }
-        .navigationTitle(playlist.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .modifier(BarTitle(title: playlist.name, after: 310))
         .toolbar {
-            ToolbarItem(placement: .principal) { Text("") }
             ToolbarItem {
                 DownloadButton(
                     state: downloads.state(playlist: playlist.id),
@@ -163,48 +183,132 @@ struct PlaylistView: View {
     }
 }
 
+private extension Library {
+    /// Newest album first.
+    func songs(artist id: String) -> [Song] { albums(artist: id).reversed().flatMap { songs(album: $0.id) } }
+
+    /// Most played first, as the server counts it; unplayed songs keep their album order.
+    func topSongs(artist id: String) -> [Song] {
+        songs(artist: id).enumerated()
+            .sorted { ($1.element.playCount ?? 0, $0.offset) < ($0.element.playCount ?? 0, $1.offset) }
+            .map(\.element)
+    }
+}
+
+/// A full width picture with the name on it, and Shuffle and Play.
+private struct ArtistHero: View {
+    static let height: CGFloat = 390
+
+    @EnvironmentObject private var player: PlayerModel
+    let artist: Artist
+    let songs: [Song]
+
+    var body: some View {
+        Color.clear
+            .frame(height: Self.height)
+            .overlay {
+                GeometryReader { proxy in
+                    let side = max(proxy.size.width, proxy.size.height)
+                    Artwork(id: artist.coverArt, symbol: "music.mic", size: 800, radius: 0)
+                        .frame(width: side, height: side)
+                        .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                }
+            }
+            .clipped()
+            .overlay { LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom) }
+            .overlay(alignment: .bottom) {
+                HStack(alignment: .bottom, spacing: 12) {
+                    Text(artist.name).font(.largeTitle.bold()).foregroundStyle(.white).lineLimit(3)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 0)
+                    button("Shuffle", "shuffle", fill: AnyShapeStyle(.ultraThinMaterial)) { player.startShuffled(songs) }
+                    button("Play", "play.fill", fill: AnyShapeStyle(Color.accent)) { player.start(songs) }
+                }
+                .environment(\.colorScheme, .dark)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+    }
+
+    private func button(_ title: String, _ symbol: String, fill: AnyShapeStyle, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.title3).foregroundStyle(.white).frame(width: 48, height: 48).background(fill, in: .circle)
+        }
+        .buttonStyle(.plain)
+        .disabled(songs.isEmpty)
+        .accessibilityLabel(title)
+    }
+}
+
 struct ArtistView: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var router: Router
+    let artist: Artist
+    @State private var barHeight: CGFloat = 0
+
+    var body: some View {
+        let albums = model.library.albums(artist: artist.id)
+        let top = model.library.topSongs(artist: artist.id)
+        List {
+            ArtistHero(artist: artist, songs: model.library.songs(artist: artist.id))
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+            if !top.isEmpty {
+                HStack {
+                    heading("Top Songs")
+                    Spacer()
+                    if top.count > 5 {
+                        Button("See All") { router.open(.artistSongs(artist)) }.buttonStyle(.borderless)
+                    }
+                }
+                .padding(.top, 8)
+                .listRowSeparator(.hidden, edges: .top)
+                ForEach(Array(top.prefix(5).enumerated()), id: \.element.id) { index, _ in
+                    SongRow(songs: top, index: index, showsAlbum: true)
+                }
+            }
+            if !albums.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    heading("Albums")
+                    LazyVGrid(columns: gridColumns, spacing: 20) {
+                        ForEach(albums.reversed()) { AlbumTile(album: $0, section: "artist") }
+                    }
+                }
+                .padding(.top, 12)
+                .listRowSeparator(.hidden)
+            }
+        }
+        .listStyle(.plain)
+        .environment(\.defaultMinListHeaderHeight, 0)
+        // The picture runs up under the bar, to the top of the screen.
+        .contentMargins(.top, -barHeight, for: .scrollContent)
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { barHeight = $0 }
+        .ignoresSafeArea(edges: .top)
+        .overlay(alignment: .bottom) {
+            if albums.isEmpty { ContentUnavailableView("No Albums", systemImage: "square.stack") }
+        }
+        .modifier(BarTitle(title: artist.name, after: ArtistHero.height - 110))
+    }
+
+    private func heading(_ title: String) -> some View {
+        Text(title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// Every song of one artist, most played first.
+struct ArtistSongsView: View {
     @EnvironmentObject private var model: AppModel
     let artist: Artist
 
     var body: some View {
-        let albums = model.library.albums(artist: artist.id)
-        let songs = albums.reversed().flatMap { model.library.songs(album: $0.id) }
+        let songs = model.library.topSongs(artist: artist.id)
         List {
-            VStack(spacing: 12) {
-                Artwork(id: artist.coverArt, symbol: "music.mic", size: 600, circle: true).frame(maxWidth: 200)
-                Text(artist.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
-                PlayShuffleButtons(songs: songs)
-            }
-            .frame(maxWidth: .infinity)
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            if !albums.isEmpty {
-                Section {
-                    LazyVGrid(columns: gridColumns, spacing: 20) {
-                        ForEach(albums.reversed()) { AlbumTile(album: $0, section: "artist") }
-                    }
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                } header: {
-                    Text("Albums").font(.title2.bold()).foregroundStyle(Color.primary)
-                }
-                Section {
-                    ForEach(Array(songs.prefix(8).enumerated()), id: \.element.id) { index, _ in
-                        SongRow(songs: songs, index: index).listRowBackground(Color.clear)
-                    }
-                } header: {
-                    Text("Songs").font(.title2.bold()).foregroundStyle(Color.primary)
-                }
+            ForEach(Array(songs.enumerated()), id: \.element.id) { index, _ in
+                SongRow(songs: songs, index: index, showsAlbum: true)
             }
         }
         .listStyle(.plain)
-        .modifier(TopWash(cover: artist.coverArt))
-        .overlay(alignment: .bottom) {
-            if albums.isEmpty { ContentUnavailableView("No Albums", systemImage: "square.stack") }
-        }
-        .navigationTitle(artist.name)
+        .navigationTitle("Top Songs")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .principal) { Text("") } }
     }
 }

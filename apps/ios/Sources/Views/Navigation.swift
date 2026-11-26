@@ -3,6 +3,7 @@ import SwiftUI
 enum Route: Hashable {
     case album(Album, source: String? = nil)
     case artist(Artist)
+    case artistSongs(Artist)
     case playlist(Playlist, source: String? = nil)
     case playlists, artists, albums, songs, downloaded
     case decade(Int)
@@ -11,7 +12,7 @@ enum Route: Hashable {
 }
 
 enum AppTab: Hashable {
-    case home, library, search
+    case home, library, playlists, settings, search
 }
 
 @MainActor
@@ -19,6 +20,8 @@ final class Router: ObservableObject {
     @Published var tab = AppTab.home
     @Published var home: [Route] = []
     @Published var library: [Route] = []
+    @Published var playlists: [Route] = []
+    @Published var settings: [Route] = []
     @Published var search: [Route] = []
     @Published var showingPlayer = false
 
@@ -27,6 +30,8 @@ final class Router: ObservableObject {
         switch tab {
         case .home: home.append(route)
         case .library: library.append(route)
+        case .playlists: playlists.append(route)
+        case .settings: settings.append(route)
         case .search: search.append(route)
         }
     }
@@ -71,6 +76,7 @@ struct TabStack<Root: View>: View {
                 switch route {
                 case .album(let album, let source): AlbumView(album: album).zoomDestination(source, in: zoom)
                 case .artist(let artist): ArtistView(artist: artist)
+                case .artistSongs(let artist): ArtistSongsView(artist: artist)
                 case .playlist(let playlist, let source): PlaylistView(playlist: playlist).zoomDestination(source, in: zoom)
                 case .playlists: PlaylistsView()
                 case .artists: ArtistsView()
