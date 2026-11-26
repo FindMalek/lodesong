@@ -159,7 +159,9 @@ final class PlayerModel: ObservableObject {
 
     /// A downloaded file, or one cached ahead.
     func localFile(_ id: String) -> URL? {
-        downloads?.localURL(song: id) ?? songCache?.file(id, bitRate: app?.offlineMode == true ? nil : bitRateLimit)
+        // With nothing to fetch a better one from, any copy will do.
+        let offline = app?.offlineMode == true || network.currentPath.status != .satisfied
+        return downloads?.localURL(song: id) ?? songCache?.file(id, bitRate: offline ? nil : bitRateLimit)
     }
 
     func next() {
@@ -731,7 +733,8 @@ final class PlayerModel: ObservableObject {
 
     /// A cached copy that won't open would be tried again every time. A download is never touched.
     private func dropBadCopy(_ broken: Loaded) {
-        guard broken.source == .file, downloads?.localURL(song: broken.song.id) == nil, let url = (broken.item.asset as? AVURLAsset)?.url else { return }
+        guard broken.source == .file, downloads?.localURL(song: broken.song.id) == nil, let url = (broken.item.asset as? AVURLAsset)?.url,
+              [SongCache.temporary, SongCache.kept].contains(where: { url.path.hasPrefix($0.path + "/") }) else { return }
         try? FileManager.default.removeItem(at: url)
     }
 

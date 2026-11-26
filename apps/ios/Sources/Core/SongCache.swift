@@ -86,13 +86,14 @@ final class SongCache: @unchecked Sendable {
                           let kind = DownloadLibrary.audioKind(temporary, suffix: raw ? suffix : nil) else { continue }
                     let name = DownloadLibrary.fileName(song.id)
                     let target = folder.appendingPathComponent(limit > 0 ? "\(name).\(limit).\(kind)" : "\(name).\(kind)")
-                    // A copy not good enough any more gives way.
-                    while let old = file(song.id) { try FileManager.default.removeItem(at: old) }
+                    let older = names().filter { $0.hasPrefix("\(name).") }
                     try FileManager.default.moveItem(at: temporary, to: target)
                     if !raw, DownloadLibrary.isShort(target, expected: song.duration) {
                         try? FileManager.default.removeItem(at: target)
                         continue
                     }
+                    // A copy not good enough any more gives way, now that there is a whole one.
+                    for old in older { try? FileManager.default.removeItem(at: folder.appendingPathComponent(old)) }
                     // The age the size limit goes by is when it was cached.
                     try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: target.path)
                     trim(to: maxBytes, keeping: ids)
