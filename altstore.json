@@ -1,0 +1,39 @@
+{
+  "name": "lodesong beta",
+  "identifier": "engineer.findmalek.lodesong.source.beta",
+  "subtitle": "your own music player",
+  "description": "lodesong on your iPhone: a native app with background audio and downloads.",
+  "iconURL": "https://raw.githubusercontent.com/FindMalek/lodesong/main/apps/ios/altstore/icon.png",
+  "website": "https://github.com/FindMalek/lodesong",
+  "tintColor": "111111",
+  "apps": [
+    {
+      "name": "lodesong",
+      "bundleIdentifier": "engineer.findmalek.lodesong.ios",
+      "developerName": "FindMalek",
+      "subtitle": "your own music player",
+      "localizedDescription": "A native iPhone app for your lodesong server. Your library on the phone, playlists kept downloaded, music keeps playing with the screen locked.",
+      "iconURL": "https://raw.githubusercontent.com/FindMalek/lodesong/main/apps/ios/altstore/icon.png",
+      "tintColor": "111111",
+      "category": "entertainment",
+      "versions": [
+        {
+          "version": "2.0.1-beta.108",
+          "buildVersion": "108",
+          "date": "2026-11-26T22:46:28Z",
+          "size": 2446406,
+          "downloadURL": "https://raw.githubusercontent.com/FindMalek/lodesong/ios-beta/lodesong-ios-108.ipa",
+          "localizedDescription": "63905bb feat(ios): fill parity setting gaps (#730)",
+          "minOSVersion": "26.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSLocalNetworkUsageDescription": "lodesong talks to your server on your home network."
+        }
+      }
+    }
+  ],
+  "news": []
+}
