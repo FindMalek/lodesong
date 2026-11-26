@@ -72,6 +72,7 @@ final class PlayerModel: ObservableObject {
         line = changed
         store.save(queue: line, account: account)
         guard current != nil else {
+            finishPlay()
             unload()
             isPlaying = false
             position = 0
@@ -115,8 +116,10 @@ final class PlayerModel: ObservableObject {
     func seek(to seconds: TimeInterval) {
         guard current != nil else { return }
         position = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        log.jumped(to: position)
         save()
         updateNowPlaying()
+        publish(force: true)
         guard let item = loaded?.item else { return }
         seeking += 1
         item.seek(to: Self.time(position), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
@@ -166,6 +169,13 @@ final class PlayerModel: ObservableObject {
     private var lastPull = Date.distantPast
     private let network = NWPathMonitor()
     private let store = PlaybackStore(folder: .applicationSupportDirectory)
+    private let log = PlayLog(folder: .applicationSupportDirectory)
+    private var lastSend = Date.distantPast
+    private var link: DeviceLink?
+    /// This phone holds the shared session (docs/devices.md).
+    private var holdsSession = false
+    private var published = ""
+    private var lastPublish = Date.distantPast
     private let defaults = UserDefaults.standard
     private lazy var system = SystemAudio(player: self)
     private var app: AppModel?
@@ -210,14 +220,22 @@ final class PlayerModel: ObservableObject {
             MainActor.assumeIsolated {
                 self?.save()
                 self?.push()
+                self?.sendPlays()
             }
         }
         center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.pull() }
+            MainActor.assumeIsolated {
+                self?.pull()
+                self?.sendPlays()
+                if self?.link?.isConnected == false { self?.link?.connect() }
+            }
         }
         network.pathUpdateHandler = { [weak self] path in
             guard path.status == .satisfied else { return }
-            Task { @MainActor in self?.reconnect() }
+            Task { @MainActor in
+                self?.reconnect()
+                self?.sendPlays()
+            }
         }
         network.start(queue: .global(qos: .utility))
         accountChanged()
@@ -228,11 +246,16 @@ final class PlayerModel: ObservableObject {
         guard let app else { return }
         guard !app.needsSignIn else {
             pause()
+            log.end()
+            link?.close()
+            link = nil
+            account = ""
             unload()
             return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, client: nil)
         }
         let now = "\(app.client?.server.absoluteString ?? "") \(app.user)"
         guard now != account else { return pull() }
+        log.end()
         account = now
         unload()
         isPlaying = false
@@ -245,6 +268,8 @@ final class PlayerModel: ObservableObject {
         if saved == nil { store.clear() }
         updateNowPlaying()
         pull(force: true)
+        sendPlays()
+        join()
     }
 
     // MARK: - Playing
@@ -261,7 +286,9 @@ final class PlayerModel: ObservableObject {
             updateNowPlaying()
         } else {
             failed = [:]
-            load(at: duration > 0 && position > duration - 1 ? 0 : position, play: true)
+            let over = duration > 0 && position > duration - 1
+            // An item that failed and is opened again is still the same play.
+            load(at: over ? 0 : position, play: true, again: loaded != nil && !over)
         }
     }
 
@@ -305,6 +332,7 @@ final class PlayerModel: ObservableObject {
 
     /// `again` reopens the song that is already on, so it is not announced or scrobbled twice.
     private func load(at seconds: TimeInterval, play: Bool, again: Bool = false) {
+        if !again { finishPlay() }
         unload()
         guard let song = current else { return }
         isPlaying = play
@@ -364,6 +392,7 @@ final class PlayerModel: ObservableObject {
     /// The engine moved to the lined up item by itself.
     private func advanced() {
         guard let next = lined, engine.currentItem === next.item, let target = line.following(repeatMode), line.jump(to: target) else { return }
+        finishPlay()
         loaded = next
         lined = nil
         position = 0
@@ -387,6 +416,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func finish() {
+        finishPlay()
         unload()
         isPlaying = false
         position = 0
@@ -488,11 +518,14 @@ final class PlayerModel: ObservableObject {
         position = seconds
         retries = 0
         skips = 0
-        if !scrobbled, pastScrobblePoint(seconds), let song = current, let client {
+        if let song = loaded?.song { log.hear(song, account: account, position: seconds, duration: duration) }
+        if !scrobbled, pastScrobblePoint(seconds) {
             scrobbled = true
-            let id = clientID
-            Task { await client.scrobble(song: song.id, submission: true, client: id) }
+            log.count()
+            sendPlays()
         }
+        if -lastSend.timeIntervalSinceNow > 60 { sendPlays() }
+        if -lastPublish.timeIntervalSinceNow > 5 { publish(force: true) }
         if -lastSave.timeIntervalSinceNow > 5 { save() }
         if -lastPush.timeIntervalSinceNow > 15 { push() }
     }
@@ -510,7 +543,43 @@ final class PlayerModel: ObservableObject {
         push()
     }
 
+    private func finishPlay() {
+        log.end()
+        sendPlays()
+    }
+
+    private func sendPlays() {
+        guard let client, !account.isEmpty else { return }
+        lastSend = Date()
+        let id = clientID
+        let account = account
+        keepAwake { [log] in
+            await log.flush(client, account: account, client: id) { account == self.account && self.client != nil }
+        }
+    }
+
+    /// Lets a request finish when the app is leaving the screen. The time has to be handed back when iOS asks,
+    /// or iOS kills the app.
+    private func keepAwake(_ run: @escaping @MainActor () async -> Void) {
+        var background = UIBackgroundTaskIdentifier.invalid
+        var work: Task<Void, Never>?
+        let end = {
+            guard background != .invalid else { return }
+            UIApplication.shared.endBackgroundTask(background)
+            background = .invalid
+        }
+        background = UIApplication.shared.beginBackgroundTask {
+            work?.cancel()
+            end()
+        }
+        work = Task { @MainActor in
+            await run()
+            end()
+        }
+    }
+
     private func save() {
+        log.save()
         guard current != nil else { return }
         lastSave = Date()
         store.save(index: index, position: position)
@@ -523,25 +592,11 @@ final class PlayerModel: ObservableObject {
         lastPush = Date()
         let id = clientID
         let account = account
-        // The extra time lets the save finish when the app is leaving the screen. It has to be handed back when
-        // iOS asks, or iOS kills the app.
-        var background = UIBackgroundTaskIdentifier.invalid
-        var work: Task<Void, Never>?
-        let end = {
-            guard background != .invalid else { return }
-            UIApplication.shared.endBackgroundTask(background)
-            background = .invalid
-        }
-        background = UIApplication.shared.beginBackgroundTask {
-            work?.cancel()
-            end()
-        }
-        work = Task {
+        keepAwake {
             if await client.savePlayQueue(mark, client: id), account == self.account {
-                synced = mark
-                defaults.set(Date().timeIntervalSince1970, forKey: "queueSaved")
+                self.synced = mark
+                self.defaults.set(Date().timeIntervalSince1970, forKey: "queueSaved")
             }
-            end()
         }
     }
 
@@ -567,6 +622,7 @@ final class PlayerModel: ObservableObject {
 
     private func adopt(_ remote: RemoteQueue) {
         pause()
+        finishPlay()
         unload()
         replace(with: PlayQueue(songs: remote.songs, index: remote.index))
         position = remote.position
@@ -576,8 +632,66 @@ final class PlayerModel: ObservableObject {
         updateNowPlaying()
     }
 
+    // MARK: - The session across devices
+
+    private func join() {
+        link?.close()
+        link = nil
+        holdsSession = false
+        guard let client else { return }
+        let id = clientID
+        let name = UIDevice.current.userInterfaceIdiom == .pad ? "the ipad app" : "the iphone app"
+        link = DeviceLink(
+            request: { client.devicesRequest(id: id, name: name, cookies: HTTPCookieStorage.shared.cookies(for: client.server) ?? []) },
+            opened: { [weak self] in
+                // The server forgot this socket's past; a song already on takes the session again.
+                if self?.isPlaying == true { self?.publish(force: true) }
+            },
+            received: { [weak self] in self?.receive($0) })
+    }
+
+    /// Playing takes the session. Paused, only the device that holds it has anything to say.
+    private func publish(force: Bool = false) {
+        guard let link, current != nil, isPlaying || holdsSession else { return }
+        let songs = Array(queue.dropFirst(index).prefix(DeviceState.maxSongs))
+        let key = "\(songs.map(\.id).joined(separator: ","))|\(isPlaying)"
+        guard force || key != published else { return }
+        published = key
+        lastPublish = Date()
+        link.send(DeviceState(songs: songs, position: position, playing: isPlaying))
+    }
+
+    private func receive(_ message: DeviceMessage) {
+        switch message {
+        case .active(let id): holdsSession = id == clientID
+        case .yield:
+            holdsSession = false
+            pause()
+        case .take(let state):
+            holdsSession = true
+            if queue.dropFirst(index).prefix(DeviceState.maxSongs).map(\.id) == state.songs.map(\.id) {
+                seek(to: state.position)
+            } else {
+                adopt(RemoteQueue(songs: state.songs, index: 0, position: state.position, changed: "", changedBy: ""))
+            }
+            if state.playing { resume() }
+        case .command(let command):
+            switch command {
+            case .toggle(let playing): playing ? resume() : pause()
+            case .next: next()
+            case .previous: previous()
+            case .seek(let seconds): seek(to: seconds)
+            case .play(let songs, let start, let shuffle):
+                play(songs, at: start)
+                if shuffle { toggleShuffle() }
+            case .add(let songs, let next): next ? playNext(songs) : addToQueue(songs)
+            }
+        }
+    }
+
     private func updateNowPlaying() {
         guard app != nil else { return }
+        publish()
         system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, client: client)
     }
 }
