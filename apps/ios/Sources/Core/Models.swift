@@ -19,6 +19,9 @@ struct Album: Codable, Identifiable, Hashable {
     /// When the server first saw it, ISO 8601, so it sorts as text.
     var created: String?
     var genre: String?
+    /// "album", "ep", "single" and so on, from the files' tags.
+    var releaseTypes: [String]?
+    var isCompilation: Bool?
     var starred: String?
     var userRating: Int?
 }
@@ -37,6 +40,8 @@ struct Song: Codable, Identifiable, Hashable {
     var replayGain: ReplayGain?
     /// The server's count for this account, for an artist's top songs.
     var playCount: Int?
+    /// When the server first saw it, ISO 8601, so it sorts as text.
+    var created: String?
     /// kbit/s, Hz and bits per sample of the file on the server.
     var bitRate: Int?
     var samplingRate: Int?

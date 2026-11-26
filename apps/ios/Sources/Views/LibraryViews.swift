@@ -7,7 +7,9 @@ struct LibraryView: View {
 
     private func shows(_ section: LibrarySection) -> Bool { !hidden.split(separator: ",").contains(Substring(section.rawValue)) }
 
-    private var added: [Album] { Array(model.library.albums.sorted { ($0.created ?? "") > ($1.created ?? "") }.prefix(30)) }
+    @State private var folders: [MusicFolder] = []
+
+    private var added: [Album] { Array(model.browse.albums.sorted { ($0.created ?? "") > ($1.created ?? "") }.prefix(30)) }
 
     var body: some View {
         List {
@@ -19,13 +21,43 @@ struct LibraryView: View {
         .listStyle(.plain)
         .refreshable { await model.sync() }
         .libraryState(model.library.songs.isEmpty, "No Music Yet", "music.note.list")
+        // Offline or refused, the last answer stays.
+        .task(id: [model.live?.server.absoluteString ?? "", model.user]) {
+            if let found = try? await model.live?.musicFolders() { folders = found }
+        }
         .navigationTitle("Library")
         .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
             if model.syncing {
                 ToolbarItem { ProgressView() }
             }
+            if folders.count > 1 || model.library.folder != nil {
+                ToolbarItem { folderMenu }
+            }
             ToolbarItem { AccountButton() }
+        }
+    }
+
+    private var folderMenu: some View {
+        let chosen = model.library.folder
+        // The chosen one stays listed when the server can't be asked.
+        let listed = folders.isEmpty ? chosen.map { [MusicFolder(id: $0.id, name: $0.name)] } ?? [] : folders
+        return Menu("Music Folder", systemImage: chosen == nil ? "folder" : "folder.fill") {
+            Picker("Music Folder", selection: Binding { chosen?.id ?? "" } set: { id in choose(listed.first { $0.id == id }) }) {
+                Text("All Music").tag("")
+                ForEach(listed) { Text($0.name).tag($0.id) }
+            }
+        }
+    }
+
+    private func choose(_ folder: MusicFolder?) {
+        Haptic.tap()
+        Task {
+            do {
+                try await model.chooseFolder(folder)
+            } catch {
+                Popup.show("Can't Change Folder", message: error.localizedDescription)
+            }
         }
     }
 
@@ -35,6 +67,10 @@ struct LibraryView: View {
         case .artists: row("Artists", "music.mic", .artists)
         case .albums: row("Albums", "square.stack", .albums)
         case .songs: row("Songs", "music.note", .songs)
+        case .genres: row(section.title, "guitars", .genres)
+        case .favoriteSongs: row(section.title, "heart", .favoriteSongs)
+        case .favoriteAlbums: row(section.title, "heart.square", .favoriteAlbums)
+        case .favoriteArtists: row(section.title, "heart.circle", .favoriteArtists)
         case .downloaded: row("Downloaded", "arrow.down.circle", .downloaded)
         case .recentlyAdded:
             let albums = added
@@ -69,7 +105,7 @@ struct AlbumsView: View {
     @State private var filter = ""
 
     private var albums: [Album] {
-        var albums = model.library.albums
+        var albums = model.browse.albums
         if let decade { albums = albums.filter { ($0.year ?? 0) / 10 * 10 == decade } }
         if !filter.isEmpty {
             albums = albums.filter { $0.name.localizedStandardContains(filter) || ($0.artist ?? "").localizedStandardContains(filter) }
@@ -77,6 +113,7 @@ struct AlbumsView: View {
         switch sort {
         case "artist": return albums.sorted { ($0.artist ?? "").localizedStandardCompare($1.artist ?? "") == .orderedAscending }
         case "year": return albums.sorted { ($0.year ?? 0) > ($1.year ?? 0) }
+        case "added": return albums.sorted { ($0.created ?? "") > ($1.created ?? "") }
         default: return albums.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         }
     }
@@ -92,28 +129,43 @@ struct AlbumsView: View {
         .refreshable { await model.sync() }
         .searchable(text: $filter, prompt: "Find in Albums")
         .overlay { if shown.isEmpty && !filter.isEmpty { ContentUnavailableView.search(text: filter) } }
-        .libraryState(model.library.albums.isEmpty, "No Albums", "square.stack")
+        .libraryState(model.browse.albums.isEmpty, "No Albums", "square.stack")
         .navigationTitle(decade.map { "\($0)s" } ?? "Albums")
         .toolbar {
             Menu("Sort", systemImage: "arrow.up.arrow.down") {
                 Picker("Sort", selection: $sort) {
                     Text("Title").tag("title")
                     Text("Artist").tag("artist")
-                    Text("Newest First").tag("year")
+                    Text("Release Year").tag("year")
+                    Text("Date Added").tag("added")
                 }
             }
         }
     }
 }
 
-/// Splits names into A to Z groups for the index down the side, with everything else last.
+/// Splits names into A to Z groups for the index down the side, with everything else last. Songs keep their order inside a letter.
 private func lettered<Item>(_ items: [Item], _ name: (Item) -> String) -> [(letter: String, items: [Item])] {
     let groups = Dictionary(grouping: items) { item -> String in
         let first = name(item).folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).uppercased().first
         return first.map { $0.isLetter ? String($0) : "#" } ?? "#"
     }
     return groups.keys.sorted { ($0 == "#" ? 1 : 0, $0) < ($1 == "#" ? 1 : 0, $1) }.map { letter in
-        (letter, groups[letter]!.sorted { name($0).localizedStandardCompare(name($1)) == .orderedAscending })
+        (letter, groups[letter]!)
+    }
+}
+
+struct ArtistRow: View {
+    let artist: Artist
+
+    var body: some View {
+        NavigationLink(value: Route.artist(artist)) {
+            HStack(spacing: 12) {
+                Artwork(id: artist.coverArt, symbol: "music.mic", size: 120, circle: true).frame(width: 48, height: 48)
+                Text(artist.name).lineLimit(1)
+            }
+        }
+        .contextMenu { ArtistMenu(artist: artist) }
     }
 }
 
@@ -122,23 +174,15 @@ struct ArtistsView: View {
     @State private var filter = ""
 
     private var artists: [Artist] {
-        filter.isEmpty ? model.library.artists : model.library.artists.filter { $0.name.localizedStandardContains(filter) }
+        filter.isEmpty ? model.browse.artists : model.browse.artists.filter { $0.name.localizedStandardContains(filter) }
     }
 
     var body: some View {
-        let groups = lettered(artists, \.name)
+        let groups = lettered(artists.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }, \.name)
         List {
             ForEach(groups, id: \.letter) { group in
                 Section(group.letter) {
-                    ForEach(group.items) { artist in
-                        NavigationLink(value: Route.artist(artist)) {
-                            HStack(spacing: 12) {
-                                Artwork(id: artist.coverArt, symbol: "music.mic", size: 120, circle: true).frame(width: 48, height: 48)
-                                Text(artist.name).lineLimit(1)
-                            }
-                        }
-                        .contextMenu { ArtistMenu(artist: artist) }
-                    }
+                    ForEach(group.items) { ArtistRow(artist: $0) }
                 }
                 .sectionIndexLabel(group.letter)
             }
@@ -148,7 +192,7 @@ struct ArtistsView: View {
         .refreshable { await model.sync() }
         .searchable(text: $filter, prompt: "Find in Artists")
         .overlay { if groups.isEmpty && !filter.isEmpty { ContentUnavailableView.search(text: filter) } }
-        .libraryState(model.library.artists.isEmpty, "No Artists", "music.mic")
+        .libraryState(model.browse.artists.isEmpty, "No Artists", "music.mic")
         .navigationTitle("Artists")
     }
 }
@@ -156,9 +200,13 @@ struct ArtistsView: View {
 struct SongsView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var player: PlayerModel
+    @AppStorage("songSort") private var sort = SongSort.title
     @State private var filter = ""
     @State private var songs: [Song] = []
     @State private var groups: [(letter: String, items: [(index: Int, song: Song)])] = []
+
+    /// Only names have an A to Z; the other orders are one long list.
+    private var indexed: Bool { sort == .title || sort == .artist }
 
     var body: some View {
         List {
@@ -166,22 +214,27 @@ struct SongsView: View {
                 PlayShuffleButtons(songs: songs).listRowSeparator(.hidden)
             }
             ForEach(groups, id: \.letter) { group in
-                Section(group.letter) {
-                    ForEach(group.items, id: \.song.id) { item in
-                        SongRow(songs: songs, index: item.index)
-                    }
+                if indexed {
+                    Section(group.letter) { rows(group.items) }
+                        .sectionIndexLabel(group.letter)
+                } else {
+                    rows(group.items)
                 }
-                .sectionIndexLabel(group.letter)
             }
         }
         .listStyle(.plain)
-        .listSectionIndexVisibility(.visible)
+        .listSectionIndexVisibility(indexed ? .visible : .hidden)
         .refreshable { await model.sync() }
         .searchable(text: $filter, prompt: "Find in Songs")
         .overlay { if songs.isEmpty && !filter.isEmpty { ContentUnavailableView.search(text: filter) } }
-        .libraryState(model.library.songs.isEmpty, "No Songs", "music.note")
+        .libraryState(model.browse.songs.isEmpty, "No Songs", "music.note")
         .navigationTitle("Songs")
         .toolbar {
+            Menu("Sort", systemImage: "arrow.up.arrow.down") {
+                Picker("Sort", selection: $sort) {
+                    ForEach(SongSort.allCases.filter { $0 != .server }, id: \.self) { Text($0.label).tag($0) }
+                }
+            }
             Button("Select", systemImage: "checkmark.circle") {
                 let songs = songs
                 SheetPresenter.show(model, player) { SelectSongsView(songs: songs) }
@@ -189,20 +242,35 @@ struct SongsView: View {
             .disabled(songs.isEmpty)
         }
         // Sorting thousands of songs on every redraw would stutter, so it happens only when the input changes.
-        .task(id: [filter, String(model.library.songs.count), String(model.syncing)]) {
-            let matches = filter.isEmpty ? model.library.songs : model.library.songs.filter {
-                $0.title.localizedStandardContains(filter) || ($0.artist ?? "").localizedStandardContains(filter)
+        .task(id: [filter, sort.rawValue, String(model.libraryRevision), String(model.syncing)]) { arrange() }
+    }
+
+    private func rows(_ items: [(index: Int, song: Song)]) -> some View {
+        ForEach(items, id: \.song.id) { item in
+            SongRow(songs: songs, index: item.index)
+        }
+    }
+
+    private func arrange() {
+        let all = model.browse.songs
+        let matches = filter.isEmpty ? all : all.filter {
+            $0.title.localizedStandardContains(filter) || ($0.artist ?? "").localizedStandardContains(filter)
+        }
+        let sorted = sort.sorted(matches)
+        let sections: [(letter: String, items: [Song])]
+        switch sort {
+        case .title: sections = lettered(sorted, \.title)
+        case .artist: sections = lettered(sorted) { $0.artist ?? "" }
+        default: sections = [("", sorted)]
+        }
+        songs = sections.flatMap(\.items)
+        var next = 0
+        groups = sections.map { section in
+            let items = section.items.map { song in
+                defer { next += 1 }
+                return (index: next, song: song)
             }
-            let sections = lettered(matches, \.title)
-            songs = sections.flatMap(\.items)
-            var next = 0
-            groups = sections.map { section in
-                let items = section.items.map { song in
-                    defer { next += 1 }
-                    return (index: next, song: song)
-                }
-                return (section.letter, items)
-            }
+            return (section.letter, items)
         }
     }
 }

@@ -7,6 +7,20 @@ struct Library {
     var songs: [Song] = []
     var playlists: [Playlist] = []
     var shelf = PlaylistShelf()
+    var folder: FolderChoice?
+
+    /// What the browsing pages show: everything, or only the chosen music folder.
+    func browsing() -> Library {
+        guard let folder else { return self }
+        let ids = Set(folder.songs)
+        var shown = self
+        shown.songs = songs.filter { ids.contains($0.id) }
+        let albumIDs = Set(shown.songs.compactMap(\.albumId))
+        shown.albums = albums.filter { albumIDs.contains($0.id) }
+        let artistIDs = Set(shown.albums.compactMap(\.artistId))
+        shown.artists = artists.filter { artistIDs.contains($0.id) }
+        return shown
+    }
 
     func songs(album id: String) -> [Song] {
         songs.filter { $0.albumId == id }.sorted { ($0.discNumber ?? 1, $0.track ?? 0) < ($1.discNumber ?? 1, $1.track ?? 0) }
@@ -21,8 +35,13 @@ struct Library {
 final class AppModel: ObservableObject {
     @Published private(set) var client: ServerClient?
     @Published private(set) var library = Library() {
-        didSet { libraryRevision += 1 }
+        didSet {
+            browse = library.browsing()
+            libraryRevision += 1
+        }
     }
+    /// The library as the browsing pages see it. Album, artist and playlist pages and search use all of it.
+    private(set) var browse = Library()
     /// Counts alone miss a sync that only renames or swaps songs.
     private(set) var libraryRevision = 0
     @Published private(set) var syncing = false
@@ -77,6 +96,8 @@ final class AppModel: ObservableObject {
         client = defaults.url(forKey: "server").map { ServerClient(server: ServerAddresses.starting(main: $0, second: second, picked: picked), home: $0) }
         needsSignIn = defaults.string(forKey: "user") == nil || defaults.bool(forKey: "signedOut")
         library = Self.load(store)
+        // `didSet` doesn't run in an initializer.
+        browse = library.browsing()
         connectDownloads()
     }
 
@@ -222,6 +243,19 @@ final class AppModel: ObservableObject {
 
     func entries(playlist id: String) -> [Song] { store.entries(playlist: id) }
 
+    /// Nil shows everything again, which needs no server.
+    func chooseFolder(_ folder: MusicFolder?) async throws {
+        var choice: FolderChoice?
+        if let folder {
+            guard let client = live else { throw ServerError.message("Connect to your server to pick a music folder.") }
+            choice = FolderChoice(id: folder.id, name: folder.name, songs: try await client.songIDs(folder: folder.id))
+            // Signed out or into another account while asking.
+            guard !needsSignIn, self.client?.identity == client.identity else { return }
+        }
+        try store.saveFolder(choice)
+        library.folder = choice
+    }
+
     /// Changes need the server there and then: nothing is queued, so offline they are off rather than lost.
     var canEdit: Bool { live != nil && !offline }
 
@@ -281,6 +315,6 @@ final class AppModel: ObservableObject {
     #endif
 
     private nonisolated static func load(_ store: LibraryStore) -> Library {
-        Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists(), shelf: store.shelf())
+        Library(artists: store.artists(), albums: store.albums(), songs: store.songs(), playlists: store.playlists(), shelf: store.shelf(), folder: store.folder())
     }
 }

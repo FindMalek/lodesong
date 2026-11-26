@@ -6,7 +6,19 @@ enum LibrarySync {
         let snapshot = try await client.librarySnapshot(knownPlaylists: store.playlistStamps())
         try Task.checkCancellation()
         try store.apply(snapshot)
+        try await refreshFolder(client: client, store: store)
         await ShelfSync.run(client: client, store: store, pictures: pictures)
+    }
+
+    /// Songs come and go in the chosen folder, and the folder itself may be gone.
+    private static func refreshFolder(client: ServerClient, store: LibraryStore) async throws {
+        guard var choice = store.folder() else { return }
+        let there = try await client.musicFolders().contains { $0.id == choice.id }
+        if there { choice.songs = try await client.songIDs(folder: choice.id) }
+        try Task.checkCancellation()
+        // Another folder may have been picked while asking.
+        guard store.folder()?.id == choice.id else { return }
+        try store.saveFolder(there ? choice : nil)
     }
 
     /// Brings in the playlists alone, after one was changed from here.
