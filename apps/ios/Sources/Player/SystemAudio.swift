@@ -79,6 +79,8 @@ final class SystemAudio {
     private func routeChanged(_ reason: AVAudioSession.RouteChangeReason?) {
         guard let player else { return }
         if reason == .oldDeviceUnavailable {
+            // Unplugged during a call: the end of the call must not resume out of the speaker.
+            interrupted = false
             player.pause()
         } else if reason == .newDeviceAvailable && !player.isPlaying {
             // Car stereos and speakers send "play" the moment they connect. That is not someone pressing it.

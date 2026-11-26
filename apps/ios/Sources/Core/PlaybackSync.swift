@@ -14,6 +14,19 @@ struct RemoteQueue: Equatable {
     }
 }
 
+/// What a saved queue holds. The phone only saves when this differs from what it last saved, restored or took
+/// over, so just opening and leaving the app never replaces what another device saved since.
+struct QueueMark: Equatable {
+    let ids: [String]
+    /// Milliseconds, whole seconds only.
+    let position: Int
+
+    init(_ queue: PlayQueue, position: TimeInterval) {
+        ids = queue.songs.dropFirst(queue.index).prefix(1000).map(\.id)
+        self.position = Int(position) * 1000
+    }
+}
+
 /// Scrobbles and the shared play queue, the same calls the web player makes (docs/sync.md).
 extension ServerClient {
     func scrobble(song id: String, submission: Bool, client: String) async {
@@ -22,12 +35,13 @@ extension ServerClient {
     }
 
     /// The current song goes first, then what follows it. A form POST, so a long queue has no URL limit.
-    func savePlayQueue(_ ids: [String], position: TimeInterval, client: String) async -> Bool {
+    func savePlayQueue(_ mark: QueueMark, client: String) async -> Bool {
+        let ids = mark.ids
         guard let first = ids.first else { return false }
         let indexed = await indexBasedQueue(client: client)
         var fields = ids.map { ("id", $0) }
         fields.append(indexed ? ("currentIndex", "0") : ("current", first))
-        fields.append(("position", String(Int(position * 1000))))
+        fields.append(("position", String(mark.position)))
         fields.append(("f", "json"))
         var request = request(url(indexed ? "rest/savePlayQueueByIndex" : "rest/savePlayQueue"), client: client)
         request.httpMethod = "POST"
@@ -82,6 +96,8 @@ extension ServerClient {
         var request = URLRequest(url: url)
         request.setValue("1", forHTTPHeaderField: "x-lodesong")
         request.setValue(client, forHTTPHeaderField: "x-keep-client")
+        // These run in the little time iOS gives an app that is leaving; an unreachable server must not use it up.
+        request.timeoutInterval = 8
         return request
     }
 }

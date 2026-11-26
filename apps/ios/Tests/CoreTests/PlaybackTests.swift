@@ -33,6 +33,14 @@ final class PlaybackTests: XCTestCase {
         XCTAssertNil(PlaybackStore(folder: folder).load(account: "someone else"))
     }
 
+    func testAQueueNobodyTouchedHereIsNotSavedOverAnotherDevices() {
+        let queue = PlayQueue(songs: songs("a", "b"), index: 0)
+        let saved = QueueMark(queue, position: 41.2)
+        XCTAssertEqual(QueueMark(queue, position: 41.4), saved)
+        XCTAssertNotEqual(QueueMark(queue, position: 60), saved)
+        XCTAssertNotEqual(QueueMark(PlayQueue(songs: songs("a", "b"), index: 1), position: 41.2), saved)
+    }
+
     func testAFormatIOSCannotPlayIsTranscodedAndAFailedSourceFallsBack() {
         XCTAssertEqual(AudioSource.pick(suffix: "opus", hasFile: false, failed: []), .original)
         XCTAssertEqual(AudioSource.pick(suffix: "wma", hasFile: false, failed: []), .transcoded)

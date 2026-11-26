@@ -114,6 +114,7 @@ final class PlayerModel: ObservableObject {
     private var app: AppModel?
     private var downloads: DownloadsModel?
     private var account = ""
+    private var synced: QueueMark?
 
     private var client: ServerClient? { app?.needsSignIn == false ? app?.client : nil }
 
@@ -183,6 +184,7 @@ final class PlayerModel: ObservableObject {
         line = saved?.queue ?? PlayQueue()
         position = saved?.position ?? 0
         duration = Double(current?.duration ?? 0)
+        synced = QueueMark(line, position: position)
         if saved == nil { store.clear() }
         updateNowPlaying()
         pull(force: true)
@@ -459,15 +461,30 @@ final class PlayerModel: ObservableObject {
 
     private func push() {
         guard let client, current != nil, defaults.object(forKey: "queueSync") as? Bool ?? true else { return }
+        let mark = QueueMark(line, position: position)
+        guard mark != synced else { return }
         lastPush = Date()
-        let ids = queue[index...].prefix(1000).map(\.id)
-        let position = position
         let id = clientID
-        // The extra time lets the save finish when the app is leaving the screen.
-        let background = UIApplication.shared.beginBackgroundTask()
-        Task {
-            if await client.savePlayQueue(ids, position: position, client: id) { defaults.set(Date().timeIntervalSince1970, forKey: "queueSaved") }
+        let account = account
+        // The extra time lets the save finish when the app is leaving the screen. It has to be handed back when
+        // iOS asks, or iOS kills the app.
+        var background = UIBackgroundTaskIdentifier.invalid
+        var work: Task<Void, Never>?
+        let end = {
+            guard background != .invalid else { return }
             UIApplication.shared.endBackgroundTask(background)
+            background = .invalid
+        }
+        background = UIApplication.shared.beginBackgroundTask {
+            work?.cancel()
+            end()
+        }
+        work = Task {
+            if await client.savePlayQueue(mark, client: id), account == self.account {
+                synced = mark
+                defaults.set(Date().timeIntervalSince1970, forKey: "queueSaved")
+            }
+            end()
         }
     }
 
@@ -476,14 +493,18 @@ final class PlayerModel: ObservableObject {
         guard let client, defaults.object(forKey: "queueSync") as? Bool ?? true, force || -lastPull.timeIntervalSinceNow > 30 else { return }
         lastPull = Date()
         let id = clientID
+        let account = account
         Task {
-            guard let remote = await client.savedPlayQueue(client: id), remote.changedBy != "lodesong@\(id)",
+            guard let remote = await client.savedPlayQueue(client: id), account == self.account, self.client != nil,
+                  remote.changedBy != "lodesong@\(id)",
                   remote.changed != defaults.string(forKey: "queueDismissed") else { return }
             if queue.isEmpty { return adopt(remote) }
             guard (remote.date?.timeIntervalSince1970 ?? 0) > defaults.double(forKey: "queueSaved") else { return }
             let song = remote.songs[remote.index]
             if current?.id == song.id, abs(position - remote.position) < 10 { return }
             offer = remote
+            // Theirs is newer: whatever never reached the server from here must not replace it on the way out.
+            if !isPlaying { synced = QueueMark(line, position: self.position) }
         }
     }
 
@@ -493,6 +514,7 @@ final class PlayerModel: ObservableObject {
         replace(with: PlayQueue(songs: remote.songs, index: remote.index))
         position = remote.position
         duration = Double(current?.duration ?? 0)
+        synced = QueueMark(line, position: position)
         save()
         updateNowPlaying()
     }
