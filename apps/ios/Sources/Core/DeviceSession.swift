@@ -13,6 +13,21 @@ struct DeviceState: Codable, Equatable {
 
     /// The server relays this far ahead at most.
     static let maxSongs = 100
+
+    enum Leftover: Equatable {
+        /// It is this phone's own queue: only the spot in it moves.
+        case spot
+        /// There is nothing here to lose.
+        case take
+        /// Taking it would drop this phone's queue and history, so it waits to be asked for.
+        case offer
+    }
+
+    /// What becomes of this session when its device is gone. `upcoming` is this phone's queue from the current song on.
+    func leftover(upcoming: [Song]) -> Leftover {
+        if upcoming.isEmpty { return .take }
+        return upcoming.prefix(Self.maxSongs).map(\.id) == songs.map(\.id) ? .spot : .offer
+    }
 }
 
 struct Device: Decodable, Equatable, Identifiable {
@@ -107,6 +122,14 @@ enum DeviceRequest: Equatable {
     case state(DeviceState)
     case command(DeviceCommand)
     case transfer(to: String)
+
+    /// Moves `state` from this phone to `device`. The server ignores a paused device that doesn't hold the session,
+    /// so one that doesn't (`claim`) says it plays first, then how things really are.
+    static func handOver(_ state: DeviceState, to device: String, claim: Bool) -> [DeviceRequest] {
+        var claiming = state
+        claiming.playing = true
+        return (claim ? [.state(claiming)] : []) + [.state(state), .transfer(to: device)]
+    }
 
     /// The server drops a longer message whole.
     static let maxBytes = 256 * 1024

@@ -34,6 +34,20 @@ final class DeviceTests: XCTestCase {
         XCTAssertNil(mirror.playingOn)
     }
 
+    func testTheOwnQueueIsNeverReplacedUnasked() {
+        let one = Song(id: "s1", title: "One"), other = Song(id: "x", title: "Mine")
+        XCTAssertEqual(playing.leftover(upcoming: [other]), .offer)
+        XCTAssertEqual(playing.leftover(upcoming: [one]), .spot)
+        XCTAssertEqual(playing.leftover(upcoming: []), .take)
+    }
+
+    func testAPausedQueueNeverPublishedClaimsTheSessionBeforeMoving() {
+        var paused = playing
+        paused.playing = false
+        XCTAssertEqual(DeviceRequest.handOver(paused, to: "mac", claim: true), [.state(playing), .state(paused), .transfer(to: "mac")])
+        XCTAssertEqual(DeviceRequest.handOver(paused, to: "mac", claim: false), [.state(paused), .transfer(to: "mac")])
+    }
+
     func testALongListIsCutAroundTheSongAskedFor() throws {
         let songs = (0..<900).map { Song(id: "s\($0)", title: "Song", playCount: 3) }
         let text = try XCTUnwrap(DeviceRequest.command(.play(songs, start: 600, shuffle: false)).text)

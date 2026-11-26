@@ -51,10 +51,13 @@ for the others.
   pause, next, previous, seeking, the volume slider, picking a song, "play next" and "add to queue" go to that device.
   Reordering or removing queued songs, shuffle and repeat are off, as no command exists for them.
 - As a remote it plays, scrobbles, logs and saves nothing. Its lock screen shows no song, and nothing the system does
-  (a call ending, a car or headphones connecting) reaches the other device. Its volume buttons stay its own.
-- If the playing device disappears, or the phone loses the connection, the phone keeps that queue and spot, paused.
+  (the lock screen, headphones, a car, a call ending) reaches the other device or starts the phone over it. That holds
+  while the app is in the background too, until you open it again. Its volume buttons stay its own.
+- If the playing device disappears, or the phone loses the connection, the phone's own queue and history stay. The
+  other device's queue is offered ("On another device"); with the same queue only the spot moves, and a phone with
+  nothing queued takes it, paused.
 - Signing out, switching account or server and offline mode leave the session at once. So does going to the background
-  while not playing; opening the app joins again.
+  while not playing (a remote stays one, without the connection); opening the app joins again.
 - As a target it takes everything but volume, which iOS keeps to its buttons, so other devices can't move its slider.
 
 **Other apps** on a phone use Navidrome directly (Arpeggi, Substreamer, Symfonium…). Those can't be remote

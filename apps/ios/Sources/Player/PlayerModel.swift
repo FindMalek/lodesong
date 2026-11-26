@@ -261,7 +261,8 @@ final class PlayerModel: ObservableObject {
     }
 
     func dismissOffer() {
-        defaults.set(offer?.changed, forKey: "queueDismissed")
+        // A session left by a device that went away has no saved queue to remember as dismissed.
+        if let changed = offer?.changed, !changed.isEmpty { defaults.set(changed, forKey: "queueDismissed") }
         offer = nil
     }
 
@@ -303,6 +304,8 @@ final class PlayerModel: ObservableObject {
     private var link: DeviceLink?
     /// This phone holds the shared session (docs/devices.md).
     private var holdsSession = false
+    /// Another device took the session and the list naming it is still to come.
+    private var awaitingDevices = false
     private var published = ""
     private var remoteTick: Task<Void, Never>?
     private var volumeSend: Task<Void, Never>?
@@ -919,10 +922,16 @@ final class PlayerModel: ObservableObject {
     /// Moves playback to a device of the list, this phone included.
     func transfer(to device: String) {
         guard let link else { return }
-        // So the other device picks up from here, not from the last heartbeat.
+        guard device != clientID, !isRemote, current != nil else { return link.send(.transfer(to: device)) }
+        // So the other device picks up from here, not from the last heartbeat or another session's leftovers.
+        let state = sessionState()
+        DeviceRequest.handOver(state, to: device, claim: !holdsSession && !isPlaying).forEach(link.send)
         // Shown until the device that takes over says something itself.
-        if device != clientID, let state = publish(force: true) { mirror.heard(state) }
-        link.send(.transfer(to: device))
+        mirror.heard(state)
+    }
+
+    private func sessionState() -> DeviceState {
+        DeviceState(songs: Array(queue.dropFirst(index).prefix(DeviceState.maxSongs)), position: position, playing: isPlaying)
     }
 
     /// The playing device's volume, at most ten times a second while the slider moves.
@@ -946,7 +955,10 @@ final class PlayerModel: ObservableObject {
     }
 
     private func join() {
-        leaveSession()
+        link?.close()
+        link = nil
+        // In the background a remote stays one across a change of address, or the lock screen would play from here.
+        if client == nil || UIApplication.shared.applicationState != .background { forgetSession() }
         guard let client else { return }
         let id = clientID
         let name = UIDevice.current.userInterfaceIdiom == .pad ? "the ipad app" : "the iphone app"
@@ -967,6 +979,7 @@ final class PlayerModel: ObservableObject {
 
     private func forgetSession() {
         holdsSession = false
+        awaitingDevices = false
         mirror = DeviceMirror()
         volumeSend?.cancel()
         volumeSend = nil
@@ -990,34 +1003,39 @@ final class PlayerModel: ObservableObject {
     }
 
     /// Paused in the background the app is soon suspended: it leaves the picker, or picking it would stop the music.
+    /// A remote stays one, so nothing on the lock screen or headphones starts this phone over the device that plays.
     private func followPlayback() {
         guard let link else { return }
         if isPlaying {
             if link.isClosed { link.connect() }
-        } else if UIApplication.shared.applicationState == .background {
+        } else if UIApplication.shared.applicationState == .background, !awaitingDevices {
             link.close()
-            forgetSession()
+            if isRemote {
+                remoteTick?.cancel()
+                remoteTick = nil
+            } else {
+                forgetSession()
+            }
         }
     }
 
     /// Playing takes the session. Paused, only the device that holds it has anything to say.
-    @discardableResult
-    private func publish(force: Bool = false) -> DeviceState? {
-        guard let link, !isRemote, current != nil, isPlaying || holdsSession else { return nil }
-        let songs = Array(queue.dropFirst(index).prefix(DeviceState.maxSongs))
-        let key = "\(songs.map(\.id).joined(separator: ","))|\(isPlaying)"
-        guard force || key != published else { return nil }
+    private func publish(force: Bool = false) {
+        guard let link, !isRemote, current != nil, isPlaying || holdsSession else { return }
+        let state = sessionState()
+        let key = "\(state.songs.map(\.id).joined(separator: ","))|\(isPlaying)"
+        guard force || key != published else { return }
         published = key
         lastPublish = Date()
-        let state = DeviceState(songs: songs, position: position, playing: isPlaying)
         link.send(.state(state))
-        return state
     }
 
     private func receive(_ message: DeviceMessage) {
         switch message {
         case .devices(let devices):
             let was = isRemote
+            let awaited = awaitingDevices
+            awaitingDevices = false
             holdsSession = devices.contains { $0.active && $0.id == clientID }
             let left = mirror.list(devices, me: clientID, playingHere: isPlaying)
             if isRemote, !was {
@@ -1026,15 +1044,17 @@ final class PlayerModel: ObservableObject {
                 finishPlay()
             }
             showRemote()
-            if let left { keep(left) }
+            if let left { gone(left) }
             // Moved here: `take` follows with where it was, so nothing older is published first.
-            if was != isRemote, !holdsSession { updateNowPlaying() }
+            if was != isRemote || awaited, !holdsSession { updateNowPlaying() }
         case .state(let state):
             guard !isPlaying else { return }
             mirror.heard(state)
             showRemote()
         case .yield:
             holdsSession = false
+            // Pausing in the background would close the socket before it hears who took over.
+            awaitingDevices = true
             pause()
         case .take(let state):
             holdsSession = true
@@ -1054,6 +1074,14 @@ final class PlayerModel: ObservableObject {
                 if shuffle { toggleShuffle() }
             case .add(let songs, let next): next ? playNext(songs) : addToQueue(songs)
             }
+        }
+    }
+
+    /// The device that played is gone. Its spot is picked up, but this phone's own queue is only replaced if asked.
+    private func gone(_ left: DeviceState) {
+        switch left.leftover(upcoming: Array(queue.dropFirst(index))) {
+        case .spot, .take: keep(left)
+        case .offer: offer = RemoteQueue(songs: left.songs, index: 0, position: left.position, changed: "", changedBy: "")
         }
     }
 
