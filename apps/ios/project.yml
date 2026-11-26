@@ -2,7 +2,7 @@ name: Lodesong
 options:
   bundleIdPrefix: engineer.findmalek
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -22,7 +22,8 @@ targets:
       properties:
         CFBundleDisplayName: lodesong
         UILaunchScreen: {}
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [engineer.findmalek.lodesong.ios.refresh]
         UIRequiredDeviceCapabilities: [arm64]
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -38,7 +39,6 @@ targets:
         NSLocalNetworkUsageDescription: lodesong talks to your server on your home network.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-          NSAllowsArbitraryLoadsInWebContent: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: engineer.findmalek.lodesong.ios
