@@ -88,6 +88,17 @@ final class DownloadLibraryTests: XCTestCase {
         XCTAssertEqual(downloads.collections[0].songs.map(\.id), ["s3", "s1", "s2"])
     }
 
+    func testOnlySongsASyncAddedToAKeptPlaylistAreReported() throws {
+        try library(["gym": ["s1", "s2"]])
+        downloads.keep(gym, from: store)
+        let before = downloads.collections
+
+        try library(["gym": ["s2", "s3", "s1", "s4"], "run": ["s9"]])
+        downloads.reconcile(with: store)
+        XCTAssertEqual(NewTracks.found(before: before, after: downloads.collections), [NewTracks(playlist: "gym", name: "gym", count: 2)])
+        XCTAssertEqual(NewTracks.found(before: downloads.collections, after: downloads.collections), [])
+    }
+
     func testSongsRemovedFromAKeptPlaylistAreDeleted() throws {
         try library(["gym": ["s1", "s2"]])
         downloads.keep(gym, from: store)

@@ -80,7 +80,9 @@ final class DownloadsModel: ObservableObject {
     /// Call after every library sync so kept playlists follow their changes.
     func librarySynced() {
         guard let store, let library else { return }
+        let before = library.collections
         library.reconcile(with: store)
+        Notices.post(NewTracks.found(before: before, after: library.collections))
         revision += 1
         schedule(retry: true)
     }
@@ -107,6 +109,9 @@ final class DownloadsModel: ObservableObject {
     private func keep(_ ref: DownloadRef) {
         guard let store, let library else { return }
         library.keep(ref, from: store)
+        // The first download is when a notification means something; asking at first launch doesn't.
+        let tracksWanted = ref.kind == .playlist && UserDefaults.standard.bool(Pref.notifyNewTracks, or: true)
+        if tracksWanted || Notices.expiry != nil { Task { await Notices.askPermission() } }
         revision += 1
         schedule(retry: true)
     }

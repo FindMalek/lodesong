@@ -173,6 +173,7 @@ struct AboutSettings: View {
 
     var body: some View {
         Form {
+            SigningSection()
             Section {
                 LabeledContent("Version", value: version)
                 Link("What's New", destination: URL(string: "https://github.com/FindMalek/lodesong/releases")!)
