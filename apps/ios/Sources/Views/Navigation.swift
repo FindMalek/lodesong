@@ -59,6 +59,11 @@ struct TabStack<Root: View>: View {
     @Namespace private var zoom
 
     var body: some View {
+        stack.safeAreaInset(edge: .bottom) { OfferBanner() }
+            .environment(\.zoom, zoom)
+    }
+
+    private var stack: some View {
         NavigationStack(path: $path) {
             root.navigationDestination(for: Route.self) { route in
                 switch route {
@@ -74,6 +79,5 @@ struct TabStack<Root: View>: View {
                 }
             }
         }
-        .environment(\.zoom, zoom)
     }
 }

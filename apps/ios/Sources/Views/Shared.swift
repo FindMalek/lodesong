@@ -52,6 +52,18 @@ extension AppModel {
     func album(id: String?) -> Album? { id.flatMap { id in library.albums.first { $0.id == id } } }
 }
 
+/// Searches, plays and covers belong to whoever was signed in; the next account starts clean.
+enum AccountData {
+    @MainActor static func adopt(_ account: String) {
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: "viewsAccount") != account else { return }
+        defaults.set(account, forKey: "viewsAccount")
+        defaults.removeObject(forKey: Recents.key)
+        defaults.removeObject(forKey: "recentSearches")
+        ArtworkCache.shared.clear()
+    }
+}
+
 /// Albums played from this phone, newest first.
 enum Recents {
     static let key = "recentAlbums"
@@ -81,12 +93,12 @@ extension PlayerModel {
 
     func queueNext(_ songs: [Song]) {
         Haptic.done()
-        songs.reversed().forEach(playNext)
+        playNext(songs)
     }
 
     func queueLast(_ songs: [Song]) {
         Haptic.done()
-        songs.forEach(addToQueue)
+        addToQueue(songs)
     }
 }
 
@@ -259,6 +271,7 @@ struct PlayShuffleButtons: View {
 /// Keeps an album or playlist on the phone.
 struct DownloadButton: View {
     @EnvironmentObject private var model: AppModel
+    @State private var confirming = false
     @EnvironmentObject private var downloads: DownloadsModel
     let state: DownloadState
     let keep: () -> Void
@@ -270,11 +283,20 @@ struct DownloadButton: View {
             Button("Download", systemImage: "arrow.down") { Haptic.tap(); keep() }.disabled(model.offline)
         case .downloading(let done, let total):
             Menu {
-                Button("Cancel Download", systemImage: "xmark", role: .destructive, action: remove)
+                if done == 0 {
+                    Button("Cancel Download", systemImage: "xmark", role: .destructive, action: remove)
+                } else {
+                    // Files are already here (a kept playlist that grew, say), so this is not a harmless cancel.
+                    Text("\(done) of \(total) songs on this iPhone")
+                    Button("Remove Download", systemImage: "trash", role: .destructive) { confirming = true }
+                }
             } label: {
                 ProgressView(value: Double(done), total: Double(max(total, 1))).progressViewStyle(.circular)
             }
             .accessibilityLabel("Downloading \(done) of \(total)")
+            .confirmationDialog("Delete the \(done) downloaded songs?", isPresented: $confirming, titleVisibility: .visible) {
+                Button("Remove Download", role: .destructive, action: remove)
+            }
         case .downloaded:
             Menu("Downloaded", systemImage: "checkmark.circle.fill") {
                 Button("Remove Download", systemImage: "trash", role: .destructive, action: remove)

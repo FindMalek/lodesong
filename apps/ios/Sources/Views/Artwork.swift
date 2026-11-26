@@ -15,6 +15,13 @@ final class ArtworkCache {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
+    func clear() {
+        memory.removeAllObjects()
+        palettes = [:]
+        try? FileManager.default.removeItem(at: folder)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    }
+
     func cached(_ id: String, size: Int) -> UIImage? { memory.object(forKey: "\(id)@\(size)" as NSString) }
 
     func image(_ id: String, size: Int, client: ServerClient?) async -> UIImage? {

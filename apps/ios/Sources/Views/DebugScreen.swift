@@ -13,8 +13,13 @@ enum DebugScreen {
         var queue = library.songs(album: album.id)
         queue += library.songs.dropFirst(40).prefix(12)
         guard queue.count > 3 else { return nil }
-        let length = TimeInterval(queue[2].duration ?? 215)
-        return Playback(queue: queue, index: 2, isPlaying: true, position: length * 0.38, duration: length)
+        return Playback(queue: queue, index: 2, isPlaying: true)
+    }
+
+    static func progress(_ library: Library) -> (TimeInterval, TimeInterval)? {
+        guard let song = playback(library)?.current else { return nil }
+        let length = TimeInterval(song.duration ?? 215)
+        return (length * 0.38, length)
     }
 
     /// Made up abstract covers: the mock server only serves grey squares.

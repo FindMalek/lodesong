@@ -31,6 +31,7 @@ struct MainView: View {
         }
         .environmentObject(router)
         .tint(.accent)
+        .onAppear { AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)") }
         #if DEBUG
         .task(id: model.library.songs.count) {
             guard !openedDebugScreen, !model.library.songs.isEmpty else { return }
@@ -42,7 +43,10 @@ struct MainView: View {
 
     /// iOS 27 folds a plain search tab in with the others; the prominent role keeps it apart, as Home and Library expect.
     private var searchRole: TabRole {
+        // Xcode 26 has no such role to compile against.
+        #if compiler(>=6.4)
         if #available(iOS 27, *) { return .prominent }
+        #endif
         return .search
     }
 }

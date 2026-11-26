@@ -5,8 +5,6 @@ struct Playback {
     var queue: [Song] = []
     var index = 0
     var isPlaying = false
-    var position: TimeInterval = 0
-    var duration: TimeInterval = 0
     var current: Song? { queue.indices.contains(index) ? queue[index] : nil }
 }
 
@@ -15,7 +13,104 @@ extension PlayerModel {
         #if DEBUG
         if queue.isEmpty, let sample = DebugScreen.playback(library) { return sample }
         #endif
-        return Playback(queue: queue, index: index, isPlaying: isPlaying, position: position, duration: duration)
+        return Playback(queue: queue, index: index, isPlaying: isPlaying)
+    }
+}
+
+/// The only view that follows the position, so a tick redraws it and nothing else.
+private struct PlayerScrubber: View {
+    @EnvironmentObject private var model: AppModel
+    let player: PlayerModel
+    @ObservedObject var clock: PlayerClock
+
+    var body: some View {
+        let shown = progress
+        Scrubber(position: shown.0, duration: shown.1) { player.seek(to: $0) }
+    }
+
+    private var progress: (TimeInterval, TimeInterval) {
+        #if DEBUG
+        if player.queue.isEmpty, let sample = DebugScreen.progress(model.library) { return sample }
+        #endif
+        return (clock.position, player.duration)
+    }
+}
+
+/// Another device saved a newer queue: take it over, or not.
+struct OfferBanner: View {
+    @EnvironmentObject private var player: PlayerModel
+
+    var body: some View {
+        if let offer = player.offer, offer.songs.indices.contains(offer.index) {
+            let song = offer.songs[offer.index]
+            HStack(spacing: 12) {
+                Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("On another device").font(.caption).foregroundStyle(.secondary)
+                    Text("\(song.title), \(timeText(offer.position))").font(.subheadline.weight(.semibold))
+                }
+                .lineLimit(1)
+                Spacer(minLength: 0)
+                Button("Resume") {
+                    Haptic.tap()
+                    player.resumeOffer()
+                }
+                .buttonStyle(.glassProminent)
+                Button("Dismiss", systemImage: "xmark") { player.dismissOffer() }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .frame(width: 28, height: 32)
+            }
+            .padding(10)
+            .glassEffect(.regular, in: .rect(cornerRadius: 20))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        }
+    }
+}
+
+struct ShuffleButton: View {
+    @EnvironmentObject private var player: PlayerModel
+
+    var body: some View {
+        Button {
+            Haptic.tap()
+            player.toggleShuffle()
+        } label: {
+            Image(systemName: "shuffle").modifier(Toggled(on: player.isShuffled))
+        }
+        .accessibilityLabel("Shuffle")
+        .accessibilityValue(player.isShuffled ? "On" : "Off")
+    }
+}
+
+struct RepeatButton: View {
+    @EnvironmentObject private var player: PlayerModel
+
+    var body: some View {
+        Button {
+            Haptic.tap()
+            player.cycleRepeat()
+        } label: {
+            Image(systemName: player.repeatMode == .one ? "repeat.1" : "repeat").modifier(Toggled(on: player.repeatMode != .off))
+        }
+        .accessibilityLabel("Repeat")
+        .accessibilityValue(player.repeatMode == .off ? "Off" : player.repeatMode == .all ? "All" : "One")
+    }
+}
+
+/// The filled look a player button takes while its mode is on.
+private struct Toggled: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .font(.title3)
+            .foregroundStyle(.white.opacity(on ? 1 : 0.7))
+            .frame(width: 44, height: 44)
+            .background(.white.opacity(on ? 0.25 : 0), in: .rect(cornerRadius: 10))
+            .contentShape(.rect)
     }
 }
 
@@ -108,12 +203,16 @@ struct NowPlayingView: View {
                 Spacer(minLength: 12)
                 VStack(spacing: proxy.size.height < 700 ? 8 : 20) {
                     titles(song)
-                    Scrubber(position: playback.position, duration: playback.duration) { player.seek(to: $0) }
+                    PlayerScrubber(player: player, clock: player.clock)
                     transport(playback.isPlaying)
                     VolumeSlider()
                     HStack {
                         Spacer()
+                        ShuffleButton()
+                        Spacer()
                         RoutePicker().frame(width: 44, height: 44).accessibilityLabel("AirPlay")
+                        Spacer()
+                        RepeatButton()
                         Spacer()
                         Button { showingQueue = true } label: {
                             Image(systemName: "list.bullet").font(.title3).frame(width: 44, height: 44)
@@ -194,20 +293,30 @@ struct QueueView: View {
 
     var body: some View {
         let playback = player.playback(model.library)
-        ScrollViewReader { scroll in
-            List {
-                if playback.current != nil {
-                    section("History", playback, 0..<playback.index)
-                    section("Now Playing", playback, playback.index..<playback.index + 1)
-                    section("Up Next", playback, playback.index + 1..<playback.queue.count)
-                }
+        VStack(spacing: 0) {
+            HStack {
+                Text("Queue").font(.headline)
+                Spacer()
+                ShuffleButton()
+                RepeatButton()
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            // History sits above, out of sight until pulled down.
-            .onAppear { scroll.scrollTo(playback.index, anchor: .top) }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 4)
+            ScrollViewReader { scroll in
+                List {
+                    if playback.current != nil {
+                        section("History", playback, 0..<playback.index)
+                        section("Now Playing", playback, playback.index..<playback.index + 1)
+                        upNext(playback)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                // History sits above, out of sight until pulled down.
+                .onAppear { scroll.scrollTo(playback.index, anchor: .top) }
+            }
         }
-        .padding(.top, 16)
         .overlay {
             if playback.current == nil {
                 ContentUnavailableView("Nothing in the Queue", systemImage: "list.bullet", description: Text("Play something to fill it."))
@@ -219,32 +328,56 @@ struct QueueView: View {
         if !range.isEmpty {
             Section(title) {
                 ForEach(Array(range), id: \.self) { index in
-                    let song = playback.queue[index]
-                    Button {
-                        Haptic.tap()
-                        player.jump(to: index)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 44, height: 44)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(song.title).lineLimit(1)
-                                Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            Spacer(minLength: 0)
-                            if index == playback.index {
-                                Image(systemName: "waveform")
-                                    .symbolEffect(.variableColor.iterative, isActive: playback.isPlaying)
-                            }
-                        }
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .opacity(index < playback.index ? 0.6 : 1)
-                    .listRowBackground(Color.clear)
-                    .id(index)
-                    .contextMenu { SongMenu(song: song) }
+                    row(playback, index).contextMenu { SongMenu(song: playback.queue[index]) }
                 }
             }
         }
+    }
+
+    /// Hold and drag to reorder, swipe to take out. A context menu here would fight the drag.
+    @ViewBuilder private func upNext(_ playback: Playback) -> some View {
+        let base = playback.index + 1
+        if base < playback.queue.count {
+            Section("Up Next") {
+                ForEach(Array(base..<playback.queue.count), id: \.self) { index in
+                    row(playback, index)
+                }
+                .onMove { source, target in
+                    Haptic.tap()
+                    player.move(from: IndexSet(source.map { $0 + base }), to: target + base)
+                }
+                .onDelete { offsets in
+                    player.remove(at: IndexSet(offsets.map { $0 + base }))
+                }
+            }
+        }
+    }
+
+    private func row(_ playback: Playback, _ index: Int) -> some View {
+        let song = playback.queue[index]
+        return Button {
+            Haptic.tap()
+            player.jump(to: index)
+        } label: {
+            HStack(spacing: 12) {
+                Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(song.title).lineLimit(1)
+                    Text(song.artist ?? "").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if index == playback.index {
+                    Image(systemName: "waveform")
+                        .symbolEffect(.variableColor.iterative, isActive: playback.isPlaying)
+                } else if index > playback.index {
+                    Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).accessibilityHidden(true)
+                }
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .opacity(index < playback.index ? 0.6 : 1)
+        .listRowBackground(Color.clear)
+        .id(index)
     }
 }
