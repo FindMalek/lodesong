@@ -87,12 +87,14 @@ final class PlayLogTests: XCTestCase {
         PlaysServer.online = true
         let first = log()
         listen(first, from: 0, to: 40)
+        // Scrubbed while paused, then the app is killed.
+        first.jumped(to: 70)
         first.save()
 
         time += 60
         let second = log()
         await second.flush(server, account: "me", client: "ios-x")
-        listen(second, from: 40, to: 70)
+        listen(second, from: 70, to: 100)
         second.end()
         await second.flush(server, account: "me", client: "ios-x")
 

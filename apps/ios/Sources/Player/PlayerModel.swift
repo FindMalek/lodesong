@@ -221,6 +221,7 @@ final class PlayerModel: ObservableObject {
                 self?.save()
                 self?.push()
                 self?.sendPlays()
+                self?.followPlayback()
             }
         }
         center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
@@ -650,6 +651,17 @@ final class PlayerModel: ObservableObject {
             received: { [weak self] in self?.receive($0) })
     }
 
+    /// Paused in the background the app is soon suspended: it leaves the picker, or picking it would stop the music.
+    private func followPlayback() {
+        guard let link else { return }
+        if isPlaying {
+            if link.isClosed { link.connect() }
+        } else if UIApplication.shared.applicationState == .background {
+            holdsSession = false
+            link.close()
+        }
+    }
+
     /// Playing takes the session. Paused, only the device that holds it has anything to say.
     private func publish(force: Bool = false) {
         guard let link, current != nil, isPlaying || holdsSession else { return }
@@ -671,6 +683,8 @@ final class PlayerModel: ObservableObject {
             holdsSession = true
             if queue.dropFirst(index).prefix(DeviceState.maxSongs).map(\.id) == state.songs.map(\.id) {
                 seek(to: state.position)
+                // The device that had it already scrobbled anything past the point.
+                if pastScrobblePoint(position) { scrobbled = true }
             } else {
                 adopt(RemoteQueue(songs: state.songs, index: 0, position: state.position, changed: "", changedBy: ""))
             }
@@ -692,6 +706,7 @@ final class PlayerModel: ObservableObject {
     private func updateNowPlaying() {
         guard app != nil else { return }
         publish()
+        followPlayback()
         system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, client: client)
     }
 }

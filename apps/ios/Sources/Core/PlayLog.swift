@@ -19,6 +19,8 @@ struct LoggedPlay: Codable, Equatable {
     /// Seconds actually listened: seeking ahead and waiting don't count.
     var listened: Double = 0
     var position: Double
+    /// A seek nothing was heard after: where to carry on from, but not how far it was played.
+    var soughtTo: Double?
     var duration: Double
     var heard: Date
     /// Past the scrobble point, so Navidrome counts it.
@@ -62,6 +64,7 @@ final class PlayLog {
             if step > 0, step <= time.timeIntervalSince(mark.at) + 1 { plays[at].listened += step }
         }
         plays[at].position = position
+        plays[at].soughtTo = nil
         plays[at].duration = duration
         plays[at].heard = time
         mark = (position, time)
@@ -69,6 +72,7 @@ final class PlayLog {
 
     func jumped(to position: Double) {
         mark = (position, now())
+        if let at = index(live) { plays[at].soughtTo = position }
     }
 
     /// The current play is long enough to count.
@@ -115,7 +119,7 @@ final class PlayLog {
         let time = now()
         mark = nil
         // Picking up where a closed app left off is the same play, not a second one.
-        if let at = plays.lastIndex(where: { !$0.ended && $0.account == account && $0.song.id == song.id && abs($0.position - position) < 10 }) {
+        if let at = plays.lastIndex(where: { !$0.ended && $0.account == account && $0.song.id == song.id && abs(($0.soughtTo ?? $0.position) - position) < 10 }) {
             live = plays[at].key
         } else {
             for at in plays.indices where !plays[at].ended { close(at) }

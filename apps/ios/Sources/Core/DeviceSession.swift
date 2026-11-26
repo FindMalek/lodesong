@@ -151,6 +151,7 @@ final class DeviceLink {
     }
 
     var isConnected: Bool { socket?.state == .running }
+    var isClosed: Bool { work == nil }
 
     func send(_ state: DeviceState) {
         struct Message: Encodable {
