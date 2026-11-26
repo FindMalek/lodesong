@@ -1,6 +1,6 @@
 {
   "name": "lodesong",
-  "version": "1.22.1",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "workspaces": [
