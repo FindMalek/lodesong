@@ -42,6 +42,9 @@ struct Playlist: Codable, Identifiable, Hashable {
     var songCount: Int?
     var changed: String?
     var coverArt: String?
+    /// Set on smart playlists, whose `changed` only moves once someone asks for their songs.
+    var readonly: Bool?
+    var validUntil: String?
 }
 
 /// Everything one sync brings back. Playlist entries are only listed for playlists that changed.

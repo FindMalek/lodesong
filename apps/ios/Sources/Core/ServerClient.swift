@@ -69,7 +69,8 @@ struct ServerClient {
         snapshot.albums = try await all("album") { $0.searchResult3?.album }
         snapshot.songs = try await all("song") { $0.searchResult3?.song }
         snapshot.playlists = try await rest("getPlaylists").playlists?.playlist ?? []
-        for playlist in snapshot.playlists where playlist.changed == nil || knownPlaylists[playlist.id] != playlist.changed {
+        for playlist in snapshot.playlists where playlist.changed == nil || knownPlaylists[playlist.id] != playlist.changed
+            || playlist.readonly == true || playlist.validUntil != nil {
             snapshot.entries[playlist.id] = try await rest("getPlaylist", ["id": playlist.id]).playlist?.entry ?? []
         }
         return snapshot
