@@ -61,6 +61,7 @@ struct LyricsView: View {
                 Text(song?.artist ?? "").font(.subheadline).foregroundStyle(.white.opacity(0.65))
             }
             .lineLimit(1)
+            .minimumScaleFactor(0.85)
             Spacer(minLength: 0)
             if let song, let saved, saved.lyrics.status == .synced {
                 Menu {
@@ -75,6 +76,7 @@ struct LyricsView: View {
                 .menuActionDismissBehavior(.disabled)
                 .accessibilityLabel("Lyrics timing")
             }
+            if let song { LikeButton(song: song) }
             Button { dismiss() } label: { circle("chevron.down") }
                 .accessibilityLabel("Close lyrics")
         }

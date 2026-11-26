@@ -27,6 +27,8 @@ final class AppModel: ObservableObject {
     private(set) var libraryRevision = 0
     @Published private(set) var syncing = false
     @Published var syncError: String?
+    /// When the sync now running, or the last one, began.
+    private(set) var syncStarted = Date.distantPast
     /// When the library last came in whole.
     @Published private(set) var lastSync = UserDefaults.standard.object(forKey: "lastSync") as? Date
     @Published var needsSignIn: Bool
@@ -184,6 +186,7 @@ final class AppModel: ObservableObject {
 
     private func run(_ client: ServerClient) async {
         syncing = true
+        syncStarted = Date()
         defer { syncing = false }
         do {
             try await LibrarySync.run(client: client, store: store)
