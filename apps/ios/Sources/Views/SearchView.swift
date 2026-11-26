@@ -6,8 +6,9 @@ struct SearchView: View {
     @State private var results: SearchIndex.Results?
     @AppStorage("recentSearches") private var recentSearches = ""
     @State private var answered = ""
-    @State private var index: SearchIndex?
-    @State private var built: [Int] = []
+    @StateObject private var index = LatestBuild<[Int], SearchIndex>()
+    /// `lyrics.revision` once it has stopped moving: saving a kept playlist's lyrics moves it again and again.
+    @State private var lyricsSeen: Int?
     @State private var fromServer: (query: String, hits: [LyricsHit]) = ("", [])
     @EnvironmentObject private var player: PlayerModel
     @EnvironmentObject private var lyrics: LyricsModel
@@ -22,7 +23,7 @@ struct SearchView: View {
     private var term: String { query.trimmingCharacters(in: .whitespaces) }
 
     private var version: [Int] {
-        [model.library.songs.count, model.library.albums.count, model.library.playlists.count, model.syncing ? 1 : 0, lyrics.revision]
+        [model.library.songs.count, model.library.albums.count, model.library.playlists.count, model.syncing ? 1 : 0, lyricsSeen ?? lyrics.revision]
     }
 
     private var recents: [String] { recentSearches.split(separator: "\n").map(String.init) }
@@ -41,7 +42,12 @@ struct SearchView: View {
         .autocorrectionDisabled()
         .onSubmit(of: .search) { remember(query) }
         .safeAreaInset(edge: .top, spacing: 0) { chips }
-        .task(id: Request(query: term, version: version)) { await search() }
+        .task(id: lyrics.revision) {
+            if lyricsSeen != nil { try? await Task.sleep(for: .seconds(5)) }
+            if !Task.isCancelled { lyricsSeen = lyrics.revision }
+        }
+        .task(id: Request(query: term, version: version)) { buildIndex() }
+        .task(id: Request(query: term, version: [index.generation])) { await search() }
         .task(id: term) { await searchServer() }
     }
 
@@ -252,25 +258,26 @@ struct SearchView: View {
         }
     }
 
+    private func buildIndex() {
+        // A sync under way replaces the library when it ends; until then the old index will do.
+        guard !term.isEmpty, index.value == nil || !model.syncing else { return }
+        let library = model.library
+        let lyrics = lyrics
+        index.want(version) {
+            let words = await lyrics.all()
+            return await Task.detached {
+                SearchIndex(artists: library.artists, albums: library.albums, playlists: library.playlists, songs: library.songs, lyrics: words)
+            }.value
+        }
+    }
+
     private func search() async {
         let term = term
         guard !term.isEmpty else {
             results = nil
             return
         }
-        if index == nil || built != version {
-            let version = version
-            let library = model.library
-            let words = await lyrics.all()
-            let made = await Task.detached {
-                SearchIndex(artists: library.artists, albums: library.albums, playlists: library.playlists, songs: library.songs, lyrics: words)
-            }.value
-            // Kept even when a newer keystroke cancelled this one, so typing doesn't build it over and over.
-            index = made
-            built = version
-            guard !Task.isCancelled else { return }
-        }
-        guard let index else { return }
+        guard let index = index.value else { return }
         let found = await Task.detached { index.search(SearchQuery(term)) }.value
         guard !Task.isCancelled else { return }
         results = found

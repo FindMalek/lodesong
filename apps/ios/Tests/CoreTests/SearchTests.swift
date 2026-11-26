@@ -41,3 +41,26 @@ final class SearchTests: XCTestCase {
         XCTAssertTrue(results.songs.isEmpty)
     }
 }
+
+@MainActor
+final class LatestBuildTests: XCTestCase {
+    func testAsksDuringABuildCollapseIntoOneMoreAndNeverOverlap() async {
+        let build = LatestBuild<Int, Int>()
+        var made: [Int] = []
+        var active = 0
+        for key in 1...5 {
+            build.want(key) {
+                active += 1
+                XCTAssertEqual(active, 1)
+                made.append(key)
+                for _ in 0..<5 { await Task.yield() }
+                active -= 1
+                return key
+            }
+            if key == 1 { await Task.yield() }
+        }
+        await build.running?.value
+        XCTAssertEqual(made, [1, 5])
+        XCTAssertEqual(build.value, 5)
+    }
+}

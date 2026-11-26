@@ -78,34 +78,45 @@ final class LyricsModel: ObservableObject {
         let songs = app.downloads.collections.flatMap(\.songs).filter { seen.insert($0.id).inserted }
         guard !songs.isEmpty else { return }
         filling = Task {
-            var added = 0
-            // Thousands of kept songs are thousands of files to look at, so not on the main thread.
-            let wanted = await Task.detached {
-                songs.filter { store.wants($0.id) || store.load($0.id)?.nudgePending == true }
-            }.value
-            for cover in Set(songs.compactMap(\.coverArt)) {
-                await ArtworkCache.shared.keep(cover, client: client)
-            }
-            for song in wanted {
-                // Signed out or another account: what is left belongs to nobody here.
-                guard self.client?.server == client.server, self.store === store else { break }
-                if store.load(song.id)?.nudgePending == true { await syncNudge(song.id, store: store, client: client) }
-                guard store.wants(song.id) else { continue }
-                do {
-                    let lyrics = try await client.lyrics(song: song.id)
-                    store.save(lyrics, song: song.id)
-                } catch is URLError {
-                    break
-                } catch {
-                    // One song the server can't answer for must not hold back the rest.
-                    continue
-                }
-                await syncNudge(song.id, store: store, client: client)
-                added += 1
-                if added.isMultiple(of: 25) { revision += 1 }
-            }
-            if added > 0 { revision += 1 }
+            await fill(songs, store: store, client: client)
             filling = nil
+        }
+    }
+
+    /// Lyrics first, they are small; then covers.
+    private func fill(_ songs: [Song], store: LyricsStore, client: ServerClient) async {
+        // Signed out or another account: what is left belongs to nobody here.
+        func current() -> Bool { self.client?.server == client.server && self.store === store }
+        // Thousands of kept songs are thousands of files to look at, so not on the main thread.
+        let wanted = await Task.detached {
+            songs.filter { store.wants($0.id) || store.load($0.id)?.nudgePending == true }
+        }.value
+        var added = 0
+        defer { if added > 0 { revision += 1 } }
+        var failures = 0
+        for song in wanted {
+            guard current() else { return }
+            if store.load(song.id)?.nudgePending == true { await syncNudge(song.id, store: store, client: client) }
+            guard store.wants(song.id) else { continue }
+            do {
+                let lyrics = try await client.lyrics(song: song.id)
+                store.save(lyrics, song: song.id)
+                failures = 0
+            } catch is URLError {
+                return
+            } catch {
+                // One song the server can't answer for must not hold back the rest; three in a row is the server.
+                failures += 1
+                if failures == 3 { return }
+                continue
+            }
+            await syncNudge(song.id, store: store, client: client)
+            added += 1
+            if added.isMultiple(of: 100) { revision += 1 }
+        }
+        for cover in Set(songs.compactMap(\.coverArt)) {
+            guard current() else { return }
+            do { try await ArtworkCache.shared.keep(cover, client: client) } catch { return }
         }
     }
 }

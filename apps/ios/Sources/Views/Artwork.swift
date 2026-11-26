@@ -15,15 +15,24 @@ final class ArtworkCache {
 
     private init() {
         memory.totalCostLimit = 64 * 1024 * 1024
-        for url in [folder, kept] { try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+        makeFolders()
     }
 
-    func keep(_ id: String, client: ServerClient) async {
+    private func makeFolders() {
+        for url in [folder, kept] { try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+        // It all comes back from the server, so it stays out of iCloud backups.
+        var covers = kept
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? covers.setResourceValues(values)
+    }
+
+    /// Throws only when the server can't be reached.
+    func keep(_ id: String, client: ServerClient) async throws {
         let file = keptFile(id, client: client)
-        guard !FileManager.default.fileExists(atPath: file.path),
-              let (data, response) = try? await URLSession.shared.data(from: client.coverURL(id, size: 800)),
-              (response as? HTTPURLResponse)?.statusCode == 200, UIImage(data: data) != nil
-        else { return }
+        guard !FileManager.default.fileExists(atPath: file.path) else { return }
+        let (data, response) = try await URLSession.shared.data(from: client.coverURL(id, size: 800))
+        guard (response as? HTTPURLResponse)?.statusCode == 200, UIImage(data: data) != nil else { return }
         try? data.write(to: file, options: .atomic)
     }
 
@@ -38,10 +47,8 @@ final class ArtworkCache {
     func clear() {
         memory.removeAllObjects()
         palettes = [:]
-        for url in [folder, kept] {
-            try? FileManager.default.removeItem(at: url)
-            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        }
+        for url in [folder, kept] { try? FileManager.default.removeItem(at: url) }
+        makeFolders()
     }
 
     func cached(_ id: String, size: Int) -> UIImage? { memory.object(forKey: "\(id)@\(size)" as NSString) }

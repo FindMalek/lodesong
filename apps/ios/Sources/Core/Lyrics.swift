@@ -48,6 +48,11 @@ final class LyricsStore: @unchecked Sendable {
     init(root: URL) {
         self.root = root
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        // It all comes back from the server, so it stays out of iCloud backups.
+        var folder = root
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? folder.setResourceValues(values)
     }
 
     func load(_ song: String) -> SavedLyrics? {
@@ -83,9 +88,8 @@ final class LyricsStore: @unchecked Sendable {
         return saved.lyrics.status == .missing && now.timeIntervalSince(saved.fetched) > 86_400
     }
 
+    /// Not locked: writes are atomic, and reading thousands of files must not make `load` wait.
     func all() -> [String: Lyrics] {
-        lock.lock()
-        defer { lock.unlock() }
         let files = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
         var found: [String: Lyrics] = [:]
         for url in files {
