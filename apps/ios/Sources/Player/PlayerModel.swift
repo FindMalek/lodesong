@@ -168,7 +168,11 @@ final class PlayerModel: ObservableObject {
     /// Call after signing in or out. Another account never inherits this queue.
     func accountChanged() {
         guard let app else { return }
-        guard !app.needsSignIn else { return pause() }
+        guard !app.needsSignIn else {
+            pause()
+            unload()
+            return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, client: nil)
+        }
         let now = "\(app.client?.server.absoluteString ?? "") \(app.user)"
         guard now != account else { return pull() }
         account = now
@@ -187,7 +191,7 @@ final class PlayerModel: ObservableObject {
     // MARK: - Playing
 
     func resume() {
-        guard current != nil else { return }
+        guard current != nil, app?.needsSignIn == false else { return }
         skips = 0
         retries = 0
         if let loaded, loaded.item.status != .failed {
@@ -240,14 +244,14 @@ final class PlayerModel: ObservableObject {
         engine.removeAllItems()
     }
 
-    private func load(at seconds: TimeInterval, play: Bool) {
-        let sameSong = loaded?.song.id == current?.id && position > 0
+    /// `again` reopens the song that is already on, so it is not announced or scrobbled twice.
+    private func load(at seconds: TimeInterval, play: Bool, again: Bool = false) {
         unload()
         guard let song = current else { return }
         isPlaying = play
         position = seconds
         duration = Double(song.duration ?? 0)
-        if !sameSong || seconds == 0 {
+        if !again {
             announced = false
             // Picking a song up past the scrobble point must not count it again.
             scrobbled = seconds > 0 && pastScrobblePoint(seconds)
@@ -344,10 +348,17 @@ final class PlayerModel: ObservableObject {
     /// A network error waits and tries again at the same spot; anything else means iOS can't read these bytes,
     /// so the next source is tried (downloaded file, original, transcode), and then the next song.
     private func broke(_ item: AVPlayerItem?, _ error: Error?) {
+        // The lined up song can fail early: line up its next source now, so the change of song stays seamless.
+        if let lined, item === lined.item, !Self.isNetwork(error) {
+            failed[lined.song.id, default: []].append(lined.source)
+            self.lined = nil
+            return lineUp()
+        }
         guard let item, let loaded, item === loaded.item else { return }
-        if loaded.source != .file, Self.isNetwork(error) { return reload() }
+        // Paused: leave it, pressing play opens it again.
+        if loaded.source != .file, Self.isNetwork(error) { return isPlaying ? reload() : () }
         failed[loaded.song.id, default: []].append(loaded.source)
-        load(at: position, play: isPlaying)
+        load(at: position, play: isPlaying, again: true)
     }
 
     /// Nothing left to try for this song. Three in a row means the trouble is not the songs.
@@ -368,7 +379,7 @@ final class PlayerModel: ObservableObject {
         retry = Task { [weak self] in
             try? await Task.sleep(for: .seconds(wait))
             guard !Task.isCancelled, let self else { return }
-            self.load(at: self.position, play: self.isPlaying)
+            self.load(at: self.position, play: self.isPlaying, again: true)
         }
     }
 
