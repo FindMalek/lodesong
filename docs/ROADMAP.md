@@ -93,16 +93,14 @@ pipeline without the play. Design notes: [music import](design/music-import.md),
 
 ## 2.0: the native iPhone app
 
-Looks like Arpeggi and Apple Music. Streaming works through the same "play now, keep it" server path. The iPhone shell
-and its device checklist already shipped (see above), so 2.0 is gated on the rows below.
+Shipped: the native SwiftUI app with offline downloads, playlists that follow their additions, lyrics and play on other
+devices. [Installing it](ios.md). Streaming through "play now, keep it" is still to come
+([#581](https://github.com/FindMalek/lodesong/issues/581)).
 
-| | what | pri | size |
-|---|---|---|---|
-| [#592](https://github.com/FindMalek/lodesong/issues/592) | themes: Apple, Monochrome (ours) | P1 | M |
-| [#593](https://github.com/FindMalek/lodesong/issues/593) | offline: native file storage, a per-playlist "downloaded" switch | P1 | L |
-| [#593](https://github.com/FindMalek/lodesong/issues/593) | download queue: new tracks in a downloaded playlist download on Wi-Fi only, with a quality choice like Spotify | P1 | L |
-| [#593](https://github.com/FindMalek/lodesong/issues/593) | storage manager: size per playlist, remove downloads | P2 | M |
-| [#512](https://github.com/FindMalek/lodesong/issues/512) | native Now Playing and remote commands, only if WebKit's lock screen proves flaky | P3 | M |
+| | what | pri | size | status |
+|---|---|---|---|---|
+| [#592](https://github.com/FindMalek/lodesong/issues/592) | themes: Monochrome (ours); the Apple look shipped | P2 | M | todo |
+| [#717](https://github.com/FindMalek/lodesong/issues/717) | the rest of the parity with Arpeggi | P1 | L | in progress |
 
 ## Later
 
