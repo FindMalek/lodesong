@@ -12,6 +12,8 @@ struct SearchView: View {
     @State private var fromServer: (query: String, hits: [LyricsHit]) = ("", [])
     @EnvironmentObject private var player: PlayerModel
     @EnvironmentObject private var lyrics: LyricsModel
+    @EnvironmentObject private var additions: AdditionsModel
+    @State private var addRequest: AddRequest?
     private static var initialQuery: String {
         #if DEBUG
         ProcessInfo.processInfo.environment["LODESONG_QUERY"] ?? ""
@@ -49,6 +51,13 @@ struct SearchView: View {
         .task(id: Request(query: term, version: version)) { buildIndex() }
         .task(id: Request(query: term, version: [index.generation])) { await search() }
         .task(id: term) { await searchServer() }
+        .task { await additions.check(model) }
+        .sheet(item: $addRequest) { AddMusicView(input: $0.input) }
+        #if DEBUG
+        .task {
+            if DebugScreen.name == "addmusic" { addRequest = AddRequest(input: term) }
+        }
+        #endif
     }
 
     private struct Request: Equatable {
@@ -87,6 +96,18 @@ struct SearchView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 OfflineNotice()
+                if !additions.items.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Added").font(.title2.bold())
+                        ForEach(additions.items) { addition in
+                            AdditionRow(addition: addition)
+                            Divider()
+                        }
+                    }
+                }
+                if additions.available {
+                    Button("Add Music", systemImage: "plus.circle") { addRequest = AddRequest(input: "") }
+                }
                 if !recents.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
@@ -140,6 +161,7 @@ struct SearchView: View {
     @ViewBuilder private var matches: some View {
         if let results, !results.isEmpty || !lyricsHits.isEmpty {
             List {
+                if canAddTerm { addButton }
                 if !results.artists.isEmpty {
                     Section("Artists") {
                         ForEach(results.artists) { artist in
@@ -189,9 +211,28 @@ struct SearchView: View {
             }
             .listStyle(.plain)
         } else if answered == term {
-            ContentUnavailableView.search(text: query)
+            ContentUnavailableView {
+                Label("No Results for “\(query)”", systemImage: "magnifyingglass")
+            } description: {
+                Text("Check the spelling or try a new search.")
+            } actions: {
+                if canAddTerm { addButton.buttonStyle(.glass) }
+            }
         } else {
             ProgressView()
+        }
+    }
+
+    /// Filters and lyric searches are about the library, not something to go and get.
+    private var canAddTerm: Bool {
+        let parsed = SearchQuery(term)
+        return additions.available && term.count >= 2 && parsed.filters.isEmpty && !parsed.lyricsOnly
+    }
+
+    private var addButton: some View {
+        Button("Find Outside Your Library", systemImage: "plus.circle") {
+            remember(query)
+            addRequest = AddRequest(input: term)
         }
     }
 

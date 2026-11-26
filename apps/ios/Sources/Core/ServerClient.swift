@@ -92,6 +92,10 @@ struct ServerClient {
         return snapshot
     }
 
+    func songs(matching query: String) async throws -> [Song] {
+        try await rest("search3", ["query": query, "artistCount": "0", "albumCount": "0", "songCount": "20"]).searchResult3?.song ?? []
+    }
+
     /// Navidrome answers an empty `search3` with everything, a page at a time.
     private func all<Item>(_ kind: String, _ pick: (Body) -> [Item]?) async throws -> [Item] {
         let page = 500
