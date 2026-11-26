@@ -82,7 +82,7 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 - The session is the same cookie sign in the web player uses (`/auth/login`), then Subsonic under `/rest`.
 - Screens read from a SQLite database on the phone. A failed sync never empties it.
-- Playback uses `AVQueuePlayer`. What streams as is and what the server transcodes: [audio formats](ios/audio.md).
+- Playback uses `AVQueuePlayer`. What streams as is and what the server transcodes: [audio formats](ios-audio.md).
 - Downloads use a background `URLSession`; every file is checked before it counts.
 
 ## Not there yet
