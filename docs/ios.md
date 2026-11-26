@@ -100,12 +100,6 @@ it, you get warnings you can ignore, and once the old date has passed it shows t
 iOS asks whether lodesong may notify you the first time you download something, or from the button on that screen.
 Builds that aren't signed (the simulator) show none of this.
 
-| Days left | The warning |
-|---|---|
-| 
- | 
- |
-
 A server can't do the refresh for you (a cron job on your homelab has no way to sign or install on the phone).
 
 ## Other ways
@@ -133,10 +127,7 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
    lodesong notifies you when a sync finds new tracks in a downloaded playlist; **Notify About New Tracks** under
    Storage → Downloads turns that off. With the app closed this waits for iOS to wake it, which it may not do for hours.
 
-| New tracks setting | The notification |
-|---|---|
-| ![download settings](ios/download-settings.png) | 
- |
+![download settings](ios/download-settings.png)
 
 ## Settings
 
