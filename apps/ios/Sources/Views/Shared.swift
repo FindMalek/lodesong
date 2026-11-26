@@ -1,0 +1,342 @@
+import SwiftUI
+import UIKit
+
+extension Color {
+    static let accent = Color(red: 0.98, green: 0.18, blue: 0.33)
+}
+
+/// A playlist's own cover, or four of its albums.
+struct PlaylistCover: View {
+    @EnvironmentObject private var model: AppModel
+    let playlist: Playlist
+    var size = 400
+    var radius: CGFloat = 10
+    @State private var covers: [String] = []
+
+    var body: some View {
+        Group {
+            if playlist.coverArt == nil && covers.count == 4 {
+                Grid(horizontalSpacing: 0, verticalSpacing: 0) {
+                    ForEach([0, 2], id: \.self) { row in
+                        GridRow {
+                            Artwork(id: covers[row], size: size / 2, radius: 0)
+                            Artwork(id: covers[row + 1], size: size / 2, radius: 0)
+                        }
+                    }
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(.rect(cornerRadius: radius))
+                .accessibilityHidden(true)
+            } else {
+                Artwork(id: playlist.coverArt ?? covers.first, symbol: "music.note.list", size: size, radius: radius)
+            }
+        }
+        .task(id: model.syncing) {
+            guard playlist.coverArt == nil else { return }
+            var seen = Set<String>()
+            covers = Array(model.entries(playlist: playlist.id).compactMap(\.coverArt).filter { seen.insert($0).inserted }.prefix(4))
+        }
+    }
+}
+
+enum Haptic {
+    @MainActor static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    @MainActor static func done() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+}
+
+extension AppModel {
+    /// The last sync failed, so streaming probably will too.
+    var offline: Bool { syncError != nil }
+
+    func artist(id: String?) -> Artist? { id.flatMap { id in library.artists.first { $0.id == id } } }
+    func album(id: String?) -> Album? { id.flatMap { id in library.albums.first { $0.id == id } } }
+}
+
+/// Albums played from this phone, newest first.
+enum Recents {
+    static let key = "recentAlbums"
+
+    static func add(_ id: String?) {
+        guard let id else { return }
+        let ids = [id] + ids(UserDefaults.standard.string(forKey: key) ?? "").filter { $0 != id }
+        UserDefaults.standard.set(ids.prefix(20).joined(separator: "\n"), forKey: key)
+    }
+
+    static func ids(_ raw: String) -> [String] { raw.split(separator: "\n").map(String.init) }
+}
+
+extension PlayerModel {
+    func start(_ songs: [Song], at index: Int = 0) {
+        guard songs.indices.contains(index) else { return }
+        Haptic.tap()
+        Recents.add(songs[index].albumId)
+        play(songs, at: index)
+    }
+
+    func startShuffled(_ songs: [Song]) {
+        guard !songs.isEmpty else { return }
+        Haptic.tap()
+        shuffle(songs)
+    }
+
+    func queueNext(_ songs: [Song]) {
+        Haptic.done()
+        songs.reversed().forEach(playNext)
+    }
+
+    func queueLast(_ songs: [Song]) {
+        Haptic.done()
+        songs.forEach(addToQueue)
+    }
+}
+
+func timeText(_ seconds: TimeInterval) -> String {
+    let total = max(0, Int(seconds.isFinite ? seconds : 0))
+    let tail = String(format: "%02d", total % 60)
+    return total >= 3600 ? "\(total / 3600):" + String(format: "%02d", total / 60 % 60) + ":\(tail)" : "\(total / 60):\(tail)"
+}
+
+func summaryText(_ songs: [Song]) -> String {
+    let minutes = songs.reduce(0) { $0 + ($1.duration ?? 0) } / 60
+    let count = songs.count == 1 ? "1 song" : "\(songs.count) songs"
+    guard minutes > 0 else { return count }
+    return count + ", " + (minutes >= 60 ? "\(minutes / 60) hr \(minutes % 60) min" : "\(minutes) min")
+}
+
+struct SongMenu: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var router: Router
+    let song: Song
+
+    var body: some View {
+        Button("Play", systemImage: "play") { player.start([song]) }
+        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }
+        Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }
+        Divider()
+        if let album = model.album(id: song.albumId) {
+            Button("Go to Album", systemImage: "square.stack") { router.open(.album(album)) }
+            if let artist = model.artist(id: album.artistId) {
+                Button("Go to Artist", systemImage: "music.mic") { router.open(.artist(artist)) }
+            }
+        }
+    }
+}
+
+/// What a long press lifts out of a list or grid.
+/// A context menu preview gets none of the environment, so the model is handed in.
+struct PreviewCard: View {
+    let model: AppModel
+    var cover: String?
+    var playlist: Playlist?
+    let title: String
+    let subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Group {
+                if let playlist {
+                    PlaylistCover(playlist: playlist, size: 600, radius: 12)
+                } else {
+                    Artwork(id: cover, size: 600, radius: 12)
+                }
+            }
+            .padding(.bottom, 6)
+            Text(title).font(.headline).lineLimit(2)
+            if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
+        }
+        .padding(16)
+        .frame(width: 280)
+        .environmentObject(model)
+    }
+}
+
+/// A song in any list: tap to play, swipe to queue, hold for more.
+struct SongRow: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var player: PlayerModel
+    @EnvironmentObject private var downloads: DownloadsModel
+    let songs: [Song]
+    let index: Int
+    /// Album pages number their rows instead of repeating one cover.
+    var numbered = false
+
+    private var song: Song { songs[index] }
+    private var local: Bool { downloads.localURL(song: song.id) != nil }
+    private var current: Bool { player.playback(model.library).current?.id == song.id }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button {
+                player.start(songs, at: index)
+            } label: {
+                HStack(spacing: 12) {
+                    leading
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(song.title).lineLimit(1).foregroundStyle(current ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                        if !numbered, let artist = song.artist {
+                            Text(artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    if local {
+                        Image(systemName: "arrow.down.circle.fill").font(.caption).foregroundStyle(.secondary).accessibilityLabel("Downloaded")
+                    }
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            Menu {
+                SongMenu(song: song)
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 32, height: 32).contentShape(.rect)
+            }
+            .foregroundStyle(.primary)
+            .accessibilityLabel("More")
+        }
+        .opacity(model.offline && !local ? 0.45 : 1)
+        .swipeActions(edge: .leading) {
+            Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }.tint(.indigo)
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }.tint(.orange)
+        }
+        .contextMenu {
+            SongMenu(song: song)
+        } preview: {
+            PreviewCard(model: model, cover: song.coverArt, title: song.title, subtitle: song.artist)
+        }
+    }
+
+    @ViewBuilder private var leading: some View {
+        if numbered {
+            Group {
+                if current {
+                    Image(systemName: "waveform").foregroundStyle(.tint)
+                } else {
+                    Text(song.track.map(String.init) ?? "–").foregroundStyle(.secondary).monospacedDigit()
+                }
+            }
+            .frame(minWidth: 28)
+        } else {
+            Artwork(id: song.coverArt, size: 120, radius: 6).frame(width: 48, height: 48)
+        }
+    }
+}
+
+struct PlayShuffleButtons: View {
+    @EnvironmentObject private var player: PlayerModel
+    let songs: [Song]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { buttons }
+            VStack(spacing: 8) { buttons }
+        }
+        .disabled(songs.isEmpty)
+    }
+
+    @ViewBuilder private var buttons: some View {
+        button("Play", symbol: "play.fill") { player.start(songs) }
+        button("Shuffle", symbol: "shuffle") { player.startShuffled(songs) }
+    }
+
+    private func button(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol).accessibilityHidden(true)
+                Text(title).lineLimit(1).fixedSize()
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.glass)
+        .foregroundStyle(.tint)
+    }
+}
+
+/// Keeps an album or playlist on the phone.
+struct DownloadButton: View {
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var downloads: DownloadsModel
+    let state: DownloadState
+    let keep: () -> Void
+    let remove: () -> Void
+
+    var body: some View {
+        switch state {
+        case .none:
+            Button("Download", systemImage: "arrow.down") { Haptic.tap(); keep() }.disabled(model.offline)
+        case .downloading(let done, let total):
+            Menu {
+                Button("Cancel Download", systemImage: "xmark", role: .destructive, action: remove)
+            } label: {
+                ProgressView(value: Double(done), total: Double(max(total, 1))).progressViewStyle(.circular)
+            }
+            .accessibilityLabel("Downloading \(done) of \(total)")
+        case .downloaded:
+            Menu("Downloaded", systemImage: "checkmark.circle.fill") {
+                Button("Remove Download", systemImage: "trash", role: .destructive, action: remove)
+            }
+        }
+    }
+}
+
+struct OfflineNotice: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        if let error = model.syncError {
+            HStack(spacing: 12) {
+                Image(systemName: "wifi.slash").font(.title3).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Offline").font(.subheadline.bold())
+                    Text(error).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                Button("Retry") { Task { await model.sync() } }.font(.subheadline.bold()).disabled(model.syncing)
+            }
+            .padding(14)
+            .background(Color(.secondarySystemFill), in: .rect(cornerRadius: 16))
+        }
+    }
+}
+
+/// Covers a library screen while there is nothing to show: first sync, failed first sync, or an empty server.
+struct LibraryState: ViewModifier {
+    @EnvironmentObject private var model: AppModel
+    let isEmpty: Bool
+    let title: String
+    let symbol: String
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if isEmpty {
+                Group {
+                    if model.syncing {
+                        ProgressView("Getting your library…").controlSize(.large)
+                    } else if let error = model.syncError {
+                        ContentUnavailableView {
+                            Label("Can't Load Your Library", systemImage: "wifi.exclamationmark")
+                        } description: {
+                            Text(error)
+                        } actions: {
+                            Button("Try Again") { Task { await model.sync() } }.buttonStyle(.glassProminent)
+                        }
+                    } else {
+                        ContentUnavailableView(title, systemImage: symbol, description: Text("Add music to your server, then pull to refresh."))
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground))
+            }
+        }
+    }
+}
+
+extension View {
+    func libraryState(_ isEmpty: Bool, _ title: String, _ symbol: String) -> some View {
+        modifier(LibraryState(isEmpty: isEmpty, title: title, symbol: symbol))
+    }
+}
