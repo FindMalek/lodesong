@@ -249,7 +249,9 @@ A second address that stops accepting your sign in is dropped, not asked for you
   30 seconds, 10 by default), the mini player swipe, which buttons sit at the bottom and in what order (the sleep timer
   is off at first; "..." has lyrics, queue and devices
   too, and the devices button stays while another device plays), and previous and next or skip for the lock screen, headphones and car.
-- "..." also has the song's actions, sleep timer, playback, streaming, cache and scrobbling settings.
+- "..." also has the song's actions, sleep timer, playback, streaming, cache, scrobbling and lyrics source settings.
+- Tapping the album name opens the album. The line under the scrubber says whether the song is streaming, cached or
+  downloaded. Speed can be set anywhere from 0.5 to 3 in steps of 0.05.
 - The queue: **infinite play** adds similar songs when five or fewer are left (not with repeat on), **history** lists
   the last 200 songs heard on this phone whatever queue they were in, and its menu has the sleep timer (minutes, end of
   song, album or queue), save as playlist and clear.

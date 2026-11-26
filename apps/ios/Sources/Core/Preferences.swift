@@ -60,6 +60,14 @@ enum Pref {
     static let streamFormat = "streamFormat"
     static let fallbackFormat = "fallbackFormat"
 
+    static let speedRange = 0.5...3.0
+
+    /// The usual speeds, and the current one when it is none of them, so the picker can show it.
+    static func speeds(including current: Double) -> [Double] { Set([0.75, 1, 1.25, 1.5, 2, current]).sorted() }
+
+    /// To the nearest 0.05, so stepping doesn't drift off the usual speeds.
+    static func roundedSpeed(_ speed: Double) -> Double { (speed * 20).rounded() / 20 }
+
     /// How far a swipe on the player controls steps. `coverSkipSeconds` stored 0 for "off" before the swipe had its own switch.
     static func stepSeconds(_ stored: Int) -> Int { stored > 0 ? stored : 10 }
 

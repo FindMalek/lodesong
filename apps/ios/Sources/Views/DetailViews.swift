@@ -130,7 +130,7 @@ struct PlaylistView: View {
             CollectionSearch(prompt: "Find in Playlist", query: $query, focused: $searching)
             if !searching && query.isEmpty {
                 CollectionHeader(
-                    title: playlist.name, description: playlist.comment, details: songs.map(summaryText) ?? "", songs: ordered,
+                    title: playlist.name, description: playlist.comment, details: songs.map { details($0, of: playlist) } ?? "", songs: ordered,
                     download: DownloadControl(
                         state: downloads.state(playlist: playlist.id), songs: ordered, follows: downloads.takesNewSongs(playlist: playlist.id),
                         keep: { downloads.keep(playlist: playlist.id) }, remove: { downloads.remove(playlist: playlist.id) }
@@ -169,6 +169,11 @@ struct PlaylistView: View {
         }
         .modifier(BarTitle(title: playlist.name, after: 380))
         .modifier(CollectionMenu(kind: "playlist", id: playlist.id, songs: ordered, sort: $sort))
+    }
+
+    private func details(_ songs: [Song], of playlist: Playlist) -> String {
+        let updated = playlist.changed.flatMap(serverDate).map { "updated \($0.formatted(.relative(presentation: .named)))" }
+        return [summaryText(songs), updated].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// Rows may be sorted; the server removes by the place in the playlist's own order.

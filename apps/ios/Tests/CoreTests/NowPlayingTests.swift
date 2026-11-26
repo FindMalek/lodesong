@@ -49,6 +49,16 @@ final class NowPlayingTests: XCTestCase {
         XCTAssertFalse(marks.liked(song, account: "a"))
     }
 
+    func testACustomSpeedStaysPickableAndSteppingLandsOnTheUsualOnes() {
+        XCTAssertEqual(Pref.speeds(including: 1.15), [0.75, 1, 1.15, 1.25, 1.5, 2])
+        XCTAssertEqual(Pref.speeds(including: Pref.roundedSpeed(1.2 + 0.05)), [0.75, 1, 1.25, 1.5, 2])
+    }
+
+    func testOnlyWebAddressesBecomeLinks() {
+        let linked = linkedText("Mix from https://example.com/a, ask me@example.com")
+        XCTAssertEqual(linked.runs.compactMap(\.link), [URL(string: "https://example.com/a")!])
+    }
+
     func testStreamLineSaysWhenWhatPlaysIsConverted() {
         let song = Song(id: "s1", title: "One", duration: 200, suffix: "flac", bitRate: 1011, samplingRate: 44100, bitDepth: 16)
         XCTAssertEqual(StreamLine.text(song, source: .original, limit: 320), "FLAC · 16-bit/44.1 kHz · 1011 kbps")

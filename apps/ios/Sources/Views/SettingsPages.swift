@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PlaybackSettings: View {
     @AppStorage(Pref.replayGain) private var replayGain = "auto"
-    @AppStorage(Pref.speed) private var speed = 1.0
     @AppStorage(Pref.keepShuffle) private var keepShuffle = false
     @AppStorage(Pref.queueSync) private var queueSync = true
     @AppStorage(Pref.confirmReplace) private var confirmReplace = false
@@ -31,9 +30,7 @@ struct PlaybackSettings: View {
                     Text("Per Album").tag("album")
                     Text("Off").tag("off")
                 }
-                Picker("Speed", selection: $speed) {
-                    ForEach([0.75, 1, 1.25, 1.5, 2], id: \.self) { Text("\($0.formatted())×").tag($0) }
-                }
+                SpeedRows()
                 Toggle("Infinite Play", isOn: $infinitePlay)
                 Toggle("Confirm Before Replacing Queue", isOn: $confirmReplace)
                 Toggle("Keep Shuffle On", isOn: $keepShuffle)
@@ -50,6 +47,28 @@ struct PlaybackSettings: View {
         .pickerStyle(.navigationLink)
         .navigationTitle("Playback")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct SpeedRows: View {
+    @AppStorage(Pref.speed) private var speed = 1.0
+
+    var body: some View {
+        Picker("Speed", selection: $speed) {
+            ForEach(Pref.speeds(including: speed), id: \.self) { Text("\($0.formatted())×").tag($0) }
+        }
+        Stepper("Custom Speed: \(speed.formatted())×", value: Binding { speed } set: { speed = Pref.roundedSpeed($0) }, in: Pref.speedRange, step: 0.05)
+    }
+}
+
+struct LyricsSourcePicker: View {
+    @AppStorage(Pref.lyricsSource) private var lyricsSource = "server"
+
+    var body: some View {
+        Picker("Lyrics Source", selection: $lyricsSource) {
+            Text("Files, Then LRCLIB").tag("server")
+            Text("Files Only").tag("files")
+        }
     }
 }
 
@@ -156,7 +175,6 @@ struct AppearanceSettings: View {
     @AppStorage(Pref.swipeLeading) private var swipeLeading = SwipeAction.playNext
     @AppStorage(Pref.swipeTrailing) private var swipeTrailing = SwipeAction.addToQueue
     @AppStorage(Pref.lyricSize) private var lyricSize = LyricSize.medium
-    @AppStorage(Pref.lyricsSource) private var lyricsSource = "server"
     @AppStorage("homeSections") private var homeSections = ""
 
     var body: some View {
@@ -185,10 +203,7 @@ struct AppearanceSettings: View {
                 Picker("Lyrics Text Size", selection: $lyricSize) {
                     ForEach(LyricSize.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                Picker("Lyrics Source", selection: $lyricsSource) {
-                    Text("Files, Then LRCLIB").tag("server")
-                    Text("Files Only").tag("files")
-                }
+                LyricsSourcePicker()
             }
             Section("Swipe on a Song") {
                 swipe("Swipe Right", $swipeLeading)
