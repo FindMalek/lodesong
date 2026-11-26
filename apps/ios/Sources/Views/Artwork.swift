@@ -47,8 +47,15 @@ final class ArtworkCache {
     func clear() {
         memory.removeAllObjects()
         palettes = [:]
-        for url in [folder, kept] { try? FileManager.default.removeItem(at: url) }
+        // `kept` holds the covers of downloads, which have to survive offline.
+        try? FileManager.default.removeItem(at: folder)
         makeFolders()
+    }
+
+    /// Bytes of covers kept on the phone.
+    func diskSize() -> Int {
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        return files.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
     }
 
     func cached(_ id: String, size: Int) -> UIImage? { memory.object(forKey: "\(id)@\(size)" as NSString) }

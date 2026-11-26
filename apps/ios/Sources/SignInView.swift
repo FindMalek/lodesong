@@ -76,7 +76,6 @@ struct SignInView: View {
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
-        .tint(.accent)
         .onAppear {
             server = model.client?.server.absoluteString ?? server
             user = model.user

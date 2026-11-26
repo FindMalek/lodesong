@@ -4,6 +4,7 @@ struct MainView: View {
     @EnvironmentObject private var model: AppModel
     @StateObject private var router = Router()
     @Namespace private var playerZoom
+    @AppStorage(Pref.minimizeTabBar) private var minimizeTabBar = true
     #if DEBUG
     @State private var openedDebugScreen = false
     #endif
@@ -26,7 +27,7 @@ struct MainView: View {
                 TabStack(path: $router.search) { SearchView() }
             }
         }
-        .tabBarMinimizeBehavior(.onScrollDown)
+        .tabBarMinimizeBehavior(minimizeTabBar ? .onScrollDown : .never)
         .tabViewBottomAccessory {
             MiniPlayer().matchedTransitionSource(id: "player", in: playerZoom)
         }
@@ -36,7 +37,6 @@ struct MainView: View {
                 .environmentObject(router)
         }
         .environmentObject(router)
-        .tint(.accent)
         .onAppear { AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)") }
         #if DEBUG
         .task(id: model.library.songs.count) {

@@ -115,6 +115,17 @@ A server can't do the refresh for you (a cron job on your homelab has no way to 
 
 ![download settings](ios/download-settings.png)
 
+## Settings
+
+The app works without opening them.
+
+- **Playback**: streaming quality on Wi-Fi and on cellular, ReplayGain, speed, lock screen buttons (previous and next,
+  or skip 10, 15 or 30 seconds), keep shuffle on, keep the screen awake on now playing, sync the queue across devices,
+  report playback and when a play counts.
+- **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, moving player
+  background, what a swipe on a song does, which rows Library shows.
+- **Storage**: downloads and the space they take, artwork cache.
+
 ## What to check on your phone
 
 None of this has run on a real phone yet. [The device checklist](ios-device-checklist.md) lists what to try.
@@ -128,6 +139,6 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, settings, controlling another device from
+Search filters `is:`, `bpm:`, `energy:` and `mood:`, lyric translations, controlling another device from
 the phone, adding music by name, CarPlay browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).

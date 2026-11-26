@@ -31,7 +31,9 @@ final class PlayerModel: ObservableObject {
 
     func play(_ songs: [Song], at start: Int = 0) {
         guard songs.indices.contains(start) else { return }
-        replace(with: PlayQueue(songs: songs, index: start))
+        var next = PlayQueue(songs: songs, index: start)
+        if line.shuffled, defaults.bool(Pref.keepShuffle, or: false) { next.setShuffled(true) }
+        replace(with: next)
         load(at: 0, play: true)
     }
 
@@ -163,6 +165,7 @@ final class PlayerModel: ObservableObject {
     private var retry: Task<Void, Never>?
     private var stall: Task<Void, Never>?
     private var scrobbled = false
+    private var reporting = true
     private var announced = false
     private var lastSave = Date.distantPast
     private var lastPush = Date.distantPast
@@ -199,6 +202,10 @@ final class PlayerModel: ObservableObject {
         self.app = app
         self.downloads = downloads
         system.start()
+        applySettings()
+        NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applySettings() }
+        }
         engine.addPeriodicTimeObserver(forInterval: Self.time(0.5), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.tick(time.seconds) }
         }
@@ -252,7 +259,7 @@ final class PlayerModel: ObservableObject {
             link = nil
             account = ""
             unload()
-            return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, client: nil)
+            return system.show(nil, index: 0, count: 0, position: 0, duration: 0, playing: false, speed: 1, client: nil)
         }
         let now = "\(app.client?.server.absoluteString ?? "") \(app.user)"
         guard now != account else { return pull() }
@@ -361,14 +368,38 @@ final class PlayerModel: ObservableObject {
         updateNowPlaying()
     }
 
+    /// Settings that act on what is already playing. Quality is read as each song is opened instead.
+    private func applySettings() {
+        system.skipSeconds(defaults.int(Pref.lockSkipSeconds, or: 0))
+        let stored = defaults.float(forKey: Pref.speed)
+        let speed = stored > 0 ? stored : 1
+        if engine.defaultRate != speed {
+            engine.defaultRate = speed
+            if isPlaying { engine.rate = speed }
+            updateNowPlaying()
+        }
+        if let song = loaded?.song { engine.volume = volume(for: song) }
+        // Whatever is heard while reporting is off must not be added to the play when it comes back on.
+        if reporting != reportsPlayback {
+            reporting = reportsPlayback
+            if !reporting { log.end() }
+        }
+    }
+
+    func skip(by seconds: TimeInterval) {
+        seek(to: position + seconds)
+    }
+
     private func make(_ song: Song) -> Loaded? {
         let file = downloads?.localURL(song: song.id)
-        guard let source = AudioSource.pick(suffix: song.suffix, hasFile: file != nil, failed: failed[song.id] ?? []) else { return nil }
+        // In kbit/s, zero for the file as it is.
+        let limit = defaults.int(network.currentPath.isExpensive ? Pref.cellularBitRate : Pref.wifiBitRate, or: 0)
+        guard let source = AudioSource.pick(suffix: song.suffix, hasFile: file != nil, limited: limit > 0, failed: failed[song.id] ?? []) else { return nil }
         let asset: AVURLAsset
         if source == .file, let file {
             asset = AVURLAsset(url: file, options: AudioSource.mimeType(file: file, suffix: song.suffix).map { [AVURLAssetOverrideMIMETypeKey: $0] })
         } else {
-            guard let url = client?.streamURL(song: song.id, source: source) else { return nil }
+            guard let url = client?.streamURL(song: song.id, source: source, bitRate: limit > 0 ? limit : 320) else { return nil }
             // The server only answers a signed-in session, and AVFoundation has to be handed its cookie.
             asset = AVURLAsset(url: url, options: [AVURLAssetHTTPCookiesKey: HTTPCookieStorage.shared.cookies(for: url) ?? []])
         }
@@ -505,6 +536,8 @@ final class PlayerModel: ObservableObject {
     }
 
     private func volume(for song: Song) -> Float {
+        let mode = defaults.string(forKey: Pref.replayGain) ?? "auto"
+        if mode != "auto" { return mode == "off" ? 1 : song.replayGain?.volume(album: mode == "album") ?? 1 }
         // An album played in order keeps its own loud and quiet songs; anything mixed is levelled per song.
         let around = [index - 1, index + 1].filter(queue.indices.contains).map { queue[$0].albumId }
         let album = !line.shuffled && song.albumId != nil && around.contains(song.albumId)
@@ -519,8 +552,8 @@ final class PlayerModel: ObservableObject {
         position = seconds
         retries = 0
         skips = 0
-        if let song = loaded?.song { log.hear(song, account: account, position: seconds, duration: duration) }
-        if !scrobbled, pastScrobblePoint(seconds) {
+        if reportsPlayback, let song = loaded?.song { log.hear(song, account: account, position: seconds, duration: duration) }
+        if reportsPlayback, !scrobbled, pastScrobblePoint(seconds) {
             scrobbled = true
             log.count()
             sendPlays()
@@ -531,8 +564,11 @@ final class PlayerModel: ObservableObject {
         if -lastPush.timeIntervalSinceNow > 15 { push() }
     }
 
+    private var reportsPlayback: Bool { defaults.bool(Pref.reportPlayback, or: true) }
+
     private func pastScrobblePoint(_ seconds: TimeInterval) -> Bool {
-        seconds >= 240 || (duration > 0 && seconds >= duration / 2)
+        Pref.pastScrobblePoint(seconds, duration: duration,
+                               percent: defaults.int(Pref.scrobblePercent, or: 50), minutes: defaults.int(Pref.scrobbleMinutes, or: 4))
     }
 
     /// "Now playing" and the new queue go to the server the first time a song actually plays.
@@ -540,7 +576,7 @@ final class PlayerModel: ObservableObject {
         guard !announced, let song = current, let client else { return }
         announced = true
         let id = clientID
-        Task { await client.scrobble(song: song.id, submission: false, client: id) }
+        if reportsPlayback { Task { await client.scrobble(song: song.id, submission: false, client: id) } }
         push()
     }
 
@@ -587,7 +623,7 @@ final class PlayerModel: ObservableObject {
     }
 
     private func push() {
-        guard let client, current != nil, defaults.object(forKey: "queueSync") as? Bool ?? true else { return }
+        guard let client, current != nil, defaults.bool(Pref.queueSync, or: true) else { return }
         let mark = QueueMark(line, position: position)
         guard mark != synced else { return }
         lastPush = Date()
@@ -603,7 +639,7 @@ final class PlayerModel: ObservableObject {
 
     /// Another device's newer queue is only offered, never taken over: unless there is nothing here at all.
     private func pull(force: Bool = false) {
-        guard let client, defaults.object(forKey: "queueSync") as? Bool ?? true, force || -lastPull.timeIntervalSinceNow > 30 else { return }
+        guard let client, defaults.bool(Pref.queueSync, or: true), force || -lastPull.timeIntervalSinceNow > 30 else { return }
         lastPull = Date()
         let id = clientID
         let account = account
@@ -707,6 +743,6 @@ final class PlayerModel: ObservableObject {
         guard app != nil else { return }
         publish()
         followPlayback()
-        system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, client: client)
+        system.show(current, index: index, count: queue.count, position: position, duration: duration, playing: isPlaying, speed: engine.defaultRate, client: client)
     }
 }

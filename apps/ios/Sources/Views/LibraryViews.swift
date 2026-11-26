@@ -1,7 +1,17 @@
 import SwiftUI
 
+/// The rows and the grid on the Library page, each of which Settings can hide.
+enum LibrarySection: String, CaseIterable {
+    case playlists, artists, albums, songs, downloaded, recentlyAdded
+
+    var title: String { self == .recentlyAdded ? "Recently Added" : rawValue.capitalized }
+}
+
 struct LibraryView: View {
     @EnvironmentObject private var model: AppModel
+    @AppStorage(Pref.hiddenLibrary) private var hidden = ""
+
+    private func shows(_ section: LibrarySection) -> Bool { !hidden.split(separator: ",").contains(Substring(section.rawValue)) }
 
     private var added: [Album] { Array(model.library.albums.sorted { ($0.created ?? "") > ($1.created ?? "") }.prefix(30)) }
 
@@ -10,12 +20,12 @@ struct LibraryView: View {
             if model.offline {
                 OfflineNotice().listRowSeparator(.hidden)
             }
-            row("Playlists", "music.note.list", .playlists)
-            row("Artists", "music.mic", .artists)
-            row("Albums", "square.stack", .albums)
-            row("Songs", "music.note", .songs)
-            row("Downloaded", "arrow.down.circle", .downloaded)
-            if !added.isEmpty {
+            if shows(.playlists) { row("Playlists", "music.note.list", .playlists) }
+            if shows(.artists) { row("Artists", "music.mic", .artists) }
+            if shows(.albums) { row("Albums", "square.stack", .albums) }
+            if shows(.songs) { row("Songs", "music.note", .songs) }
+            if shows(.downloaded) { row("Downloaded", "arrow.down.circle", .downloaded) }
+            if shows(.recentlyAdded), !added.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Recently Added").font(.title2.bold())
                     LazyVGrid(columns: gridColumns, spacing: 20) {

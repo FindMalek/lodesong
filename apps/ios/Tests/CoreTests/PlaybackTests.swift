@@ -82,4 +82,16 @@ final class PlaybackTests: XCTestCase {
         XCTAssertEqual(AudioSource.pick(suffix: "ogg", hasFile: true, failed: [.file, .original]), .transcoded)
         XCTAssertNil(AudioSource.pick(suffix: "mp3", hasFile: false, failed: [.original, .transcoded]))
     }
+
+    func testAStreamingLimitAsksForASmallerCopyButADownloadStillWins() {
+        XCTAssertEqual(AudioSource.pick(suffix: "flac", hasFile: false, limited: true, failed: []), .transcoded)
+        XCTAssertEqual(AudioSource.pick(suffix: "flac", hasFile: true, limited: true, failed: []), .file)
+        XCTAssertEqual(AudioSource.pick(suffix: "flac", hasFile: false, limited: true, failed: [.transcoded]), .original)
+    }
+
+    func testAPlayCountsAtTheChosenShareOrTime() {
+        XCTAssertFalse(Pref.pastScrobblePoint(100, duration: 200, percent: 75, minutes: 4))
+        XCTAssertTrue(Pref.pastScrobblePoint(150, duration: 200, percent: 75, minutes: 4))
+        XCTAssertTrue(Pref.pastScrobblePoint(120, duration: 1000, percent: 75, minutes: 2))
+    }
 }

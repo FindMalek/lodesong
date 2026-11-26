@@ -27,6 +27,8 @@ final class AppModel: ObservableObject {
     private(set) var libraryRevision = 0
     @Published private(set) var syncing = false
     @Published var syncError: String?
+    /// When the library last came in whole.
+    @Published private(set) var lastSync = UserDefaults.standard.object(forKey: "lastSync") as? Date
     @Published var needsSignIn: Bool
 
     let downloads = DownloadsModel()
@@ -58,6 +60,8 @@ final class AppModel: ObservableObject {
         if server != defaults.url(forKey: "server") || user != self.user {
             try store.clear()
             library = Library()
+            lastSync = nil
+            defaults.removeObject(forKey: "lastSync")
         }
         defaults.set(server, forKey: "server")
         defaults.set(user, forKey: "user")
@@ -96,6 +100,8 @@ final class AppModel: ObservableObject {
             let store = store
             library = await Task.detached { Self.load(store) }.value
             syncError = nil
+            lastSync = Date()
+            defaults.set(lastSync, forKey: "lastSync")
             downloads.librarySynced()
         } catch ServerError.signedOut {
             if !Task.isCancelled { needsSignIn = true }
