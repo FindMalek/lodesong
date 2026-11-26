@@ -5,6 +5,9 @@ struct LodesongApp: App {
     @StateObject private var model = AppModel()
     @StateObject private var player = PlayerModel()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(Pref.appearance) private var appearance = "system"
+    @AppStorage(Pref.tint) private var tint = "red"
+    @AppStorage(Pref.tintCustom) private var tintCustom = ""
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +17,8 @@ struct LodesongApp: App {
             .environmentObject(model)
             .environmentObject(player)
             .environmentObject(model.downloads)
+            .tint(Theme.tint(tint, custom: tintCustom))
+            .preferredColorScheme(Theme.colorScheme(appearance))
             .task {
                 player.attach(app: model, downloads: model.downloads)
                 #if DEBUG

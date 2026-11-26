@@ -76,6 +76,17 @@ the lock screen or the silent switch.
 4. Plays count offline too. They are kept on the phone with their own time and sent to lodesong's history and
    Navidrome the next time the app is open and reaches the server.
 
+## Settings
+
+The app works without opening them.
+
+- **Playback**: streaming quality on Wi-Fi and on cellular, ReplayGain, speed, lock screen buttons (previous and next,
+  or skip 10, 15 or 30 seconds), keep shuffle on, keep the screen awake on now playing, sync the queue across devices,
+  report playback and when a play counts.
+- **Appearance**: light, dark or system, app tint (red, blue or your own colour), tab bar shrinking, moving player
+  background, what a swipe on a song does, which rows Library shows.
+- **Storage**: downloads and the space they take, artwork cache.
+
 ## What to check on your phone
 
 None of this has run on a real phone yet. [The device checklist](ios-device-checklist.md) lists what to try.
@@ -89,5 +100,5 @@ None of this has run on a real phone yet. [The device checklist](ios-device-chec
 
 ## Not there yet
 
-Lyrics and lyric search, settings, controlling another device from the phone, adding music by name, CarPlay browsing. See the
+Lyrics and lyric search, controlling another device from the phone, adding music by name, CarPlay browsing. See the
 [iOS issues](https://github.com/FindMalek/lodesong/issues?q=is%3Aopen+label%3Aios).

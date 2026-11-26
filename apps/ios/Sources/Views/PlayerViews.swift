@@ -176,6 +176,8 @@ struct NowPlayingView: View {
     @EnvironmentObject private var player: PlayerModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingQueue = NowPlayingView.startsInQueue
+    @AppStorage(Pref.movingBackground) private var movingBackground = true
+    @AppStorage(Pref.keepAwake) private var keepAwake = false
     @Namespace private var cover
 
     private static var startsInQueue: Bool {
@@ -235,7 +237,9 @@ struct NowPlayingView: View {
             .frame(maxWidth: .infinity)
         }
         .foregroundStyle(.white)
-        .background { ArtworkBackground(id: song?.coverArt) }
+        .background { ArtworkBackground(id: song?.coverArt, moving: movingBackground) }
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = keepAwake }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         .environment(\.colorScheme, .dark)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // A drag in the queue reorders or scrolls it, so it must not pull the player closed.

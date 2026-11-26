@@ -222,7 +222,7 @@ private struct ArtistHero: View {
                         .accessibilityAddTraits(.isHeader)
                     Spacer(minLength: 0)
                     button("Shuffle", "shuffle", fill: AnyShapeStyle(.ultraThinMaterial)) { player.startShuffled(songs) }
-                    button("Play", "play.fill", fill: AnyShapeStyle(Color.accent)) { player.start(songs) }
+                    button("Play", "play.fill", fill: AnyShapeStyle(.tint)) { player.start(songs) }
                 }
                 .environment(\.colorScheme, .dark)
                 .padding(.horizontal, 20)

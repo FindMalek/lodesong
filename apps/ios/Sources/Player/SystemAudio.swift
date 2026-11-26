@@ -47,12 +47,30 @@ final class SystemAudio {
         }
         on(commands.nextTrackCommand) { _, player in player.next() }
         on(commands.previousTrackCommand) { _, player in player.previous() }
+        for (command, direction) in [(commands.skipForwardCommand, 1.0), (commands.skipBackwardCommand, -1.0)] {
+            command.addTarget { [weak self] event in
+                let seconds = (event as? MPSkipIntervalCommandEvent)?.interval ?? 15
+                Task { @MainActor in self?.player?.skip(by: seconds * direction) }
+                return .success
+            }
+        }
         commands.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
             let seconds = event.positionTime
             Task { @MainActor in self?.player?.seek(to: seconds) }
             return .success
         }
+    }
+
+    /// The lock screen has room for one pair: previous and next, or skip back and ahead by `seconds`.
+    func skipSeconds(_ seconds: Int) {
+        let commands = MPRemoteCommandCenter.shared()
+        for command in [commands.skipForwardCommand, commands.skipBackwardCommand] {
+            command.preferredIntervals = [NSNumber(value: seconds)]
+            command.isEnabled = seconds > 0
+        }
+        commands.nextTrackCommand.isEnabled = seconds == 0
+        commands.previousTrackCommand.isEnabled = seconds == 0
     }
 
     private func on(_ command: MPRemoteCommand, _ action: @escaping @MainActor (SystemAudio, PlayerModel) -> Void) {
@@ -88,7 +106,7 @@ final class SystemAudio {
         }
     }
 
-    func show(_ song: Song?, index: Int, count: Int, position: TimeInterval, duration: TimeInterval, playing: Bool, client: ServerClient?) {
+    func show(_ song: Song?, index: Int, count: Int, position: TimeInterval, duration: TimeInterval, playing: Bool, speed: Float, client: ServerClient?) {
         guard let song else {
             info = [:]
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -100,7 +118,7 @@ final class SystemAudio {
             MPMediaItemPropertyAlbumTitle: song.album ?? "",
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
-            MPNowPlayingInfoPropertyPlaybackRate: playing ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: playing ? Double(speed) : 0.0,
             MPNowPlayingInfoPropertyPlaybackQueueIndex: index,
             MPNowPlayingInfoPropertyPlaybackQueueCount: count,
         ]

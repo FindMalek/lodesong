@@ -22,6 +22,12 @@ final class ArtworkCache {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
+    /// Bytes of covers kept on the phone.
+    func diskSize() -> Int {
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        return files.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+    }
+
     func cached(_ id: String, size: Int) -> UIImage? { memory.object(forKey: "\(id)@\(size)" as NSString) }
 
     func image(_ id: String, size: Int, client: ServerClient?) async -> UIImage? {

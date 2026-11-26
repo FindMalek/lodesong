@@ -14,9 +14,11 @@ enum AudioSource: Equatable {
     static let native: Set<String> = ["mp3", "m4a", "m4b", "mp4", "aac", "alac", "flac", "wav", "aif", "aiff", "caf", "opus", "ogg", "oga"]
 
     /// The best source that has not failed yet, or nil when there is nothing left to try.
-    static func pick(suffix: String?, hasFile: Bool, failed: [AudioSource]) -> AudioSource? {
+    /// `limited` asks the server for a smaller copy first; a downloaded file still wins.
+    static func pick(suffix: String?, hasFile: Bool, limited: Bool = false, failed: [AudioSource]) -> AudioSource? {
         var choices: [AudioSource] = []
         if hasFile { choices.append(.file) }
+        if limited { choices.append(.transcoded) }
         if suffix.map({ native.contains($0.lowercased()) }) ?? true { choices.append(.original) }
         choices.append(.transcoded)
         return choices.first { !failed.contains($0) }
@@ -40,8 +42,8 @@ enum AudioSource: Equatable {
 extension ServerClient {
     /// `raw` keeps byte ranges, which seeking needs. A transcode has none, so it asks for MP3, the format
     /// iOS plays from a stream of unknown length.
-    func streamURL(song id: String, source: AudioSource) -> URL {
-        url("rest/stream", source == .transcoded ? ["id": id, "format": "mp3", "maxBitRate": "320"] : ["id": id, "format": "raw"])
+    func streamURL(song id: String, source: AudioSource, bitRate: Int = 320) -> URL {
+        url("rest/stream", source == .transcoded ? ["id": id, "format": "mp3", "maxBitRate": String(bitRate)] : ["id": id, "format": "raw"])
     }
 }
 

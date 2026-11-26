@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The Settings tab: for now the account and downloads screens.
+/// The Settings tab. Everything has a default that works, so nobody has to come here.
 struct SettingsView: View {
     var body: some View {
-        AccountList()
+        SettingsList()
             .navigationTitle("Settings")
             .toolbarTitleDisplayMode(.inlineLarge)
     }
@@ -23,7 +23,7 @@ private struct AccountSheet: View {
 
     var body: some View {
         NavigationStack {
-            AccountList()
+            SettingsList()
                 .navigationTitle("Account")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { Button("Done", systemImage: "checkmark") { dismiss() } }
@@ -32,7 +32,7 @@ private struct AccountSheet: View {
     }
 }
 
-private struct AccountList: View {
+private struct SettingsList: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isPresented) private var isPresented
@@ -42,8 +42,12 @@ private struct AccountList: View {
             Section {
                 LabeledContent("Signed in as", value: model.user)
                 LabeledContent("Server", value: model.client?.server.host() ?? "")
-            }
-            Section("Library") {
+                LabeledContent("Status") {
+                    Text(model.syncing ? "Syncing…" : model.syncError == nil ? "Connected" : "Can't reach the server")
+                }
+                if let last = model.lastSync {
+                    LabeledContent("Last Synced", value: last.formatted(.relative(presentation: .named)))
+                }
                 LabeledContent("Songs", value: model.library.songs.count.formatted())
                 Button {
                     Task { await model.sync() }
@@ -55,10 +59,14 @@ private struct AccountList: View {
                     }
                 }
                 .disabled(model.syncing)
-                if let error = model.syncError { Text(error).font(.footnote).foregroundStyle(.secondary) }
+            } footer: {
+                if let error = model.syncError { Text(error) }
             }
             Section {
-                NavigationLink { DownloadsView() } label: { Label("Download Settings", systemImage: "arrow.down.circle") }
+                NavigationLink { PlaybackSettings() } label: { Label("Playback", systemImage: "play.circle") }
+                NavigationLink { AppearanceSettings() } label: { Label("Appearance", systemImage: "paintpalette") }
+                NavigationLink { StorageSettings() } label: { Label("Storage", systemImage: "internaldrive") }
+                NavigationLink { AboutSettings() } label: { Label("About", systemImage: "info.circle") }
             }
             Section {
                 Button("Sign Out", role: .destructive) {

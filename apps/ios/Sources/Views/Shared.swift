@@ -163,6 +163,13 @@ struct PreviewCard: View {
     }
 }
 
+/// What a swipe on a song row does.
+enum SwipeAction: String, CaseIterable {
+    case playNext, addToQueue, none
+
+    var title: String { self == .playNext ? "Play Next" : self == .addToQueue ? "Add to Queue" : "Nothing" }
+}
+
 /// A song in any list: tap to play, swipe to queue, hold for more.
 struct SongRow: View {
     @EnvironmentObject private var model: AppModel
@@ -174,6 +181,8 @@ struct SongRow: View {
     var numbered = false
     /// Under the title: the album instead of the artist, on the artist's own page.
     var showsAlbum = false
+    @AppStorage(Pref.swipeLeading) private var swipeLeading = SwipeAction.playNext
+    @AppStorage(Pref.swipeTrailing) private var swipeTrailing = SwipeAction.addToQueue
 
     private var song: Song { songs[index] }
     private var local: Bool { downloads.localURL(song: song.id) != nil }
@@ -209,16 +218,23 @@ struct SongRow: View {
             .accessibilityLabel("More")
         }
         .opacity(model.offline && !local ? 0.45 : 1)
-        .swipeActions(edge: .leading) {
-            Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }.tint(.indigo)
-        }
-        .swipeActions(edge: .trailing) {
-            Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }.tint(.orange)
-        }
+        .swipeActions(edge: .leading) { swipeButton(swipeLeading) }
+        .swipeActions(edge: .trailing) { swipeButton(swipeTrailing) }
         .contextMenu {
             SongMenu(song: song)
         } preview: {
             PreviewCard(model: model, cover: song.coverArt, title: song.title, subtitle: song.artist)
+        }
+    }
+
+    @ViewBuilder private func swipeButton(_ action: SwipeAction) -> some View {
+        switch action {
+        case .playNext:
+            Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queueNext([song]) }.tint(.indigo)
+        case .addToQueue:
+            Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queueLast([song]) }.tint(.orange)
+        case .none:
+            EmptyView()
         }
     }
 
