@@ -3,6 +3,8 @@ import SwiftUI
 struct MainView: View {
     @EnvironmentObject private var model: AppModel
     @StateObject private var router = Router()
+    @StateObject private var additions = AdditionsModel()
+    @Environment(\.scenePhase) private var scenePhase
     @Namespace private var playerZoom
     @AppStorage(Pref.minimizeTabBar) private var minimizeTabBar = true
     #if DEBUG
@@ -37,7 +39,13 @@ struct MainView: View {
                 .environmentObject(router)
         }
         .environmentObject(router)
-        .onAppear { AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)") }
+        .environmentObject(additions)
+        .onAppear {
+            AccountData.adopt("\(model.client?.server.absoluteString ?? "") \(model.user)")
+            additions.load()
+        }
+        .task(id: [additions.unsettled ? 1 : 0, additions.round]) { await additions.follow(model) }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { additions.restart() } }
         #if DEBUG
         .task(id: model.library.songs.count) {
             guard !openedDebugScreen, !model.library.songs.isEmpty else { return }
