@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
 import type { AlbumTrack, Follow, FollowStatus, NewRelease } from "@lodesong/shared/releases";
 import { VERSION } from "./health";
+import { job } from "./tracing";
 
 // Artists you play are followed for you; a weekly check asks MusicBrainz what they released lately. Nothing is
 // downloaded unless Lyterion is set up and handing over is switched on (or you press "get it" on a release).
@@ -361,9 +362,9 @@ export class ReleaseWatch {
   }
 
   start(): void {
-    const first = setTimeout(() => void this.runDue(), 30_000);
+    const first = setTimeout(() => void job("release watch", () => this.runDue()), 30_000);
     first.unref();
-    this.timer = setInterval(() => void this.runDue(), CHECK_EVERY_MS);
+    this.timer = setInterval(() => void job("release watch", () => this.runDue()), CHECK_EVERY_MS);
     this.timer.unref();
   }
 
