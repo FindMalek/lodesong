@@ -349,10 +349,6 @@ const TrackRow = memo(function TrackRow({
       <TableCell className="w-8 py-0 pointer-coarse:w-11">
         <LikeButton kind="song" id={song.id} label={song.title} quiet />
       </TableCell>
-      <TableCell className="py-0 text-right font-mono text-muted-foreground tabular-nums">
-        {offline && <OfflineMark />}
-        {clock(song.duration)}
-      </TableCell>
       <TableCell className="py-0">
         <div className="flex justify-end opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100">
           <Hint label="play next" shortcut="list-play-next">
@@ -403,6 +399,10 @@ const TrackRow = memo(function TrackRow({
             </>
           )}
         </div>
+      </TableCell>
+      <TableCell className="py-0 text-right font-mono text-muted-foreground tabular-nums">
+        {offline && <OfflineMark />}
+        {clock(song.duration)}
       </TableCell>
     </TableRow>
   );
@@ -752,8 +752,8 @@ function TrackRows({
             {showAlbum && <col className="w-[38%] max-lg:hidden" />}
             {ratings && <col className="w-20" />}
             <col className="w-8 pointer-coarse:w-11" />
-            <col className="w-14" />
             <col className={editing ? "w-32 pointer-coarse:w-28" : "w-20 pointer-coarse:w-11"} />
+            <col className="w-14" />
           </colgroup>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -764,10 +764,10 @@ function TrackRows({
               <TableHead className="h-6 w-8">
                 <span className="sr-only">liked</span>
               </TableHead>
-              <TableHead className={cn(LABEL, "h-6 text-right")}>time</TableHead>
               <TableHead className="h-6">
                 <span className="sr-only">actions</span>
               </TableHead>
+              <TableHead className={cn(LABEL, "h-6 text-right")}>time</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -797,10 +797,10 @@ function TrackRows({
                     <Truncated text={item.row.title} />
                     <span className="sr-only"> not in your library</span>
                   </TableCell>
+                  <TableCell className="py-0" />
                   <TableCell className="py-0 text-right font-mono text-faint tabular-nums">
                     {item.row.durationMs > 0 ? clock(item.row.durationMs / 1000) : ""}
                   </TableCell>
-                  <TableCell className="py-0" />
                 </TableRow>
               ) : (
                 <TrackRow
