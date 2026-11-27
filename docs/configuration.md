@@ -19,9 +19,10 @@ boot with a message naming the variable.
 | `LYRICS_WRITE_LRC` | `off` | `on`: lyrics found on LRCLIB are also saved as `<track>.lrc` next to the audio file, so other clients get them. Needs `MUSIC_DIR` and Navidrome's "Report Real Path". Never overwrites; undo from the lyrics page. |
 | `LYTERION_URL` | — | Lyterion's API, as this container reaches it, to show what of your Spotify library is in Navidrome on the import page, and the artists you follow on Spotify to follow here, daily (admins). Empty: the import page asks for a Spotify export file instead and nothing is synced. |
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
-| `DIAGNOSTICS` | `on` | `on`: errors and warnings from this server and the player are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies. |
+| `DIAGNOSTICS` | `on` | `on`: errors and logs from this server and the player, and this server's traces, are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies. |
 | `GLITCHTIP_DSN` | — | Your GlitchTip (or Sentry) project DSN. Empty: errors aren't reported. |
-| `O2_URL` | — | Your OpenObserve address, to ship warning and error logs to. Empty: logs aren't shipped. |
+| `O2_URL` | — | Your OpenObserve address, to ship logs and traces to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Empty: neither is shipped. |
+| `O2_LOG_LEVEL` | `warn` | The lowest log level shipped to O2: `info`, `warn` or `error`. |
 | `O2_ORG` | `default` | The OpenObserve organization. |
 | `O2_STREAM` | `lodesong` | The OpenObserve stream the logs go to. |
 | `O2_USER` | — | OpenObserve user (basic auth). Needed with `O2_URL`. |
