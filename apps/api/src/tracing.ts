@@ -83,10 +83,13 @@ export class Tracer {
       end(outcome?.(value) ?? { attributes: {}, failed: false });
       return value;
     } catch (error) {
-      end({ attributes: { "error.type": error instanceof Error ? error.name : "Error" }, failed: true });
+      const type = error instanceof Error ? error.name : "Error";
+      end({ attributes: { "error.type": type }, failed: type !== "AbortError" });
       throw error;
     }
   }
+
+  private rejected = false;
 
   private record(span: Record<string, unknown>): void {
     if (this.buffer.length >= MAX_SPANS) this.buffer.shift();
@@ -104,16 +107,22 @@ export class Tracer {
     this.buffer = [];
     const { url, org, auth, release } = this.options;
     const resource = { attributes: encode({ "service.name": "lodesong", "service.version": release }) };
-    await this.fetcher(`${url}/api/${encodeURIComponent(org)}/v1/traces`, {
+    const sent = await this.fetcher(`${url}/api/${encodeURIComponent(org)}/v1/traces`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: auth },
       body: JSON.stringify({ resourceSpans: [{ resource, scopeSpans: [{ scope: { name: "lodesong", version: release }, spans }] }] }),
       signal: AbortSignal.timeout(5000),
     }).catch(() => undefined);
+    if (sent && !sent.ok && !this.rejected) {
+      this.rejected = true;
+      console.warn(`traces were rejected: ${sent.status}`);
+    }
   }
 }
 
-/** Outgoing calls get a span and a `traceparent`. `services` names each configured address; the address itself isn't recorded. */
+const OWN = new Set(["navidrome", "lyterion", "audiomuse"]);
+
+/** Outgoing calls get a span, and a `traceparent` when they stay with us. `services` names each configured address; the address itself isn't recorded. */
 function tracedFetch(active: Tracer, send: typeof fetch, services: [name: string, base: string][]): typeof fetch {
   const known = [...services, ["coverartarchive", "https://coverartarchive.org"], ["github", "https://api.github.com"]]
     .map(([name = "", base = ""]) => ({ name, base }))
@@ -129,11 +138,16 @@ function tracedFetch(active: Tracer, send: typeof fetch, services: [name: string
       currentTrace(),
       { "http.request.method": method, "peer.service": service, "subsonic.endpoint": endpoint },
       (own) => {
+        if (!OWN.has(service)) return send(input, init);
         const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
         headers.set("traceparent", `00-${own.traceId}-${own.spanId}-01`);
         return send(input, { ...init, headers });
       },
-      (response) => ({ attributes: { "http.response.status_code": response.status }, failed: response.status >= 400 }),
+      (response) => ({
+        attributes: { "http.response.status_code": response.status },
+        // LRCLIB answers 404 for a song it has no lyrics for.
+        failed: response.status >= 400 && !(service === "lrclib" && response.status === 404),
+      }),
     );
   };
   return Object.assign(traced, { preconnect: send.preconnect });
@@ -164,7 +178,7 @@ export function tracedRoutes<T extends Record<string, unknown>>(routes: T): T {
             () => handler(request, server),
             (response) => ({
               attributes: { "http.response.status_code": response?.status },
-              failed: (response?.status ?? 0) >= 500,
+              failed: (response?.status ?? 0) >= 500 && !request.signal.aborted,
             }),
           ),
   );

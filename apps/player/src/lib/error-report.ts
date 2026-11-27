@@ -5,8 +5,12 @@ import { createTracedFetch } from "./trace";
 const MAX_PER_SESSION = 20;
 let sent = 0;
 
-const tracing = createTracedFetch(window.fetch.bind(window), location.origin);
-window.fetch = tracing.fetch;
+const plain = window.fetch.bind(window);
+const tracing = createTracedFetch(plain, location.origin);
+window.fetch = Object.assign(
+  (input: Parameters<typeof fetch>[0], init?: RequestInit) => (getSetting("diagnostics") ? tracing.fetch : plain)(input, init),
+  { preconnect: window.fetch.preconnect },
+);
 
 function send(message: string, stack?: string): void {
   if (!getSetting("diagnostics") || sent >= MAX_PER_SESSION || !message) return;
