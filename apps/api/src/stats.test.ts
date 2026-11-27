@@ -38,6 +38,13 @@ describe("listening stats", () => {
     expect(shifted.clock[weekday]?.[12]).toBe(0);
   });
 
+  test("a day with a short play still counts as a listening day", () => {
+    const db = openLibraryDb(":memory:");
+    recordPlay(db, "s:u", "", { song: song("1"), started: NOW - DAY, listened: 20, finished: true });
+    const stats = listeningStats(db, "s:u", NOW - 3 * DAY, NOW, 0, NOW);
+    expect(stats.days.filter((day) => day.minutes > 0)).toHaveLength(1);
+  });
+
   test("streaks count consecutive days, still going if the last was yesterday", () => {
     expect(streaks([1, 2, 3, 7, 8], 9)).toEqual({ current: 2, longest: 3 });
     expect(streaks([1, 2, 3, 7, 8], 10)).toEqual({ current: 0, longest: 3 });

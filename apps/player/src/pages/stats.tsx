@@ -178,7 +178,7 @@ export function StatsPage() {
       <Content>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Tabs value={range} onValueChange={(value) => setRange(value as Range)}>
-            <TabsList variant="line" aria-label="range" className="font-mono">
+            <TabsList variant="line" aria-label="range" className="font-mono group-data-[orientation=horizontal]/tabs:h-9">
               {RANGES.map(([value, label]) => (
                 <TabsTrigger key={value} value={value} className="flex-none">
                   {label}

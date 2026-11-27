@@ -1,12 +1,13 @@
-import { expect, test } from "./fixtures";
+import { expect, signIn, test } from "./fixtures";
 
 const DAY = 86_400_000;
 
-test("stats show what you played, forgotten favourites make a playlist, and the recap tells the story", async ({ page, signedIn }) => {
-  // Plays from this test only (the account is shared with other tests): a made-up artist, and songs from long ago.
+test("stats show what you played, forgotten favourites make a playlist, and the recap tells the story", async ({ page }) => {
+  // Its own account: the chart counts every listening day, so other specs playing as demo would change it.
+  await signIn(page, "stats");
   const tag = `stats-${test.info().repeatEachIndex}-${Date.now()}`;
   const post = (song: Record<string, unknown>, started: number) =>
-    signedIn.evaluate(
+    page.evaluate(
       async ([body]) =>
         (
           await fetch("/api/history", {
@@ -17,7 +18,11 @@ test("stats show what you played, forgotten favourites make a playlist, and the 
         ).status,
       [{ song, started, listened: 240, finished: true }] as const,
     );
-  const now = Date.now();
+  // Noon yesterday, so 40 minutes of plays never straddle midnight whenever the test runs.
+  const noon = new Date();
+  noon.setDate(noon.getDate() - 1);
+  noon.setHours(12, 0, 0, 0);
+  const now = noon.getTime();
   for (let i = 0; i < 40; i++)
     expect(
       await post(
@@ -38,6 +43,9 @@ test("stats show what you played, forgotten favourites make a playlist, and the 
   await chart.focus();
   await page.keyboard.press("End");
   await expect(chart).toHaveAttribute("aria-valuetext", /: \d[\d,]* minutes?$/);
+  await expect(page.getByText(/^only 1 day of 30 so far/)).toBeVisible();
+  const tab = page.getByRole("tablist", { name: "range" }).getByRole("tab", { name: "30 days" });
+  expect((await tab.boundingBox())?.height).toBeGreaterThanOrEqual(28);
   // The figures sit in equal tiles, each saying what it counts, and the clock has a legend.
   const tiles = page.locator("dl > div");
   await expect(tiles).toHaveCount(6);

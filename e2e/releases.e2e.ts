@@ -40,7 +40,8 @@ test("a followed artist's new release is a card with its type, date and link, an
   await popup.close();
 
   await card.getByRole("button", { name: "get Fresh Hours" }).click();
-  await expect(card.getByText("asked lyterion")).toBeVisible();
+  await expect(card.getByText("requested", { exact: true })).toBeVisible();
+  await expect(card.locator("div[aria-hidden]").first()).toHaveCSS("border-top-width", "1px");
   await expect(card.getByText("new", { exact: true })).toHaveCount(0);
 });
 

@@ -7,8 +7,8 @@ import { greyPng } from "./png";
 const PORT = Number(process.env.MOCK_PORT ?? 4599);
 const USER = "demo";
 const PASSWORD = "demo";
-// A second account, so a spec can leave plays and follows without touching demo's.
-const SIDE_USER = "radar";
+// Extra accounts, so a spec can leave or count plays and follows without touching demo's.
+const SIDE_USERS = ["radar", "stats"];
 const library = createLibrary(Number(process.env.MOCK_TRACKS ?? 10_000));
 const albumsById = new Map(library.albums.map((album) => [album.id, album]));
 const songsById = new Map(library.songs.map((song) => [song.id, song]));
@@ -58,7 +58,7 @@ function authorized(params: Params): boolean {
     .update(PASSWORD + salt)
     .digest("hex");
   const user = params.get("u");
-  return (user === USER || user === SIDE_USER) && params.get("t") === token;
+  return (user === USER || SIDE_USERS.includes(user ?? "")) && params.get("t") === token;
 }
 
 function withStar<T extends { id: string }>(item: T): T {
@@ -338,7 +338,7 @@ function handle(endpoint: string, params: Params, request: Request): Response {
       return ok({
         user: {
           username: params.get("username"),
-          adminRole: params.get("username") === USER || params.get("username") === SIDE_USER,
+          adminRole: [USER, ...SIDE_USERS].includes(params.get("username") ?? ""),
           folder: [1],
         },
       });
