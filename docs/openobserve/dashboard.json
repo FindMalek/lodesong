@@ -1,0 +1,494 @@
+{
+  "version": 8,
+  "dashboardId": "lodesong",
+  "title": "Lodesong",
+  "description": "Requests, upstream calls, caches, jobs and memory of the Lodesong server.",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_1",
+          "type": "line",
+          "title": "Requests per second",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "numbers"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (route) (rate(lodesong_request_duration_seconds_count[5m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_request_duration_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{route}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 96,
+            "h": 18,
+            "i": 1
+          }
+        },
+        {
+          "id": "Panel_2",
+          "type": "line",
+          "title": "Error share by route",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "percent-1"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (route) (rate(lodesong_request_duration_seconds_count{outcome=\"error\"}[5m])) / sum by (route) (rate(lodesong_request_duration_seconds_count[5m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_request_duration_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{route}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 0,
+            "w": 96,
+            "h": 18,
+            "i": 2
+          }
+        },
+        {
+          "id": "Panel_3",
+          "type": "line",
+          "title": "Request time, p95",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "seconds"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.95, sum by (le, route) (rate(lodesong_request_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_request_duration_seconds_bucket",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{route}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 18,
+            "w": 96,
+            "h": 18,
+            "i": 3
+          }
+        },
+        {
+          "id": "Panel_4",
+          "type": "line",
+          "title": "Upstream time, p95",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "seconds"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.95, sum by (le, upstream) (rate(lodesong_upstream_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_upstream_duration_seconds_bucket",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{upstream}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 18,
+            "w": 96,
+            "h": 18,
+            "i": 4
+          }
+        },
+        {
+          "id": "Panel_5",
+          "type": "line",
+          "title": "Upstream failure share",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "percent-1"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (upstream) (rate(lodesong_upstream_duration_seconds_count{outcome=\"error\"}[5m])) / sum by (upstream) (rate(lodesong_upstream_duration_seconds_count[5m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_upstream_duration_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{upstream}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 36,
+            "w": 96,
+            "h": 18,
+            "i": 5
+          }
+        },
+        {
+          "id": "Panel_6",
+          "type": "line",
+          "title": "Cover cache hit share",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "percent-1"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (size) (rate(lodesong_cache_lookups_total{cache=\"cover\",result=\"hit\"}[5m])) / sum by (size) (rate(lodesong_cache_lookups_total{cache=\"cover\"}[5m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_cache_lookups_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{size}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 36,
+            "w": 96,
+            "h": 18,
+            "i": 6
+          }
+        },
+        {
+          "id": "Panel_7",
+          "type": "line",
+          "title": "Cover miss time, p95",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "seconds"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.95, sum by (le, size) (rate(lodesong_cover_miss_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_cover_miss_duration_seconds_bucket",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{size}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 54,
+            "w": 96,
+            "h": 18,
+            "i": 7
+          }
+        },
+        {
+          "id": "Panel_8",
+          "type": "line",
+          "title": "Other cache lookups per second",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "numbers"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (cache, result) (rate(lodesong_cache_lookups_total{cache!=\"cover\"}[5m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_cache_lookups_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{cache} {result}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 54,
+            "w": 96,
+            "h": 18,
+            "i": 8
+          }
+        },
+        {
+          "id": "Panel_9",
+          "type": "line",
+          "title": "Job time, p95",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "seconds"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "histogram_quantile(0.95, sum by (le, task) (rate(lodesong_job_duration_seconds_bucket[5m])))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_job_duration_seconds_bucket",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{task}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 72,
+            "w": 96,
+            "h": 18,
+            "i": 9
+          }
+        },
+        {
+          "id": "Panel_10",
+          "type": "line",
+          "title": "Job failures in the last hour",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "numbers"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (task) (increase(lodesong_job_duration_seconds_count{outcome=\"error\"}[1h]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_job_duration_seconds_count",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{task}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 72,
+            "w": 96,
+            "h": 18,
+            "i": 10
+          }
+        },
+        {
+          "id": "Panel_11",
+          "type": "line",
+          "title": "Queue depth",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "numbers"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (queue) (lodesong_queue_depth)",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_queue_depth",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{queue}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 0,
+            "y": 90,
+            "w": 96,
+            "h": 18,
+            "i": 11
+          }
+        },
+        {
+          "id": "Panel_12",
+          "type": "line",
+          "title": "Process memory",
+          "description": "",
+          "config": {
+            "show_legends": true,
+            "legends_position": null,
+            "unit": "bytes"
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "max by (kind) (lodesong_memory_bytes)",
+              "customQuery": true,
+              "fields": {
+                "stream": "lodesong_memory_bytes",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": {
+                  "filterType": "group",
+                  "logicalOperator": "AND",
+                  "conditions": []
+                }
+              },
+              "config": {
+                "promql_legend": "{kind}"
+              }
+            }
+          ],
+          "layout": {
+            "x": 96,
+            "y": 90,
+            "w": 96,
+            "h": 18,
+            "i": 12
+          }
+        }
+      ]
+    }
+  ]
+}
