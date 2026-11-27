@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval";
+import { coverResponse } from "./lib/cover-cache";
 
 // The page names the next songs (`precache`); they land in `audio-v1` and `/rest/stream` is sliced from there for
 // Range, so seeking works offline. Past the cap the least recently used go first, except pinned ones.
@@ -48,7 +49,6 @@ export interface Status {
 const SHELL = `shell-${__VERSION__}`;
 const AUDIO = "audio-v1";
 const COVERS = "covers-v1";
-const COVER_LIMIT = 2000;
 const ITEM_PAGE = /^\/(?:album|artist|playlist|song)\//;
 const INDEX_KEY = "keep-player:audio-index";
 
@@ -183,19 +183,6 @@ async function audioResponse(request: Request, id: string): Promise<Response> {
   });
 }
 
-async function coverResponse(request: Request): Promise<Response> {
-  const cache = await caches.open(COVERS);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-    const keys = await cache.keys();
-    for (const key of keys.slice(0, Math.max(0, keys.length - COVER_LIMIT))) await cache.delete(key);
-  }
-  return response;
-}
-
 /** Network first so a deploy shows at once; the cached shell when offline. */
 async function navigation(request: Request): Promise<Response> {
   try {
@@ -232,7 +219,8 @@ self.addEventListener("fetch", (event) => {
   // A transcode (another format) is never cached: it goes to the network.
   else if (url.pathname === "/rest/stream" && url.searchParams.get("format") === "raw")
     event.respondWith(audioResponse(event.request, url.searchParams.get("id") ?? ""));
-  else if (url.pathname.startsWith("/cover/")) event.respondWith(coverResponse(event.request));
+  else if (url.pathname.startsWith("/cover/"))
+    event.respondWith(caches.open(COVERS).then((cache) => coverResponse(cache, event.request, (work) => event.waitUntil(work))));
   else if (__SHELL__.includes(url.pathname))
     event.respondWith(caches.match(event.request).then((cached) => cached ?? fetch(event.request)));
 });

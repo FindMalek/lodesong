@@ -1,0 +1,102 @@
+import Foundation
+
+struct Artist: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    var coverArt: String?
+    /// When this account liked it, and its 1 to 5 star rating.
+    var starred: String?
+    var userRating: Int?
+}
+
+struct Album: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    var artist: String?
+    var artistId: String?
+    var coverArt: String?
+    var year: Int?
+    /// When the server first saw it, ISO 8601, so it sorts as text.
+    var created: String?
+    var genre: String?
+    /// "album", "ep", "single" and so on, from the files' tags.
+    var releaseTypes: [String]?
+    var isCompilation: Bool?
+    var starred: String?
+    var userRating: Int?
+}
+
+struct Song: Codable, Identifiable, Hashable {
+    let id: String
+    let title: String
+    var artist: String?
+    var album: String?
+    var albumId: String?
+    var coverArt: String?
+    var track: Int?
+    var discNumber: Int?
+    var duration: Int?
+    var suffix: String?
+    var replayGain: ReplayGain?
+    /// The server's count for this account, for an artist's top songs.
+    var playCount: Int?
+    /// When the server first saw it, ISO 8601, so it sorts as text.
+    var created: String?
+    /// kbit/s, Hz and bits per sample of the file on the server.
+    var bitRate: Int?
+    var samplingRate: Int?
+    var bitDepth: Int?
+    /// When this account liked it, and its 1 to 5 star rating.
+    var starred: String?
+    var userRating: Int?
+    /// Only history and stats read these: they are kept as the song was when it was played.
+    var artistId: String?
+    var year: Int?
+    var genre: String?
+    var genres: [Genre]?
+}
+
+struct Genre: Codable, Hashable {
+    let name: String
+}
+
+struct ReplayGain: Codable, Hashable {
+    var trackGain: Double?
+    var albumGain: Double?
+    var trackPeak: Double?
+    var albumPeak: Double?
+}
+
+struct Playlist: Codable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    var songCount: Int?
+    var changed: String?
+    var created: String?
+    var coverArt: String?
+    /// The playlist's description.
+    var comment: String?
+    var owner: String?
+    var `public`: Bool?
+    /// Set on smart playlists, whose `changed` only moves once someone asks for their songs.
+    var readonly: Bool?
+    var validUntil: String?
+}
+
+/// `SongMarks` goes by id, and the server likes and rates albums and artists the same way as songs.
+extension Album {
+    var markable: Song { Song(id: id, title: name, starred: starred, userRating: userRating) }
+}
+
+extension Artist {
+    var markable: Song { Song(id: id, title: name, starred: starred, userRating: userRating) }
+}
+
+/// Everything one sync brings back. Playlist entries are only listed for playlists that changed.
+struct LibrarySnapshot {
+    var artists: [Artist] = []
+    var albums: [Album] = []
+    var songs: [Song] = []
+    var playlists: [Playlist] = []
+    var entries: [String: [Song]] = [:]
+}

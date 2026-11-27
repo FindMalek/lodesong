@@ -1,3 +1,5 @@
+import { currentTrace, parseTraceparent, type TraceContext } from "./tracing";
+
 interface O2Target {
   url: string;
   org: string;
@@ -10,17 +12,19 @@ interface TelemetryOptions {
   dsn: string;
   o2: O2Target | null;
   release: string;
+  level?: Level;
   fetcher?: typeof fetch;
 }
 
-type Level = "warn" | "error";
+type Level = "info" | "warn" | "error";
 type Fields = Record<string, string | number | boolean | undefined>;
 
 const FLUSH_MS = 5000;
 const MAX_BUFFER = 200;
 const MAX_TEXT = 2000;
+const RANK: Record<Level, number> = { info: 0, warn: 1, error: 2 };
 
-/** Addresses lose their query and fragment (stream urls carry tokens), and long token-looking strings go. */
+/** Addresses lose their query and fragment (stream urls carry tokens), and long token-looking strings go (trace ids too, so those are added after). */
 export function scrub(text: string): string {
   return text
     .replace(/(https?:\/\/[^\s?#"')]+)[?#][^\s"')]*/g, "$1")
@@ -56,10 +60,10 @@ export class Telemetry {
   }
 
   /** Fire and forget: reporting must never take the server down or slow a request. */
-  error(error: unknown, where: string, fields: Fields = {}): void {
+  error(error: unknown, where: string, fields: Fields = {}, trace: TraceContext | undefined = currentTrace()): void {
     if (!this.active) return;
     const failure = error instanceof Error ? error : new Error(String(error));
-    this.log("error", `${where}: ${failure.message}`, { ...fields, stack: failure.stack });
+    this.log("error", `${where}: ${failure.message}`, { ...fields, stack: failure.stack }, trace);
     if (!this.target) return;
     const event = {
       event_id: crypto.randomUUID().replaceAll("-", ""),
@@ -67,7 +71,8 @@ export class Telemetry {
       platform: "javascript",
       level: "error",
       release: this.options.release,
-      tags: { where },
+      tags: { where, ...(trace ? { trace_id: trace.traceId } : {}) },
+      ...(trace ? { contexts: { trace: { trace_id: trace.traceId, span_id: trace.spanId } } } : {}),
       extra: Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, typeof value === "string" ? scrub(value) : value])),
       exception: { values: [{ type: failure.name, value: scrub(failure.message) }] },
       message: scrub(failure.stack ?? failure.message),
@@ -83,8 +88,8 @@ export class Telemetry {
     }).catch(() => undefined);
   }
 
-  log(level: Level, message: string, fields: Fields = {}): void {
-    if (!this.options.on || !this.options.o2) return;
+  log(level: Level, message: string, fields: Fields = {}, trace: TraceContext | undefined = currentTrace()): void {
+    if (!this.options.on || !this.options.o2 || RANK[level] < RANK[this.options.level ?? "warn"]) return;
     if (this.buffer.length >= MAX_BUFFER) this.buffer.shift();
     this.buffer.push({
       _timestamp: Date.now() * 1000,
@@ -92,6 +97,7 @@ export class Telemetry {
       message: scrub(message),
       release: this.options.release,
       ...Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, typeof value === "string" ? scrub(value) : value])),
+      ...(trace ? { trace_id: trace.traceId, span_id: trace.spanId } : {}),
     });
     this.timer ??= setTimeout(() => void this.flush(), FLUSH_MS);
   }
@@ -110,16 +116,16 @@ export class Telemetry {
     }).catch(() => undefined);
   }
 
-  /** Server warnings and errors, uncaught exceptions included. The original console output stays. */
+  /** Console lines from the chosen level up and uncaught exceptions. Info loses addresses: the start line names Navidrome's. */
   install(): void {
     if (!this.active) return;
-    for (const level of ["warn", "error"] as const) {
-      const original = console[level].bind(console);
-      console[level] = (...args: unknown[]) => {
+    const methods = { log: "info", info: "info", warn: "warn", error: "error" } as const;
+    for (const [method, level] of Object.entries(methods) as [keyof typeof methods, Level][]) {
+      const original = console[method].bind(console);
+      console[method] = (...args: unknown[]) => {
         original(...args);
-        this.log(level, args.map((arg) => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg))).join(" "), {
-          source: "server",
-        });
+        const text = args.map((arg) => (arg instanceof Error ? (arg.stack ?? arg.message) : String(arg))).join(" ");
+        this.log(level, level === "info" ? text.replace(/https?:\/\/[^\s,"')]+/g, "[address]") : text, { source: "server" });
       };
     }
     process.on("uncaughtException", (error) => this.error(error, "uncaughtException"));
@@ -150,7 +156,8 @@ export function createClientReporter(telemetry: Telemetry, now: () => number = D
     if (!message) return new Response(null, { status: 400 });
     const error = new Error(message);
     error.stack = text(body?.stack) || undefined;
-    telemetry.error(error, "player", { page: text(body?.page).replace(/[?#].*$/s, ""), source: "player" });
+    const trace = currentTrace() ?? parseTraceparent(request.headers.get("traceparent"));
+    telemetry.error(error, "player", { page: text(body?.page).replace(/[?#].*$/s, ""), source: "player" }, trace);
     return new Response(null, { status: 204 });
   };
 }

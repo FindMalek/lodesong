@@ -3,6 +3,7 @@ import { normalize, similarity } from "@lodesong/shared/normalize";
 import type { IndexStatus } from "@lodesong/shared/search";
 import type { Upstream } from "./config";
 import { type Credentials, subsonic } from "./subsonic";
+import { job } from "./tracing";
 
 // Built as the service account per music folder, so results can be limited to the folders each user may see.
 
@@ -86,7 +87,7 @@ export class IndexSync {
 
   start(): void {
     const loop = async () => {
-      await this.check().catch(() => undefined);
+      await job("index sync", () => this.check()).catch(() => undefined);
       // Until an admin signs in (or INDEX_USER is set) there is no account to index as: look again soon.
       this.timer = setTimeout(loop, this.account() ? CHECK_MS : WAIT_FOR_ACCOUNT_MS);
       this.timer.unref?.();

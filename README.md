@@ -186,8 +186,8 @@ every other app agrees with it.
   playback with the device picker in the player bar. Listen together with friends on the same server.
   [listen together](docs/listen-together.md)
 - **Apps**: a [Mac app](apps/macos/README.md) with the song around the notch, an [iPhone app](docs/ios.md), an
-  [Android app](docs/android.md) and a [Linux and Windows app](docs/desktop.md), each a small shell around the same page
-  with media controls and background playback. On a phone the queue also hands off with Arpeggi. [sync](docs/sync.md)
+  [Android app](docs/android.md) and a [Linux and Windows app](docs/desktop.md), with media controls and background
+  playback. The iPhone app is native, the others are small shells around the same page. On a phone the queue also hands off with Arpeggi. [sync](docs/sync.md)
 - **Scrobbling** through Navidrome (Last.fm, ListenBrainz): settings say whether it is on and how many plays were sent
   today. **Now playing in your terminal**: the song, its lyric line and ⏮ ⏸ ⏭ above the prompt in Claude Code and OpenCode.
 
