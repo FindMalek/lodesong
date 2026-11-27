@@ -21,7 +21,7 @@ boot with a message naming the variable.
 | `LYTERION_TOKEN` | — | The `LYTERION_PLAYER_TOKEN` set on Lyterion. Needed with `LYTERION_URL`. |
 | `DIAGNOSTICS` | `on` | `on`: errors and logs from this server and the player, and this server's traces, are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies. |
 | `GLITCHTIP_DSN` | — | Your GlitchTip (or Sentry) project DSN. Empty: errors aren't reported. |
-| `O2_URL` | — | Your OpenObserve address, to ship logs and traces to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Empty: neither is shipped. |
+| `O2_URL` | — | Your OpenObserve address, to ship logs, traces and metrics to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Metrics: every 15 s to `/api/<org>/v1/metrics`: request, upstream call, job and cover miss durations by outcome, cache hits, queue depths and memory, labelled by fixed names only. A dashboard to import is in `docs/openobserve/`. Empty: nothing is shipped. |
 | `O2_LOG_LEVEL` | `warn` | The lowest log level shipped to O2: `info`, `warn` or `error`. |
 | `O2_ORG` | `default` | The OpenObserve organization. |
 | `O2_STREAM` | `lodesong` | The OpenObserve stream the logs go to. |

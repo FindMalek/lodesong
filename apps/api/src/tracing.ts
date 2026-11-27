@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { mapHandlers } from "./compress";
+import { observe } from "./metrics";
 
 export interface TraceContext {
   traceId: string;
@@ -39,6 +40,21 @@ const encode = (attributes: Attributes) =>
     value === undefined ? [] : [{ key, value: typeof value === "number" ? { intValue: String(value) } : { stringValue: value } }],
   );
 
+const METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
+
+function measure(kind: number, name: string, attributes: Attributes, failed: boolean, seconds: number): void {
+  const outcome = failed ? "error" : "ok";
+  if (kind === SERVER) {
+    const method = String(attributes["http.request.method"]);
+    const path = String(attributes["http.route"]);
+    const hashedFile = /\.\w+$/.test(path);
+    const route = hashedFile ? "static" : path;
+    observe("lodesong_request_duration_seconds", { route, method: METHODS.has(method) ? method : "other", outcome }, seconds);
+  } else if (kind === CLIENT)
+    observe("lodesong_upstream_duration_seconds", { upstream: String(attributes["peer.service"]), outcome }, seconds);
+  else observe("lodesong_job_duration_seconds", { task: name.replace(/^job /, ""), outcome }, seconds);
+}
+
 interface TracerOptions {
   url: string;
   org: string;
@@ -67,7 +83,9 @@ export class Tracer {
   ): Promise<T> {
     const own = { traceId: parent?.traceId ?? randomHex(16), spanId: randomHex(8) };
     const startTimeUnixNano = unixNanos();
-    const end = (result: Outcome) =>
+    const started = performance.now();
+    const end = (result: Outcome) => {
+      measure(kind, name, { ...attributes, ...result.attributes }, result.failed, (performance.now() - started) / 1000);
       this.record({
         ...own,
         ...(parent ? { parentSpanId: parent.spanId } : {}),
@@ -78,6 +96,7 @@ export class Tracer {
         attributes: encode({ ...attributes, ...result.attributes }),
         ...(result.failed ? { status: { code: STATUS_ERROR } } : {}),
       });
+    };
     try {
       const value = await context.run(own, () => work(own));
       end(outcome?.(value) ?? { attributes: {}, failed: false });
@@ -145,8 +164,8 @@ function tracedFetch(active: Tracer, send: typeof fetch, services: [name: string
       },
       (response) => ({
         attributes: { "http.response.status_code": response.status },
-        // LRCLIB answers 404 for a song it has no lyrics for.
-        failed: response.status >= 400 && !(service === "lrclib" && response.status === 404),
+        // LRCLIB and the Cover Art Archive answer 404 for what they don't have.
+        failed: response.status >= 400 && !(response.status === 404 && (service === "lrclib" || service === "coverartarchive")),
       }),
     );
   };
