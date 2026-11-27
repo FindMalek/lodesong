@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { normalize } from "@lodesong/shared/normalize";
 import { createReleaseTables, setFollow } from "./releases";
+import { job } from "./tracing";
 
 // Follows every artist you follow on Spotify, as Lyterion has them. It only ever adds: artists you followed here stay,
 // and one you unfollowed here is not followed again.
@@ -70,9 +71,9 @@ export class FollowSync {
   }
 
   start(): void {
-    const first = setTimeout(() => void this.runDue(), 60_000);
+    const first = setTimeout(() => void job("follow sync", () => this.runDue()), 60_000);
     first.unref();
-    this.timer = setInterval(() => void this.runDue(), CHECK_EVERY_MS);
+    this.timer = setInterval(() => void job("follow sync", () => this.runDue()), CHECK_EVERY_MS);
     this.timer.unref();
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clock, fileFormat } from "./format";
+import { clock, fileFormat, syncAge } from "./format";
 
 test("clock pads seconds and switches to hours past 60 minutes", () => {
   expect(clock(65)).toBe("1:05");
@@ -12,4 +12,11 @@ describe("fileFormat", () => {
     expect(fileFormat({ suffix: "mp3", samplingRate: 44100, bitRate: 320 })).toBe("MP3 · 44.1 kHz · 320 kbps");
     expect(fileFormat({})).toBe("");
   });
+});
+
+test("syncAge flags a sync that missed its daily run", () => {
+  const now = Date.parse("2026-11-22T12:00:00Z");
+  expect(syncAge("2026-11-22T05:17:00Z", now)).toEqual({ text: "last synced 6 hours ago", stale: false });
+  expect(syncAge("2026-11-19T05:17:00Z", now)).toEqual({ text: "last synced 3 days ago", stale: true });
+  expect(syncAge(null, now).stale).toBe(true);
 });

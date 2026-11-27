@@ -2,7 +2,7 @@
 
 The player in its own app: your own icon, no browser bars, and music that keeps playing with the screen off, with
 controls on the lock screen and in the notification. It's the same page the browser shows, wrapped in `apps/android`
-(a small Kotlin app around a WebView), like the [iPhone app](ios.md) and the [Mac app](../apps/macos/README.md).
+(a small Kotlin app around a WebView), like the [Mac app](../apps/macos/README.md).
 
 ## Install
 
@@ -46,7 +46,7 @@ The [Android workflow](../.github/workflows/android.yml) does exactly this on ev
 
 ## How it works
 
-- The page already reports what is playing to `webkit.messageHandlers.keep` (what the Mac and iPhone apps listen to).
+- The page already reports what is playing to `webkit.messageHandlers.keep` (what the Mac app listens to).
   The app injects a small script before the page runs that maps that onto a JavaScript interface, so the page needs no
   Android-specific code.
 - `PlaybackService` is a foreground service of type *media playback*. It holds a `MediaSession` (title, artist,

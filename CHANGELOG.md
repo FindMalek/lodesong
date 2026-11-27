@@ -1,5 +1,60 @@
 # Changelog
 
+## [2.0.0](https://github.com/FindMalek/lodesong/compare/v1.22.1...v2.0.0) (2026-11-26)
+
+
+### Features
+
+* **ios:** add beta update source ([#720](https://github.com/FindMalek/lodesong/issues/720)) ([bffd8d8](https://github.com/FindMalek/lodesong/commit/bffd8d8b135559c413e9615e1dabc5a769077642))
+* **ios:** add download and cache settings ([#724](https://github.com/FindMalek/lodesong/issues/724)) ([2790933](https://github.com/FindMalek/lodesong/commit/2790933208401913508467547415bcfb4011aa03))
+* **ios:** add home sections ([#696](https://github.com/FindMalek/lodesong/issues/696)) ([9c5634c](https://github.com/FindMalek/lodesong/commit/9c5634cf587d4c514b1b70829ddef7fe13a9ce52))
+* **ios:** add library browse pages ([#725](https://github.com/FindMalek/lodesong/issues/725)) ([cb45d4a](https://github.com/FindMalek/lodesong/commit/cb45d4a11a253dead3524aafb4788b67a04b5eb6))
+* **ios:** add music by name ([#701](https://github.com/FindMalek/lodesong/issues/701)) ([6d328eb](https://github.com/FindMalek/lodesong/commit/6d328ebb9a22baf3e952469b53da7e6048851b4f))
+* **ios:** add player styles, queue ([#726](https://github.com/FindMalek/lodesong/issues/726)) ([ba14266](https://github.com/FindMalek/lodesong/commit/ba14266dec4448f62fe929d055a3b9828ed2780c))
+* **ios:** add playlist picture folders ([#695](https://github.com/FindMalek/lodesong/issues/695)) ([32f5b45](https://github.com/FindMalek/lodesong/commit/32f5b45cee002db6f003b714a87b96fa78e7a464))
+* **ios:** add shortcuts, links, translations ([#727](https://github.com/FindMalek/lodesong/issues/727)) ([841782c](https://github.com/FindMalek/lodesong/commit/841782c84405afe8e5e8a7a4f0fe8c269703aff3))
+* **ios:** apple music layout polish ([#694](https://github.com/FindMalek/lodesong/issues/694)) ([fddd249](https://github.com/FindMalek/lodesong/commit/fddd2494424ec48390e93bbb44a085ca219aff44))
+* **ios:** count offline plays once ([#690](https://github.com/FindMalek/lodesong/issues/690)) ([cada895](https://github.com/FindMalek/lodesong/commit/cada8950648705248725b25286ed07956092e577))
+* **ios:** edit playlists and menus ([#723](https://github.com/FindMalek/lodesong/issues/723)) ([61fccab](https://github.com/FindMalek/lodesong/commit/61fccab2d32bd211c0aecc4b5efccd7f5719802e))
+* **ios:** expiry and track alerts ([#700](https://github.com/FindMalek/lodesong/issues/700)) ([15db4be](https://github.com/FindMalek/lodesong/commit/15db4be596209b180e87e3b4dbb210827106b538))
+* **ios:** lyrics and search by lyrics ([#691](https://github.com/FindMalek/lodesong/issues/691)) ([c49f829](https://github.com/FindMalek/lodesong/commit/c49f82961ed23207a55b3657e3379fbc191e7330))
+* **ios:** native iphone app ([#685](https://github.com/FindMalek/lodesong/issues/685)) ([29b1fe2](https://github.com/FindMalek/lodesong/commit/29b1fe2681fe3827c94d05984c534fbc022e7504))
+* **ios:** offline and server addresses ([#702](https://github.com/FindMalek/lodesong/issues/702)) ([4af3cb1](https://github.com/FindMalek/lodesong/commit/4af3cb1a8cabcf14f198b5e6be592bc7bf03a1c3))
+* **ios:** play on other devices ([#722](https://github.com/FindMalek/lodesong/issues/722)) ([c66d4da](https://github.com/FindMalek/lodesong/commit/c66d4dae2cb228fb0d1498b511dd631d7151f41b))
+* **ios:** redesign add music ([#721](https://github.com/FindMalek/lodesong/issues/721)) ([f2a7147](https://github.com/FindMalek/lodesong/commit/f2a7147a509db3312773acd1b81ab544379a72ed))
+* **ios:** redesign playlist page ([#719](https://github.com/FindMalek/lodesong/issues/719)) ([5c14633](https://github.com/FindMalek/lodesong/commit/5c146331ab2dd31eecf7a610d7cf5caa73f191b0))
+* **ios:** richer now playing screen ([#718](https://github.com/FindMalek/lodesong/issues/718)) ([92e060f](https://github.com/FindMalek/lodesong/commit/92e060fbf1c2e4f576f42ff56df6bdcf8bcb90b2))
+* **ios:** settings ([#699](https://github.com/FindMalek/lodesong/issues/699)) ([5bafecc](https://github.com/FindMalek/lodesong/commit/5bafecc5b0dcfc986935acdd3e56b19798ce3573))
+
+
+### Bug Fixes
+
+* **ios:** duplicate api helper ([#698](https://github.com/FindMalek/lodesong/issues/698)) ([f074145](https://github.com/FindMalek/lodesong/commit/f074145bad8b846bdbee9045ea8f160fd5abac5a))
+
+
+### Documentation
+
+* **ios:** rewrite install guide ([#728](https://github.com/FindMalek/lodesong/issues/728)) ([57acb2d](https://github.com/FindMalek/lodesong/commit/57acb2d5c46aed33ccfb02062c5d5f195cb1e469))
+
+## [1.22.1](https://github.com/FindMalek/lodesong/compare/v1.22.0...v1.22.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **macos:** safe update swap ([#665](https://github.com/FindMalek/lodesong/issues/665)) ([520479f](https://github.com/FindMalek/lodesong/commit/520479f729e7936b0c69a7ec4ae7162ea3ee7781))
+
+## [1.22.0](https://github.com/FindMalek/lodesong/compare/v1.21.0...v1.22.0) (2026-11-20)
+
+
+### Features
+
+* **album:** fetch missing tracks ([#596](https://github.com/FindMalek/lodesong/issues/596)) ([10675db](https://github.com/FindMalek/lodesong/commit/10675db22693a21a821440799ea7f9eff172e743))
+
+
+### Bug Fixes
+
+* **player:** phone bar layout ([#639](https://github.com/FindMalek/lodesong/issues/639)) ([c606b35](https://github.com/FindMalek/lodesong/commit/c606b359d8ec0bd5d5c9385f258e4d1425e07292))
+
 ## [1.21.0](https://github.com/FindMalek/lodesong/compare/v1.20.0...v1.21.0) (2026-11-19)
 
 

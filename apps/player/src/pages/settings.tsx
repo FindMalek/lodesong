@@ -525,6 +525,11 @@ export function SettingsPage({ section, onClose }: { section: string | null; onC
                 label="up next card"
                 hint={<>the next song and a skip button, shown over the bar as a song ends · {SYNCED}</>}
               />
+              <Toggle
+                setting="diagnostics"
+                label="send errors to the server owner"
+                hint="when something breaks, the error goes to your own server's error tracker. never song titles, addresses or tokens · this device only"
+              />
               <Toggle setting="loadingBar" label="loading bar" hint={<>a thin line at the top while things refresh · {SYNCED}</>} />
               <Toggle
                 setting="offlineInBar"

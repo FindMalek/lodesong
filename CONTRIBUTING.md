@@ -25,6 +25,26 @@ CI runs the same steps on every PR, and `main` only takes green PRs.
 | `bun run screenshots` | refresh the README screenshots from a running instance (`SCREENSHOT_URL`, `_USER`, `_PASSWORD`) |
 | `bun run check` | everything except e2e |
 
+## Pre-commit hook
+
+`bun install` installs a [lefthook](https://lefthook.dev) pre-commit hook (the `prepare` script; it does nothing in CI). It only looks at staged files and takes a few seconds:
+
+| job | runs when | blocks |
+|---|---|---|
+| `biome check` | staged ts/tsx/js/json/css | yes (fix with `bun run format`, nothing is auto-fixed) |
+| `oxlint` | staged ts/tsx | yes |
+| `bun run colors` | staged `apps/player/src/**` | yes |
+| `react-doctor` | staged `apps/player/src/**/*.tsx` | no, advisory output |
+
+Merge and rebase commits skip it. Typecheck, tests, size and e2e stay in CI (`bun run check`).
+
+Git worktrees share one hooks folder (the main checkout's `.git/hooks`), and `bun install` in any worktree rewrites it. A worktree without `node_modules`, or a branch without `lefthook.yml`, just skips the hook and never blocks a commit.
+
+```sh
+bunx lefthook run pre-commit          # run it by hand on the staged files
+LEFTHOOK=0 git commit ...             # skip once (git commit --no-verify works too)
+```
+
 ## UI components
 
 The UI is shadcn/ui on Base UI (style `base-lyra`) plus the [audiocn](https://audiocn.dev) registry. Never hand-roll

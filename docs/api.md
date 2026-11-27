@@ -19,6 +19,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://your-player/api/stats/forgotten?
 | path | what |
 |---|---|
 | `GET /api/version` | the running version |
+| `GET /api/history`, `POST /api/history` | your plays; record one. Send a `key` and a retry of the same play is not counted twice |
 | `GET /api/stats?from&to&tz` | your listening in a range |
 | `GET /api/stats/forgotten?days` | favourites you haven't played in a while |
 | `GET /api/mixes?day&hour&tz` | everything made for you right now |
