@@ -1,7 +1,8 @@
+// First: it wraps `fetch`, and the rpc client keeps whatever `fetch` is when it is created.
+import "./lib/error-report";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createRoot } from "react-dom/client";
 import { App } from "./app";
-import "./lib/error-report";
 import "./lib/install";
 import "./lib/look";
 import "./lib/motion";

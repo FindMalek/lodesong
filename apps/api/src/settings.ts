@@ -71,14 +71,20 @@ const SETTINGS = [
     name: "DIAGNOSTICS",
     fallback: "on",
     description:
-      "`on`: errors and warnings from this server and the player are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies.",
+      "`on`: errors and logs from this server and the player, and this server's traces, are sent to your own GlitchTip and O2 when those are set. `off`: nothing leaves, whatever else is set. Never sent: song titles, addresses, tokens or cookies.",
   },
   {
     name: "GLITCHTIP_DSN",
     fallback: "",
     description: "Your GlitchTip (or Sentry) project DSN. Empty: errors aren't reported.",
   },
-  { name: "O2_URL", fallback: "", description: "Your OpenObserve address, to ship warning and error logs to. Empty: logs aren't shipped." },
+  {
+    name: "O2_URL",
+    fallback: "",
+    description:
+      "Your OpenObserve address, to ship logs and traces to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Empty: neither is shipped.",
+  },
+  { name: "O2_LOG_LEVEL", fallback: "warn", description: "The lowest log level shipped to O2: `info`, `warn` or `error`." },
   { name: "O2_ORG", fallback: "default", description: "The OpenObserve organization." },
   { name: "O2_STREAM", fallback: "lodesong", description: "The OpenObserve stream the logs go to." },
   { name: "O2_USER", fallback: "", description: "OpenObserve user (basic auth). Needed with `O2_URL`." },
@@ -191,7 +197,12 @@ const SETTINGS = [
 type Env = Record<string, string | undefined>;
 
 export interface Config {
-  diagnostics: { on: boolean; dsn: string; o2: { url: string; org: string; stream: string; auth: string } | null };
+  diagnostics: {
+    on: boolean;
+    dsn: string;
+    level: "info" | "warn" | "error";
+    o2: { url: string; org: string; stream: string; auth: string } | null;
+  };
   port: number;
   dataDir: string;
   upstreams: Upstream[];
@@ -299,6 +310,10 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
   const publicDemo = flag("PUBLIC_DEMO", ["on"], ["off"]);
   if (demoUser && !publicDemo) errors.push("DEMO_USER needs PUBLIC_DEMO=on: it signs every visitor in");
 
+  const logLevel = get("O2_LOG_LEVEL").toLowerCase();
+  if (logLevel !== "info" && logLevel !== "warn" && logLevel !== "error")
+    errors.push(`O2_LOG_LEVEL must be one of info, warn, error, got "${get("O2_LOG_LEVEL")}"`);
+
   const config: Config = {
     port: number("PORT", 1, 65_535),
     dataDir: get("DATA_DIR"),
@@ -331,6 +346,7 @@ export function readConfig(env: Env): { config: Config; errors: string[] } {
     diagnostics: {
       on: flag("DIAGNOSTICS", ["on"], ["off"]),
       dsn: get("GLITCHTIP_DSN"),
+      level: logLevel as Config["diagnostics"]["level"],
       o2:
         get("O2_URL") && get("O2_USER") && get("O2_PASSWORD")
           ? {

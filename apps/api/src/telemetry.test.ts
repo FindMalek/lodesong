@@ -52,6 +52,37 @@ describe("Telemetry", () => {
   });
 });
 
+describe("trace ids", () => {
+  test("a player error keeps the player's trace id, and lines under the level stay home", async () => {
+    const calls: { url: string; body: string }[] = [];
+    const telemetry = new Telemetry({
+      on: true,
+      dsn: "https://key@gt.example/7",
+      o2,
+      level: "warn",
+      release: "1",
+      fetcher: bodyRecorder(calls),
+    });
+    const traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+    telemetry.log("info", "quiet");
+    await createClientReporter(telemetry)(
+      new Request("http://x/api/diagnostics", {
+        method: "POST",
+        headers: { "x-lodesong": "1", traceparent: `00-${traceId}-00f067aa0ba902b7-01` },
+        body: JSON.stringify({ message: "boom" }),
+      }),
+    );
+    await telemetry.flush();
+    const [event, lines] = ["gt.example", "o2/api"].map((host) =>
+      JSON.parse(calls.find((call) => call.url.includes(host))?.body ?? "null"),
+    );
+    expect(event.tags.trace_id).toBe(traceId);
+    expect(event.contexts.trace.trace_id).toBe(traceId);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ trace_id: traceId, span_id: "00f067aa0ba902b7" });
+  });
+});
+
 describe("client reporter", () => {
   test("needs the csrf header and forwards a player error", async () => {
     const calls: string[] = [];
