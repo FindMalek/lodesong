@@ -1,12 +1,13 @@
-import { expect, test } from "./fixtures";
+import { expect, signIn, test } from "./fixtures";
 
 const DAY = 86_400_000;
 
-test("stats show what you played, forgotten favourites make a playlist, and the recap tells the story", async ({ page, signedIn }) => {
-  // Plays from this test only (the account is shared with other tests): a made-up artist, and songs from long ago.
+test("stats show what you played, forgotten favourites make a playlist, and the recap tells the story", async ({ page }) => {
+  // Its own account: the chart counts every listening day, so other specs playing as demo would change it.
+  await signIn(page, "stats");
   const tag = `stats-${test.info().repeatEachIndex}-${Date.now()}`;
   const post = (song: Record<string, unknown>, started: number) =>
-    signedIn.evaluate(
+    page.evaluate(
       async ([body]) =>
         (
           await fetch("/api/history", {
