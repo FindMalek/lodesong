@@ -82,7 +82,7 @@ const SETTINGS = [
     name: "O2_URL",
     fallback: "",
     description:
-      "Your OpenObserve address, to ship logs and traces to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Empty: neither is shipped.",
+      "Your OpenObserve address, to ship logs, traces and metrics to. Traces: one per request (named by route) and per background job, with a span for each outgoing call, as OTLP/HTTP to `/api/<org>/v1/traces`; log lines and GlitchTip events carry the `trace_id`. Metrics: every 15 s to `/api/<org>/v1/metrics`: request, upstream call, job and cover miss durations by outcome, cache hits, queue depths and memory, labelled by fixed names only. A dashboard to import is in `docs/openobserve/`. Empty: nothing is shipped.",
   },
   { name: "O2_LOG_LEVEL", fallback: "warn", description: "The lowest log level shipped to O2: `info`, `warn` or `error`." },
   { name: "O2_ORG", fallback: "default", description: "The OpenObserve organization." },

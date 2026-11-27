@@ -1,5 +1,6 @@
 import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { count, observe } from "./metrics";
 
 export { snapCoverSize } from "@lodesong/shared/cover-sizes";
 
@@ -44,13 +45,24 @@ export class CoverCache {
   async get(key: string, size: number, fetchCover: Fetcher, id: string): Promise<string | null> {
     const name = `${new Bun.CryptoHasher("sha1").update(key).digest("hex")}-${size}.webp`;
     const entry = this.entries.get(name);
+    const running = this.pending.get(name);
+    count("lodesong_cache_lookups_total", { cache: "cover", result: entry ? "hit" : running ? "shared" : "miss", size: String(size) });
     if (entry) {
       entry.used = this.now();
       return join(this.dir, name);
     }
-    const running = this.pending.get(name);
     if (running) return running;
-    const job = this.create(name, size, fetchCover, id).finally(() => this.pending.delete(name));
+    const started = performance.now();
+    let outcome = "error";
+    const job = this.create(name, size, fetchCover, id)
+      .then((path) => {
+        outcome = path ? "ok" : "empty";
+        return path;
+      })
+      .finally(() => {
+        this.pending.delete(name);
+        observe("lodesong_cover_miss_duration_seconds", { size: String(size), outcome }, (performance.now() - started) / 1000);
+      });
     this.pending.set(name, job);
     return job;
   }
@@ -85,6 +97,10 @@ export class CoverCache {
       this.entries.delete(name);
       this.total -= entry.bytes;
     }
+  }
+
+  get inFlight(): number {
+    return this.pending.size;
   }
 
   get size(): number {
