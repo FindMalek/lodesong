@@ -2,10 +2,12 @@ import { Progress } from "@lodesong/ui/components/progress";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Section } from "@/components/library";
-import { plural } from "@/lib/format";
+import { plural, syncAge } from "@/lib/format";
 import { HEADERS } from "@/lib/subsonic";
 
 interface Summary {
+  lastSync?: string | null;
+  dailySync?: boolean;
   playlists: { name: string; total: number; inLibrary: number; missing: { artist: string; title: string }[] }[];
 }
 
@@ -23,12 +25,21 @@ export function LyterionImport() {
   if (!data) return null;
   const total = data.playlists.reduce((sum, playlist) => sum + playlist.total, 0);
   const inLibrary = data.playlists.reduce((sum, playlist) => sum + playlist.inLibrary, 0);
+  const age = data.lastSync !== undefined && data.dailySync !== false ? syncAge(data.lastSync) : null;
   return (
     <Section title="from lyterion">
       <p className="mb-3 max-w-2xl text-muted-foreground text-sm">
         lyterion syncs your spotify playlists and liked songs into your library on its own. {inLibrary.toLocaleString()} of{" "}
         {plural(total, "song")} are in; it keeps looking for the rest on every run.
       </p>
+      {age && (
+        <p
+          role={age.stale ? "alert" : undefined}
+          className={`mb-3 max-w-2xl text-sm ${age.stale ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          lyterion {age.text}.{age.stale ? " new likes won't show up until it runs again, check lyterion." : ""}
+        </p>
+      )}
       <ul aria-label="spotify playlists" className="flex max-w-2xl flex-col">
         {data.playlists
           .toSorted((a, b) => b.total - b.inLibrary - (a.total - a.inLibrary))

@@ -4,6 +4,7 @@ import type { Upstream } from "./config";
 import type { LyricsService } from "./lyrics";
 import type { SessionStore } from "./sessions";
 import { type Credentials, subsonic } from "./subsonic";
+import { job } from "./tracing";
 
 const PAGE = 200;
 /** One song at a time, about two requests a second at most: LRCLIB is free and asks clients to be gentle. */
@@ -76,7 +77,7 @@ export class LyricsBackfill {
 
   private schedule(ms: number): void {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.step().then((next) => this.schedule(next)), ms);
+    this.timer = setTimeout(() => void job("lyrics backfill", () => this.step()).then((next) => this.schedule(next)), ms);
     this.timer.unref?.();
   }
 

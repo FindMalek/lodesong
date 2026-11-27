@@ -8,7 +8,7 @@ import SwiftUI
     static func show(preferences: Preferences, updater: Updater) {
         if window == nil {
             let window = NSWindow(
-                contentRect: CGRect(x: 0, y: 0, width: 460, height: 420),
+                contentRect: CGRect(x: 0, y: 0, width: 460, height: 480),
                 styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = "Settings"
             window.isReleasedWhenClosed = false
@@ -54,9 +54,18 @@ struct SettingsView: View {
             Section("Server") {
                 LabeledContent("Address", value: preferences.server?.absoluteString ?? "not set")
                 Button("Change Server…") { NSApp.sendAction(#selector(AppDelegate.changeServer), to: nil, from: nil) }
+                Toggle("Reach it through a local SOCKS proxy", isOn: $preferences.localProxy)
+                if preferences.localProxy {
+                    LabeledContent("Proxy port") {
+                        TextField("", value: $preferences.localProxyPort, format: .number.grouping(.never))
+                            .multilineTextAlignment(.trailing).frame(width: 70)
+                    }
+                    Text("For when the server's address doesn't answer from this network. Only the server's host goes through it, and nothing changes while no proxy listens on 127.0.0.1. Takes effect after a restart.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 420)
+        .frame(width: 460, height: 480)
     }
 }

@@ -1,0 +1,25 @@
+pre-commit:
+  parallel: true
+  skip: [merge, rebase]
+  jobs:
+    - name: biome
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css}"
+      run: bunx biome check --no-errors-on-unmatched {staged_files}
+      fail_text: formatting or lint errors, fix with `bun run format`
+
+    - name: oxlint
+      glob: "*.{ts,tsx}"
+      run: bunx oxlint {staged_files}
+
+    - name: colors
+      glob:
+        - "apps/player/src/*.{ts,tsx,css,html}"
+        - "apps/player/src/**/*.{ts,tsx,css,html}"
+      run: bun run colors
+
+    # advisory: prints findings, never blocks the commit
+    - name: react-doctor
+      glob:
+        - "apps/player/src/*.tsx"
+        - "apps/player/src/**/*.tsx"
+      run: bunx react-doctor@0.9.23 --no-supply-chain --no-score --yes {staged_files} || true

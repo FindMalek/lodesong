@@ -1,6 +1,6 @@
 {
   "name": "lodesong",
-  "version": "1.21.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -23,6 +23,7 @@
     "shortcuts-docs": "bun scripts/shortcuts-docs.ts",
     "screenshots": "bun scripts/screenshots.ts",
     "colors": "bun scripts/check-colors.ts",
+    "prepare": "[ -z \"$CI\" ] && [ -e .git ] && lefthook install || true",
     "demo:library": "bun scripts/demo-library.ts",
     "hero": "bun scripts/hero.ts",
     "film:capture": "bun scripts/hero/film.ts",
@@ -38,6 +39,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "bun-plugin-tailwind": "0.1.2",
+    "lefthook": "2.2.2",
     "lighthouse": "13.5.0",
     "oxlint": "1.87.0",
     "shadcn": "4.21.4",

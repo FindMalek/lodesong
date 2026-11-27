@@ -186,8 +186,8 @@ every other app agrees with it.
   playback with the device picker in the player bar. Listen together with friends on the same server.
   [listen together](docs/listen-together.md)
 - **Apps**: a [Mac app](apps/macos/README.md) with the song around the notch, an [iPhone app](docs/ios.md), an
-  [Android app](docs/android.md) and a [Linux and Windows app](docs/desktop.md), each a small shell around the same page
-  with media controls and background playback. On a phone the queue also hands off with Arpeggi. [sync](docs/sync.md)
+  [Android app](docs/android.md) and a [Linux and Windows app](docs/desktop.md), with media controls and background
+  playback. The iPhone app is native, the others are small shells around the same page. On a phone the queue also hands off with Arpeggi. [sync](docs/sync.md)
 - **Scrobbling** through Navidrome (Last.fm, ListenBrainz): settings say whether it is on and how many plays were sent
   today. **Now playing in your terminal**: the song, its lyric line and ⏮ ⏸ ⏭ above the prompt in Claude Code and OpenCode.
 
@@ -274,7 +274,7 @@ Navidrome. [lyterion](docs/lyterion.md)
 | [API](docs/api.md) | the typed API, its reference at `/api`, tokens for your own integrations |
 | [architecture](docs/architecture.md) · [security](docs/security.md) | how it's built, what's protected |
 | [demo library](docs/demo-library.md) · [previews](docs/previews.md) | the generated library, per-PR previews |
-| [troubleshooting](docs/troubleshooting.md) | when something's off |
+| [troubleshooting](docs/troubleshooting.md) · [managed Mac](docs/macos/managed-mac.md) | when something's off, a Mac with no admin rights |
 | [contributing](CONTRIBUTING.md) · [roadmap](docs/ROADMAP.md) | working on it |
 
 ## FAQ
@@ -291,7 +291,7 @@ real one. See [demo library](docs/demo-library.md).
 **Does it change my music files?** No. It reads through Navidrome's API. Likes, ratings, playlists and plays are
 stored by Navidrome; lodesong keeps only its own data (sessions, its search and lyrics cache, history) in `/data`.
 
-**Does it phone home?** No telemetry, no analytics. It talks to your Navidrome and, by default, to two public services:
+**Does it phone home?** Not to us: there is no analytics and nothing goes to any service of ours. Errors and warnings go only to *your own* GlitchTip and OpenObserve, and only if you set `GLITCHTIP_DSN` or `O2_URL`; never song titles, addresses with tokens or cookies. `DIAGNOSTICS=off` stops it on the server, and each device has a switch in settings. It talks to your Navidrome and, by default, to two public services:
 LRCLIB for lyrics Navidrome doesn't have (the song's title and artist) and MusicBrainz once a week for new releases by the
 artists you follow (artist names only). `LRCLIB_URL=` and `MUSICBRAINZ_URL=` (empty) turn each off. The rest is opt-in:
 Groq for playlists from a prompt and upload tags, only with `GROQ_API_KEY` (it gets artist names, never your files);

@@ -30,3 +30,17 @@ export function fileFormat(song: { suffix?: string; bitDepth?: number; samplingR
     .filter(Boolean)
     .join(" · ");
 }
+
+const STALE_SYNC_HOURS = 36;
+
+export function syncAge(lastSync: string | null, now = Date.now()): { text: string; stale: boolean } {
+  if (!lastSync) return { text: "hasn't synced yet", stale: true };
+  const hours = Math.max(0, Math.floor((now - new Date(lastSync).getTime()) / 3_600_000));
+  const text =
+    hours < 1
+      ? "synced just now"
+      : hours < 48
+        ? `last synced ${plural(hours, "hour")} ago`
+        : `last synced ${plural(Math.floor(hours / 24), "day")} ago`;
+  return { text, stale: hours >= STALE_SYNC_HOURS };
+}

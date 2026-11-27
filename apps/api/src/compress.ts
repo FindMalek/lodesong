@@ -33,18 +33,18 @@ const isMethods = (route: object) => {
 
 type Handler = (request: Request, server: Bun.Server<unknown>) => Response | undefined | Promise<Response | undefined>;
 
-export function compressed<T extends Record<string, unknown>>(routes: T): T {
-  const wrap =
-    (handler: Handler): Handler =>
-    async (request, server) =>
-      compress(request, await handler(request, server));
+export function mapHandlers<T extends Record<string, unknown>>(routes: T, wrap: (path: string, handler: Handler) => Handler): T {
   const out: Record<string, unknown> = {};
   for (const [path, route] of Object.entries(routes)) {
-    if (typeof route === "function") out[path] = wrap(route as Handler);
+    if (typeof route === "function") out[path] = wrap(path, route as Handler);
     // An HTMLBundle (dev) has no own keys: only an object of method handlers is wrapped.
     else if (route && typeof route === "object" && !(route instanceof Response) && isMethods(route))
-      out[path] = Object.fromEntries(Object.entries(route).map(([method, handler]) => [method, wrap(handler as Handler)]));
+      out[path] = Object.fromEntries(Object.entries(route).map(([method, handler]) => [method, wrap(path, handler as Handler)]));
     else out[path] = route;
   }
   return out as T;
+}
+
+export function compressed<T extends Record<string, unknown>>(routes: T): T {
+  return mapHandlers(routes, (_path, handler) => async (request, server) => compress(request, await handler(request, server)));
 }

@@ -23,10 +23,30 @@ import { LoginLimiter } from "./rate-limit";
 import { lyterionHandOff, MusicBrainz, ReleaseWatch } from "./releases";
 import { IndexSync } from "./search-index";
 import { SessionStore } from "./sessions";
+import { createClientReporter, Telemetry } from "./telemetry";
+import { job, startTracing, Tracer, tracedRoutes } from "./tracing";
 import { MAX_UPLOAD_BYTES } from "./upload";
 
 // Dead-code eliminated per build: the executable only contains the static server, dev only the bundler route.
 const { webRoutes, pageWith } = process.env.NODE_ENV === "production" ? await import("./static") : await import("./dev");
+
+// First, so both keep the untraced `fetch` and everything created below gets the traced one.
+const telemetry = new Telemetry({ ...config.diagnostics, release: VERSION });
+telemetry.install();
+if (config.diagnostics.on && config.diagnostics.o2) {
+  const services: [string, string | null | undefined][] = [
+    ...config.upstreams.map((upstream): [string, string] => ["navidrome", upstream.url]),
+    ["lyterion", config.lyterion?.url],
+    ["lrclib", config.lrclibUrl],
+    ["musicbrainz", config.musicbrainzUrl],
+    ["groq", config.groq?.url],
+    ["audiomuse", config.audiomuseUrl],
+  ];
+  startTracing(
+    new Tracer({ ...config.diagnostics.o2, release: VERSION }),
+    services.filter((service): service is [string, string] => !!service[1]),
+  );
+}
 
 const idleSeconds = config.sessionIdleDays * 86_400;
 const sessions = new SessionStore(join(config.dataDir, "sessions.db"), config.sessionSecret, idleSeconds * 1000);
@@ -49,7 +69,8 @@ if (config.demoSeed && config.indexUser && config.indexPassword) {
 const { audiomuseUrl } = config;
 if (audiomuseUrl) {
   const pull = () => {
-    for (const upstream of config.upstreams) void syncFeatures(library, upstream.id, audiomuseUrl).catch(() => null);
+    for (const upstream of config.upstreams)
+      void job("audiomuse sync", () => syncFeatures(library, upstream.id, audiomuseUrl)).catch(() => null);
   };
   setTimeout(pull, 60_000).unref();
   setInterval(pull, 6 * 3_600_000).unref();
@@ -115,6 +136,7 @@ const api = createApi({
 const health = new HealthCheck(config.upstreams, undefined, config.demoAccount !== null);
 
 const cspReport = createCspReporter();
+const clientReport = createClientReporter(telemetry);
 
 // The player's own links, so a pasted one unfurls. Dev serves the bundler's page as is.
 const shareRoutes = pageWith
@@ -134,64 +156,67 @@ const server = Bun.serve({
   // Uploads are one file per request; a long hi-res track is over Bun's 128 MB default.
   maxRequestBodySize: MAX_UPLOAD_BYTES,
   websocket: { ...api.sockets, maxPayloadLength: MAX_DEVICE_MESSAGE_BYTES },
-  routes: compressed({
-    "/healthz": () => new Response("ok"),
-    "/worklets/levels.js": () =>
-      new Response(LEVELS_WORKLET_SOURCE, { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=86400" } }),
-    "/og.jpg": api.genericCard,
-    "/og/:kind/:file": api.ogImage,
-    "/api/share": { GET: api.shareList, POST: api.shareCreate },
-    "/api/share/:id": { DELETE: api.shareRemove },
-    "/api/csp-report": { POST: cspReport },
-    "/api/health": { GET: () => health.response() },
-    "/api/rpc/*": api.rpc,
-    "/api/folders/:id/cover": { GET: api.folderPicture },
-    "/api/playlists/:id/cover": { GET: api.playlistPicture },
-    "/api": api.http,
-    "/api/*": api.http,
-    "/auth/login": { POST: api.login },
-    "/auth/demo": { POST: api.demoLogin },
-    "/auth/logout": { POST: api.logout },
-    "/auth/session": { GET: api.current },
-    "/auth/sessions": { GET: api.listSessions },
-    "/auth/sessions/:id": { DELETE: api.revokeSession },
-    "/auth/api-token": { POST: api.apiToken },
-    "/rest/*": api.proxy,
-    "/cover/:id/:size": api.cover,
-    "/release-cover/:id": api.releaseCover,
-    "/api/album-tracks/:id": { GET: api.albumTracks },
-    "/api/listen": { POST: api.listenCreate },
-    "/api/listen/:code": { GET: api.listenSocket },
-    "/api/devices": { GET: api.devicesSocket },
-    "/api/remote/token": { POST: api.remoteToken },
-    "/api/ai/playlist": { POST: api.aiPlaylist },
-    "/api/feedback": { POST: api.sendFeedback },
-    "/api/remote/now": { GET: api.remoteNow },
-    "/api/remote/:action": { POST: api.remoteAction },
-    "/api/lyrics/coverage": { GET: api.lyricsCoverage },
-    "/api/doctor": { GET: api.doctor },
-    "/api/lyrics/missing": { GET: api.lyricsMissing },
-    "/api/lyrics/refetch": { POST: api.lyricsRefetch },
-    "/api/lyrics/written": { DELETE: api.lyricsWritten },
-    "/api/upload": { GET: api.upload, PUT: api.upload },
-    "/api/upload/metadata": { POST: api.uploadMetadata, PUT: api.uploadMetadata },
-    "/api/lyterion": { GET: api.lyterionSummary },
-    "/api/wishlist/:step": { POST: api.wishlist },
-    "/api/lyrics/:songId": { GET: api.songLyrics },
-    "/api/index": { GET: api.searchIndex, POST: api.searchIndex },
-    "/api/search": { GET: api.searchLibrary },
-    "/api/audiomuse": { GET: api.audiomuse },
-    "/api/audiomuse/sync": { POST: api.audiomuse },
-    "/api/audiomuse/shuffle": { POST: api.audiomuse },
-    "/api/audiomuse/features": { POST: api.audiomuse },
-    "/api/audiomuse/similar/:id": { GET: api.audiomuse },
-    "/api/import/match": { POST: api.importMatch },
-    "/api/search/lyrics": { GET: api.searchLyrics },
-    "/fonts/:name": font,
-    ...pwaRoutes,
-    ...shareRoutes,
-    ...webRoutes,
-  }),
+  routes: tracedRoutes(
+    compressed({
+      "/healthz": () => new Response("ok"),
+      "/worklets/levels.js": () =>
+        new Response(LEVELS_WORKLET_SOURCE, { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=86400" } }),
+      "/og.jpg": api.genericCard,
+      "/og/:kind/:file": api.ogImage,
+      "/api/share": { GET: api.shareList, POST: api.shareCreate },
+      "/api/share/:id": { DELETE: api.shareRemove },
+      "/api/csp-report": { POST: cspReport },
+      "/api/diagnostics": { POST: clientReport },
+      "/api/health": { GET: () => health.response() },
+      "/api/rpc/*": api.rpc,
+      "/api/folders/:id/cover": { GET: api.folderPicture },
+      "/api/playlists/:id/cover": { GET: api.playlistPicture },
+      "/api": api.http,
+      "/api/*": api.http,
+      "/auth/login": { POST: api.login },
+      "/auth/demo": { POST: api.demoLogin },
+      "/auth/logout": { POST: api.logout },
+      "/auth/session": { GET: api.current },
+      "/auth/sessions": { GET: api.listSessions },
+      "/auth/sessions/:id": { DELETE: api.revokeSession },
+      "/auth/api-token": { POST: api.apiToken },
+      "/rest/*": api.proxy,
+      "/cover/:id/:size": api.cover,
+      "/release-cover/:id": api.releaseCover,
+      "/api/album-tracks/:id": { GET: api.albumTracks },
+      "/api/listen": { POST: api.listenCreate },
+      "/api/listen/:code": { GET: api.listenSocket },
+      "/api/devices": { GET: api.devicesSocket },
+      "/api/remote/token": { POST: api.remoteToken },
+      "/api/ai/playlist": { POST: api.aiPlaylist },
+      "/api/feedback": { POST: api.sendFeedback },
+      "/api/remote/now": { GET: api.remoteNow },
+      "/api/remote/:action": { POST: api.remoteAction },
+      "/api/lyrics/coverage": { GET: api.lyricsCoverage },
+      "/api/doctor": { GET: api.doctor },
+      "/api/lyrics/missing": { GET: api.lyricsMissing },
+      "/api/lyrics/refetch": { POST: api.lyricsRefetch },
+      "/api/lyrics/written": { DELETE: api.lyricsWritten },
+      "/api/upload": { GET: api.upload, PUT: api.upload },
+      "/api/upload/metadata": { POST: api.uploadMetadata, PUT: api.uploadMetadata },
+      "/api/lyterion": { GET: api.lyterionSummary },
+      "/api/wishlist/:step": { POST: api.wishlist },
+      "/api/lyrics/:songId": { GET: api.songLyrics },
+      "/api/index": { GET: api.searchIndex, POST: api.searchIndex },
+      "/api/search": { GET: api.searchLibrary },
+      "/api/audiomuse": { GET: api.audiomuse },
+      "/api/audiomuse/sync": { POST: api.audiomuse },
+      "/api/audiomuse/shuffle": { POST: api.audiomuse },
+      "/api/audiomuse/features": { POST: api.audiomuse },
+      "/api/audiomuse/similar/:id": { GET: api.audiomuse },
+      "/api/import/match": { POST: api.importMatch },
+      "/api/search/lyrics": { GET: api.searchLyrics },
+      "/fonts/:name": font,
+      ...pwaRoutes,
+      ...shareRoutes,
+      ...webRoutes,
+    }),
+  ),
 });
 
 if (config.purgeShares) console.warn("SHARE_PURGE is on: every shared link was deleted. Turn it off again.");
