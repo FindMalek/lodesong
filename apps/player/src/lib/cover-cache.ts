@@ -8,7 +8,11 @@ async function store(cache: Cache, request: Request, response: Response, limit: 
   // A full quota is the one time trimming can't wait.
   const stored = await cache.put(request, response).then(
     () => true,
-    () => false,
+    (error: unknown) => {
+      // A dropped download must not cost the covers already kept.
+      if (!(error instanceof Error && error.name === "QuotaExceededError")) throw error;
+      return false;
+    },
   );
   if (stored && !due) return;
   const keys = await cache.keys();
@@ -26,7 +30,6 @@ export async function coverResponse(
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  // A failed write only costs the cached copy.
   if (response.ok) keep(store(cache, request, response.clone(), limit).catch(() => undefined));
   return response;
 }

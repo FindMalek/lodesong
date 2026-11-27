@@ -33,5 +33,5 @@ test("answers before the cache is written, and trims only now and then", async (
   await Promise.all(work);
 
   expect(listed).toBe(1);
-  expect(keys.length).toBeLessThanOrEqual(10);
+  expect(keys.length).toBe(9);
 });
