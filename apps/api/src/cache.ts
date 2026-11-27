@@ -1,4 +1,5 @@
 import { RedisClient } from "bun";
+import { count } from "./metrics";
 
 export interface Cache {
   get<T>(key: string): Promise<T | undefined>;
@@ -47,4 +48,14 @@ function redisCache(url: string): Cache {
   };
 }
 
-export const createCache = (redisUrl?: string): Cache => (redisUrl ? redisCache(redisUrl) : memoryCache());
+const counted = ({ get, set }: Cache): Cache => ({
+  set,
+  async get<T>(key: string) {
+    const value = await get<T>(key);
+    const cache = /^(mixes-ai|mixes|mood):/.exec(key)?.[1] ?? "other";
+    count("lodesong_cache_lookups_total", { cache, result: value === undefined ? "miss" : "hit" });
+    return value;
+  },
+});
+
+export const createCache = (redisUrl?: string): Cache => counted(redisUrl ? redisCache(redisUrl) : memoryCache());

@@ -17,6 +17,7 @@ import { font } from "./fonts";
 import { HealthCheck, UpdateCheck, VERSION } from "./health";
 import { LrcWriter } from "./lrc-writer";
 import { LyricsService } from "./lyrics";
+import { Metrics, queueDepth } from "./metrics";
 import type { ShareKind } from "./og";
 import { pwaRoutes } from "./pwa";
 import { LoginLimiter } from "./rate-limit";
@@ -30,7 +31,7 @@ import { MAX_UPLOAD_BYTES } from "./upload";
 // Dead-code eliminated per build: the executable only contains the static server, dev only the bundler route.
 const { webRoutes, pageWith } = process.env.NODE_ENV === "production" ? await import("./static") : await import("./dev");
 
-// First, so both keep the untraced `fetch` and everything created below gets the traced one.
+// First, so all three keep the untraced `fetch` and everything created below gets the traced one.
 const telemetry = new Telemetry({ ...config.diagnostics, release: VERSION });
 telemetry.install();
 if (config.diagnostics.on && config.diagnostics.o2) {
@@ -42,6 +43,7 @@ if (config.diagnostics.on && config.diagnostics.o2) {
     ["groq", config.groq?.url],
     ["audiomuse", config.audiomuseUrl],
   ];
+  new Metrics({ ...config.diagnostics.o2, release: VERSION }).start();
   startTracing(
     new Tracer({ ...config.diagnostics.o2, release: VERSION }),
     services.filter((service): service is [string, string] => !!service[1]),
@@ -103,6 +105,8 @@ releases?.start();
 const followSync = config.lyterion ? new FollowSync(library, config.lyterion, () => sessions.adminAccounts()) : null;
 followSync?.start();
 const covers = new CoverCache(join(config.dataDir, "covers"), config.coverCacheMb * 1024 * 1024);
+queueDepth("cover_misses", () => covers.inFlight);
+queueDepth("lyrics_backfill", () => [...backfills.values()].reduce((total, backfill) => total + backfill.queued, 0));
 const api = createApi({
   upstreams: config.upstreams,
   covers,

@@ -75,6 +75,10 @@ export class LyricsBackfill {
     clearTimeout(this.timer);
   }
 
+  get queued(): number {
+    return this.queue.length;
+  }
+
   private schedule(ms: number): void {
     clearTimeout(this.timer);
     this.timer = setTimeout(() => void job("lyrics backfill", () => this.step()).then((next) => this.schedule(next)), ms);
