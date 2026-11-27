@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.0](https://github.com/FindMalek/lodesong/compare/v2.0.0...v2.1.0) (2026-11-27)
+
+
+### Features
+
+* **api:** send metrics to o2 ([#747](https://github.com/FindMalek/lodesong/issues/747)) ([4352315](https://github.com/FindMalek/lodesong/commit/4352315252b218d56b9f9a0aeab3475cd91a2439))
+* **api:** trace requests to o2 ([#742](https://github.com/FindMalek/lodesong/issues/742)) ([c7b4d29](https://github.com/FindMalek/lodesong/commit/c7b4d296dd8667048d8a6cc577f07acd9126f100))
+* **ios:** fill parity setting gaps ([#730](https://github.com/FindMalek/lodesong/issues/730)) ([63905bb](https://github.com/FindMalek/lodesong/commit/63905bb814d4d666c301eb0dc264691f09047913))
+
+
+### Bug Fixes
+
+* **ios:** protect hidden playlist songs ([#729](https://github.com/FindMalek/lodesong/issues/729)) ([cee2d11](https://github.com/FindMalek/lodesong/commit/cee2d11554e10333f1e8d0b3b4fd27e536a029d2))
+
+
+### Performance Improvements
+
+* **player:** stop blocking cover loads ([#741](https://github.com/FindMalek/lodesong/issues/741)) ([4455cfb](https://github.com/FindMalek/lodesong/commit/4455cfbb8fa907adbc97a6646fa0b11a8f5d43e8))
+
 ## [2.0.0](https://github.com/FindMalek/lodesong/compare/v1.22.1...v2.0.0) (2026-11-26)
 
 
